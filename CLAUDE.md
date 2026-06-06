@@ -108,6 +108,15 @@ npx shadcn@latest add card dialog input
 - baseColor: `zinc`
 - Tailwind v4 사용 → `tailwind.config`는 빈 문자열
 
+## 디자인 가이드 (DESIGN.md)
+
+프로젝트 루트의 `DESIGN.md`는 Apple 디자인 시스템 분석 기반의 UI 스타일 가이드입니다.
+(`npx getdesign@latest add apple`로 설치, [getdesign.md](https://getdesign.md/apple/design-md))
+
+- **UI 마크업/스타일링 작업 전 반드시 `DESIGN.md`를 참조**합니다.
+- 컬러, 타이포그래피, 스페이싱 등의 디자인 토큰이 정의되어 있으며, 프로젝트 진행에 따라 커스터마이즈합니다.
+- 핵심 원칙: 단일 강조색 Action Blue(`#0066cc`), SF Pro Display 타이포, 사진 중심의 라이트/다크 교차 레이아웃, 미니멀한 chrome.
+
 ## AI SDK 사용
 
 `src/app/api/chat/route.ts`에 기본 채팅 엔드포인트가 구현되어 있습니다.
@@ -147,6 +156,7 @@ curl -X POST http://localhost:3000/api/chat \
 - TypeScript strict 모드 준수
 - Next.js App Router: 서버 컴포넌트 기본, 인터랙션이 필요한 경우에만 `"use client"`
 - 스타일: TailwindCSS 유틸리티 + shadcn/ui 프리미티브, `cn()`으로 클래스 병합
+- UI 작업 시 `DESIGN.md`의 디자인 토큰과 원칙을 우선 적용
 - 경로 별칭 `@/*` 사용 (상대 경로 지양)
 - 설정 파일은 `configs/`에, 런타임 상수는 `src/lib/paths.ts`에서 관리
 - 환경 변수는 `.env.local` 사용 (git에 커밋하지 않음)
