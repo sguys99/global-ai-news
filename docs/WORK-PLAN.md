@@ -17,7 +17,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 
 - [x] **Phase 0** — Walking Skeleton (기반 정리)
 - [x] **Phase 1** — 트레이서 불릿: RSS 1개 소스 end-to-end (LLM 없이)
-- [ ] **Phase 2** — LLM 통합 가공 (한국어·분류·태그·비용 기록)
+- [x] **Phase 2** — LLM 통합 가공 (한국어·분류·태그·비용 기록)
 - [ ] **Phase 3** — 소스 확장 + 필터/정렬 + 비용 가드
 - [ ] **Phase 4** — 검색 (`/search`)
 - [ ] **Phase 5** — 관리자 운영 콘솔 (`/admin`)
@@ -109,7 +109,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 - [x] 출력은 항상 Zod 통과(실패 시 1회 재시도 후 스킵·로깅), `category`는 enum만, `LLM_MODEL`로 전환 가능.
 - [x] 실행 후 `collection_runs`에 토큰·추정비용 기록. (구현 완료)
 - [x] (test) `enrich.test.ts`(스키마 검증/재시도, AI SDK mock), `cost.test.ts`. (전체 23 tests green)
-- [ ] (verify) `ANTHROPIC_API_KEY` 설정 후 소량 실행 → 카드에 한국어 요약·태그·배지 표시 확인. (실 LLM 호출 필요 — 사용자 검증 단계)
+- [x] (verify) `ANTHROPIC_API_KEY` 설정 후 소량 실행 → 카드에 한국어 요약·태그·배지 표시 확인. (20건 가공, llm_calls=20, est_cost=$0.0804, 피드 렌더 확인)
 
 ---
 

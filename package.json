@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:init": "tsx scripts/lib/initDb.ts",
-    "collect": "tsx scripts/collect.ts"
+    "collect": "tsx --env-file-if-exists=.env.local scripts/collect.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.0",
