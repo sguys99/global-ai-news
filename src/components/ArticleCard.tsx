@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CategoryBadge, TagChips } from "@/components/ArticleMeta";
 import type { ArticleCard as ArticleCardType } from "@/lib/types";
 
 /** ISO8601 → 'YYYY.MM.DD' 표기. */
@@ -12,7 +13,7 @@ function formatDate(iso: string): string {
 
 /**
  * 피드 카드. DESIGN store-utility-card (흰 카드, hairline 보더, rounded.lg, 그림자 금지).
- * Phase 1: LLM 가공 전이므로 한국어 제목이 없으면 원문 제목을 표시한다.
+ * LLM 가공 전(또는 가공 실패)이면 한국어 제목이 없으므로 원문 제목으로 폴백한다.
  */
 export function ArticleCard({ article }: { article: ArticleCardType }) {
   const title = article.titleKo || article.titleOriginal;
@@ -26,7 +27,9 @@ export function ArticleCard({ article }: { article: ArticleCardType }) {
         <span className="font-medium">{article.source.name}</span>
         <span>{formatDate(article.publishedAt)}</span>
       </div>
+      <CategoryBadge category={article.category} />
       <h2 className="text-body font-semibold tracking-tight">{title}</h2>
+      <TagChips tags={article.tags} />
       <span className="text-caption text-primary mt-auto font-medium">
         Trending {article.trendingScore}
       </span>

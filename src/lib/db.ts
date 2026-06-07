@@ -29,9 +29,10 @@ interface ArticleRow {
   summary_ko: string | null;
   category: string | null;
   importance: number | null;
+  tags: string | null; // GROUP_CONCAT 결과 (',' 구분), 태그 없으면 null
 }
 
-/** DB 행 → 렌더 DTO. LLM 미가공(null) 필드는 빈 값으로 채운다(Phase 1). */
+/** DB 행 → 렌더 DTO. LLM 미가공(null) 필드는 빈 값으로 채운다. */
 function toArticleCard(row: ArticleRow): ArticleCard {
   return {
     id: row.id,
@@ -42,7 +43,7 @@ function toArticleCard(row: ArticleRow): ArticleCard {
     titleOriginal: row.title_original,
     contentRaw: row.content_raw ?? undefined,
     category: row.category ?? "",
-    tags: [], // Phase 1 은 article_tags 미사용
+    tags: row.tags ? row.tags.split(",") : [],
     trendingScore: row.trending_score,
     importance: row.importance ?? 0,
     publishedAt: row.published_at,
@@ -52,7 +53,11 @@ function toArticleCard(row: ArticleRow): ArticleCard {
 const ARTICLE_SELECT = `
   SELECT a.id, a.source_id, s.name AS source_name, a.url,
          a.title_original, a.content_raw, a.published_at, a.trending_score,
-         a.title_ko, a.summary_ko, a.category, a.importance
+         a.title_ko, a.summary_ko, a.category, a.importance,
+         (SELECT GROUP_CONCAT(t.name)
+            FROM article_tags at
+            JOIN tags t ON t.id = at.tag_id
+           WHERE at.article_id = a.id) AS tags
   FROM articles a
   JOIN sources s ON s.id = a.source_id
 `;
