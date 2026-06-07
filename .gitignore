@@ -51,7 +51,7 @@ Thumbs.db
 /data/processed/*
 !/data/**/.gitkeep
 
-# SQLite DB (Phase 0~5 동안 로컬 생성물. Phase 6 cron이 force-add로 커밋)
-/data/app.db
+# SQLite DB: app.db는 빌드 시 readonly 조회용으로 git에 포함(커밋).
+# WAL/SHM은 실행 중에만 생기는 임시 파일이므로 무시.
 /data/app.db-wal
 /data/app.db-shm
