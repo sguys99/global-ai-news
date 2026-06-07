@@ -12,3 +12,6 @@ export const PROMPTS_DIR = path.join(CONFIGS_DIR, "prompts");
 export const RAW_DATA_DIR = path.join(DATA_DIR, "raw");
 export const INTERMEDIATE_DATA_DIR = path.join(DATA_DIR, "intermediate");
 export const PROCESSED_DATA_DIR = path.join(DATA_DIR, "processed");
+
+// SQLite 데이터베이스 파일 경로 (수집 배치가 생성, 빌드/런타임은 readonly 조회)
+export const DB_PATH = path.join(DATA_DIR, "app.db");

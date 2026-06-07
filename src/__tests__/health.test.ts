@@ -7,6 +7,6 @@ describe("GET /api/health", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({ status: "ok", service: "nextjs-template" });
+    expect(body).toEqual({ status: "ok", service: "daily-ai-brief" });
   });
 });

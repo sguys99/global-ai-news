@@ -15,7 +15,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 
 ## 진행 현황 개요
 
-- [ ] **Phase 0** — Walking Skeleton (기반 정리)
+- [x] **Phase 0** — Walking Skeleton (기반 정리)
 - [ ] **Phase 1** — 트레이서 불릿: RSS 1개 소스 end-to-end (LLM 없이)
 - [ ] **Phase 2** — LLM 통합 가공 (한국어·분류·태그·비용 기록)
 - [ ] **Phase 3** — 소스 확장 + 필터/정렬 + 비용 가드
@@ -49,20 +49,20 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 **목표:** 스타터 정리 + 환경/DB/타입/디자인 토큰 골격 확보. (트레이서 불릿을 쏘기 위한 최소 기반)
 
 ### 작업
-- [ ] 스타터 보일러플레이트 정리: `/api/chat` 등 데모 제거(`starter-cleaner` 에이전트 활용 가능).
-- [ ] 의존성 추가: `better-sqlite3`, `rss-parser`, `zod`(+ `ai`/`@ai-sdk/anthropic` 기존), `@types/better-sqlite3`.
-- [ ] `.env.example` 갱신(위 환경변수 전체), `.env.local` 안내.
-- [ ] DB 계층: `src/lib/db.ts`(readonly 조회), `scripts/lib/schema.sql`(PRD §5 DDL), `scripts/lib/initDb.ts`(테이블 생성). `src/lib/paths.ts`에 `DB_PATH` 추가.
-- [ ] 타입: `src/lib/types.ts`(`ArticleCard`, `RawItem`), `scripts/lib/schema.ts`(`CATEGORIES`, `articleEnrichmentSchema`).
-- [ ] DESIGN.md 토큰 → `globals.css` CSS 변수/Tailwind 매핑(Action Blue, parchment, hairline, rounded).
+- [x] 스타터 보일러플레이트 정리: `/api/chat` 등 데모 제거(`starter-cleaner` 에이전트 활용 가능). + `@ai-sdk/openai` 제거.
+- [x] 의존성 추가: `better-sqlite3`, `rss-parser`, `zod`(+ `ai`/`@ai-sdk/anthropic` 기존), `@types/better-sqlite3`. + dev `tsx`, `next.config` `serverExternalPackages`.
+- [x] `.env.example` 갱신(위 환경변수 전체), `.env.local` 안내.
+- [x] DB 계층: `src/lib/db.ts`(readonly 조회), `scripts/lib/schema.sql`(PRD §5 DDL), `scripts/lib/initDb.ts`(테이블 생성). `src/lib/paths.ts`에 `DB_PATH` 추가.
+- [x] 타입: `src/lib/types.ts`(`ArticleCard`, `RawItem`), `scripts/lib/schema.ts`(`CATEGORIES`, `articleEnrichmentSchema`).
+- [x] DESIGN.md 토큰 → `globals.css` CSS 변수/Tailwind 매핑(Action Blue, parchment, hairline, rounded).
 
 ### 핵심 파일
 `package.json`, `.env.example`, `src/lib/paths.ts`, `src/lib/db.ts`, `src/lib/types.ts`, `scripts/lib/schema.sql`, `scripts/lib/schema.ts`, `scripts/lib/initDb.ts`, `src/app/globals.css`
 
 ### Acceptance / Tests / Verify
-- [ ] `npx tsx scripts/lib/initDb.ts`로 빈 `data/app.db`에 6개 테이블 생성.
-- [ ] `npm run typecheck`·`npm run lint` 통과.
-- [ ] (test) `src/__tests__/db.test.ts` — 스키마 생성/조회 스모크.
+- [x] `npx tsx scripts/lib/initDb.ts`(= `npm run db:init`)로 빈 `data/app.db`에 6개 테이블 생성.
+- [x] `npm run typecheck`·`npm run lint` 통과. (+ `npm run build` 통과)
+- [x] (test) `src/__tests__/db.test.ts` — 스키마 생성/조회 스모크.
 
 ---
 

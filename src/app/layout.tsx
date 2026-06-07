@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Next.js Fullstack Template",
-  description: "Next.js + TailwindCSS v4 + shadcn/ui starter template",
+  title: "Daily AI Brief",
+  description:
+    "글로벌·한국 AI/IT 뉴스를 매일 한국어 요약으로 제공하는 데일리 브리핑",
 };
 
 export default function RootLayout({

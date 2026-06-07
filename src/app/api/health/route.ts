@@ -1,3 +1,3 @@
 export async function GET() {
-  return Response.json({ status: "ok", service: "nextjs-template" });
+  return Response.json({ status: "ok", service: "daily-ai-brief" });
 }
