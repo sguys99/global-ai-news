@@ -95,21 +95,21 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 **목표:** 신규 항목에 LLM 1호출 가공을 끼워넣어 카드/상세에 한국어·카테고리·태그 노출.
 
 ### 작업
-- [ ] `scripts/lib/enrich.ts`: `generateObject` + `articleEnrichmentSchema` + 시스템/few-shot 프롬프트 + prompt caching. 검증 실패 1회 재시도 후 스킵·로깅.
-- [ ] `configs/prompts/enrich.system.md`, `enrich.fewshot.json`(PRD §7).
-- [ ] `collect.ts`에 ③단계 결합 → `title_ko/summary_ko/category/importance/tags`(→ `tags`/`article_tags`) 저장.
-- [ ] `collection_runs` 1행 기록: `llm_calls`/`input_tokens`/`output_tokens`/`est_cost_usd`/`status`.
-- [ ] 카드/상세에 한국어 제목·요약·카테고리 배지·태그 칩 표시.
+- [x] `scripts/lib/enrich.ts`: `generateObject` + `articleEnrichmentSchema` + 시스템/few-shot 프롬프트 + prompt caching. 검증 실패 1회 재시도 후 스킵·로깅.
+- [x] `configs/prompts/enrich.system.md`, `enrich.fewshot.json`(PRD §7).
+- [x] `collect.ts`에 ③단계 결합(가공 후 완성 INSERT) → `title_ko/summary_ko/category/importance/tags`(→ `tags`/`article_tags`) 저장. (`scripts/lib/tags.ts`)
+- [x] `collection_runs` 1행 기록: `llm_calls`/`input_tokens`/`output_tokens`/`est_cost_usd`/`status`. (`scripts/lib/cost.ts`, Haiku 단가 $1/$5 per M)
+- [x] 카드/상세에 한국어 제목·요약·카테고리 배지·태그 칩 표시. (`src/components/ArticleMeta.tsx`)
 
 ### 핵심 파일
-`scripts/lib/enrich.ts`, `scripts/lib/schema.ts`, `scripts/lib/cost.ts`(토큰→비용), `configs/prompts/*`, `scripts/collect.ts`, `src/components/ArticleCard.tsx`, `src/app/article/[id]/page.tsx`
+`scripts/lib/enrich.ts`, `scripts/lib/schema.ts`, `scripts/lib/cost.ts`(토큰→비용), `scripts/lib/tags.ts`, `configs/prompts/*`, `scripts/collect.ts`, `src/lib/db.ts`(태그 조인), `src/components/ArticleCard.tsx`, `src/components/ArticleMeta.tsx`, `src/app/article/[id]/page.tsx`
 
 ### Acceptance / Tests / Verify
-- [ ] 1 기사 = 정확히 1 LLM 호출, 기존 기사 재가공 0(비용 0).
-- [ ] 출력은 항상 Zod 통과, `category`는 enum만, `LLM_MODEL`로 전환 가능.
-- [ ] 실행 후 `collection_runs`에 토큰·추정비용 기록.
-- [ ] (test) `enrich.test.ts`(스키마 검증/재시도, AI SDK mock), `cost.test.ts`.
-- [ ] (verify) 소량 실행 → 카드에 한국어 요약·태그·배지 표시 확인.
+- [x] 1 기사 = 정확히 1 LLM 호출, 기존 기사 재가공 0(비용 0). (신규만 `existsKey` 가드 후 가공 — 코드 보장)
+- [x] 출력은 항상 Zod 통과(실패 시 1회 재시도 후 스킵·로깅), `category`는 enum만, `LLM_MODEL`로 전환 가능.
+- [x] 실행 후 `collection_runs`에 토큰·추정비용 기록. (구현 완료)
+- [x] (test) `enrich.test.ts`(스키마 검증/재시도, AI SDK mock), `cost.test.ts`. (전체 23 tests green)
+- [ ] (verify) `ANTHROPIC_API_KEY` 설정 후 소량 실행 → 카드에 한국어 요약·태그·배지 표시 확인. (실 LLM 호출 필요 — 사용자 검증 단계)
 
 ---
 

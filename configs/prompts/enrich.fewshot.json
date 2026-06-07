@@ -1,0 +1,44 @@
+[
+  {
+    "input": {
+      "source": "OpenAI Blog",
+      "title": "Introducing GPT-5: our most capable model yet",
+      "content": "OpenAI today announced GPT-5, a new flagship model with improved reasoning, a 400K token context window, and lower latency. The model is available via the API starting today and rolls out to ChatGPT users this week."
+    },
+    "output": {
+      "title_ko": "OpenAI, 추론 강화한 신규 모델 GPT-5 공개",
+      "summary_ko": "OpenAI가 추론 능력을 개선하고 40만 토큰 컨텍스트를 지원하는 신규 플래그십 모델 GPT-5를 공개했다. 오늘부터 API로 제공되며 ChatGPT에도 순차 적용된다.",
+      "category": "Language Models",
+      "tags": ["openai", "gpt-5", "llm"],
+      "importance": 5
+    }
+  },
+  {
+    "input": {
+      "source": "GitHub Blog",
+      "title": "LangChain releases v1.0 with stable agent runtime",
+      "content": "LangChain has reached its 1.0 milestone, stabilizing the agent runtime API and adding first-class support for streaming tool calls. The release focuses on backward-compatibility guarantees for production deployments."
+    },
+    "output": {
+      "title_ko": "LangChain 1.0 출시, 에이전트 런타임 안정화",
+      "summary_ko": "LangChain이 에이전트 런타임 API를 안정화한 1.0 버전을 출시했다. 스트리밍 툴 호출을 정식 지원하며, 프로덕션 배포를 위한 하위 호환성 보장에 초점을 맞췄다.",
+      "category": "Dev Tools",
+      "tags": ["langchain", "agent", "framework"],
+      "importance": 3
+    }
+  },
+  {
+    "input": {
+      "source": "arXiv",
+      "title": "Chain-of-Retrieval Augmented Generation improves multi-hop QA",
+      "content": "A new paper proposes CoRAG, a method that interleaves retrieval steps with chain-of-thought reasoning. On multi-hop QA benchmarks, CoRAG outperforms standard RAG baselines by 12 points while keeping inference cost comparable."
+    },
+    "output": {
+      "title_ko": "CoRAG, 다중 추론 QA에서 기존 RAG 대비 12점 향상",
+      "summary_ko": "검색 단계와 사고 사슬 추론을 교차하는 CoRAG 기법이 제안됐다. 다중 홉 QA 벤치마크에서 기존 RAG 대비 12점 높은 성능을 보였으며 추론 비용은 비슷한 수준을 유지했다.",
+      "category": "연구·논문",
+      "tags": ["rag", "추론", "benchmark"],
+      "importance": 2
+    }
+  }
+]

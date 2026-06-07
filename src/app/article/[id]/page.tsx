@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CategoryBadge, TagChips } from "@/components/ArticleMeta";
 import { getArticle } from "@/lib/db";
 
 /** ISO8601 → 'YYYY.MM.DD' 표기. */
@@ -36,8 +37,19 @@ export default async function ArticlePage({
           <span className="font-medium">{article.source.name}</span>
           <span>{formatDate(article.publishedAt)}</span>
         </div>
+        <CategoryBadge category={article.category} />
         <h1 className="text-display-md font-semibold tracking-tight">{title}</h1>
+        <TagChips tags={article.tags} />
       </header>
+
+      {article.summaryKo && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-caption text-muted-foreground font-semibold">
+            한국어 요약
+          </h2>
+          <p className="text-body leading-relaxed">{article.summaryKo}</p>
+        </section>
+      )}
 
       {article.contentRaw && (
         <section className="flex flex-col gap-2">
