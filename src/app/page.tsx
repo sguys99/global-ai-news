@@ -1,16 +1,31 @@
+import { ArticleCard } from "@/components/ArticleCard";
+import { getFeed } from "@/lib/db";
+
 export default function Home() {
+  const articles = getFeed();
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-4 px-6">
-      <span className="text-primary text-caption font-semibold tracking-tight">
-        Daily AI Brief
-      </span>
-      <h1 className="text-display-md font-semibold tracking-tight">
-        매일 한 곳에서 보는 글로벌·한국 AI/IT 뉴스
-      </h1>
-      <p className="text-muted-foreground text-body">
-        하루 한 번 수집한 AI/IT 뉴스를 한국어 요약으로 제공합니다. 피드는 곧
-        제공될 예정입니다.
-      </p>
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-6 py-12">
+      <header className="flex flex-col gap-2">
+        <span className="text-primary text-caption font-semibold tracking-tight">
+          Daily AI Brief
+        </span>
+        <h1 className="text-display-md font-semibold tracking-tight">
+          매일 한 곳에서 보는 글로벌·한국 AI/IT 뉴스
+        </h1>
+      </header>
+
+      {articles.length === 0 ? (
+        <p className="text-muted-foreground text-body">
+          아직 수집된 기사가 없습니다. `npm run collect` 실행 후 새로고침하세요.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {articles.map((article) => (
+            <ArticleCard key={article.id} article={article} />
+          ))}
+        </div>
+      )}
     </main>
   );
 }

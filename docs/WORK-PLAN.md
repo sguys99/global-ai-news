@@ -16,7 +16,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 ## 진행 현황 개요
 
 - [x] **Phase 0** — Walking Skeleton (기반 정리)
-- [ ] **Phase 1** — 트레이서 불릿: RSS 1개 소스 end-to-end (LLM 없이)
+- [x] **Phase 1** — 트레이서 불릿: RSS 1개 소스 end-to-end (LLM 없이)
 - [ ] **Phase 2** — LLM 통합 가공 (한국어·분류·태그·비용 기록)
 - [ ] **Phase 3** — 소스 확장 + 필터/정렬 + 비용 가드
 - [ ] **Phase 4** — 검색 (`/search`)
@@ -72,20 +72,20 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 **목표:** RSS 1개(TechCrunch AI) → 수집 → dedup → SQLite 저장 → `/` 카드 1장 → `/article/[id]` 상세까지 **전 레이어 관통**. LLM/태그/필터/정렬 전 단계는 placeholder.
 
 ### 작업 (수직 슬라이스)
-- [ ] `configs/sources.json`에 RSS 1건 시드.
-- [ ] `scripts/collect.ts`: 수집(`rss-parser`) → `normalize(url)`+`dedup_key`(sha256) → SQLite 미존재 항목만 insert(`title_ko`/`summary_ko` 비움, 원본만 저장).
-- [ ] `scripts/lib/trending.ts`: `trendingScore()`(PRD §3.2 코드) 적용.
-- [ ] `/` 피드: `getFeed()`로 카드 렌더(출처·제목·게시시각·점수). DESIGN `store-utility-card`.
-- [ ] `/article/[id]`: 원문 병기 + 원문 링크(새 탭).
+- [x] `configs/sources.json`에 RSS 1건 시드.
+- [x] `scripts/collect.ts`: 수집(`rss-parser`) → `normalize(url)`+`dedup_key`(sha256) → SQLite 미존재 항목만 insert(`title_ko`/`summary_ko` 비움, 원본만 저장).
+- [x] `scripts/lib/trending.ts`: `trendingScore()`(PRD §3.2 코드) 적용.
+- [x] `/` 피드: `getFeed()`로 카드 렌더(출처·제목·게시시각·점수). DESIGN `store-utility-card`.
+- [x] `/article/[id]`: 원문 병기 + 원문 링크(새 탭).
 
 ### 핵심 파일
 `configs/sources.json`, `scripts/collect.ts`, `scripts/lib/collect/rss.ts`, `scripts/lib/dedup.ts`, `scripts/lib/trending.ts`, `src/lib/db.ts`(`getFeed`/`getArticle`), `src/app/page.tsx`, `src/app/article/[id]/page.tsx`, `src/components/ArticleCard.tsx`
 
 ### Acceptance / Tests / Verify
-- [ ] 배치 1회 실행 시 신규 기사만 저장, 재실행 시 중복 0건(`dedup_key` UNIQUE).
-- [ ] `/`에서 카드 목록, 클릭 시 `/article/[id]` 이동, 원문 링크 새 탭.
-- [ ] (test) `dedup.test.ts`(URL 정규화), `trending.test.ts`(점수 0~100·최신성 감쇠).
-- [ ] (verify) `npx tsx scripts/collect.ts` → `npm run dev` → 브라우저로 카드/상세 확인.
+- [x] 배치 1회 실행 시 신규 기사만 저장, 재실행 시 중복 0건(`dedup_key` UNIQUE). (1회차 new=20, 2회차 new=0 확인)
+- [x] `/`에서 카드 목록, 클릭 시 `/article/[id]` 이동, 원문 링크 새 탭.
+- [x] (test) `dedup.test.ts`(URL 정규화), `trending.test.ts`(점수 0~100·최신성 감쇠).
+- [x] (verify) `npx tsx scripts/collect.ts` → `npm run dev` → 브라우저로 카드/상세 확인. (`npm run build` 통과)
 
 ---
 

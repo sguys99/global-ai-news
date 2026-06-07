@@ -33,6 +33,7 @@ export interface ArticleCard {
   titleKo: string;
   summaryKo: string;
   titleOriginal: string;
+  contentRaw?: string; // 원문 발췌 (상세 페이지에서 사용)
   category: string; // CATEGORIES 중 하나
   tags: string[];
   trendingScore: number; // 0~100

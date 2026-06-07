@@ -1,0 +1,9 @@
+[
+  {
+    "id": "techcrunch_ai",
+    "name": "TechCrunch AI",
+    "kind": "rss",
+    "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
+    "enabled": 1
+  }
+]
