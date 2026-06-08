@@ -20,7 +20,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 - [x] **Phase 2** — LLM 통합 가공 (한국어·분류·태그·비용 기록)
 - [x] **Phase 3** — 소스 확장 + 필터/정렬 + 비용 가드
 - [x] **Phase 4** — 검색 (`/search`)
-- [ ] **Phase 5** — 관리자 운영 콘솔 (`/admin`)
+- [x] **Phase 5** — 관리자 운영 콘솔 (`/admin`)
 - [ ] **Phase 6** — 자동화 · 배포 · KPI 검증
 
 ---
@@ -178,23 +178,23 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 
 ### 작업
 
-- [ ] 인증: `middleware.ts`로 `/admin/*`·admin API 보호, `ADMIN_PASSWORD` 검증 → 서명 쿠키. 로그인 페이지.
-- [ ] 소스 관리: `/api/admin/sources` → `configs/sources.json` 갱신 + `PUT .../contents` GitHub API 커밋. `url`/중복 `id` 유효성 검증. WEB "수집 예정" 배지.
-- [ ] 재수집: `/api/admin/collect` → `workflow_dispatch`(collect.yml). 진행 중 버튼 비활성(중복 방지).
-- [ ] 대시보드: `collection_runs` 최근 N회 표(수집/신규/토큰/비용/상태), 임계($0.30) 초과 강조.
+- [x] 인증: `src/middleware.ts`로 `/admin/*`·admin API 보호, `ADMIN_PASSWORD` 검증 → HMAC 서명 쿠키(Web Crypto, 무의존성). 로그인/로그아웃 라우트·페이지. (※ src/ 디렉토리 사용 → middleware 는 `src/middleware.ts`)
+- [x] 소스 관리: `/api/admin/sources`(GET/POST/PUT/DELETE) → `configs/sources.json` 갱신. `GITHUB_PAT`+`GITHUB_REPO` 있으면 `PUT .../contents` GitHub 커밋, 없으면 로컬 파일 쓰기(dev 폴백). kind-aware `url`(reddit=`r/...`)·중복 `id` 검증. WEB "수집 예정" 배지.
+- [x] 재수집: `/api/admin/collect` → `workflow_dispatch`(collect.yml). `collect.yml` 미존재(404) → `WorkflowNotFoundError` 잡아 "미배포(Phase 6)" 안내. 진행 중 버튼 비활성(중복 방지).
+- [x] 대시보드: `getRecentRuns()`로 `collection_runs` 최근 20회 표(수집/신규/LLM/토큰/비용/상태), 임계($0.30) 초과 행 강조.
 
 ### 핵심 파일
 
-`middleware.ts`, `src/lib/auth.ts`, `src/app/admin/page.tsx`, `src/app/admin/login/page.tsx`, `src/app/api/admin/sources/route.ts`, `src/app/api/admin/collect/route.ts`, `src/lib/github.ts`, `src/components/admin/*`
+`src/middleware.ts`, `src/lib/auth.ts`, `src/lib/github.ts`, `src/lib/sources.ts`, `src/lib/db.ts`(`getRecentRuns`), `src/lib/types.ts`(`SourceConfig`/`RunRow`), `src/app/admin/page.tsx`, `src/app/admin/login/page.tsx`, `src/app/api/admin/{login,logout,sources,collect}/route.ts`, `src/components/admin/*`
 
 ### Acceptance / Tests / Verify
 
-- [ ] 미인증 `/admin/*` → 로그인 리다이렉트. `GITHUB_PAT` 클라이언트 미노출.
-- [ ] 소스 추가/수정/삭제/토글 → `sources.json` GitHub 커밋, 성공/실패 UI 표시.
-- [ ] "지금 수집" → `workflow_dispatch` 성공 표시, 중복 클릭 차단.
-- [ ] 대시보드에 실행별 통계·비용, 임계 초과 강조.
-- [ ] (test) `auth.test.ts`, `sources-route.test.ts`(GitHub API mock, 유효성).
-- [ ] (verify) 로컬 로그인 → 소스 토글 커밋(테스트 repo) → 대시보드 확인.
+- [x] 미인증 `/admin/*` → 로그인 리다이렉트(307), admin API → 401. `GITHUB_PAT` 서버 전용(클라이언트 미노출). (런타임 검증 완료)
+- [x] 소스 추가/수정/삭제/토글 → `sources.json` 갱신(dev 로컬 폴백 런타임 검증), GitHub 커밋 경로 구현+단위테스트(mock). 중복 id 409·잘못된 url 400. 성공/실패 UI 표시.
+- [x] "지금 수집" → `workflow_dispatch` 호출, 중복 클릭 차단. (GITHUB 미설정 시 클린 에러 검증)
+- [x] 대시보드에 실행별 통계·비용, 임계 초과 강조.
+- [x] (test) `auth.test.ts`(7), `sources-route.test.ts`(12), `github.test.ts`(5) — GitHub API/fs mock, 유효성. (전체 75 tests green)
+- [x] (verify) 로컬 로그인 → 소스 추가/삭제 라운드트립 → 대시보드 렌더 확인(`npm run build`·dev 런타임 통과). (실제 GitHub 테스트 repo 커밋은 운영자 `GITHUB_PAT`/`GITHUB_REPO` 설정 후 실행 대기)
 
 ---
 

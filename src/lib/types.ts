@@ -7,6 +7,33 @@
 /** 소스 종류. configs/sources.json 의 kind 와 동일. */
 export type SourceKind = "rss" | "web" | "hn" | "github" | "hf" | "reddit";
 
+/**
+ * 소스 정의 한 건. configs/sources.json 한 항목과 동일.
+ * (scripts/lib/collect/rss.ts 의 SourceConfig 와 같은 형태 — 웹 레이어 공용 타입)
+ */
+export interface SourceConfig {
+  id: string;
+  name: string;
+  kind: SourceKind;
+  url: string;
+  enabled: number; // 1=활성, 0=비활성
+}
+
+/** collection_runs 한 행(배치 실행 이력). 대시보드에서 사용. */
+export interface RunRow {
+  id: number;
+  started_at: string;
+  finished_at: string | null;
+  items_collected: number;
+  items_new: number;
+  llm_calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  est_cost_usd: number;
+  status: string; // 'success' | 'partial' | 'failed'
+  notes: string | null;
+}
+
 /** engagement 메트릭(소스마다 일부만 채워짐). articles.engagement_json 으로 직렬화. */
 export interface Engagement {
   points?: number; // HN

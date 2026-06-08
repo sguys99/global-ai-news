@@ -1,6 +1,6 @@
 import Database, { type Database as DatabaseType } from "better-sqlite3";
 import { DB_PATH } from "@/lib/paths";
-import type { ArticleCard } from "@/lib/types";
+import type { ArticleCard, RunRow } from "@/lib/types";
 
 /**
  * 읽기 전용 SQLite 커넥션 싱글톤.
@@ -211,6 +211,13 @@ export function getActiveTags(limit = 20, conn: DatabaseType = getDb()): string[
     )
     .all(limit) as { name: string }[];
   return rows.map((r) => r.name);
+}
+
+/** 최근 배치 실행 이력(대시보드용). 최신 실행순. */
+export function getRecentRuns(limit = 20, conn: DatabaseType = getDb()): RunRow[] {
+  return conn
+    .prepare(`SELECT * FROM collection_runs ORDER BY started_at DESC LIMIT ?`)
+    .all(limit) as RunRow[];
 }
 
 /** 단건 상세 조회. 없으면 null. */
