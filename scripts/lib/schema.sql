@@ -47,10 +47,29 @@ CREATE TABLE IF NOT EXISTS article_tags (
   PRIMARY KEY (article_id, tag_id)
 );
 
--- 전문 검색 (FTS5, external content — articles와 연동). 동기화 트리거는 Phase 4에서 추가.
+-- 전문 검색 (FTS5, external content — articles와 연동).
+-- 한국어 제목·요약 + 원문(제목·본문)을 인덱싱한다(Phase 4: 원문까지 검색).
 CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
-  title_ko, summary_ko, content='articles', content_rowid='id'
+  title_ko, summary_ko, title_original, content_raw,
+  content='articles', content_rowid='id'
 );
+
+-- external content 동기화 트리거 (INSERT/DELETE/UPDATE).
+-- collect.ts 의 INSERT OR IGNORE 가 실제로 행을 추가할 때만 articles_ai 가 동작한다.
+CREATE TRIGGER IF NOT EXISTS articles_ai AFTER INSERT ON articles BEGIN
+  INSERT INTO articles_fts(rowid, title_ko, summary_ko, title_original, content_raw)
+  VALUES (new.id, new.title_ko, new.summary_ko, new.title_original, new.content_raw);
+END;
+CREATE TRIGGER IF NOT EXISTS articles_ad AFTER DELETE ON articles BEGIN
+  INSERT INTO articles_fts(articles_fts, rowid, title_ko, summary_ko, title_original, content_raw)
+  VALUES ('delete', old.id, old.title_ko, old.summary_ko, old.title_original, old.content_raw);
+END;
+CREATE TRIGGER IF NOT EXISTS articles_au AFTER UPDATE ON articles BEGIN
+  INSERT INTO articles_fts(articles_fts, rowid, title_ko, summary_ko, title_original, content_raw)
+  VALUES ('delete', old.id, old.title_ko, old.summary_ko, old.title_original, old.content_raw);
+  INSERT INTO articles_fts(rowid, title_ko, summary_ko, title_original, content_raw)
+  VALUES (new.id, new.title_ko, new.summary_ko, new.title_original, new.content_raw);
+END;
 
 -- 수집 실행 기록 (비용/통계)
 CREATE TABLE IF NOT EXISTS collection_runs (

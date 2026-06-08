@@ -69,39 +69,117 @@ export interface FeedOptions {
   sort?: "latest" | "importance";
 }
 
-/**
- * 피드용 기사 목록. 태그·소스 필터와 정렬을 지원한다(PRD §3.5).
- * 기본 정렬은 트렌딩 점수 내림차순(동점 시 최신순),
- * sort=latest 는 게시 최신순, sort=importance 는 중요도 우선.
- */
-export function getFeed(opts: FeedOptions = {}, conn: DatabaseType = getDb()): ArticleCard[] {
-  const where: string[] = [];
+/** 검색 옵션 = 피드 필터/정렬 + 키워드 q. */
+export interface SearchOptions extends FeedOptions {
+  q?: string;
+}
+
+/** 소스·태그 필터를 WHERE 절 조각 + 바인딩 파라미터로 구성한다(getFeed/searchArticles 공유). */
+function buildFilters(opts: FeedOptions): {
+  clauses: string[];
+  params: (string | number)[];
+} {
+  const clauses: string[] = [];
   const params: (string | number)[] = [];
 
   if (opts.source) {
-    where.push("a.source_id = ?");
+    clauses.push("a.source_id = ?");
     params.push(opts.source);
   }
   if (opts.tag) {
-    where.push(
+    clauses.push(
       `EXISTS (SELECT 1 FROM article_tags at
                  JOIN tags t ON t.id = at.tag_id
                 WHERE at.article_id = a.id AND t.name = ?)`,
     );
     params.push(opts.tag);
   }
+  return { clauses, params };
+}
 
-  const orderBy =
-    opts.sort === "latest"
-      ? "a.published_at DESC"
-      : opts.sort === "importance"
-        ? "a.importance DESC, a.trending_score DESC"
-        : "a.trending_score DESC, a.published_at DESC";
+/** 정렬 옵션 → ORDER BY 절(getFeed/searchArticles 공유). */
+function orderByFor(sort: FeedOptions["sort"]): string {
+  return sort === "latest"
+    ? "a.published_at DESC"
+    : sort === "importance"
+      ? "a.importance DESC, a.trending_score DESC"
+      : "a.trending_score DESC, a.published_at DESC";
+}
 
-  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+/**
+ * 피드용 기사 목록. 태그·소스 필터와 정렬을 지원한다(PRD §3.5).
+ * 기본 정렬은 트렌딩 점수 내림차순(동점 시 최신순),
+ * sort=latest 는 게시 최신순, sort=importance 는 중요도 우선.
+ */
+export function getFeed(opts: FeedOptions = {}, conn: DatabaseType = getDb()): ArticleCard[] {
+  const { clauses, params } = buildFilters(opts);
+  const whereSql = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
   const rows = conn
-    .prepare(`${ARTICLE_SELECT} ${whereSql} ORDER BY ${orderBy}`)
+    .prepare(`${ARTICLE_SELECT} ${whereSql} ORDER BY ${orderByFor(opts.sort)}`)
     .all(...params) as ArticleRow[];
+  return rows.map(toArticleCard);
+}
+
+/** FTS5 MATCH 표현식 생성: 공백 토큰화 → 각 토큰 prefix("tok"*) → OR 결합. */
+function ftsMatchExpr(q: string): string {
+  return q
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((tok) => `"${tok.replace(/"/g, '""')}"*`)
+    .join(" OR ");
+}
+
+/**
+ * 키워드 검색(PRD §3.6). 한국어 제목·요약 + 원문(제목·본문) FTS5 매칭 또는 태그명 일치.
+ * 소스·태그 필터와 정렬을 함께 적용한다.
+ * FTS 구문 오류나 결과 0건(공백 없는 한국어 부분일치 등) 시 LIKE 폴백.
+ */
+export function searchArticles(
+  opts: SearchOptions,
+  conn: DatabaseType = getDb(),
+): ArticleCard[] {
+  const q = (opts.q ?? "").trim();
+  if (!q) return [];
+
+  const { clauses, params } = buildFilters(opts);
+  const filterSql = clauses.length ? ` AND ${clauses.join(" AND ")}` : "";
+  const orderBy = orderByFor(opts.sort);
+  const like = `%${q}%`;
+
+  // 1) FTS 경로: title/summary/원문 MATCH OR 태그명 LIKE
+  try {
+    const match = ftsMatchExpr(q);
+    if (match) {
+      const rows = conn
+        .prepare(
+          `${ARTICLE_SELECT}
+            WHERE (a.id IN (SELECT rowid FROM articles_fts WHERE articles_fts MATCH ?)
+                   OR EXISTS (SELECT 1 FROM article_tags at
+                                JOIN tags t ON t.id = at.tag_id
+                               WHERE at.article_id = a.id AND t.name LIKE ?))
+              ${filterSql}
+            ORDER BY ${orderBy}`,
+        )
+        .all(match, like, ...params) as ArticleRow[];
+      if (rows.length > 0) return rows.map(toArticleCard);
+    }
+  } catch {
+    // MATCH 구문 오류 → LIKE 폴백
+  }
+
+  // 2) LIKE 폴백: 한국어/원문/태그 부분일치
+  const rows = conn
+    .prepare(
+      `${ARTICLE_SELECT}
+        WHERE (a.title_ko LIKE ? OR a.summary_ko LIKE ?
+               OR a.title_original LIKE ? OR a.content_raw LIKE ?
+               OR EXISTS (SELECT 1 FROM article_tags at
+                            JOIN tags t ON t.id = at.tag_id
+                           WHERE at.article_id = a.id AND t.name LIKE ?))
+          ${filterSql}
+        ORDER BY ${orderBy}`,
+    )
+    .all(like, like, like, like, like, ...params) as ArticleRow[];
   return rows.map(toArticleCard);
 }
 

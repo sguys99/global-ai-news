@@ -5,7 +5,7 @@
  * 정렬은 단일 선택, 소스·태그는 클릭 시 토글(같은 값 재클릭하면 해제)한다.
  */
 import Link from "next/link";
-import type { FeedOptions } from "@/lib/db";
+import type { SearchOptions } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 const SORTS: { value: "latest" | "importance"; label: string }[] = [
@@ -13,15 +13,23 @@ const SORTS: { value: "latest" | "importance"; label: string }[] = [
   { value: "importance", label: "중요도순" },
 ];
 
-/** 현재 필터에 patch 를 병합해 "/?..." href 생성. 값이 빈 문자열이면 해당 키 제거. */
-function buildHref(current: FeedOptions, patch: Partial<FeedOptions>): string {
+/**
+ * 현재 필터에 patch 를 병합해 `${basePath}?...` href 생성.
+ * 값이 빈 문자열/undefined면 해당 키 제거. 검색어 q 는 보존한다.
+ */
+function buildHref(
+  basePath: string,
+  current: SearchOptions,
+  patch: Partial<SearchOptions>,
+): string {
   const merged = { ...current, ...patch };
   const params = new URLSearchParams();
+  if (merged.q) params.set("q", merged.q);
   if (merged.source) params.set("source", merged.source);
   if (merged.tag) params.set("tag", merged.tag);
   if (merged.sort) params.set("sort", merged.sort);
   const qs = params.toString();
-  return qs ? `/?${qs}` : "/";
+  return qs ? `${basePath}?${qs}` : basePath;
 }
 
 const chip =
@@ -49,10 +57,12 @@ export function FilterBar({
   current,
   sources,
   tags,
+  basePath = "/",
 }: {
-  current: FeedOptions;
+  current: SearchOptions;
   sources: { id: string; name: string }[];
   tags: string[];
+  basePath?: string;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -64,7 +74,7 @@ export function FilterBar({
           return (
             <Chip
               key={s.value}
-              href={buildHref(current, { sort: active ? undefined : s.value })}
+              href={buildHref(basePath, current, { sort: active ? undefined : s.value })}
               active={active}
             >
               {s.label}
@@ -82,7 +92,7 @@ export function FilterBar({
             return (
               <Chip
                 key={s.id}
-                href={buildHref(current, { source: active ? undefined : s.id })}
+                href={buildHref(basePath, current, { source: active ? undefined : s.id })}
                 active={active}
               >
                 {s.name}
@@ -101,7 +111,7 @@ export function FilterBar({
             return (
               <Chip
                 key={t}
-                href={buildHref(current, { tag: active ? undefined : t })}
+                href={buildHref(basePath, current, { tag: active ? undefined : t })}
                 active={active}
               >
                 {t}

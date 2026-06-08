@@ -19,7 +19,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 - [x] **Phase 1** — 트레이서 불릿: RSS 1개 소스 end-to-end (LLM 없이)
 - [x] **Phase 2** — LLM 통합 가공 (한국어·분류·태그·비용 기록)
 - [x] **Phase 3** — 소스 확장 + 필터/정렬 + 비용 가드
-- [ ] **Phase 4** — 검색 (`/search`)
+- [x] **Phase 4** — 검색 (`/search`)
 - [ ] **Phase 5** — 관리자 운영 콘솔 (`/admin`)
 - [ ] **Phase 6** — 자동화 · 배포 · KPI 검증
 
@@ -155,19 +155,19 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 
 ### 작업
 
-- [ ] `src/lib/db.ts` `searchArticles(q)` — `articles_fts` MATCH, 결과 없음/에러 시 LIKE 폴백.
-- [ ] `/search?q=`: 동일 `ArticleCard` 재사용, 결과 없음 상태 명시.
-- [ ] `collect.ts`에서 insert 시 `articles_fts` 동기화.
+- [x] `src/lib/db.ts` `searchArticles(q)` — `articles_fts` MATCH(prefix), 결과 없음/에러 시 LIKE 폴백. `buildFilters` 추출로 `getFeed`와 필터/정렬 공유. 검색 대상에 원문(`title_original`/`content_raw`)·태그명 포함.
+- [x] `/search?q=`: 동일 `ArticleCard`/`FilterBar`(`basePath="/search"`) 재사용, 클라이언트 라이브 검색(`SearchInput`, 디바운스), `q` 없음/결과 없음 상태 명시.
+- [x] `articles_fts` 동기화 — `collect.ts` 코드 추가 대신 `schema.sql`에 INSERT/DELETE/UPDATE 트리거 3종 추가(컬럼 확장 포함). 기존 DB는 `npm run db:reindex`로 재색인.
 
 ### 핵심 파일
 
-`src/app/search/page.tsx`, `src/lib/db.ts`(`searchArticles`), `src/components/SearchInput.tsx`
+`src/app/search/page.tsx`, `src/lib/db.ts`(`searchArticles`/`buildFilters`/`SearchOptions`), `src/components/SearchInput.tsx`, `src/components/ui/input.tsx`, `src/components/FilterBar.tsx`(`basePath`/`q`), `scripts/lib/schema.sql`(FTS 컬럼·트리거), `scripts/lib/reindexFts.ts`
 
 ### Acceptance / Tests / Verify
 
-- [ ] 한국어 제목·요약·태그 대상 검색, 피드와 동일 카드, 결과 없음 명확.
-- [ ] (test) `search.test.ts`(FTS 매칭 + 빈 결과).
-- [ ] (verify) `/search?q=agent` 결과 확인.
+- [x] 한국어 제목·요약·원문·태그 대상 검색, 피드와 동일 카드, `q` 없음/결과 없음 명확.
+- [x] (test) `search.test.ts`(FTS 매칭·원문·태그·LIKE 폴백·필터 결합·빈 결과 — 9 tests, 전체 51 green).
+- [x] (verify) `npm run db:reindex`(20행 재색인) → `searchArticles` 스모크(`AI`→15건, `agent`→1건), `npm run build` 통과(`/search` 동적).
 
 ---
 

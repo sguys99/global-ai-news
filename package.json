@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:init": "tsx scripts/lib/initDb.ts",
+    "db:reindex": "tsx scripts/lib/reindexFts.ts",
     "collect": "tsx --env-file-if-exists=.env.local scripts/collect.ts"
   },
   "dependencies": {
