@@ -62,20 +62,81 @@ const ARTICLE_SELECT = `
   JOIN sources s ON s.id = a.source_id
 `;
 
-/** 피드용 기사 목록. 트렌딩 점수 내림차순, 동점 시 최신순. */
-export function getFeed(): ArticleCard[] {
-  const rows = getDb()
-    .prepare(
-      `${ARTICLE_SELECT} ORDER BY a.trending_score DESC, a.published_at DESC`,
-    )
-    .all() as ArticleRow[];
+/** 피드 필터/정렬 옵션 (URL 쿼리에서 파싱). */
+export interface FeedOptions {
+  tag?: string;
+  source?: string;
+  sort?: "latest" | "importance";
+}
+
+/**
+ * 피드용 기사 목록. 태그·소스 필터와 정렬을 지원한다(PRD §3.5).
+ * 기본 정렬은 트렌딩 점수 내림차순(동점 시 최신순),
+ * sort=latest 는 게시 최신순, sort=importance 는 중요도 우선.
+ */
+export function getFeed(opts: FeedOptions = {}, conn: DatabaseType = getDb()): ArticleCard[] {
+  const where: string[] = [];
+  const params: (string | number)[] = [];
+
+  if (opts.source) {
+    where.push("a.source_id = ?");
+    params.push(opts.source);
+  }
+  if (opts.tag) {
+    where.push(
+      `EXISTS (SELECT 1 FROM article_tags at
+                 JOIN tags t ON t.id = at.tag_id
+                WHERE at.article_id = a.id AND t.name = ?)`,
+    );
+    params.push(opts.tag);
+  }
+
+  const orderBy =
+    opts.sort === "latest"
+      ? "a.published_at DESC"
+      : opts.sort === "importance"
+        ? "a.importance DESC, a.trending_score DESC"
+        : "a.trending_score DESC, a.published_at DESC";
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const rows = conn
+    .prepare(`${ARTICLE_SELECT} ${whereSql} ORDER BY ${orderBy}`)
+    .all(...params) as ArticleRow[];
   return rows.map(toArticleCard);
+}
+
+/** 기사가 있는 소스 목록(필터 칩 옵션용). 기사 수 내림차순. */
+export function getSourcesWithCounts(
+  conn: DatabaseType = getDb(),
+): { id: string; name: string; count: number }[] {
+  return conn
+    .prepare(
+      `SELECT s.id, s.name, COUNT(a.id) AS count
+         FROM sources s
+         JOIN articles a ON a.source_id = s.id
+        GROUP BY s.id
+        ORDER BY count DESC`,
+    )
+    .all() as { id: string; name: string; count: number }[];
+}
+
+/** 사용 빈도 상위 태그 목록(필터 칩 옵션용). */
+export function getActiveTags(limit = 20, conn: DatabaseType = getDb()): string[] {
+  const rows = conn
+    .prepare(
+      `SELECT t.name, COUNT(at.article_id) AS count
+         FROM tags t
+         JOIN article_tags at ON at.tag_id = t.id
+        GROUP BY t.id
+        ORDER BY count DESC
+        LIMIT ?`,
+    )
+    .all(limit) as { name: string }[];
+  return rows.map((r) => r.name);
 }
 
 /** 단건 상세 조회. 없으면 null. */
 export function getArticle(id: number): ArticleCard | null {
-  const row = getDb()
-    .prepare(`${ARTICLE_SELECT} WHERE a.id = ?`)
-    .get(id) as ArticleRow | undefined;
+  const row = getDb().prepare(`${ARTICLE_SELECT} WHERE a.id = ?`).get(id) as ArticleRow | undefined;
   return row ? toArticleCard(row) : null;
 }

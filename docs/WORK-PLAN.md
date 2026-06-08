@@ -49,6 +49,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 **목표:** 스타터 정리 + 환경/DB/타입/디자인 토큰 골격 확보. (트레이서 불릿을 쏘기 위한 최소 기반)
 
 ### 작업
+
 - [x] 스타터 보일러플레이트 정리: `/api/chat` 등 데모 제거(`starter-cleaner` 에이전트 활용 가능). + `@ai-sdk/openai` 제거.
 - [x] 의존성 추가: `better-sqlite3`, `rss-parser`, `zod`(+ `ai`/`@ai-sdk/anthropic` 기존), `@types/better-sqlite3`. + dev `tsx`, `next.config` `serverExternalPackages`.
 - [x] `.env.example` 갱신(위 환경변수 전체), `.env.local` 안내.
@@ -57,9 +58,11 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 - [x] DESIGN.md 토큰 → `globals.css` CSS 변수/Tailwind 매핑(Action Blue, parchment, hairline, rounded).
 
 ### 핵심 파일
+
 `package.json`, `.env.example`, `src/lib/paths.ts`, `src/lib/db.ts`, `src/lib/types.ts`, `scripts/lib/schema.sql`, `scripts/lib/schema.ts`, `scripts/lib/initDb.ts`, `src/app/globals.css`
 
 ### Acceptance / Tests / Verify
+
 - [x] `npx tsx scripts/lib/initDb.ts`(= `npm run db:init`)로 빈 `data/app.db`에 6개 테이블 생성.
 - [x] `npm run typecheck`·`npm run lint` 통과. (+ `npm run build` 통과)
 - [x] (test) `src/__tests__/db.test.ts` — 스키마 생성/조회 스모크.
@@ -72,6 +75,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 **목표:** RSS 1개(TechCrunch AI) → 수집 → dedup → SQLite 저장 → `/` 카드 1장 → `/article/[id]` 상세까지 **전 레이어 관통**. LLM/태그/필터/정렬 전 단계는 placeholder.
 
 ### 작업 (수직 슬라이스)
+
 - [x] `configs/sources.json`에 RSS 1건 시드.
 - [x] `scripts/collect.ts`: 수집(`rss-parser`) → `normalize(url)`+`dedup_key`(sha256) → SQLite 미존재 항목만 insert(`title_ko`/`summary_ko` 비움, 원본만 저장).
 - [x] `scripts/lib/trending.ts`: `trendingScore()`(PRD §3.2 코드) 적용.
@@ -79,9 +83,11 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 - [x] `/article/[id]`: 원문 병기 + 원문 링크(새 탭).
 
 ### 핵심 파일
+
 `configs/sources.json`, `scripts/collect.ts`, `scripts/lib/collect/rss.ts`, `scripts/lib/dedup.ts`, `scripts/lib/trending.ts`, `src/lib/db.ts`(`getFeed`/`getArticle`), `src/app/page.tsx`, `src/app/article/[id]/page.tsx`, `src/components/ArticleCard.tsx`
 
 ### Acceptance / Tests / Verify
+
 - [x] 배치 1회 실행 시 신규 기사만 저장, 재실행 시 중복 0건(`dedup_key` UNIQUE). (1회차 new=20, 2회차 new=0 확인)
 - [x] `/`에서 카드 목록, 클릭 시 `/article/[id]` 이동, 원문 링크 새 탭.
 - [x] (test) `dedup.test.ts`(URL 정규화), `trending.test.ts`(점수 0~100·최신성 감쇠).
@@ -95,6 +101,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 **목표:** 신규 항목에 LLM 1호출 가공을 끼워넣어 카드/상세에 한국어·카테고리·태그 노출.
 
 ### 작업
+
 - [x] `scripts/lib/enrich.ts`: `generateObject` + `articleEnrichmentSchema` + 시스템/few-shot 프롬프트 + prompt caching. 검증 실패 1회 재시도 후 스킵·로깅.
 - [x] `configs/prompts/enrich.system.md`, `enrich.fewshot.json`(PRD §7).
 - [x] `collect.ts`에 ③단계 결합(가공 후 완성 INSERT) → `title_ko/summary_ko/category/importance/tags`(→ `tags`/`article_tags`) 저장. (`scripts/lib/tags.ts`)
@@ -102,9 +109,11 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 - [x] 카드/상세에 한국어 제목·요약·카테고리 배지·태그 칩 표시. (`src/components/ArticleMeta.tsx`)
 
 ### 핵심 파일
+
 `scripts/lib/enrich.ts`, `scripts/lib/schema.ts`, `scripts/lib/cost.ts`(토큰→비용), `scripts/lib/tags.ts`, `configs/prompts/*`, `scripts/collect.ts`, `src/lib/db.ts`(태그 조인), `src/components/ArticleCard.tsx`, `src/components/ArticleMeta.tsx`, `src/app/article/[id]/page.tsx`
 
 ### Acceptance / Tests / Verify
+
 - [x] 1 기사 = 정확히 1 LLM 호출, 기존 기사 재가공 0(비용 0). (신규만 `existsKey` 가드 후 가공 — 코드 보장)
 - [x] 출력은 항상 Zod 통과(실패 시 1회 재시도 후 스킵·로깅), `category`는 enum만, `LLM_MODEL`로 전환 가능.
 - [x] 실행 후 `collection_runs`에 토큰·추정비용 기록. (구현 완료)
@@ -119,20 +128,23 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 **목표:** 전체 시드 소스 수집 + 피드 필터/정렬 완성.
 
 ### 작업
-- [ ] 수집 어댑터: `collect/api.ts`(HN Algolia/GitHub Search/HF Daily Papers), `collect/reddit.ts`(OAuth2 `client_credentials` 토큰 발급·갱신, 서브레딧 8종).
-- [ ] 소스별 try/catch로 **부분 실패 격리**, 건수/실패 `collection_runs.notes` 로깅.
-- [ ] 비용 가드: 신규 > `MAX_ITEMS_PER_RUN` 시 `trending_score` 상위만 가공.
-- [ ] 피드: `?tag=`/`?source=`/`?sort=latest|importance` 쿼리 처리, 카테고리/태그 칩, ISR `revalidate`.
+
+- [x] 수집 어댑터: `collect/api.ts`(HN Algolia/GitHub Search/HF Daily Papers), `collect/reddit.ts`(OAuth2 `client_credentials` 토큰 캐시·갱신, 서브레딧 8종).
+- [x] 소스별 try/catch로 **부분 실패 격리**, 소스별 건수/실패 `collection_runs.notes` 로깅(`${id}: N건(신규 M)`).
+- [x] 비용 가드: 2-패스로 분리 — 신규 후보 > `MAX_ITEMS_PER_RUN`(기본 150) 시 `trending_score` 상위만 가공, `notes`에 `capped` 기록.
+- [x] 피드: `?tag=`/`?source=`/`?sort=latest|importance` 쿼리 처리, `FilterBar` 클릭형 pill 칩, ISR `revalidate=3600`.
 
 ### 핵심 파일
+
 `scripts/lib/collect/api.ts`, `scripts/lib/collect/reddit.ts`, `scripts/collect.ts`(가드·집계), `src/lib/db.ts`(`getFeed` 필터/정렬), `src/app/page.tsx`, `src/components/FilterBar.tsx`
 
 ### Acceptance / Tests / Verify
-- [ ] 한 소스 실패해도 나머지 수집 지속, 소스별 건수 기록.
-- [ ] Reddit OAuth2 토큰 자동 발급, engagement(`ups`/`num_comments`)가 트렌딩에 반영.
-- [ ] 태그·소스 필터 + 최신/중요도 정렬 동작, 상한 초과 시 상위만 가공.
-- [ ] (test) `reddit.test.ts`(토큰/파싱 mock), `api.test.ts`(응답 정규화), `getFeed.test.ts`(필터/정렬 SQL).
-- [ ] (verify) 전체 수집 1회 → 다양한 소스 카드 + 필터/정렬 확인.
+
+- [x] 한 소스 실패해도 나머지 수집 지속(소스 루프 try/catch), 소스별 건수 `notes` 기록 — 코드 보장.
+- [x] Reddit OAuth2 토큰 자동 발급·캐시, engagement(`ups`/`num_comments`)가 트렌딩에 반영(`trendingScore`는 기존부터 처리, 어댑터가 engagement 채움).
+- [x] 태그·소스 필터 + 최신/중요도 정렬 동작, 상한 초과 시 상위만 가공.
+- [x] (test) `reddit.test.ts`(토큰/파싱 mock), `api.test.ts`(응답 정규화), `getFeed.test.ts`(필터/정렬 SQL). (전체 42 tests green)
+- [ ] (verify) 전체 수집 1회 → 다양한 소스 카드 + 필터/정렬 확인. (`ANTHROPIC_API_KEY`·`REDDIT_CLIENT_ID/SECRET` 설정 후 `npm run collect` 실행 필요 — 운영자 실행 대기)
 
 ---
 
@@ -142,14 +154,17 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 **목표:** FTS5(우선) 또는 LIKE 폴백으로 한국어 제목·요약·태그 검색.
 
 ### 작업
+
 - [ ] `src/lib/db.ts` `searchArticles(q)` — `articles_fts` MATCH, 결과 없음/에러 시 LIKE 폴백.
 - [ ] `/search?q=`: 동일 `ArticleCard` 재사용, 결과 없음 상태 명시.
 - [ ] `collect.ts`에서 insert 시 `articles_fts` 동기화.
 
 ### 핵심 파일
+
 `src/app/search/page.tsx`, `src/lib/db.ts`(`searchArticles`), `src/components/SearchInput.tsx`
 
 ### Acceptance / Tests / Verify
+
 - [ ] 한국어 제목·요약·태그 대상 검색, 피드와 동일 카드, 결과 없음 명확.
 - [ ] (test) `search.test.ts`(FTS 매칭 + 빈 결과).
 - [ ] (verify) `/search?q=agent` 결과 확인.
@@ -162,15 +177,18 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 **목표:** 인증 섹션 + 소스 CRUD(GitHub 커밋) + 재수집 트리거 + 통계/비용 대시보드.
 
 ### 작업
+
 - [ ] 인증: `middleware.ts`로 `/admin/*`·admin API 보호, `ADMIN_PASSWORD` 검증 → 서명 쿠키. 로그인 페이지.
 - [ ] 소스 관리: `/api/admin/sources` → `configs/sources.json` 갱신 + `PUT .../contents` GitHub API 커밋. `url`/중복 `id` 유효성 검증. WEB "수집 예정" 배지.
 - [ ] 재수집: `/api/admin/collect` → `workflow_dispatch`(collect.yml). 진행 중 버튼 비활성(중복 방지).
 - [ ] 대시보드: `collection_runs` 최근 N회 표(수집/신규/토큰/비용/상태), 임계($0.30) 초과 강조.
 
 ### 핵심 파일
+
 `middleware.ts`, `src/lib/auth.ts`, `src/app/admin/page.tsx`, `src/app/admin/login/page.tsx`, `src/app/api/admin/sources/route.ts`, `src/app/api/admin/collect/route.ts`, `src/lib/github.ts`, `src/components/admin/*`
 
 ### Acceptance / Tests / Verify
+
 - [ ] 미인증 `/admin/*` → 로그인 리다이렉트. `GITHUB_PAT` 클라이언트 미노출.
 - [ ] 소스 추가/수정/삭제/토글 → `sources.json` GitHub 커밋, 성공/실패 UI 표시.
 - [ ] "지금 수집" → `workflow_dispatch` 성공 표시, 중복 클릭 차단.
@@ -185,14 +203,17 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 **목표:** cron 자동화 + Vercel 배포 + PRD KPI 측정.
 
 ### 작업
+
 - [ ] `.github/workflows/collect.yml`: `schedule`(일1회) + `workflow_dispatch`, `scripts/collect.ts` 실행 → `data/app.db` 커밋. Secrets 주입.
 - [ ] Vercel 배포 설정(ISR `revalidate`), README 운영 가이드.
 - [ ] KPI 측정: 비용/성공률/카드수/LCP/품질 샘플(PRD §9).
 
 ### 핵심 파일
+
 `.github/workflows/collect.yml`, `vercel.json`(필요 시), `README.md`
 
 ### Acceptance / Tests / Verify
+
 - [ ] cron + 수동 트리거 동작, 실행 후 `app.db` 커밋 → Vercel 배포.
 - [ ] (verify) 30일/주간 KPI 표 충족 여부 점검(아래).
 
@@ -212,15 +233,15 @@ Phase 0 (기반)
 
 ## 검증 지표 (PRD §9 KPI)
 
-| 항목 | 목표 | 달성 |
-|---|---|:--:|
-| 일일 LLM 비용 | ≤ $0.30 (Haiku, 신규 50~100건/일) | [ ] |
-| 파이프라인 성공률 | ≥ 95% (최근 30일 cron) | [ ] |
-| 일일 신규 카드 | ≥ 30건 | [ ] |
-| 피드 LCP | ≤ 2.0s (데스크톱) | [ ] |
-| 중복 제거 | 동일 기사 중복 0건 | [ ] |
-| 한국어 요약 품질 | 주간 20건 샘플 통과율 ≥ 90% | [ ] |
-| 소스 변경 반영 | 콘솔 저장 → 재배포 ≤ 10분 | [ ] |
+| 항목              | 목표                              | 달성 |
+| ----------------- | --------------------------------- | :--: |
+| 일일 LLM 비용     | ≤ $0.30 (Haiku, 신규 50~100건/일) | [ ]  |
+| 파이프라인 성공률 | ≥ 95% (최근 30일 cron)            | [ ]  |
+| 일일 신규 카드    | ≥ 30건                            | [ ]  |
+| 피드 LCP          | ≤ 2.0s (데스크톱)                 | [ ]  |
+| 중복 제거         | 동일 기사 중복 0건                | [ ]  |
+| 한국어 요약 품질  | 주간 20건 샘플 통과율 ≥ 90%       | [ ]  |
+| 소스 변경 반영    | 콘솔 저장 → 재배포 ≤ 10분         | [ ]  |
 
 ## 전체 검증 방법
 

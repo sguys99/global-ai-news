@@ -5,5 +5,138 @@
     "kind": "rss",
     "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
     "enabled": 1
+  },
+  {
+    "id": "theverge_ai",
+    "name": "The Verge AI",
+    "kind": "rss",
+    "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+    "enabled": 1
+  },
+  {
+    "id": "mit_techreview",
+    "name": "MIT Technology Review",
+    "kind": "rss",
+    "url": "https://www.technologyreview.com/feed/",
+    "enabled": 1
+  },
+  {
+    "id": "the_decoder",
+    "name": "The Decoder",
+    "kind": "rss",
+    "url": "https://the-decoder.com/feed/",
+    "enabled": 1
+  },
+  {
+    "id": "marktechpost",
+    "name": "MarkTechPost",
+    "kind": "rss",
+    "url": "https://www.marktechpost.com/feed/",
+    "enabled": 1
+  },
+  {
+    "id": "latent_space",
+    "name": "Latent Space",
+    "kind": "rss",
+    "url": "https://www.latent.space/feed",
+    "enabled": 1
+  },
+  {
+    "id": "aitimes",
+    "name": "AI타임스",
+    "kind": "rss",
+    "url": "https://www.aitimes.com/rss/allArticle.xml",
+    "enabled": 1
+  },
+  {
+    "id": "etnews_ai",
+    "name": "전자신문 AI",
+    "kind": "rss",
+    "url": "https://rss.etnews.com/04046.xml",
+    "enabled": 1
+  },
+  {
+    "id": "byline_network",
+    "name": "바이라인네트워크",
+    "kind": "rss",
+    "url": "https://byline.network/feed/",
+    "enabled": 1
+  },
+  {
+    "id": "hackernews",
+    "name": "Hacker News",
+    "kind": "hn",
+    "url": "https://hn.algolia.com/api/v1/search",
+    "enabled": 1
+  },
+  {
+    "id": "github_llm",
+    "name": "GitHub (topic:llm)",
+    "kind": "github",
+    "url": "https://api.github.com/search/repositories",
+    "enabled": 1
+  },
+  {
+    "id": "hf_daily_papers",
+    "name": "HuggingFace Daily Papers",
+    "kind": "hf",
+    "url": "https://huggingface.co/api/daily_papers",
+    "enabled": 1
+  },
+  {
+    "id": "reddit_localllama",
+    "name": "r/LocalLLaMA",
+    "kind": "reddit",
+    "url": "r/LocalLLaMA",
+    "enabled": 1
+  },
+  {
+    "id": "reddit_machinelearning",
+    "name": "r/MachineLearning",
+    "kind": "reddit",
+    "url": "r/MachineLearning",
+    "enabled": 1
+  },
+  {
+    "id": "reddit_openai",
+    "name": "r/OpenAI",
+    "kind": "reddit",
+    "url": "r/OpenAI",
+    "enabled": 1
+  },
+  {
+    "id": "reddit_claudeai",
+    "name": "r/ClaudeAI",
+    "kind": "reddit",
+    "url": "r/ClaudeAI",
+    "enabled": 1
+  },
+  {
+    "id": "reddit_deeplearning",
+    "name": "r/deeplearning",
+    "kind": "reddit",
+    "url": "r/deeplearning",
+    "enabled": 1
+  },
+  {
+    "id": "reddit_mlops",
+    "name": "r/MLOps",
+    "kind": "reddit",
+    "url": "r/MLOps",
+    "enabled": 1
+  },
+  {
+    "id": "reddit_llmdevs",
+    "name": "r/LLMDevs",
+    "kind": "reddit",
+    "url": "r/LLMDevs",
+    "enabled": 1
+  },
+  {
+    "id": "reddit_artificial",
+    "name": "r/artificial",
+    "kind": "reddit",
+    "url": "r/artificial",
+    "enabled": 1
   }
 ]
