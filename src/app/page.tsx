@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArticleCard } from "@/components/ArticleCard";
 import { FilterBar } from "@/components/FilterBar";
 import { getActiveTags, getFeed, getSourcesWithCounts, type FeedOptions } from "@/lib/db";
@@ -28,9 +29,14 @@ export default async function Home({
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-2">
-        <span className="text-primary text-caption font-semibold tracking-tight">
-          Daily AI Brief
-        </span>
+        <div className="flex items-center justify-between">
+          <span className="text-primary text-caption font-semibold tracking-tight">
+            Daily AI Brief
+          </span>
+          <Link href="/search" className="text-primary text-caption font-medium hover:underline">
+            검색
+          </Link>
+        </div>
         <h1 className="text-display-md font-semibold tracking-tight">
           매일 한 곳에서 보는 글로벌·한국 AI/IT 뉴스
         </h1>
