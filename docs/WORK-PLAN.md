@@ -18,7 +18,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 - [x] **Phase 0** — Walking Skeleton (기반 정리)
 - [x] **Phase 1** — 트레이서 불릿: RSS 1개 소스 end-to-end (LLM 없이)
 - [x] **Phase 2** — LLM 통합 가공 (한국어·분류·태그·비용 기록)
-- [ ] **Phase 3** — 소스 확장 + 필터/정렬 + 비용 가드
+- [x] **Phase 3** — 소스 확장 + 필터/정렬 + 비용 가드
 - [ ] **Phase 4** — 검색 (`/search`)
 - [ ] **Phase 5** — 관리자 운영 콘솔 (`/admin`)
 - [ ] **Phase 6** — 자동화 · 배포 · KPI 검증
