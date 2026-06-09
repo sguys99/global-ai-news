@@ -34,8 +34,8 @@ function buildHref(
 
 const chip =
   "rounded-pill text-caption inline-flex items-center border px-3 py-1 transition-colors";
-const chipOff = "border-border text-muted-foreground hover:border-primary/50";
-const chipOn = "border-primary text-primary border-2 font-medium";
+const chipOff = "border-border text-muted-foreground hover:border-foreground";
+const chipOn = "border-foreground bg-foreground text-background font-medium";
 
 function Chip({
   href,

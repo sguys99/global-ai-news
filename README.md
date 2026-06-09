@@ -31,6 +31,19 @@ GitHub Actions cron (일 1회, 06:00 KST)
 
 핵심 설계: 수집·가공은 **GitHub Actions 에서만** 돌면서 `data/app.db` 를 커밋하고, Vercel 웹은 그 DB를 **읽기 전용**으로만 조회합니다(서버리스 read-only FS와 호환).
 
+## 수집 소스
+
+소스 정의는 [configs/sources.json](configs/sources.json) 단일 파일로 관리하며, `/admin` 에서 GitHub API 커밋으로 추가·수정합니다(코드 하드코딩 금지). 현재 등록된 21개 소스:
+
+| 종류         | 소스                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| RSS (글로벌) | TechCrunch AI · The Verge AI · MIT Technology Review · The Decoder · MarkTechPost · Latent Space                           |
+| RSS (한국)   | AI타임스 · 전자신문 AI · 바이라인네트워크                                                                                  |
+| 집계 API     | Hacker News · GitHub (topic:llm) · HuggingFace Daily Papers                                                                |
+| Reddit       | r/LocalLLaMA · r/MachineLearning · r/OpenAI · r/ClaudeAI · r/deeplearning · r/MLOps · r/LLMDevs · r/artificial             |
+
+> RSS 수집은 별도 키가 필요 없고, Reddit 은 OAuth2(`REDDIT_CLIENT_ID`/`SECRET`), GitHub Search 는 선택적 PAT(레이트리밋 완화)를 사용합니다. 각 소스의 `enabled` 플래그로 개별 on/off 합니다.
+
 ## 로컬 개발
 
 ```bash

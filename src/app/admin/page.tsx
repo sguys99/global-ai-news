@@ -35,14 +35,9 @@ export default async function AdminPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-10 px-6 py-12">
+    <main className="mx-auto flex max-w-[1440px] flex-col gap-10 px-6 py-12">
       <header className="flex items-center justify-between">
-        <div className="flex flex-col gap-1">
-          <span className="text-primary text-caption font-semibold tracking-tight">
-            Daily AI Brief
-          </span>
-          <h1 className="text-display-md font-semibold tracking-tight">운영 콘솔</h1>
-        </div>
+        <h1 className="text-display-md font-semibold tracking-tight">운영 콘솔</h1>
         <LogoutButton />
       </header>
 

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ArticleCard } from "@/components/ArticleCard";
 import { FilterBar } from "@/components/FilterBar";
 import { getActiveTags, getFeed, getSourcesWithCounts, type FeedOptions } from "@/lib/db";
@@ -24,23 +23,13 @@ export default async function Home({
   const options = parseOptions(await searchParams);
   const articles = getFeed(options);
   const sources = getSourcesWithCounts();
-  const tags = getActiveTags();
+  const tags = getActiveTags(8);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-6 py-12">
-      <header className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-primary text-caption font-semibold tracking-tight">
-            Daily AI Brief
-          </span>
-          <Link href="/search" className="text-primary text-caption font-medium hover:underline">
-            검색
-          </Link>
-        </div>
-        <h1 className="text-display-md font-semibold tracking-tight">
-          매일 한 곳에서 보는 글로벌·한국 AI/IT 뉴스
-        </h1>
-      </header>
+    <main className="mx-auto flex max-w-[1440px] flex-col gap-8 px-6 py-12">
+      <h1 className="text-display-md font-semibold tracking-tight">
+        매일 한 곳에서 보는 글로벌·한국 AI/IT 뉴스
+      </h1>
 
       <FilterBar current={options} sources={sources} tags={tags} />
 

@@ -24,7 +24,7 @@ export default async function ArticlePage({
   const title = article.titleKo || article.titleOriginal;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-12">
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-12">
       <Link
         href="/"
         className="text-caption text-muted-foreground hover:text-primary w-fit"
@@ -64,7 +64,7 @@ export default async function ArticlePage({
         href={article.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="bg-primary text-primary-foreground rounded-pill w-fit px-5 py-2 text-caption font-medium"
+        className="bg-primary text-primary-foreground rounded-pill text-body w-fit px-6 py-3 font-medium"
       >
         원문 보기 →
       </a>

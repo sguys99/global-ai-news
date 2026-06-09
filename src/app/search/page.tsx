@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { ArticleCard } from "@/components/ArticleCard";
 import { FilterBar } from "@/components/FilterBar";
 import { SearchInput } from "@/components/SearchInput";
@@ -33,16 +32,11 @@ export default async function SearchPage({
   const hasQuery = Boolean(options.q);
   const articles = hasQuery ? searchArticles(options) : [];
   const sources = getSourcesWithCounts();
-  const tags = getActiveTags();
+  const tags = getActiveTags(8);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-6 py-12">
-      <header className="flex flex-col gap-2">
-        <Link href="/" className="text-primary text-caption font-semibold tracking-tight">
-          ← Daily AI Brief
-        </Link>
-        <h1 className="text-display-md font-semibold tracking-tight">기사 검색</h1>
-      </header>
+    <main className="mx-auto flex max-w-[1440px] flex-col gap-8 px-6 py-12">
+      <h1 className="text-display-md font-semibold tracking-tight">기사 검색</h1>
 
       <Suspense fallback={null}>
         <SearchInput />
