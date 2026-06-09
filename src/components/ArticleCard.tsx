@@ -21,18 +21,31 @@ export function ArticleCard({ article }: { article: ArticleCardType }) {
   return (
     <Link
       href={`/article/${article.id}`}
-      className="bg-card border-border hover:border-primary flex flex-col gap-3 rounded-lg border p-5 transition-colors"
+      className="bg-card border-border hover:border-foreground flex flex-col gap-3 rounded-lg border p-6 transition-colors"
     >
-      <div className="text-caption text-muted-foreground flex items-center justify-between">
-        <span className="font-medium">{article.source.name}</span>
-        <span>{formatDate(article.publishedAt)}</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="text-caption text-muted-foreground truncate font-medium">
+            {article.source.name}
+          </span>
+          <CategoryBadge category={article.category} />
+        </div>
+        <span className="text-caption text-muted-foreground shrink-0">
+          {formatDate(article.publishedAt)}
+        </span>
       </div>
-      <CategoryBadge category={article.category} />
       <h2 className="text-body font-semibold tracking-tight">{title}</h2>
-      <TagChips tags={article.tags} />
-      <span className="text-caption text-primary mt-auto font-medium">
-        Trending {article.trendingScore}
-      </span>
+      {article.summaryKo && (
+        <p className="text-caption text-muted-foreground line-clamp-3 leading-relaxed">
+          {article.summaryKo}
+        </p>
+      )}
+      <TagChips tags={article.tags} max={3} />
+      {article.trendingScore > 0 && (
+        <span className="text-caption text-primary mt-auto font-medium">
+          Trending {article.trendingScore}
+        </span>
+      )}
     </Link>
   );
 }
