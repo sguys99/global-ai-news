@@ -38,9 +38,7 @@ const S2_CHUNK = 100; // batch 상한 500 이지만 보수적으로
  * arxiv ID 목록 → 인용 신호 맵(id→CitationInfo). 못 찾은 논문은 맵에 없음(=신호 미상).
  * 429/네트워크 오류는 최대 3회 백오프 후 해당 청크 포기(부분 결과 반환).
  */
-export async function fetchCitations(
-  arxivIds: string[],
-): Promise<Map<string, CitationInfo>> {
+export async function fetchCitations(arxivIds: string[]): Promise<Map<string, CitationInfo>> {
   const out = new Map<string, CitationInfo>();
   if (arxivIds.length === 0) return out;
 
@@ -109,9 +107,7 @@ function arxivIdFromDoi(doi: string | undefined): string | null {
  * arxiv ID 목록 → 저자 소속 맵(id→소속명[]). arxiv DOI 로 매칭되는 논문만 포함(best-effort).
  * 네트워크 오류는 해당 청크만 건너뛴다.
  */
-export async function fetchInstitutions(
-  arxivIds: string[],
-): Promise<Map<string, string[]>> {
+export async function fetchInstitutions(arxivIds: string[]): Promise<Map<string, string[]>> {
   const out = new Map<string, string[]>();
   if (arxivIds.length === 0) return out;
 
@@ -158,16 +154,11 @@ function normInstitution(name: string): string {
  * - 다단어 토큰("stanford university")은 부분 포함 매칭(국가/약칭 변형 흡수).
  * - 단일어 토큰("google", "meta")은 오탐 방지를 위해 완전 일치만.
  */
-export function matchesAllowlist(
-  institutions: string[] | undefined,
-  allowlist: string[],
-): boolean {
+export function matchesAllowlist(institutions: string[] | undefined, allowlist: string[]): boolean {
   if (!institutions?.length || !allowlist.length) return false;
   const tokens = allowlist.map((a) => a.toLowerCase().trim());
   return institutions.some((raw) => {
     const inst = normInstitution(raw);
-    return tokens.some((tok) =>
-      tok.includes(" ") ? inst.includes(tok) : inst === tok,
-    );
+    return tokens.some((tok) => (tok.includes(" ") ? inst.includes(tok) : inst === tok));
   });
 }

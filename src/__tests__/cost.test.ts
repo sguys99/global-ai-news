@@ -8,10 +8,7 @@ describe("estimateCost", () => {
 
   it("Haiku 단가($1/M 입력, $5/M 출력)로 계산한다", () => {
     // 1,000,000 입력 + 200,000 출력 = $1.00 + $1.00 = $2.00
-    expect(estimateCost(1_000_000, 200_000, "claude-haiku-4-5")).toBeCloseTo(
-      2.0,
-      6,
-    );
+    expect(estimateCost(1_000_000, 200_000, "claude-haiku-4-5")).toBeCloseTo(2.0, 6);
   });
 
   it("모델별 단가가 다르게 적용된다", () => {

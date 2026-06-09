@@ -48,10 +48,7 @@ export async function fetchRss(source: SourceConfig): Promise<RawItem[]> {
     const publishedAt = new Date(dateStr);
     if (Number.isNaN(publishedAt.getTime())) continue;
 
-    const contentRaw = stripHtml(item.contentSnippet ?? item.content).slice(
-      0,
-      MAX_CONTENT_CHARS,
-    );
+    const contentRaw = stripHtml(item.contentSnippet ?? item.content).slice(0, MAX_CONTENT_CHARS);
 
     items.push({
       sourceId: source.id,

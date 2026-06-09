@@ -30,11 +30,7 @@ export function normalizeTags(tags: string[], max = 5): string[] {
  * 기사 1건의 태그를 tags / article_tags 에 저장한다.
  * 한 기사 단위 트랜잭션으로 묶어 원자성을 보장한다(better-sqlite3 동기 API).
  */
-export function saveTags(
-  db: Database,
-  articleId: number | bigint,
-  tags: string[],
-): void {
+export function saveTags(db: Database, articleId: number | bigint, tags: string[]): void {
   const normalized = normalizeTags(tags);
   if (normalized.length === 0) return;
 

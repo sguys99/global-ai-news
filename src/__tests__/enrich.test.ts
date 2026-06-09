@@ -72,9 +72,7 @@ describe("articleEnrichmentSchema", () => {
   });
 
   it("tags 는 1~5개만 허용", () => {
-    expect(
-      articleEnrichmentSchema.safeParse({ ...validObject, tags: [] }).success,
-    ).toBe(false);
+    expect(articleEnrichmentSchema.safeParse({ ...validObject, tags: [] }).success).toBe(false);
     expect(
       articleEnrichmentSchema.safeParse({
         ...validObject,

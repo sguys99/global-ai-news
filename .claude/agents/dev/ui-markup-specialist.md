@@ -206,8 +206,8 @@ Stage 4: Synthesis
 // 컴포넌트 설명 (한국어)
 interface ComponentNameProps {
   // prop 타입 정의만
-  title?: string
-  className?: string
+  title?: string;
+  className?: string;
 }
 
 export function ComponentName({ title, className }: ComponentNameProps) {
@@ -219,7 +219,7 @@ export function ComponentName({ title, className }: ComponentNameProps) {
         Click Me
       </Button>
     </div>
-  )
+  );
 }
 ```
 
@@ -294,10 +294,10 @@ get-library-docs(
 ```tsx
 // 통계 카드 컴포넌트
 interface StatsCardProps {
-  title: string
-  value: string
-  icon: React.ReactNode
-  trend?: 'up' | 'down'
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  trend?: "up" | "down";
 }
 
 export function StatsCard({ title, value, icon, trend }: StatsCardProps) {
@@ -310,13 +310,11 @@ export function StatsCard({ title, value, icon, trend }: StatsCardProps) {
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
         {trend && (
-          <p className="text-muted-foreground text-xs">
-            {/* TODO: 트렌드 표시 로직 구현 */}
-          </p>
+          <p className="text-muted-foreground text-xs">{/* TODO: 트렌드 표시 로직 구현 */}</p>
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
 ```
 
@@ -384,7 +382,7 @@ export default function InvoicePage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 ```
 

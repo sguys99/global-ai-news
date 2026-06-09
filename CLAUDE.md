@@ -77,14 +77,14 @@
 
 ### 라우트 & 렌더링
 
-| 경로 | 페이지 | 렌더링 / 접근 | 상태 |
-|---|---|---|---|
-| `/` | 피드(홈) | ISR · 공개 | 구현됨 (Phase 1) |
-| `/article/[id]` | 상세 | SSG+ISR · 공개 | 구현됨 (Phase 1) |
-| `/search` | 검색 | 동적 · 공개 | 예정 (Phase 4) |
-| `/admin` | 운영 콘솔 | SSR · 인증 필요 | 예정 (Phase 5) |
-| `/api/admin/sources`, `/api/admin/collect` | 소스 커밋 / 재수집 트리거 | serverless | 예정 (Phase 5) |
-| `/api/health` | 헬스체크 | 동적 | 구현됨 |
+| 경로                                       | 페이지                    | 렌더링 / 접근   | 상태             |
+| ------------------------------------------ | ------------------------- | --------------- | ---------------- |
+| `/`                                        | 피드(홈)                  | ISR · 공개      | 구현됨 (Phase 1) |
+| `/article/[id]`                            | 상세                      | SSG+ISR · 공개  | 구현됨 (Phase 1) |
+| `/search`                                  | 검색                      | 동적 · 공개     | 예정 (Phase 4)   |
+| `/admin`                                   | 운영 콘솔                 | SSR · 인증 필요 | 예정 (Phase 5)   |
+| `/api/admin/sources`, `/api/admin/collect` | 소스 커밋 / 재수집 트리거 | serverless      | 예정 (Phase 5)   |
+| `/api/health`                              | 헬스체크                  | 동적            | 구현됨           |
 
 ## 개발 워크플로우
 
@@ -143,14 +143,14 @@ docker compose up --build
 
 `.env.local`에 설정하며 git에 커밋하지 않습니다 (`.env.example` 참조). 도입 Phase 기준:
 
-| 변수 | 용도 | 도입 |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | LLM 가공 호출 | Phase 2 |
-| `LLM_MODEL` | 모델 전환 (기본 `claude-haiku-4-5`) | Phase 2 |
-| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` | Reddit OAuth2 `client_credentials` | Phase 3 |
-| `GITHUB_PAT` | `configs/sources.json` 커밋 + `workflow_dispatch` | Phase 5 |
-| `GITHUB_REPO` | `owner/repo` | Phase 5 |
-| `ADMIN_PASSWORD` | 운영자 인증 | Phase 5 |
+| 변수                                        | 용도                                              | 도입    |
+| ------------------------------------------- | ------------------------------------------------- | ------- |
+| `ANTHROPIC_API_KEY`                         | LLM 가공 호출                                     | Phase 2 |
+| `LLM_MODEL`                                 | 모델 전환 (기본 `claude-haiku-4-5`)               | Phase 2 |
+| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` | Reddit OAuth2 `client_credentials`                | Phase 3 |
+| `GITHUB_PAT`                                | `configs/sources.json` 커밋 + `workflow_dispatch` | Phase 5 |
+| `GITHUB_REPO`                               | `owner/repo`                                      | Phase 5 |
+| `ADMIN_PASSWORD`                            | 운영자 인증                                       | Phase 5 |
 
 ## 데이터 모델
 
@@ -190,6 +190,7 @@ npx shadcn@latest add card dialog input
 ```
 
 설정(`components.json`):
+
 - style: `new-york`
 - baseColor: `zinc`
 - Tailwind v4 사용 → `tailwind.config`는 빈 문자열
@@ -209,19 +210,19 @@ npx shadcn@latest add card dialog input
 
 ### Dev 에이전트
 
-| 에이전트 | 용도 |
-|---------|------|
-| `development-planner` | ROADMAP.md 작성 및 개발 계획 수립 |
+| 에이전트               | 용도                                 |
+| ---------------------- | ------------------------------------ |
+| `development-planner`  | ROADMAP.md 작성 및 개발 계획 수립    |
 | `nextjs-app-developer` | Next.js App Router 구조 설계 및 구현 |
-| `starter-cleaner` | 스타터킷 보일러플레이트 정리 |
-| `ui-markup-specialist` | UI 컴포넌트 마크업 및 스타일링 |
-| `code-reviewer` | 코드 리뷰 |
+| `starter-cleaner`      | 스타터킷 보일러플레이트 정리         |
+| `ui-markup-specialist` | UI 컴포넌트 마크업 및 스타일링       |
+| `code-reviewer`        | 코드 리뷰                            |
 
 ### Docs 에이전트
 
-| 에이전트 | 용도 |
-|---------|------|
-| `prd-generator` | PRD 문서 생성 |
+| 에이전트        | 용도                   |
+| --------------- | ---------------------- |
+| `prd-generator` | PRD 문서 생성          |
 | `prd-validator` | PRD 기술적 타당성 검증 |
 
 > 참고: `backend-developer` 에이전트는 FastAPI/LangGraph 전용이므로 본 프로젝트에서는 사용하지 않습니다.

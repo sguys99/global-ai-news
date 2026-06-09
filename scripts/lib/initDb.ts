@@ -8,10 +8,7 @@ import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { DB_PATH } from "../../src/lib/paths";
 
-const SCHEMA_PATH = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "schema.sql",
-);
+const SCHEMA_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "schema.sql");
 
 export function initDb(dbPath: string = DB_PATH): void {
   const schema = readFileSync(SCHEMA_PATH, "utf-8");

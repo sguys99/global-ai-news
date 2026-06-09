@@ -6,14 +6,7 @@ import Database from "better-sqlite3";
 
 const SCHEMA_PATH = path.join(process.cwd(), "scripts/lib/schema.sql");
 
-const EXPECTED = [
-  "sources",
-  "articles",
-  "tags",
-  "article_tags",
-  "articles_fts",
-  "collection_runs",
-];
+const EXPECTED = ["sources", "articles", "tags", "article_tags", "articles_fts", "collection_runs"];
 
 describe("schema.sql", () => {
   it("creates the 6 core tables/views in an in-memory db", () => {

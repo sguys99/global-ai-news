@@ -31,10 +31,7 @@ interface FewShotExample {
 const SYSTEM_PROMPT = buildSystemPrompt();
 
 function buildSystemPrompt(): string {
-  const system = readFileSync(
-    path.join(PROMPTS_DIR, "enrich.system.md"),
-    "utf-8",
-  );
+  const system = readFileSync(path.join(PROMPTS_DIR, "enrich.system.md"), "utf-8");
   const fewshot = JSON.parse(
     readFileSync(path.join(PROMPTS_DIR, "enrich.fewshot.json"), "utf-8"),
   ) as FewShotExample[];
@@ -95,9 +92,7 @@ export async function enrichArticle(item: RawItem): Promise<EnrichResult | null>
     try {
       return await callOnce(item);
     } catch (err) {
-      console.warn(
-        `[enrich] attempt ${attempt} failed for ${item.url}: ${(err as Error).message}`,
-      );
+      console.warn(`[enrich] attempt ${attempt} failed for ${item.url}: ${(err as Error).message}`);
     }
   }
   console.warn(`[enrich] giving up on ${item.url} (saved without enrichment)`);

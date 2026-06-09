@@ -39,9 +39,7 @@ export function CollectButton() {
       {result && (
         <span
           className={
-            result.kind === "ok"
-              ? "text-primary text-caption"
-              : "text-destructive text-caption"
+            result.kind === "ok" ? "text-primary text-caption" : "text-destructive text-caption"
           }
         >
           {result.message}

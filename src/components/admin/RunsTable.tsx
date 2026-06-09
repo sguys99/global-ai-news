@@ -9,7 +9,10 @@ function fmtTime(iso: string): string {
   if (Number.isNaN(d.getTime())) return iso;
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(
     d.getDate(),
-  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  ).padStart(
+    2,
+    "0",
+  )} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 const statusLabel: Record<string, string> = {
@@ -50,7 +53,7 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
               <tr
                 key={r.id}
                 className={cn(
-                  "border-border [&>td]:px-3 [&>td]:py-2 border-b last:border-b-0",
+                  "border-border border-b last:border-b-0 [&>td]:px-3 [&>td]:py-2",
                   over && "bg-destructive/5",
                 )}
               >

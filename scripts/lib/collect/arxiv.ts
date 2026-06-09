@@ -115,12 +115,7 @@ export async function fetchArxiv(source: SourceConfig): Promise<RawItem[]> {
   const { arxiv } = loadPaperFilter();
   const category = parseCategory(source.url);
 
-  const entries = await fetchWindow(
-    category,
-    arxiv.windowDays,
-    arxiv.minAgeDays,
-    arxiv.maxResults,
-  );
+  const entries = await fetchWindow(category, arxiv.windowDays, arxiv.minAgeDays, arxiv.maxResults);
   if (entries.length === 0) return [];
 
   const ids = entries.map((e) => e.id);
@@ -137,8 +132,7 @@ export async function fetchArxiv(source: SourceConfig): Promise<RawItem[]> {
 
     const instMatch = matchesAllowlist(insts, arxiv.institutionAllowlist);
     const citePass = (cite?.citationCount ?? 0) >= arxiv.citationThreshold;
-    const inflPass =
-      (cite?.influentialCitationCount ?? 0) >= arxiv.influentialCitationThreshold;
+    const inflPass = (cite?.influentialCitationCount ?? 0) >= arxiv.influentialCitationThreshold;
     if (!instMatch && !citePass && !inflPass) continue; // 게이트 탈락 → 버림
 
     items.push({

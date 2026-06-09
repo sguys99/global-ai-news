@@ -10,9 +10,11 @@ disable-model-invocation: true
 `humanize-korean` 스킬을 발동해 인자로 전달된 한글 텍스트(또는 파일)에 윤문을 실행한다.
 
 ## 입력
+
 $ARGUMENTS
 
 ## 동작
+
 1. 인자가 비면: "윤문할 텍스트를 붙여넣어 주세요" 안내 후 종료.
 2. 인자가 파일 경로(.txt/.md)면 `Read`로 본문 로드.
 3. 인자가 텍스트면 그대로 입력으로 사용.
@@ -25,11 +27,13 @@ $ARGUMENTS
    - 등급 B 이하면 "`/humanize-redo`로 2차 윤문 가능" 안내
 
 ## 옵션 (인자 끝에 자연어로)
+
 - `장르: 칼럼|리포트|블로그|공적` — 장르 명시 (생략 시 첫 300자로 자동 추정)
 - `강도: 보수|기본|적극` — 윤문 강도 (기본값: 기본)
 - `최소심각도: S1|S2|S3` — 탐지 임계값 (기본값: S2)
 - `--strict` — 5인 파이프라인 강제
 
 ## 참고
+
 - 분류 체계: `humanize-korean/references/ai-tell-taxonomy.md`
 - 윤문 처방: `humanize-korean/references/rewriting-playbook.md`

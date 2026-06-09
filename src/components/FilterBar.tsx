@@ -40,8 +40,7 @@ function buildHref(
   return qs ? `${basePath}?${qs}` : basePath;
 }
 
-const chip =
-  "rounded-pill inline-flex items-center border px-3 py-1 text-[13px] transition-colors";
+const chip = "rounded-pill inline-flex items-center border px-3 py-1 text-[13px] transition-colors";
 const chipOff = "border-border text-muted-foreground hover:border-foreground";
 const chipOn = "border-foreground bg-foreground text-background font-medium";
 

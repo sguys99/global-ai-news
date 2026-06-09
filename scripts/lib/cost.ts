@@ -27,9 +27,7 @@ const DEFAULT_PRICING: ModelPricing = MODEL_PRICING["claude-haiku-4-5"];
 export function pricingFor(model: string): ModelPricing {
   const pricing = MODEL_PRICING[model];
   if (!pricing) {
-    console.warn(
-      `[cost] unknown model '${model}', falling back to default pricing`,
-    );
+    console.warn(`[cost] unknown model '${model}', falling back to default pricing`);
     return DEFAULT_PRICING;
   }
   return pricing;

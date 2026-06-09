@@ -2,8 +2,7 @@ import { describe, expect, it } from "vitest";
 import { trendingScore } from "../../scripts/lib/trending";
 import type { RawItem } from "@/lib/types";
 
-const hoursAgo = (h: number) =>
-  new Date(Date.now() - h * 3.6e6).toISOString();
+const hoursAgo = (h: number) => new Date(Date.now() - h * 3.6e6).toISOString();
 
 const base = (overrides: Partial<RawItem>): RawItem => ({
   sourceId: "s",

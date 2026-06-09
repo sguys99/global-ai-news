@@ -12,11 +12,7 @@ function formatDate(iso: string): string {
   ).padStart(2, "0")}`;
 }
 
-export default async function ArticlePage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const article = getArticle(Number(id));
   if (!article) notFound();
@@ -25,10 +21,7 @@ export default async function ArticlePage({
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-12">
-      <Link
-        href="/"
-        className="text-caption text-muted-foreground hover:text-primary w-fit"
-      >
+      <Link href="/" className="text-caption text-muted-foreground hover:text-primary w-fit">
         ← 피드로
       </Link>
 
@@ -44,18 +37,14 @@ export default async function ArticlePage({
 
       {article.summaryKo && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-caption text-muted-foreground font-semibold">
-            한국어 요약
-          </h2>
+          <h2 className="text-caption text-muted-foreground font-semibold">한국어 요약</h2>
           <p className="text-body leading-relaxed">{article.summaryKo}</p>
         </section>
       )}
 
       {article.contentRaw && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-caption text-muted-foreground font-semibold">
-            📰 원문 (English)
-          </h2>
+          <h2 className="text-caption text-muted-foreground font-semibold">📰 원문 (English)</h2>
           <p className="text-body leading-relaxed">{article.contentRaw}</p>
         </section>
       )}

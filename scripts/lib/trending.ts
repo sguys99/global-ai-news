@@ -14,8 +14,7 @@ import type { RawItem } from "../../src/lib/types";
  */
 export function trendingScore(item: RawItem): number {
   const e = item.engagement ?? {};
-  const norm = (x = 0, cap: number) =>
-    Math.min(1, Math.log1p(x) / Math.log1p(cap));
+  const norm = (x = 0, cap: number) => Math.min(1, Math.log1p(x) / Math.log1p(cap));
 
   const signal = Math.min(
     1,

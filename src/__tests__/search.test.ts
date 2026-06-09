@@ -70,9 +70,7 @@ function seed(): DatabaseType {
 
   // 태그: agent,llm → 1 / database → 2
   db.prepare("INSERT INTO tags (id, name) VALUES (1,'agent'),(2,'llm'),(3,'database')").run();
-  db.prepare(
-    "INSERT INTO article_tags (article_id, tag_id) VALUES (1,1),(1,2),(2,3)",
-  ).run();
+  db.prepare("INSERT INTO article_tags (article_id, tag_id) VALUES (1,1),(1,2),(2,3)").run();
   return db;
 }
 

@@ -12,10 +12,7 @@ import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { DB_PATH } from "../../src/lib/paths";
 
-const SCHEMA_PATH = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "schema.sql",
-);
+const SCHEMA_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "schema.sql");
 
 export function reindexFts(dbPath: string = DB_PATH): void {
   const schema = readFileSync(SCHEMA_PATH, "utf-8");
@@ -31,9 +28,7 @@ export function reindexFts(dbPath: string = DB_PATH): void {
     db.exec(schema);
     db.exec("INSERT INTO articles_fts(articles_fts) VALUES('rebuild')");
 
-    const count = (
-      db.prepare("SELECT COUNT(*) AS n FROM articles_fts").get() as { n: number }
-    ).n;
+    const count = (db.prepare("SELECT COUNT(*) AS n FROM articles_fts").get() as { n: number }).n;
     console.log(`Reindexed articles_fts at ${dbPath} (${count} rows)`);
   } finally {
     db.close();

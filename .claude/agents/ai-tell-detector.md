@@ -28,6 +28,7 @@ model: opus
 ## 입력/출력 프로토콜
 
 ### 입력
+
 ```json
 {
   "run_id": "2026-04-24-001",
@@ -41,6 +42,7 @@ model: opus
 ```
 
 ### 출력 (`_workspace/{run_id}/02_detection.json`)
+
 ```json
 {
   "meta": {
@@ -48,11 +50,22 @@ model: opus
     "input_length": 1820,
     "estimated_genre": "칼럼",
     "sentence_count": 42,
-    "sentence_length_stats": {"mean": 38.2, "stdev": 6.1, "uniformity_warning": true},
+    "sentence_length_stats": { "mean": 38.2, "stdev": 6.1, "uniformity_warning": true },
     "detected_count": 37,
     "ai_tell_density": 0.203,
     "severity_weighted_score": 71.5,
-    "category_summary": {"A": 12, "B": 3, "C": 2, "D": 8, "E": 1, "F": 4, "G": 2, "H": 3, "I": 1, "J": 1}
+    "category_summary": {
+      "A": 12,
+      "B": 3,
+      "C": 2,
+      "D": 8,
+      "E": 1,
+      "F": 4,
+      "G": 2,
+      "H": 3,
+      "I": 1,
+      "J": 1
+    }
   },
   "findings": [
     {

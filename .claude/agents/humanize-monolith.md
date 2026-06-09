@@ -30,11 +30,13 @@ model: opus
 ## 입력/출력
 
 ### 입력
+
 - `input_path`: `_workspace/{run_id}/01_input.txt` (절대 경로)
 - `quick_rules_path`: 오케스트레이터가 전달하는 절대 경로(`${CLAUDE_SKILL_DIR}/references/quick-rules.md` 치환값). 에이전트는 이 인자를 그대로 Read 한다.
 - `genre_hint`: 칼럼 | 리포트 | 블로그 | 공적 | null (null이면 첫 300자로 자체 추정)
 
 ### 출력
+
 - `_workspace/{run_id}/final.md` — 윤문본(마크다운). 본문 끝에 `<!-- HUMANIZE-SUMMARY ... -->` HTML 주석 블록 1개를 포함하며 다음 메타를 담는다:
   - 원본 글자수 / 윤문본 글자수 / 변경률
   - 카테고리별 탐지 건수(before → after) — quick-rules ID 기준
@@ -47,10 +49,12 @@ model: opus
 ## 작업 순서 (한 호출 안에서)
 
 ### 단계 1: 컨텍스트 로드 (도구 호출 2회)
+
 - Read `01_input.txt` → 원문 변수에 보관, 글자수·문장수·문단수 계산
 - Read `quick-rules.md` → 룰 표 내재화
 
 ### 단계 2: 1차 패턴 탐지 (도구 호출 0회 — 메모리)
+
 - A·D·H·I·J 카테고리: 어휘·어미 키워드 매칭
 - C 카테고리: 문서 구조(헤딩·따옴표·불릿) 통계
 - E 카테고리: 문장 길이 stdev
@@ -58,17 +62,20 @@ model: opus
 - Do-NOT list 엄격 적용: 고유명사·수치·인용 span 제외
 
 ### 단계 3: 윤문 (도구 호출 0회 — 메모리)
+
 - D 카테고리(관용구 삭제) 먼저 — 문장이 짧아져 후속 작업 쉬워짐
 - A → I → G → H → F → B → C·J → E 순서
 - 문단 단위로 처리. 각 edit의 before/after를 메모리에 누적
 - 변경률 모니터링: 50% 임박 시 후속 edit 보류
 
 ### 단계 4: 자체검증 (도구 호출 0회 — 메모리)
+
 - quick-rules.md "자체검증 체크리스트" 6항 점검
 - 위반 항목 발견 시 해당 edit 롤백 → 단계 3 부분 재실행 (최대 1회)
 - 변경률·잔존 S1·register 이탈 등 정량 측정 가능한 항목은 직접 계산
 
 ### 단계 5: 출력 (도구 호출 1회)
+
 - Write `final.md` — 윤문본 본문 + 본문 끝에 `<!-- HUMANIZE-SUMMARY ... -->` 주석 블록 1개 (포맷 아래 §출력 포맷)
 
 ## 출력 포맷 — `final.md` 끝의 `<!-- HUMANIZE-SUMMARY -->` 블록

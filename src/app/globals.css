@@ -98,6 +98,16 @@
   --text-body--line-height: 1.47;
   --text-display-md: 34px;
   --text-display-md--line-height: 1.47;
+
+  /* 모바일 셸 (mobile-plan Phase 1): 하단 탭 바 높이 */
+  --tabbar-h: 3.5rem;
+}
+
+/* 좁은 폰(≤419px)에서 hero 타이포 축소 */
+@media (max-width: 419px) {
+  :root {
+    --text-display-md: 28px;
+  }
 }
 
 @layer base {

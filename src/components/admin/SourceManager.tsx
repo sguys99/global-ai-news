@@ -187,7 +187,7 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
               <tr
                 key={s.id}
                 className={cn(
-                  "border-border [&>td]:px-3 [&>td]:py-2 border-b last:border-b-0",
+                  "border-border border-b last:border-b-0 [&>td]:px-3 [&>td]:py-2",
                   !s.enabled && "opacity-50",
                 )}
               >

@@ -2,12 +2,7 @@ import { Suspense } from "react";
 import { ArticleCard } from "@/components/ArticleCard";
 import { FilterBar } from "@/components/FilterBar";
 import { SearchInput } from "@/components/SearchInput";
-import {
-  getActiveTags,
-  getSourcesWithCounts,
-  searchArticles,
-  type SearchOptions,
-} from "@/lib/db";
+import { getActiveTags, getSourcesWithCounts, searchArticles, type SearchOptions } from "@/lib/db";
 
 /** 검색은 쿼리(q)에 의존하므로 동적 렌더링. */
 export const dynamic = "force-dynamic";

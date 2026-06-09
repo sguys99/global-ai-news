@@ -1,17 +1,17 @@
 ---
-description: '브랜치를 안전하게 병합하고 충돌을 해결합니다'
+description: "브랜치를 안전하게 병합하고 충돌을 해결합니다"
 allowed-tools:
   [
-    'Bash(git merge:*)',
-    'Bash(git status:*)',
-    'Bash(git diff:*)',
-    'Bash(git log:*)',
-    'Bash(git branch:*)',
-    'Bash(git fetch:*)',
-    'Bash(git pull:*)',
-    'Bash(git reset:*)',
-    'Bash(git checkout:*)',
-    'Bash(git stash:*)',
+    "Bash(git merge:*)",
+    "Bash(git status:*)",
+    "Bash(git diff:*)",
+    "Bash(git log:*)",
+    "Bash(git branch:*)",
+    "Bash(git fetch:*)",
+    "Bash(git pull:*)",
+    "Bash(git reset:*)",
+    "Bash(git checkout:*)",
+    "Bash(git stash:*)",
   ]
 ---
 

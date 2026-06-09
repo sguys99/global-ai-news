@@ -9,6 +9,7 @@ model: opus
 영한 번역투·LLM 후편집 학술 보고서(40~60KB 마크다운)를 받아, Humanize KR v2.0 분류 체계 승격에 필요한 4개 구조화 자산을 산출한다.
 
 ## 입력
+
 - 보고서 마크다운 1개 (절대 경로)
 - 본진 v1.6 SSOT 위치(taxonomy.md, rewriting-playbook.md, quick-rules.md)는 참고만, 수정 금지
 
@@ -31,26 +32,71 @@ model: opus
       "definition_verbatim": "...",
       "korean_scholar_anchor": ["이영옥 2001", "김정우 2007"],
       "examples": [
-        {"st": "The news made him happy.", "literal_ko": "그 소식이 그를 행복하게 만들었다.", "natural_ko": "그 소식을 듣고 그는 기뻤다.", "source_in_report": "III.3.1.2"}
+        {
+          "st": "The news made him happy.",
+          "literal_ko": "그 소식이 그를 행복하게 만들었다.",
+          "natural_ko": "그 소식을 듣고 그는 기뻤다.",
+          "source_in_report": "III.3.1.2"
+        }
       ],
       "pe_strategy": ["부사절·원인절 전환", "인간 주어 전환", "이중주어 구문"],
       "nmt_llm_reproduction": "GPT-4o·Claude·DeepL 모두 학술/기술 텍스트에서 재생산"
     }
   ],
   "pe_checklist_15": [
-    {"id": "PE1", "label": "무생물 주어", "trigger_q": "주어가 무생물·추상명사인데 하다/만들다 류 타동사 결합?", "treatment": "..."}
+    {
+      "id": "PE1",
+      "label": "무생물 주어",
+      "trigger_q": "주어가 무생물·추상명사인데 하다/만들다 류 타동사 결합?",
+      "treatment": "..."
+    }
   ],
   "post_editese_axes": {
-    "simplification": {"definition": "...", "ko_manifestation": ["종결어미 단조성", "어휘 반복", "사전 1차 의미 선호"]},
-    "normalisation":  {"definition": "...", "ko_manifestation": ["~한다/~된다/~이다 평서형 정형구 수렴"]},
-    "interference":   {"definition": "...", "ko_manifestation": ["영어 SVO·무생물 주어·관계절 좌향·by-수동 보존"]}
+    "simplification": {
+      "definition": "...",
+      "ko_manifestation": ["종결어미 단조성", "어휘 반복", "사전 1차 의미 선호"]
+    },
+    "normalisation": {
+      "definition": "...",
+      "ko_manifestation": ["~한다/~된다/~이다 평서형 정형구 수렴"]
+    },
+    "interference": {
+      "definition": "...",
+      "ko_manifestation": ["영어 SVO·무생물 주어·관계절 좌향·by-수동 보존"]
+    }
   },
   "scholar_citations": [
-    {"author": "이근희", "year": 2005, "venue": "박사학위논문 / 한국문화사", "topic": "by 코퍼스·번역투 정의", "citation_in_report": "II.2.1 / III.3.2"},
-    {"author": "김정우", "year": 2007, "venue": "번역학연구 8(1): 61-82", "topic": "번역투 정의·8유형 정초"},
-    {"author": "Toury", "year": 1995, "venue": "Descriptive Translation Studies and Beyond", "topic": "표준화·간섭 두 법칙"},
-    {"author": "Toral", "year": 2019, "venue": "MT Summit XVII Dublin pp. 273-281", "topic": "post-editese: exacerbated translationese"},
-    {"author": "Baker", "year": 1993, "venue": "Text and Technology, John Benjamins", "topic": "보편소(simplification·explicitation·normalisation·levelling-out)"}
+    {
+      "author": "이근희",
+      "year": 2005,
+      "venue": "박사학위논문 / 한국문화사",
+      "topic": "by 코퍼스·번역투 정의",
+      "citation_in_report": "II.2.1 / III.3.2"
+    },
+    {
+      "author": "김정우",
+      "year": 2007,
+      "venue": "번역학연구 8(1): 61-82",
+      "topic": "번역투 정의·8유형 정초"
+    },
+    {
+      "author": "Toury",
+      "year": 1995,
+      "venue": "Descriptive Translation Studies and Beyond",
+      "topic": "표준화·간섭 두 법칙"
+    },
+    {
+      "author": "Toral",
+      "year": 2019,
+      "venue": "MT Summit XVII Dublin pp. 273-281",
+      "topic": "post-editese: exacerbated translationese"
+    },
+    {
+      "author": "Baker",
+      "year": 1993,
+      "venue": "Text and Technology, John Benjamins",
+      "topic": "보편소(simplification·explicitation·normalisation·levelling-out)"
+    }
   ],
   "domain_caveats": [
     "한국어 영-한 post-editese는 합리적 추론, 정량 검증 미수행 (Caveat 3)",
@@ -61,6 +107,7 @@ model: opus
 ```
 
 ## 작업 원칙
+
 1. **verbatim 우선** — 정의·예문은 보고서 본문에서 그대로 인용. 윤문 금지.
 2. **8유형 모두 추출** — III장 8개 절을 빠짐없이. 중복 흡수·재카테고리화 금지.
 3. **caveat 보존** — VI장 Caveats 6개 항목은 별도 필드에 그대로. 분류학자가 신규 패턴 신뢰도 평가에 쓴다.
@@ -68,6 +115,7 @@ model: opus
 5. **출처 행 번호 부착** — 각 정의·예문에 보고서 line range를 메타로 부착(grep 가능성).
 
 ## 도구 사용
+
 - Read(보고서 전체 한 번에 읽기, 540줄 = 1회)
 - Write(01_report_facets.json 1회)
 - Bash(grep으로 인용 행 검증, 최대 3회)
@@ -75,7 +123,9 @@ model: opus
 총 도구 호출 ≤ 6회. wall-clock 5분 이내 목표.
 
 ## 자체 검증
+
 출력 JSON에 다음 필드 누락 0:
+
 - translation_types[].id, name, definition_verbatim, examples[≥1], pe_strategy[≥1]
 - pe_checklist_15.length == 15
 - post_editese_axes 3축 모두

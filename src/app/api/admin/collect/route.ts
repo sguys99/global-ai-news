@@ -18,7 +18,10 @@ export async function POST() {
   } catch (e) {
     if (e instanceof WorkflowNotFoundError) {
       return Response.json(
-        { ok: false, reason: "collect.yml 워크플로가 아직 배포되지 않았습니다 (Phase 6에서 추가)." },
+        {
+          ok: false,
+          reason: "collect.yml 워크플로가 아직 배포되지 않았습니다 (Phase 6에서 추가).",
+        },
         { status: 409 },
       );
     }

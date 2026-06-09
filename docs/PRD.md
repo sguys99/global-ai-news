@@ -4,13 +4,13 @@
 
 ---
 
-| 항목 | 내용 |
-|---|---|
-| 문서 버전 | v1.0 |
-| 작성일 | 2026년 6월 7일 |
-| 대상 독자 | 개발자(구현), 운영자(솔로 메인테이너), 이해관계자 |
-| 구현 목표 기간 | 2~4주 (1인 개발) |
-| 핵심 제약 | LLM API 토큰 비용 최소화, 운영비 ≈ 0 |
+| 항목           | 내용                                              |
+| -------------- | ------------------------------------------------- |
+| 문서 버전      | v1.0                                              |
+| 작성일         | 2026년 6월 7일                                    |
+| 대상 독자      | 개발자(구현), 운영자(솔로 메인테이너), 이해관계자 |
+| 구현 목표 기간 | 2~4주 (1인 개발)                                  |
+| 핵심 제약      | LLM API 토큰 비용 최소화, 운영비 ≈ 0              |
 
 ---
 
@@ -36,12 +36,12 @@
 
 ### 1.2 해결하려는 문제
 
-| 문제 | 현재 상황 | 결과/영향 |
-|---|---|---|
-| 소스가 흩어져 있음 | TechCrunch, HN, Reddit, GitHub 등을 매일 개별 순회 | 시간 소모·누락 발생 |
-| 언어 장벽 | 핵심 AI 소식 대부분이 영문 | 빠른 파악 어려움, 피로도 증가 |
-| 중요도 판별 어려움 | 하루에도 수백 건의 글, 신호/소음 구분 불가 | 정작 중요한 뉴스를 놓침 |
-| 기존 서비스의 운영비 | 실시간 크롤링·대형 모델 사용 시 비용 급증 | 솔로 운영 지속 불가능 |
+| 문제                 | 현재 상황                                          | 결과/영향                     |
+| -------------------- | -------------------------------------------------- | ----------------------------- |
+| 소스가 흩어져 있음   | TechCrunch, HN, Reddit, GitHub 등을 매일 개별 순회 | 시간 소모·누락 발생           |
+| 언어 장벽            | 핵심 AI 소식 대부분이 영문                         | 빠른 파악 어려움, 피로도 증가 |
+| 중요도 판별 어려움   | 하루에도 수백 건의 글, 신호/소음 구분 불가         | 정작 중요한 뉴스를 놓침       |
+| 기존 서비스의 운영비 | 실시간 크롤링·대형 모델 사용 시 비용 급증          | 솔로 운영 지속 불가능         |
 
 ### 1.3 핵심 가치 제안
 
@@ -56,23 +56,25 @@
 
 ### 2.1 주요 사용자
 
-| 역할 | 설명 | 주요 니즈 |
-|---|---|---|
-| **열람자 (Reader)** | 국내 AI/개발 종사자·기획자·연구자. 영문 소식을 빠르게 한국어로 파악하고 싶은 사람 | 신뢰할 만한 한국어 요약, 출처·중요도 기반 빠른 스캔, 원문 즉시 이동 |
-| **운영자 (Operator)** | 서비스를 운영하는 솔로 개발자(본 PRD 독자) | 낮은 운영비, 소스 추가/삭제 용이성, 파이프라인 안정성·관측성 |
+| 역할                  | 설명                                                                              | 주요 니즈                                                           |
+| --------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| **열람자 (Reader)**   | 국내 AI/개발 종사자·기획자·연구자. 영문 소식을 빠르게 한국어로 파악하고 싶은 사람 | 신뢰할 만한 한국어 요약, 출처·중요도 기반 빠른 스캔, 원문 즉시 이동 |
+| **운영자 (Operator)** | 서비스를 운영하는 솔로 개발자(본 PRD 독자)                                        | 낮은 운영비, 소스 추가/삭제 용이성, 파이프라인 안정성·관측성        |
 
 ### 2.2 사용자별 접근 방식 & User Story
 
 **열람자**
+
 - 흐름: 피드(홈) → 태그/소스 필터 + 정렬(최신/중요도) → 카드 클릭 → 상세(한국어 요약 + 원문 병기) → 원문 링크 이동. 검색 페이지에서 키워드로 과거 기사 탐색.
-- *As a 국내 AI 종사자, I want 영문 AI 뉴스를 한국어 요약으로 한 곳에서 보고 싶다, so that 여러 채널을 돌지 않고도 하루치 흐름을 5분 안에 파악할 수 있다.*
-- *As a 열람자, I want 중요도순으로 정렬하고 태그로 필터링하고 싶다, so that 내 관심 주제(예: Agents)의 핵심만 골라 본다.*
+- _As a 국내 AI 종사자, I want 영문 AI 뉴스를 한국어 요약으로 한 곳에서 보고 싶다, so that 여러 채널을 돌지 않고도 하루치 흐름을 5분 안에 파악할 수 있다._
+- _As a 열람자, I want 중요도순으로 정렬하고 태그로 필터링하고 싶다, so that 내 관심 주제(예: Agents)의 핵심만 골라 본다._
 
 **운영자**
+
 - 흐름: **관리자 콘솔(`/admin`)** 로그인 → 소스 관리(추가/수정/삭제/토글) → 콘솔이 GitHub API로 `configs/sources.json` 커밋 → 필요 시 "지금 수집" 버튼으로 `workflow_dispatch` 트리거 → Actions가 `scripts/collect.ts` 실행·`data/app.db` 커밋 → Vercel 자동 배포. 콘솔 대시보드에서 수집 통계·비용을 모니터링.
-- *As a 운영자, I want 관리자 페이지에서 코드/파일 수정 없이 소스를 추가/삭제/토글하고 싶다, so that 운영 중 소스 구성을 유연하게 조정한다.*
-- *As a 운영자, I want 콘솔에서 즉시 재수집을 트리거하고 싶다, so that 소스 변경을 다음 cron까지 기다리지 않고 바로 반영한다.*
-- *As a 운영자, I want LLM 호출 건수·토큰·추정 비용을 실행별로 콘솔에서 보고 싶다, so that 비용 상한을 넘기 전에 감지한다.*
+- _As a 운영자, I want 관리자 페이지에서 코드/파일 수정 없이 소스를 추가/삭제/토글하고 싶다, so that 운영 중 소스 구성을 유연하게 조정한다._
+- _As a 운영자, I want 콘솔에서 즉시 재수집을 트리거하고 싶다, so that 소스 변경을 다음 cron까지 기다리지 않고 바로 반영한다._
+- _As a 운영자, I want LLM 호출 건수·토큰·추정 비용을 실행별로 콘솔에서 보고 싶다, so that 비용 상한을 넘기 전에 감지한다._
 
 ---
 
@@ -80,16 +82,16 @@
 
 ### Must Have 기능 목록 및 우선순위
 
-| 우선순위 | 기능 | 의존성 |
-|:---:|---|---|
-| 1 | 3.1 데이터 수집 파이프라인 | - |
-| 2 | 3.2 코드 기반 전처리 (중복 제거 + 트렌딩 점수) | 3.1 |
-| 3 | 3.3 LLM 통합 가공 (단일 호출) | 3.2 |
-| 4 | 3.4 비용 절감 메커니즘 | 3.3 |
-| 5 | 3.5 피드/필터/정렬 | 3.3, 3.4 |
-| 6 | 3.6 상세 보기 | 3.5 |
-| 7 | 3.7 검색 | 3.5 |
-| 8 | 3.8 관리자 운영 콘솔 (소스 관리·재수집·통계/비용) | 3.1, 5 |
+| 우선순위 | 기능                                              | 의존성   |
+| :------: | ------------------------------------------------- | -------- |
+|    1     | 3.1 데이터 수집 파이프라인                        | -        |
+|    2     | 3.2 코드 기반 전처리 (중복 제거 + 트렌딩 점수)    | 3.1      |
+|    3     | 3.3 LLM 통합 가공 (단일 호출)                     | 3.2      |
+|    4     | 3.4 비용 절감 메커니즘                            | 3.3      |
+|    5     | 3.5 피드/필터/정렬                                | 3.3, 3.4 |
+|    6     | 3.6 상세 보기                                     | 3.5      |
+|    7     | 3.7 검색                                          | 3.5      |
+|    8     | 3.8 관리자 운영 콘솔 (소스 관리·재수집·통계/비용) | 3.1, 5   |
 
 ---
 
@@ -98,6 +100,7 @@
 일 1회 GitHub Actions cron이 `scripts/collect.ts`를 실행하여 RSS 피드와 API 소스에서 항목을 수집한다. 소스는 코드 하드코딩이 아닌 `configs/sources.json`으로 관리하여 운영자가 추가/삭제할 수 있다.
 
 **입력**
+
 - `configs/sources.json` (소스 정의 — 운영자 콘솔에서 GitHub API로 커밋 관리, §3.8), 환경변수(`GITHUB_PAT`/`GITHUB_REPO`, `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET`)
 - 수집 윈도우: 최근 24~48시간
 
@@ -112,22 +115,22 @@
 
 **MVP 시드 구성 (검증된 소스, 2026-06-07 기준)**
 
-| 분류 | 소스 | 엔드포인트 | 인증 |
-|---|---|---|---|
-| RSS (글로벌) | TechCrunch AI | `https://techcrunch.com/category/artificial-intelligence/feed/` | 무인증 |
-| RSS (글로벌) | The Verge AI | `https://www.theverge.com/rss/ai-artificial-intelligence/index.xml` | 무인증 |
-| RSS (글로벌) | MIT Tech Review | `https://www.technologyreview.com/feed/` | 무인증 |
-| RSS (글로벌) | The Decoder | `https://the-decoder.com/feed/` | 무인증 |
-| RSS (글로벌) | MarkTechPost | `https://www.marktechpost.com/feed/` | 무인증 |
-| RSS (글로벌) | Latent Space (swyx) | `https://www.latent.space/feed` | 무인증 (Substack) |
-| RSS (한국) | AI타임스 | `https://www.aitimes.com/rss/allArticle.xml` | 무인증 |
-| RSS (한국) | 전자신문 AI | `https://rss.etnews.com/04046.xml` | 무인증 |
-| RSS (한국) | 바이라인네트워크 | `https://byline.network/feed/` | 무인증 |
-| WEB (스크래핑) | AI Engineer | `https://www.ai.engineer/` | 무인증 · **Post-MVP** (공식 RSS 미확인) |
-| API (집계) | Hacker News (Algolia) | `https://hn.algolia.com/api/v1/search?query=AI&tags=story&numericFilters=points>50,created_at_i>{24h전}&hitsPerPage=30` | 무인증 |
-| API (집계) | GitHub Search | `https://api.github.com/search/repositories?q=topic:llm+created:>{최근}&sort=stars&order=desc` | 토큰 권장(30 req/분) |
-| API (연구) | HuggingFace Daily Papers | `https://huggingface.co/api/daily_papers?limit=20` | 무인증 |
-| REDDIT (OAuth2) | Reddit 서브레딧 | `https://oauth.reddit.com/r/{sub}/top?t=day&limit=25` | OAuth2 `client_credentials` |
+| 분류            | 소스                     | 엔드포인트                                                                                                              | 인증                                    |
+| --------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| RSS (글로벌)    | TechCrunch AI            | `https://techcrunch.com/category/artificial-intelligence/feed/`                                                         | 무인증                                  |
+| RSS (글로벌)    | The Verge AI             | `https://www.theverge.com/rss/ai-artificial-intelligence/index.xml`                                                     | 무인증                                  |
+| RSS (글로벌)    | MIT Tech Review          | `https://www.technologyreview.com/feed/`                                                                                | 무인증                                  |
+| RSS (글로벌)    | The Decoder              | `https://the-decoder.com/feed/`                                                                                         | 무인증                                  |
+| RSS (글로벌)    | MarkTechPost             | `https://www.marktechpost.com/feed/`                                                                                    | 무인증                                  |
+| RSS (글로벌)    | Latent Space (swyx)      | `https://www.latent.space/feed`                                                                                         | 무인증 (Substack)                       |
+| RSS (한국)      | AI타임스                 | `https://www.aitimes.com/rss/allArticle.xml`                                                                            | 무인증                                  |
+| RSS (한국)      | 전자신문 AI              | `https://rss.etnews.com/04046.xml`                                                                                      | 무인증                                  |
+| RSS (한국)      | 바이라인네트워크         | `https://byline.network/feed/`                                                                                          | 무인증                                  |
+| WEB (스크래핑)  | AI Engineer              | `https://www.ai.engineer/`                                                                                              | 무인증 · **Post-MVP** (공식 RSS 미확인) |
+| API (집계)      | Hacker News (Algolia)    | `https://hn.algolia.com/api/v1/search?query=AI&tags=story&numericFilters=points>50,created_at_i>{24h전}&hitsPerPage=30` | 무인증                                  |
+| API (집계)      | GitHub Search            | `https://api.github.com/search/repositories?q=topic:llm+created:>{최근}&sort=stars&order=desc`                          | 토큰 권장(30 req/분)                    |
+| API (연구)      | HuggingFace Daily Papers | `https://huggingface.co/api/daily_papers?limit=20`                                                                      | 무인증                                  |
+| REDDIT (OAuth2) | Reddit 서브레딧          | `https://oauth.reddit.com/r/{sub}/top?t=day&limit=25`                                                                   | OAuth2 `client_credentials`             |
 
 > **Reddit 서브레딧(8개):** r/LocalLLaMA, r/MachineLearning, r/OpenAI, r/ClaudeAI, r/deeplearning, r/MLOps, r/LLMDevs, r/artificial (뒤 4개는 aitrends.kr 기준 보완).
 >
@@ -135,17 +138,18 @@
 
 **출력 (수집 원본, 정규화 전 raw item)**
 
-| 필드명 | 설명 |
-|---|---|
-| `source_id` | 소스 식별자 (sources.json key) |
-| `external_id` | 소스 내 고유 ID (HN objectID, Reddit name 등, 없으면 URL) |
-| `url` | 원문 URL |
-| `title_original` | 원문 제목 |
-| `content_raw` | 본문/요약 원문 (RSS description 또는 API 본문) |
-| `published_at` | 원문 게시 시각 (UTC) |
-| `engagement` | `{ points?, ups?, num_comments?, stars? }` |
+| 필드명           | 설명                                                      |
+| ---------------- | --------------------------------------------------------- |
+| `source_id`      | 소스 식별자 (sources.json key)                            |
+| `external_id`    | 소스 내 고유 ID (HN objectID, Reddit name 등, 없으면 URL) |
+| `url`            | 원문 URL                                                  |
+| `title_original` | 원문 제목                                                 |
+| `content_raw`    | 본문/요약 원문 (RSS description 또는 API 본문)            |
+| `published_at`   | 원문 게시 시각 (UTC)                                      |
+| `engagement`     | `{ points?, ups?, num_comments?, stars? }`                |
 
 **Acceptance Criteria**
+
 - [ ] 소스는 `configs/sources.json`으로 관리되며, 운영자 콘솔(§3.8)에서 코드 수정 없이 추가/삭제/토글할 수 있다.
 - [ ] RSS/WEB/REDDIT/API 분류가 `kind`로 구분되며, WEB 타입은 등록 가능하되 수집은 Post-MVP다.
 - [ ] 한 소스가 실패(타임아웃/4xx/5xx)해도 나머지 소스 수집은 계속된다(부분 실패 격리).
@@ -161,6 +165,7 @@
 **입력**: 3.1의 raw item 배열
 
 **처리**
+
 1. **정규화 키 생성**: `dedup_key = sha256(normalize(url))`, 보조로 `title_key = sha256(normalize(title))`.
    - `normalize(url)`: 소문자화, 트래킹 쿼리(`utm_*`, `ref` 등) 제거, 트레일링 슬래시 제거.
 2. **중복 제거**: 배치 내 중복 + SQLite `articles.dedup_key` 존재 항목 스킵 → **신규 항목만** 다음 단계로.
@@ -175,9 +180,9 @@ export function trendingScore(item: RawItem): number {
   const norm = (x = 0, cap: number) => Math.min(1, Math.log1p(x) / Math.log1p(cap));
 
   const signal =
-    0.45 * norm(e.points ?? e.ups ?? 0, 500) +   // HN points / Reddit ups
-    0.25 * norm(e.num_comments ?? 0, 300) +       // 댓글 수
-    0.30 * norm(e.stars ?? 0, 2000);              // GitHub stars
+    0.45 * norm(e.points ?? e.ups ?? 0, 500) + // HN points / Reddit ups
+    0.25 * norm(e.num_comments ?? 0, 300) + // 댓글 수
+    0.3 * norm(e.stars ?? 0, 2000); // GitHub stars
 
   // 최신성 보정: 24h 이내 1.0 → 48h 0.7 (선형 감쇠)
   const ageH = (Date.now() - new Date(item.published_at).getTime()) / 3.6e6;
@@ -189,13 +194,14 @@ export function trendingScore(item: RawItem): number {
 
 **출력**
 
-| 필드명 | 설명 |
-|---|---|
-| `dedup_key` | URL 정규화 해시 (UNIQUE) |
-| `trending_score` | 코드 기반 1차 트렌딩 점수 (0~100) |
-| `is_new` | SQLite 미존재 여부 (true인 항목만 LLM 전달) |
+| 필드명           | 설명                                        |
+| ---------------- | ------------------------------------------- |
+| `dedup_key`      | URL 정규화 해시 (UNIQUE)                    |
+| `trending_score` | 코드 기반 1차 트렌딩 점수 (0~100)           |
+| `is_new`         | SQLite 미존재 여부 (true인 항목만 LLM 전달) |
 
 **Acceptance Criteria**
+
 - [ ] 동일 기사가 여러 소스에서 들어와도 1건으로 합쳐진다.
 - [ ] 이미 DB에 있는 기사는 LLM 호출 없이 스킵된다(재실행 시 추가 비용 0).
 - [ ] 트렌딩 점수는 LLM 없이 코드만으로 계산된다.
@@ -215,8 +221,12 @@ export function trendingScore(item: RawItem): number {
 import { z } from "zod";
 
 export const CATEGORIES = [
-  "Language Models", "Agents", "Dev Tools",
-  "MLOps", "연구·논문", "산업·정책",
+  "Language Models",
+  "Agents",
+  "Dev Tools",
+  "MLOps",
+  "연구·논문",
+  "산업·정책",
 ] as const;
 
 export const articleEnrichmentSchema = z.object({
@@ -245,8 +255,8 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
   const { object } = await generateObject({
     model: anthropic(MODEL),
     schema: articleEnrichmentSchema,
-    maxOutputTokens: 400,           // 출력 토큰 제한 (요약 2~3줄)
-    system: SYSTEM_PROMPT,          // 캐싱 대상 (§7)
+    maxOutputTokens: 400, // 출력 토큰 제한 (요약 2~3줄)
+    system: SYSTEM_PROMPT, // 캐싱 대상 (§7)
     messages: [
       {
         role: "user",
@@ -263,6 +273,7 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 **출력 → SQLite 저장 매핑**: `title_ko`, `summary_ko`, `category`, `tags`, `importance`를 `articles`/`tags`/`article_tags`에 기록(§5).
 
 **Acceptance Criteria**
+
 - [ ] 1 기사 = 정확히 1 LLM 호출(요약·번역·분류·점수 통합).
 - [ ] 출력은 항상 Zod 스키마를 통과한다(검증 실패 시 1회 재시도 후 스킵·로깅).
 - [ ] `category`는 사전 정의된 enum 값만 가진다.
@@ -274,20 +285,21 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 
 모든 가공 단계에서 LLM 호출/토큰을 구조적으로 최소화한다.
 
-| 메커니즘 | 적용 방법 | 효과 |
-|---|---|---|
-| 코드 선필터 | 중복 제거 + 기존 항목 스킵 → 신규만 전달(§3.2) | 호출 건수 최소화, 재실행 비용 0 |
-| 단일 호출 통합 | 요약·번역·분류·점수를 1 호출 JSON으로 통합(§3.3) | 기사당 호출 1회로 고정 |
-| 프롬프트 캐싱 | 시스템 프롬프트·분류체계·few-shot에 Anthropic prompt caching 적용(§7) | 반복 입력 토큰 비용 절감 |
-| 저비용 모델 기본값 | `claude-haiku-4-5` 기본, `LLM_MODEL`로 전환 | 단가 최소화 |
-| 입력 토큰 절감 | 본문 상위 `MAX_INPUT_CHARS`(≈2500자)만 전달 | 입력 토큰 상한 |
-| 출력 토큰 제한 | `maxOutputTokens=400`, 요약 2~3줄 제약 | 출력 토큰 상한 |
-| 배치 1회/일 | GitHub Actions cron 일 1회 | 호출량 최소화 |
-| 일일 상한 가드 | 신규 건수 > `MAX_ITEMS_PER_RUN`(예: 150) 시 트렌딩 상위만 가공 | 비용 폭주 방지 |
+| 메커니즘           | 적용 방법                                                             | 효과                            |
+| ------------------ | --------------------------------------------------------------------- | ------------------------------- |
+| 코드 선필터        | 중복 제거 + 기존 항목 스킵 → 신규만 전달(§3.2)                        | 호출 건수 최소화, 재실행 비용 0 |
+| 단일 호출 통합     | 요약·번역·분류·점수를 1 호출 JSON으로 통합(§3.3)                      | 기사당 호출 1회로 고정          |
+| 프롬프트 캐싱      | 시스템 프롬프트·분류체계·few-shot에 Anthropic prompt caching 적용(§7) | 반복 입력 토큰 비용 절감        |
+| 저비용 모델 기본값 | `claude-haiku-4-5` 기본, `LLM_MODEL`로 전환                           | 단가 최소화                     |
+| 입력 토큰 절감     | 본문 상위 `MAX_INPUT_CHARS`(≈2500자)만 전달                           | 입력 토큰 상한                  |
+| 출력 토큰 제한     | `maxOutputTokens=400`, 요약 2~3줄 제약                                | 출력 토큰 상한                  |
+| 배치 1회/일        | GitHub Actions cron 일 1회                                            | 호출량 최소화                   |
+| 일일 상한 가드     | 신규 건수 > `MAX_ITEMS_PER_RUN`(예: 150) 시 트렌딩 상위만 가공        | 비용 폭주 방지                  |
 
 > **관리자 콘솔 비용:** 콘솔의 쓰기 동작(소스 커밋·재수집 트리거)은 on-demand serverless Route Handler에서 처리되며 호출 빈도가 매우 낮다(운영자 전용). 재수집은 기존 cron 배치를 `workflow_dispatch`로 재사용하므로 LLM 비용은 §3.4 메커니즘 안에서 동일하게 통제된다 → 추가 운영비 ≈ 0.
 
 **Acceptance Criteria**
+
 - [ ] 매 실행 후 호출 건수·입력/출력 토큰·추정 비용이 로그 및 `collection_runs`에 남는다.
 - [ ] 신규 건수가 일일 상한을 초과하면 트렌딩 상위 N건만 LLM 가공한다.
 
@@ -301,17 +313,18 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 
 **출력 (카드 1장 구성요소)**
 
-| 필드 | 설명 |
-|---|---|
-| `source` | 출처(매체/플랫폼) 라벨 |
-| `title_ko` | 한국어 제목 |
-| `summary_ko` | 한국어 요약 2~3줄 |
-| `tags[]` | 태그 칩 |
-| `category` | 카테고리 배지 |
-| `trending_score` / `importance` | 정렬·표시용 점수 |
-| `published_at` | 게시 시각 |
+| 필드                            | 설명                   |
+| ------------------------------- | ---------------------- |
+| `source`                        | 출처(매체/플랫폼) 라벨 |
+| `title_ko`                      | 한국어 제목            |
+| `summary_ko`                    | 한국어 요약 2~3줄      |
+| `tags[]`                        | 태그 칩                |
+| `category`                      | 카테고리 배지          |
+| `trending_score` / `importance` | 정렬·표시용 점수       |
+| `published_at`                  | 게시 시각              |
 
 **Acceptance Criteria**
+
 - [ ] 태그·소스로 필터링되며, 최신순/중요도순 정렬이 동작한다.
 - [ ] 카드 클릭 시 상세 페이지(`/article/[id]`)로 이동한다.
 - [ ] 데이터는 ISR로 재검증(예: `revalidate = 3600`)되어 배치 후 자동 갱신된다.
@@ -324,15 +337,16 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 
 **출력**
 
-| 영역 | 내용 |
-|---|---|
-| 헤더 | `title_ko`, 출처·카테고리·게시 시각, 중요도/트렌딩 점수 |
-| 한국어 요약 | `summary_ko` (2~3줄) |
-| 원문 병기 | `title_original` + `content_raw` 발췌 |
-| 태그 | `tags[]` (클릭 시 해당 태그 피드로 이동) |
-| 원문 링크 | `url` 새 탭 이동 CTA |
+| 영역        | 내용                                                    |
+| ----------- | ------------------------------------------------------- |
+| 헤더        | `title_ko`, 출처·카테고리·게시 시각, 중요도/트렌딩 점수 |
+| 한국어 요약 | `summary_ko` (2~3줄)                                    |
+| 원문 병기   | `title_original` + `content_raw` 발췌                   |
+| 태그        | `tags[]` (클릭 시 해당 태그 피드로 이동)                |
+| 원문 링크   | `url` 새 탭 이동 CTA                                    |
 
 **Acceptance Criteria**
+
 - [ ] 한국어 요약과 원문이 함께 노출된다.
 - [ ] 원문 링크는 새 탭으로 열린다.
 - [ ] 태그 클릭 시 해당 태그로 필터된 피드로 이동한다.
@@ -348,6 +362,7 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 **출력**: 매칭 기사 카드 목록(`title_ko`, `summary_ko`, `tags`, `source`, `published_at`)
 
 **Acceptance Criteria**
+
 - [ ] 한국어 제목·요약·태그를 대상으로 검색된다.
 - [ ] 결과는 피드와 동일한 카드 컴포넌트로 표시된다.
 - [ ] 결과 없음 상태가 명확히 표시된다.
@@ -368,13 +383,14 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 
 **출력 / 동작**
 
-| 항목 | 설명 |
-|---|---|
-| 커밋 | `PUT /repos/{owner}/{repo}/contents/configs/sources.json` (GitHub API, `GITHUB_PAT`) |
-| 반영 | 커밋 → (선택) `workflow_dispatch` → Vercel 재배포로 사이트 반영 |
-| WEB 타입 | 등록 가능하나 수집 비활성(Post-MVP). 콘솔에 "수집 예정" 배지 표시 |
+| 항목     | 설명                                                                                 |
+| -------- | ------------------------------------------------------------------------------------ |
+| 커밋     | `PUT /repos/{owner}/{repo}/contents/configs/sources.json` (GitHub API, `GITHUB_PAT`) |
+| 반영     | 커밋 → (선택) `workflow_dispatch` → Vercel 재배포로 사이트 반영                      |
+| WEB 타입 | 등록 가능하나 수집 비활성(Post-MVP). 콘솔에 "수집 예정" 배지 표시                    |
 
 **Acceptance Criteria**
+
 - [ ] 콘솔에서 소스를 추가/수정/삭제/토글하면 `configs/sources.json`이 GitHub에 커밋된다.
 - [ ] 잘못된 `url`/중복 `id`는 저장 전 유효성 검증으로 차단된다.
 - [ ] 커밋 성공/실패 결과가 UI에 명확히 표시된다.
@@ -388,6 +404,7 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 **동작**: `POST /repos/{owner}/{repo}/actions/workflows/{collect.yml}/dispatches` (GitHub API) → Actions가 `scripts/collect.ts` 실행.
 
 **Acceptance Criteria**
+
 - [ ] 버튼 클릭 시 `workflow_dispatch`가 호출되고, 트리거 성공 여부가 표시된다.
 - [ ] 중복 클릭으로 동시 실행되지 않도록 진행 중 상태를 비활성화한다.
 
@@ -397,16 +414,17 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 
 **출력 (실행별)**
 
-| 필드 | 설명 |
-|---|---|
-| `started_at` | 실행 시각 |
-| `items_collected` / `items_new` | 수집/신규 건수 |
-| `llm_calls` | LLM 호출 수 |
-| `input_tokens` / `output_tokens` | 토큰 사용량 |
-| `est_cost_usd` | 추정 비용(USD) |
-| `status` | success / partial / failed |
+| 필드                             | 설명                       |
+| -------------------------------- | -------------------------- |
+| `started_at`                     | 실행 시각                  |
+| `items_collected` / `items_new`  | 수집/신규 건수             |
+| `llm_calls`                      | LLM 호출 수                |
+| `input_tokens` / `output_tokens` | 토큰 사용량                |
+| `est_cost_usd`                   | 추정 비용(USD)             |
+| `status`                         | success / partial / failed |
 
 **Acceptance Criteria**
+
 - [ ] 최근 N회 실행의 수집·신규·토큰·추정비용·상태가 한 화면에 표시된다.
 - [ ] 일일 비용이 임계(예: $0.30)를 초과한 실행이 시각적으로 강조된다.
 
@@ -417,6 +435,7 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 **동작**: `ADMIN_PASSWORD` 검증 → 서명된 세션 쿠키 발급. `middleware.ts`가 `/admin/*` 및 admin Route Handler를 보호.
 
 **Acceptance Criteria**
+
 - [ ] 미인증 상태로 `/admin/*` 접근 시 로그인으로 리다이렉트된다.
 - [ ] `GITHUB_PAT` 등 민감 정보는 서버(Route Handler)에서만 사용되고 클라이언트로 노출되지 않는다.
 
@@ -467,14 +486,14 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 
 ### 4.3 페이지 라우팅 & 렌더링 전략
 
-| 경로 | 페이지 | 렌더링 / 접근 |
-|---|---|---|
-| `/` | 피드(홈) | ISR (`revalidate` 후 정적 재생성) · 공개 |
-| `/article/[id]` | 상세 | SSG (`generateStaticParams`) + ISR · 공개 |
-| `/search` | 검색 | 클라이언트 필터 또는 라우트 핸들러 기반 동적 · 공개 |
-| `/admin` | 운영 콘솔(대시보드/소스 관리) | 동적(SSR) · **운영자 인증 필요**(`middleware.ts`) |
-| `/api/admin/sources` | 소스 커밋 Route Handler | serverless · GitHub API 호출(`GITHUB_PAT`) |
-| `/api/admin/collect` | 재수집 트리거 Route Handler | serverless · `workflow_dispatch` 호출 |
+| 경로                 | 페이지                        | 렌더링 / 접근                                       |
+| -------------------- | ----------------------------- | --------------------------------------------------- |
+| `/`                  | 피드(홈)                      | ISR (`revalidate` 후 정적 재생성) · 공개            |
+| `/article/[id]`      | 상세                          | SSG (`generateStaticParams`) + ISR · 공개           |
+| `/search`            | 검색                          | 클라이언트 필터 또는 라우트 핸들러 기반 동적 · 공개 |
+| `/admin`             | 운영 콘솔(대시보드/소스 관리) | 동적(SSR) · **운영자 인증 필요**(`middleware.ts`)   |
+| `/api/admin/sources` | 소스 커밋 Route Handler       | serverless · GitHub API 호출(`GITHUB_PAT`)          |
+| `/api/admin/collect` | 재수집 트리거 Route Handler   | serverless · `workflow_dispatch` 호출               |
 
 > 배치 결과가 git에 커밋되어 배포가 트리거되므로, 실시간성보다 정적/ISR로 비용·성능을 우선한다. 운영 콘솔은 동적 라우트지만 호출 빈도가 낮아(운영자 전용) serverless 함수 비용은 무시 가능하다.
 
@@ -559,11 +578,11 @@ CREATE INDEX IF NOT EXISTS idx_runs_started ON collection_runs(started_at DESC);
 
 ### 5.2 수집 원본 ↔ 가공 결과 매핑
 
-| 단계 | 출처 | 채워지는 컬럼 |
-|---|---|---|
-| ① 수집 | RSS/API | `url`, `title_original`, `content_raw`, `published_at`, `engagement_json` |
-| ② 전처리 | 코드 | `dedup_key`, `trending_score` |
-| ③ LLM | generateObject | `title_ko`, `summary_ko`, `category`, `importance`, `tags`(→ tags/article_tags) |
+| 단계     | 출처           | 채워지는 컬럼                                                                   |
+| -------- | -------------- | ------------------------------------------------------------------------------- |
+| ① 수집   | RSS/API        | `url`, `title_original`, `content_raw`, `published_at`, `engagement_json`       |
+| ② 전처리 | 코드           | `dedup_key`, `trending_score`                                                   |
+| ③ LLM    | generateObject | `title_ko`, `summary_ko`, `category`, `importance`, `tags`(→ tags/article_tags) |
 
 ### 5.3 렌더링용 응답 구조 (Article DTO)
 
@@ -576,11 +595,11 @@ export interface ArticleCard {
   titleKo: string;
   summaryKo: string;
   titleOriginal: string;
-  category: string;        // CATEGORIES
+  category: string; // CATEGORIES
   tags: string[];
-  trendingScore: number;   // 0~100
-  importance: number;      // 1~5
-  publishedAt: string;     // ISO8601
+  trendingScore: number; // 0~100
+  importance: number; // 1~5
+  publishedAt: string; // ISO8601
 }
 ```
 
@@ -590,12 +609,14 @@ import Database from "better-sqlite3";
 import { DB_PATH } from "@/lib/paths";
 
 export function getFeed(opts: {
-  tag?: string; source?: string; sort?: "latest" | "importance"; limit?: number;
+  tag?: string;
+  source?: string;
+  sort?: "latest" | "importance";
+  limit?: number;
 }): ArticleCard[] {
   const db = new Database(DB_PATH, { readonly: true });
-  const order = opts.sort === "importance"
-    ? "a.importance DESC, a.trending_score DESC"
-    : "a.published_at DESC";
+  const order =
+    opts.sort === "importance" ? "a.importance DESC, a.trending_score DESC" : "a.published_at DESC";
   // ...태그/소스 필터 결합 후 ArticleCard[] 매핑
 }
 ```
@@ -668,33 +689,33 @@ DESIGN.md(Apple 디자인 분석)의 토큰을 따른다. **핵심 원칙**: 단
 
 ### 6.4 카드 구성요소 → DESIGN.md 토큰 매핑
 
-| 요소 | DESIGN.md 토큰 | 값/비고 |
-|---|---|---|
-| 카드 컨테이너 | `{component.store-utility-card}` | 배경 `{colors.canvas}` #fff, 1px `{colors.hairline}` #e0e0e0, `{rounded.lg}` 18px, padding `{spacing.lg}` 24px |
-| 출처 라벨 | `{typography.caption-strong}` | 14px/600, `{colors.ink-muted-80}` #333 |
-| 카테고리 배지 | `{typography.caption}` + `{rounded.pill}` | `{colors.canvas-parchment}` 배경 |
-| 한국어 제목 | `{typography.body-strong}` | 17px/600/-0.374px, `{colors.ink}` #1d1d1f |
-| 한국어 요약 | `{typography.body}` | 17px/400/1.47, `{colors.ink}` |
-| 태그 칩 | `{component.configurator-option-chip}` | `{rounded.pill}`, `{typography.caption}` |
-| 트렌딩/중요도 점수 | `{typography.caption-strong}` | 강조 수치는 `{colors.primary}` #0066cc |
-| 카드 클릭/링크 CTA | `{component.button-primary}` / `{component.text-link}` | Action Blue `#0066cc`, pill, active `scale(0.95)` |
-| 섹션 리듬 | `{component.product-tile-light}` ↔ `{component.product-tile-parchment}` | 라이트/패치먼트 교차, 색 변화가 구분선 |
-| 글로벌 내비 | `{component.global-nav}` | `{colors.surface-black}` #000, h44, `{typography.nav-link}` |
-| 서브 내비 | `{component.sub-nav-frosted}` | parchment 80% + backdrop-blur |
-| 검색 입력 | `{component.search-input}` | `{rounded.pill}`, h44, `{typography.body}` |
-| 푸터 | `{component.footer}` | `{colors.canvas-parchment}` #f5f5f7 |
+| 요소               | DESIGN.md 토큰                                                          | 값/비고                                                                                                        |
+| ------------------ | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 카드 컨테이너      | `{component.store-utility-card}`                                        | 배경 `{colors.canvas}` #fff, 1px `{colors.hairline}` #e0e0e0, `{rounded.lg}` 18px, padding `{spacing.lg}` 24px |
+| 출처 라벨          | `{typography.caption-strong}`                                           | 14px/600, `{colors.ink-muted-80}` #333                                                                         |
+| 카테고리 배지      | `{typography.caption}` + `{rounded.pill}`                               | `{colors.canvas-parchment}` 배경                                                                               |
+| 한국어 제목        | `{typography.body-strong}`                                              | 17px/600/-0.374px, `{colors.ink}` #1d1d1f                                                                      |
+| 한국어 요약        | `{typography.body}`                                                     | 17px/400/1.47, `{colors.ink}`                                                                                  |
+| 태그 칩            | `{component.configurator-option-chip}`                                  | `{rounded.pill}`, `{typography.caption}`                                                                       |
+| 트렌딩/중요도 점수 | `{typography.caption-strong}`                                           | 강조 수치는 `{colors.primary}` #0066cc                                                                         |
+| 카드 클릭/링크 CTA | `{component.button-primary}` / `{component.text-link}`                  | Action Blue `#0066cc`, pill, active `scale(0.95)`                                                              |
+| 섹션 리듬          | `{component.product-tile-light}` ↔ `{component.product-tile-parchment}` | 라이트/패치먼트 교차, 색 변화가 구분선                                                                         |
+| 글로벌 내비        | `{component.global-nav}`                                                | `{colors.surface-black}` #000, h44, `{typography.nav-link}`                                                    |
+| 서브 내비          | `{component.sub-nav-frosted}`                                           | parchment 80% + backdrop-blur                                                                                  |
+| 검색 입력          | `{component.search-input}`                                              | `{rounded.pill}`, h44, `{typography.body}`                                                                     |
+| 푸터               | `{component.footer}`                                                    | `{colors.canvas-parchment}` #f5f5f7                                                                            |
 
 > **금지 사항(DESIGN.md Don't):** 두 번째 강조색 도입 금지(모든 인터랙션은 Action Blue), 카드/버튼/텍스트에 그림자 금지(그림자는 이미지 전용), 데코 그라데이션 금지, 본문 weight 500 금지(300/400/600/700만).
 
 ### 6.5 반응형
 
-| 브레이크포인트 | 동작 |
-|---|---|
-| ≥ 1441px | 콘텐츠 1440px 고정, 양쪽 여백 흡수 |
-| 1069~1440px | 카드 그리드 3~4열 |
-| 834~1068px | 글로벌 내비 전체, 그리드 2~3열 |
-| 641~833px | 글로벌 내비 햄버거화, 그리드 2열, 서브 내비 칩 축소 |
-| ≤ 640px | 단일 컬럼 스택, 헤드라인 34px↓, 패딩 축소 |
+| 브레이크포인트 | 동작                                                |
+| -------------- | --------------------------------------------------- |
+| ≥ 1441px       | 콘텐츠 1440px 고정, 양쪽 여백 흡수                  |
+| 1069~1440px    | 카드 그리드 3~4열                                   |
+| 834~1068px     | 글로벌 내비 전체, 그리드 2~3열                      |
+| 641~833px      | 글로벌 내비 햄버거화, 그리드 2열, 서브 내비 칩 축소 |
+| ≤ 640px        | 단일 컬럼 스택, 헤드라인 34px↓, 패딩 축소           |
 
 - 터치 타깃 최소 44×44px(`{component.button-primary}`, 검색 입력 준수).
 
@@ -724,14 +745,14 @@ DESIGN.md(Apple 디자인 분석)의 토큰을 따른다. **핵심 원칙**: 단
 └──────────────────────────────────────────────────────────┘
 ```
 
-| 요소 | DESIGN.md 토큰 | 비고 |
-|---|---|---|
-| 통계/소스 카드·행 | `{component.store-utility-card}` | `{rounded.lg}`, 1px `{colors.hairline}` |
-| "지금 수집"·"소스 추가" CTA | `{component.button-primary}` | Action Blue `#0066cc` pill |
-| 수정/삭제 보조 액션 | `{component.text-link}` / `{component.button-dark-utility}` | `{rounded.sm}` |
-| 소스 입력 폼 | `{component.search-input}` 계열 | `{rounded.pill}`/`{rounded.md}` |
-| 분류 배지(RSS/WEB/REDDIT) | `{typography.caption-strong}` + `{rounded.pill}` | 단일 강조색 원칙 유지 |
-| 비용 임계 초과 강조 | 텍스트 강조(`{colors.primary}`) + ⚠ 라벨 | 두 번째 색 도입 금지 |
+| 요소                        | DESIGN.md 토큰                                              | 비고                                    |
+| --------------------------- | ----------------------------------------------------------- | --------------------------------------- |
+| 통계/소스 카드·행           | `{component.store-utility-card}`                            | `{rounded.lg}`, 1px `{colors.hairline}` |
+| "지금 수집"·"소스 추가" CTA | `{component.button-primary}`                                | Action Blue `#0066cc` pill              |
+| 수정/삭제 보조 액션         | `{component.text-link}` / `{component.button-dark-utility}` | `{rounded.sm}`                          |
+| 소스 입력 폼                | `{component.search-input}` 계열                             | `{rounded.pill}`/`{rounded.md}`         |
+| 분류 배지(RSS/WEB/REDDIT)   | `{typography.caption-strong}` + `{rounded.pill}`            | 단일 강조색 원칙 유지                   |
+| 비용 임계 초과 강조         | 텍스트 강조(`{colors.primary}`) + ⚠ 라벨                    | 두 번째 색 도입 금지                    |
 
 ---
 
@@ -782,17 +803,17 @@ DESIGN.md(Apple 디자인 분석)의 토큰을 따른다. **핵심 원칙**: 단
 
 ## 8. MVP 제외 사항 (Non-Goals)
 
-| 제외 항목 | 이유 |
-|---|---|
+| 제외 항목                         | 이유                                                                |
+| --------------------------------- | ------------------------------------------------------------------- |
 | **열람자** 회원가입·로그인·개인화 | 정적/ISR 공개 피드로 충분(단, **운영자 단일 인증**은 §3.8.4로 포함) |
-| WEB(스크래핑) 소스 실제 수집 | 비용·유지보수 부담. 콘솔 등록만 허용하고 수집은 Post-MVP(§10) |
-| 다중 운영자·RBAC | 솔로 운영 전제, 단일 `ADMIN_PASSWORD`로 충분 |
-| 댓글·커뮤니티·좋아요 | 상태 저장 백엔드 필요 → 운영비 ≈ 0 원칙 위배 |
-| AI 용어사전 | 핵심 가치(요약 큐레이션)와 분리된 별도 기능, Post-MVP |
-| 다국어(영문 UI 등) | 1차 타깃은 국내 사용자, 범위 확대는 검증 후 |
-| 실시간/분 단위 수집 | LLM 호출량·비용 급증, 일 1회 배치로 비용 통제 |
-| 본문 전문 저장·재배포 | 저작권 리스크, 요약 + 원문 링크로 대체 |
-| 추천/랭킹 ML 모델 | 코드 기반 트렌딩 점수로 충분, 과도한 복잡도 |
+| WEB(스크래핑) 소스 실제 수집      | 비용·유지보수 부담. 콘솔 등록만 허용하고 수집은 Post-MVP(§10)       |
+| 다중 운영자·RBAC                  | 솔로 운영 전제, 단일 `ADMIN_PASSWORD`로 충분                        |
+| 댓글·커뮤니티·좋아요              | 상태 저장 백엔드 필요 → 운영비 ≈ 0 원칙 위배                        |
+| AI 용어사전                       | 핵심 가치(요약 큐레이션)와 분리된 별도 기능, Post-MVP               |
+| 다국어(영문 UI 등)                | 1차 타깃은 국내 사용자, 범위 확대는 검증 후                         |
+| 실시간/분 단위 수집               | LLM 호출량·비용 급증, 일 1회 배치로 비용 통제                       |
+| 본문 전문 저장·재배포             | 저작권 리스크, 요약 + 원문 링크로 대체                              |
+| 추천/랭킹 ML 모델                 | 코드 기반 트렌딩 점수로 충분, 과도한 복잡도                         |
 
 ---
 
@@ -800,16 +821,16 @@ DESIGN.md(Apple 디자인 분석)의 토큰을 따른다. **핵심 원칙**: 단
 
 ### 9.1 MVP 완료 기준 & 운영 지표
 
-| 항목 | 목표값 |
-|---|---|
-| 일일 LLM 비용 | ≤ $0.30 (Haiku, 신규 50~100건/일) |
-| 파이프라인 성공률 | ≥ 95% (최근 30일 cron) |
-| 일일 신규 카드 수 | ≥ 30건 |
-| 피드 LCP | ≤ 2.0s (데스크톱) |
-| 중복 제거 정확도 | 동일 기사 중복 게시 0건(샘플 검수) |
-| 공개 3페이지 동작 | 피드 필터·정렬, 상세 병기, 검색 모두 정상 |
-| 소스 변경 반영 시간 | 콘솔 저장 → 재배포 완료 ≤ 10분 |
-| 콘솔 재수집 트리거 | `workflow_dispatch` 성공률 ≥ 95% |
+| 항목                | 목표값                                    |
+| ------------------- | ----------------------------------------- |
+| 일일 LLM 비용       | ≤ $0.30 (Haiku, 신규 50~100건/일)         |
+| 파이프라인 성공률   | ≥ 95% (최근 30일 cron)                    |
+| 일일 신규 카드 수   | ≥ 30건                                    |
+| 피드 LCP            | ≤ 2.0s (데스크톱)                         |
+| 중복 제거 정확도    | 동일 기사 중복 게시 0건(샘플 검수)        |
+| 공개 3페이지 동작   | 피드 필터·정렬, 상세 병기, 검색 모두 정상 |
+| 소스 변경 반영 시간 | 콘솔 저장 → 재배포 완료 ≤ 10분            |
+| 콘솔 재수집 트리거  | `workflow_dispatch` 성공률 ≥ 95%          |
 
 ### 9.2 비용/토큰 상한 가드
 
@@ -837,4 +858,7 @@ DESIGN.md(Apple 디자인 분석)의 토큰을 따른다. **핵심 원칙**: 단
 - [ ] 추가 소스 확장(ZDNet Korea·디지털데일리 Google News RSS 우회, arXiv cs.AI)
 - [ ] 카테고리별 구독/알림
 - [ ] 영문 UI 등 다국어 지원
+
+```
+
 ```
