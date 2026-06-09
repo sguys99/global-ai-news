@@ -28,7 +28,7 @@ export default async function Home({
   return (
     <main className="mx-auto flex max-w-[1440px] flex-col gap-8 px-6 py-12">
       <h1 className="text-display-md font-semibold tracking-tight">
-        매일 한 곳에서 보는 글로벌·한국 AI/IT 뉴스
+        매일 한 곳에서 보는 글로벌 AI 뉴스
       </h1>
 
       <FilterBar current={options} sources={sources} tags={tags} />

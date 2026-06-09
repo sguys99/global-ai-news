@@ -13,6 +13,14 @@ const SORTS: { value: "latest" | "importance"; label: string }[] = [
   { value: "importance", label: "중요도순" },
 ];
 
+/** 필터 칩에서만 쓰는 소스명 축약 맵 (카드 등 다른 곳은 원래 이름 유지). */
+const SOURCE_SHORT_LABEL: Record<string, string> = {
+  "TechCrunch AI": "TechCrunch",
+  "GitHub (topic:llm)": "GitHub",
+  "HuggingFace Daily Papers": "HuggingFace",
+  "MIT Technology Review": "MIT Tech. Review",
+};
+
 /**
  * 현재 필터에 patch 를 병합해 `${basePath}?...` href 생성.
  * 값이 빈 문자열/undefined면 해당 키 제거. 검색어 q 는 보존한다.
@@ -33,7 +41,7 @@ function buildHref(
 }
 
 const chip =
-  "rounded-pill text-caption inline-flex items-center border px-3 py-1 transition-colors";
+  "rounded-pill inline-flex items-center border px-3 py-1 text-[13px] transition-colors";
 const chipOff = "border-border text-muted-foreground hover:border-foreground";
 const chipOn = "border-foreground bg-foreground text-background font-medium";
 
@@ -95,7 +103,7 @@ export function FilterBar({
                 href={buildHref(basePath, current, { source: active ? undefined : s.id })}
                 active={active}
               >
-                {s.name}
+                {SOURCE_SHORT_LABEL[s.name] ?? s.name}
               </Chip>
             );
           })}

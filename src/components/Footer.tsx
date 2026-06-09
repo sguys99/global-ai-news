@@ -13,7 +13,7 @@ export function Footer() {
             Daily AI Brief
           </span>
           <p className="text-caption max-w-md">
-            글로벌·한국 AI/IT 뉴스를 매일 한국어 요약으로 큐레이션하는 데일리 브리핑.
+            글로벌 AI 뉴스를 매일 한국어 요약으로 큐레이션하는 데일리 브리핑.
           </p>
         </div>
 
@@ -30,7 +30,7 @@ export function Footer() {
         </nav>
 
         <p className="text-[12px] leading-none">
-          © {new Date().getFullYear()} Daily AI Brief. All rights reserved.
+          © {new Date().getFullYear()} Nasica Inc. All rights reserved.
         </p>
       </div>
     </footer>

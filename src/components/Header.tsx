@@ -13,7 +13,7 @@ export function Header() {
       <div className="mx-auto flex h-13 max-w-[1440px] items-center justify-between px-6">
         <Link
           href="/"
-          className="text-primary text-caption font-semibold tracking-tight"
+          className="text-primary text-[18px] font-semibold tracking-tight"
         >
           Daily AI Brief
         </Link>
