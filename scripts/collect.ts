@@ -14,6 +14,7 @@ import Database from "better-sqlite3";
 import { CONFIGS_DIR, DB_PATH } from "../src/lib/paths";
 import type { RawItem } from "../src/lib/types";
 import { fetchGithub, fetchHf, fetchHn } from "./lib/collect/api";
+import { fetchArxiv } from "./lib/collect/arxiv";
 import { fetchReddit } from "./lib/collect/reddit";
 import { fetchRss, type SourceConfig } from "./lib/collect/rss";
 import { estimateCost } from "./lib/cost";
@@ -35,6 +36,7 @@ const ADAPTERS: Record<string, (s: SourceConfig) => Promise<RawItem[]>> = {
   github: fetchGithub,
   hf: fetchHf,
   reddit: fetchReddit,
+  arxiv: fetchArxiv,
 };
 
 /** 수집·dedup 을 통과한 신규 후보(아직 미가공). */

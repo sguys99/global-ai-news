@@ -84,6 +84,27 @@
     "enabled": 1
   },
   {
+    "id": "arxiv_cs_cl",
+    "name": "arXiv cs.CL (NLP)",
+    "kind": "arxiv",
+    "url": "cs.CL",
+    "enabled": 1
+  },
+  {
+    "id": "arxiv_cs_ai",
+    "name": "arXiv cs.AI",
+    "kind": "arxiv",
+    "url": "cs.AI",
+    "enabled": 0
+  },
+  {
+    "id": "arxiv_cs_lg",
+    "name": "arXiv cs.LG (ML)",
+    "kind": "arxiv",
+    "url": "cs.LG",
+    "enabled": 0
+  },
+  {
     "id": "reddit_localllama",
     "name": "r/LocalLLaMA",
     "kind": "reddit",

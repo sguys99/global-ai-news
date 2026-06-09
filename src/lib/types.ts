@@ -5,7 +5,7 @@
  */
 
 /** 소스 종류. configs/sources.json 의 kind 와 동일. */
-export type SourceKind = "rss" | "web" | "hn" | "github" | "hf" | "reddit";
+export type SourceKind = "rss" | "web" | "hn" | "github" | "hf" | "reddit" | "arxiv";
 
 /**
  * 소스 정의 한 건. configs/sources.json 한 항목과 동일.
@@ -40,6 +40,8 @@ export interface Engagement {
   ups?: number; // Reddit
   num_comments?: number; // Reddit/HN
   stars?: number; // GitHub
+  citations?: number; // arXiv (Semantic Scholar 총 인용수)
+  influential?: number; // arXiv (Semantic Scholar 영향력 인용수)
 }
 
 /** 수집 원본 한 건 (LLM 가공 전). */

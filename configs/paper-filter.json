@@ -1,0 +1,42 @@
+{
+    "_comment": "인용/기관은 지연 신호 — 당일 논문은 인용 0·인덱스 미등록이라 안 잡힌다. minAgeDays(경과일)를 키우면 신호는 풍부해지나 신선도는 떨어지고, 임계값을 낮추면 통과량이 는다. 임계값↑ = 더 엄격한 '유명도'. 갓 올라온 유명 논문은 HuggingFace Daily Papers(hf.minUpvotes)가 담당.",
+  "arxiv": {
+    "windowDays": 120,
+    "minAgeDays": 30,
+    "maxResults": 120,
+    "citationThreshold": 3,
+    "influentialCitationThreshold": 1,
+    "institutionAllowlist": [
+      "Google",
+      "Google DeepMind",
+      "DeepMind",
+      "OpenAI",
+      "Anthropic",
+      "Meta",
+      "Microsoft",
+      "Microsoft Research",
+      "NVIDIA",
+      "Apple",
+      "Amazon",
+      "IBM",
+      "Allen Institute for AI",
+      "Mila",
+      "Stanford University",
+      "Massachusetts Institute of Technology",
+      "Carnegie Mellon University",
+      "University of California, Berkeley",
+      "Princeton University",
+      "University of Washington",
+      "University of Oxford",
+      "University of Cambridge",
+      "ETH Zurich",
+      "Tsinghua University",
+      "Peking University",
+      "Korea Advanced Institute of Science and Technology",
+      "Seoul National University"
+    ]
+  },
+  "hf": {
+    "minUpvotes": 10
+  }
+}
