@@ -1,8 +1,9 @@
 import { CollectButton } from "@/components/admin/CollectButton";
+import { KpiPanel } from "@/components/admin/KpiPanel";
 import { LogoutButton } from "@/components/admin/LogoutButton";
 import { RunsTable } from "@/components/admin/RunsTable";
 import { SourceManager } from "@/components/admin/SourceManager";
-import { getRecentRuns } from "@/lib/db";
+import { getKpiSummary, getRecentRuns, type KpiSummary } from "@/lib/db";
 import { readSources } from "@/lib/sources";
 import type { RunRow, SourceConfig } from "@/lib/types";
 
@@ -23,6 +24,14 @@ export default async function AdminPage() {
   } catch {
     // DB 미생성 등 — 빈 목록으로 처리
     runs = [];
+  }
+
+  let kpi: KpiSummary | null = null;
+  try {
+    kpi = getKpiSummary();
+  } catch {
+    // DB 미생성 등 — KPI 섹션 숨김
+    kpi = null;
   }
 
   return (
@@ -48,6 +57,13 @@ export default async function AdminPage() {
         <h2 className="text-body font-semibold tracking-tight">재수집</h2>
         <CollectButton />
       </section>
+
+      {kpi && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-body font-semibold tracking-tight">KPI 요약</h2>
+          <KpiPanel kpi={kpi} />
+        </section>
+      )}
 
       <section className="flex flex-col gap-4">
         <h2 className="text-body font-semibold tracking-tight">실행 이력 · 비용</h2>

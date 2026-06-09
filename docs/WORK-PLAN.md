@@ -21,7 +21,7 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 - [x] **Phase 3** — 소스 확장 + 필터/정렬 + 비용 가드
 - [x] **Phase 4** — 검색 (`/search`)
 - [x] **Phase 5** — 관리자 운영 콘솔 (`/admin`)
-- [ ] **Phase 6** — 자동화 · 배포 · KPI 검증
+- [x] **Phase 6** — 자동화 · 배포 · KPI 검증 (코드/설정/문서·KPI 도구 구현 완료, 실 cron·Vercel 배포는 운영자 실행 대기)
 
 ---
 
@@ -204,18 +204,20 @@ PRD는 "글로벌·한국 AI/IT 뉴스를 일 1회 배치 수집 → LLM 단일 
 
 ### 작업
 
-- [ ] `.github/workflows/collect.yml`: `schedule`(일1회) + `workflow_dispatch`, `scripts/collect.ts` 실행 → `data/app.db` 커밋. Secrets 주입.
-- [ ] Vercel 배포 설정(ISR `revalidate`), README 운영 가이드.
-- [ ] KPI 측정: 비용/성공률/카드수/LCP/품질 샘플(PRD §9).
+- [x] `.github/workflows/collect.yml`: `schedule`(`0 21 * * *` = 06:00 KST) + `workflow_dispatch`, `npm run collect` 실행 → `data/app.db` 변경분만 커밋(`[skip ci]`)·push. `concurrency: collect`(직렬화) + `pull --rebase` 재시도, 실패해도 DB 커밋 후 잡 상태로 건강도 반영. 관리자 콘솔이 dispatch 하는 정확한 파일명(`collect.yml`)으로 생성 → 기존 409 해소.
+- [x] Vercel 배포: `vercel.json` 불필요(ISR `revalidate`·`serverExternalPackages` 코드 반영). Git 연동으로 데이터 커밋 push가 재배포 트리거. README 운영 가이드(env 위치별 표·Actions Secrets/Variables·Vercel 연결·Deploy Hook 폴백·트러블슈팅) 작성.
+- [x] KPI 측정: 자동 산출 지표(비용/성공률/신규카드/중복)는 `getKpiSummary()` + `npm run kpi` CLI + `/admin` KPI 패널로 노출. LCP·한국어 품질·재배포 지연은 수동 점검 항목으로 안내.
 
 ### 핵심 파일
 
-`.github/workflows/collect.yml`, `vercel.json`(필요 시), `README.md`
+`.github/workflows/collect.yml`, `src/lib/db.ts`(`getKpiSummary`/`KpiSummary`), `scripts/kpi.ts`, `src/components/admin/KpiPanel.tsx`, `src/app/admin/page.tsx`, `package.json`(`kpi`), `README.md`, `src/__tests__/kpi.test.ts`
 
 ### Acceptance / Tests / Verify
 
-- [ ] cron + 수동 트리거 동작, 실행 후 `app.db` 커밋 → Vercel 배포.
-- [ ] (verify) 30일/주간 KPI 표 충족 여부 점검(아래).
+- [x] (test) `kpi.test.ts`(집계 6 tests — 성공률·partial·기간필터·일비용합산·일평균신규·중복불변식). 전체 81 tests green.
+- [x] (verify) `npm run lint`·`npm run typecheck`·`npm run build` 통과, `npm run kpi` 스모크(현 DB: 비용 PASS·성공률 PASS·중복 PASS, 신규 20건은 단일 dev run이라 FAIL 표시 — 실 cron 누적 시 충족 예상), `collect.yml` YAML 구조 검증.
+- [ ] (운영자) GitHub Secrets/Variables 등록 → cron + `/admin` "재수집" 트리거 동작, 실행 후 `app.db` 커밋 → Vercel 재배포 확인.
+- [ ] (운영자) 30일/주간 KPI 표 충족 여부 점검(아래).
 
 ---
 
@@ -233,15 +235,17 @@ Phase 0 (기반)
 
 ## 검증 지표 (PRD §9 KPI)
 
-| 항목              | 목표                              | 달성 |
-| ----------------- | --------------------------------- | :--: |
-| 일일 LLM 비용     | ≤ $0.30 (Haiku, 신규 50~100건/일) | [ ]  |
-| 파이프라인 성공률 | ≥ 95% (최근 30일 cron)            | [ ]  |
-| 일일 신규 카드    | ≥ 30건                            | [ ]  |
-| 피드 LCP          | ≤ 2.0s (데스크톱)                 | [ ]  |
-| 중복 제거         | 동일 기사 중복 0건                | [ ]  |
-| 한국어 요약 품질  | 주간 20건 샘플 통과율 ≥ 90%       | [ ]  |
-| 소스 변경 반영    | 콘솔 저장 → 재배포 ≤ 10분         | [ ]  |
+측정 수단은 Phase 6에서 구축 완료. 달성 여부는 실 cron 누적 데이터로 운영자가 점검한다.
+
+| 항목              | 목표                              | 측정 수단                            | 달성 |
+| ----------------- | --------------------------------- | ------------------------------------ | :--: |
+| 일일 LLM 비용     | ≤ $0.30 (Haiku, 신규 50~100건/일) | `npm run kpi` / `/admin` (자동)      | [ ]  |
+| 파이프라인 성공률 | ≥ 95% (최근 30일 cron)            | `npm run kpi` / `/admin` (자동)      | [ ]  |
+| 일일 신규 카드    | ≥ 30건                            | `npm run kpi` / `/admin` (자동)      | [ ]  |
+| 피드 LCP          | ≤ 2.0s (데스크톱)                 | Vercel Analytics / Lighthouse (수동) | [ ]  |
+| 중복 제거         | 동일 기사 중복 0건                | `npm run kpi`(dedup_key 불변식·자동) | [ ]  |
+| 한국어 요약 품질  | 주간 20건 샘플 통과율 ≥ 90%       | 샘플 리뷰 (수동)                     | [ ]  |
+| 소스 변경 반영    | 콘솔 저장 → 재배포 ≤ 10분         | Vercel 배포 타임스탬프 (수동)        | [ ]  |
 
 ## 전체 검증 방법
 
@@ -249,7 +253,8 @@ Phase 0 (기반)
 2. `npx tsx scripts/collect.ts` → 수집·가공 1회, `collection_runs` 비용 로그 확인.
 3. `npm run dev` → `/` 필터·정렬, `/article/[id]` 병기, `/search` 검색, `/admin`(로그인 후) 소스/대시보드 확인.
 4. `npm run lint && npm run typecheck && npm test` 통과.
-5. (배포) 테스트 repo에서 `workflow_dispatch` 수동 트리거 → `app.db` 커밋 → Vercel 미리보기 ISR 확인.
+5. `npm run kpi` → 자동 KPI(비용·성공률·신규·중복) 목표 대비 점검.
+6. (배포) 테스트 repo에서 `workflow_dispatch` 수동 트리거 → `app.db` 커밋 → Vercel 미리보기 ISR 확인.
 
 ## 주요 참조
 

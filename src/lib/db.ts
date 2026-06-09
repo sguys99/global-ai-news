@@ -134,10 +134,7 @@ function ftsMatchExpr(q: string): string {
  * 소스·태그 필터와 정렬을 함께 적용한다.
  * FTS 구문 오류나 결과 0건(공백 없는 한국어 부분일치 등) 시 LIKE 폴백.
  */
-export function searchArticles(
-  opts: SearchOptions,
-  conn: DatabaseType = getDb(),
-): ArticleCard[] {
+export function searchArticles(opts: SearchOptions, conn: DatabaseType = getDb()): ArticleCard[] {
   const q = (opts.q ?? "").trim();
   if (!q) return [];
 
@@ -218,6 +215,75 @@ export function getRecentRuns(limit = 20, conn: DatabaseType = getDb()): RunRow[
   return conn
     .prepare(`SELECT * FROM collection_runs ORDER BY started_at DESC LIMIT ?`)
     .all(limit) as RunRow[];
+}
+
+/**
+ * PRD §9 KPI 집계(최근 `days`일). collection_runs/articles 에서 자동 산출 가능한
+ * 지표만 다룬다. LCP·한국어 품질은 수동 측정(README 참조).
+ * - successRate: status ∈ {success, partial} 비율 (partial 도 카드를 생산하므로 성공으로 집계)
+ * - totalCost/maxDailyCost: 기간 합계 / 단일 UTC일 최대 비용(일 ≤ $0.30 점검)
+ * - avgDailyNew: 실행이 있던 UTC일 평균 신규 카드 수(≥ 30 점검)
+ * - duplicateKeys: 중복 dedup_key 개수(UNIQUE 제약상 항상 0이어야 함)
+ */
+export interface KpiSummary {
+  days: number;
+  runs: number;
+  successRate: number; // 0~1, 실행 0건이면 0
+  totalCost: number;
+  maxDailyCost: number;
+  avgDailyNew: number;
+  duplicateKeys: number;
+}
+
+export function getKpiSummary(days = 30, conn: DatabaseType = getDb()): KpiSummary {
+  // SQLite datetime 비교용 경계(ISO8601 문자열 사전식 비교와 호환).
+  const since = `-${days} days`;
+
+  const agg = conn
+    .prepare(
+      `SELECT
+         COUNT(*)                                                   AS runs,
+         SUM(CASE WHEN status IN ('success','partial') THEN 1 ELSE 0 END) AS ok,
+         COALESCE(SUM(est_cost_usd), 0)                             AS total_cost
+       FROM collection_runs
+       WHERE started_at >= datetime('now', ?)`,
+    )
+    .get(since) as { runs: number; ok: number | null; total_cost: number };
+
+  // UTC 일자별 비용/신규 — 최대 일비용, 일평균 신규.
+  const daily = conn
+    .prepare(
+      `SELECT date(started_at)         AS day,
+              SUM(est_cost_usd)         AS cost,
+              SUM(items_new)            AS new_cards
+         FROM collection_runs
+        WHERE started_at >= datetime('now', ?)
+        GROUP BY day`,
+    )
+    .all(since) as { day: string; cost: number; new_cards: number }[];
+
+  const maxDailyCost = daily.reduce((m, d) => Math.max(m, d.cost ?? 0), 0);
+  const avgDailyNew = daily.length
+    ? daily.reduce((s, d) => s + (d.new_cards ?? 0), 0) / daily.length
+    : 0;
+
+  const dup = conn
+    .prepare(
+      `SELECT COUNT(*) AS n FROM (
+         SELECT dedup_key FROM articles GROUP BY dedup_key HAVING COUNT(*) > 1
+       )`,
+    )
+    .get() as { n: number };
+
+  return {
+    days,
+    runs: agg.runs,
+    successRate: agg.runs ? (agg.ok ?? 0) / agg.runs : 0,
+    totalCost: agg.total_cost,
+    maxDailyCost,
+    avgDailyNew,
+    duplicateKeys: dup.n,
+  };
 }
 
 /** 단건 상세 조회. 없으면 null. */
