@@ -7,6 +7,7 @@
  * 외부 응답 스키마 변동에 대비해 누락 필드는 방어적으로 스킵한다.
  */
 import type { RawItem } from "../../../src/lib/types";
+import { loadPaperFilter } from "./paperFilter";
 import { stripHtml, type SourceConfig } from "./rss";
 
 /** content_raw 저장 용량 상한 (rss.ts 와 동일 정책). */
@@ -131,9 +132,11 @@ interface HfDailyPaper {
 
 /**
  * HuggingFace Daily Papers: 최신 논문 20건.
- * upvotes 는 reddit ups 와 동일 신호로 트렌딩에 반영한다.
+ * upvotes 는 reddit ups 와 동일 신호로 트렌딩에 반영하고,
+ * configs/paper-filter.json 의 hf.minUpvotes 미만 논문은 "유명한 것만" 필터로 제외한다.
  */
 export async function fetchHf(source: SourceConfig): Promise<RawItem[]> {
+  const { hf } = loadPaperFilter();
   const res = await fetch("https://huggingface.co/api/daily_papers?limit=20");
   if (!res.ok) throw new Error(`HuggingFace HTTP ${res.status}`);
   const data = (await res.json()) as HfDailyPaper[];
@@ -145,6 +148,7 @@ export async function fetchHf(source: SourceConfig): Promise<RawItem[]> {
     const id = paper?.id;
     const publishedAt = toIso(entry.publishedAt);
     if (!title || !id || !publishedAt) continue;
+    if ((paper?.upvotes ?? 0) < hf.minUpvotes) continue; // upvote 임계값 미달 제외
 
     items.push({
       sourceId: source.id,
