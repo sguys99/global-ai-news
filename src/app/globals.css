@@ -118,3 +118,16 @@
     @apply bg-background text-foreground font-sans;
   }
 }
+
+/* 접근성(mobile-plan Phase 6): 모션 민감 사용자는 transition/animation 무력화.
+ * DESIGN의 transform·color transition은 장식이므로 안전하게 제거 가능. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

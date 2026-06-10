@@ -7,7 +7,7 @@
 export function CategoryBadge({ category }: { category: string }) {
   if (!category) return null;
   return (
-    <span className="border-primary text-primary rounded-pill text-caption inline-flex w-fit items-center border px-2.5 py-0.5 font-medium">
+    <span className="border-primary text-primary rounded-pill text-caption inline-flex w-fit items-center border px-2.5 py-0.5 font-semibold">
       {category}
     </span>
   );

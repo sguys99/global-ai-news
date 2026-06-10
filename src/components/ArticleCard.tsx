@@ -25,7 +25,7 @@ export function ArticleCard({ article }: { article: ArticleCardType }) {
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="text-caption text-muted-foreground truncate font-medium">
+          <span className="text-caption text-muted-foreground truncate font-semibold">
             {article.source.name}
           </span>
           <CategoryBadge category={article.category} />
@@ -42,7 +42,7 @@ export function ArticleCard({ article }: { article: ArticleCardType }) {
       )}
       <TagChips tags={article.tags} max={3} />
       {article.trendingScore > 0 && (
-        <span className="text-caption text-primary mt-auto font-medium">
+        <span className="text-caption text-primary mt-auto font-semibold">
           Trending {article.trendingScore}
         </span>
       )}

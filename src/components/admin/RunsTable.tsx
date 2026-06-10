@@ -60,7 +60,7 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
               )}
             >
               <div className="flex items-baseline justify-between gap-2">
-                <span className="font-medium tabular-nums">{fmtTime(r.started_at)}</span>
+                <span className="font-semibold tabular-nums">{fmtTime(r.started_at)}</span>
                 <span className="text-muted-foreground">{statusLabel[r.status] ?? r.status}</span>
               </div>
               <Stat label="수집 / 신규" value={`${r.items_collected} / ${r.items_new}`} />
@@ -82,7 +82,7 @@ export function RunsTable({ runs }: { runs: RunRow[] }) {
       <div className="border-border hidden overflow-x-auto rounded-lg border md:block">
         <table className="text-caption w-full border-collapse">
           <thead className="text-muted-foreground border-border border-b">
-            <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-medium">
+            <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-semibold">
               <th>실행 시각</th>
               <th>상태</th>
               <th className="text-right">수집</th>

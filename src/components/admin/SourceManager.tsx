@@ -174,7 +174,7 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
       <div className="border-border overflow-x-auto rounded-lg border">
         <table className="text-caption w-full border-collapse">
           <thead className="text-muted-foreground border-border border-b">
-            <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-medium">
+            <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-semibold">
               <th>id</th>
               <th>name</th>
               <th>kind</th>

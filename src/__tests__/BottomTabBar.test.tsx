@@ -26,6 +26,14 @@ describe("BottomTabBar", () => {
     expect(search).toHaveClass("text-muted-foreground");
   });
 
+  it("활성 탭에만 aria-current=\"page\"를 부여한다(접근성, Phase 6)", () => {
+    usePathname.mockReturnValue("/");
+    render(<BottomTabBar />);
+
+    expect(screen.getByRole("link", { name: "피드" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "검색" })).not.toHaveAttribute("aria-current");
+  });
+
   it("검색(/search)에서 검색 탭이 active로 표시된다", () => {
     usePathname.mockReturnValue("/search");
     render(<BottomTabBar />);

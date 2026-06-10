@@ -57,7 +57,7 @@ export function FilterSheet({
         <SlidersHorizontal className="size-4" />
         필터
         {activeCount > 0 && (
-          <span className="bg-foreground text-background inline-flex size-5 items-center justify-center rounded-full text-[11px] font-medium">
+          <span className="bg-foreground text-background inline-flex size-5 items-center justify-center rounded-full text-[11px] font-semibold">
             {activeCount}
           </span>
         )}
@@ -101,7 +101,7 @@ export function FilterSheet({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="bg-foreground text-background inline-flex min-h-11 w-full items-center justify-center rounded-md px-4 py-2 text-[14px] font-medium transition-opacity hover:opacity-90"
+                className="bg-foreground text-background inline-flex min-h-11 w-full items-center justify-center rounded-md px-4 py-2 text-[14px] font-semibold transition-opacity hover:opacity-90"
               >
                 결과 보기
               </button>

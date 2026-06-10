@@ -79,13 +79,13 @@ export function KpiPanel({ kpi }: { kpi: KpiSummary }) {
       </div>
 
       <div className="border-border rounded-lg border p-4">
-        <p className="text-caption text-muted-foreground mb-2 font-medium">
+        <p className="text-caption text-muted-foreground mb-2 font-semibold">
           수동 점검 항목 (자동 측정 불가)
         </p>
         <ul className="text-caption text-muted-foreground flex flex-col gap-1">
           {manual.map((m) => (
             <li key={m.label} className="flex flex-wrap items-baseline gap-x-2">
-              <span className="text-foreground font-medium">{m.label}</span>
+              <span className="text-foreground font-semibold">{m.label}</span>
               <span>목표 {m.target}</span>
               <span>· {m.source}</span>
             </li>
