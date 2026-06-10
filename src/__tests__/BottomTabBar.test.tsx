@@ -59,4 +59,24 @@ describe("BottomTabBar", () => {
     expect(screen.getByRole("link", { name: "피드" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "검색" })).toHaveAttribute("href", "/search");
   });
+
+  it("관리자(/admin)에서는 admin 바 변형(피드/콘솔)을 노출하고 검색 탭은 숨긴다", () => {
+    usePathname.mockReturnValue("/admin");
+    render(<BottomTabBar />);
+
+    const console = screen.getByRole("link", { name: "콘솔" });
+    expect(console).toHaveAttribute("href", "/admin");
+    expect(console).toHaveClass("text-primary", "font-semibold");
+    expect(screen.getByRole("link", { name: "피드" })).toHaveAttribute("href", "/");
+    // 공개 검색 탭은 admin 바에 노출하지 않는다
+    expect(screen.queryByRole("link", { name: "검색" })).not.toBeInTheDocument();
+  });
+
+  it("로그인(/admin/login)에서는 렌더하지 않는다(null)", () => {
+    usePathname.mockReturnValue("/admin/login");
+    const { container } = render(<BottomTabBar />);
+
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+  });
 });

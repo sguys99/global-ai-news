@@ -85,7 +85,8 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
     if (editing && form.id === s.id) resetForm();
   }
 
-  const input = "text-body h-10 rounded-lg shadow-none";
+  // Input 프리미티브의 반응형 높이(h-11 md:h-9, Phase 2)를 그대로 상속받아 모바일 ≥44px 보장
+  const input = "text-body rounded-lg shadow-none";
 
   return (
     <div className="flex flex-col gap-5">
@@ -120,7 +121,7 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
           <select
             value={form.kind}
             onChange={(e) => setForm({ ...form, kind: e.target.value as SourceKind })}
-            className="border-input text-body h-10 rounded-lg border bg-transparent px-3"
+            className="border-input text-body h-11 rounded-lg border bg-transparent px-3 md:h-9"
           >
             {KINDS.map((k) => (
               <option key={k} value={k}>
@@ -206,12 +207,12 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
                 </td>
                 <td>{s.enabled ? "활성" : "비활성"}</td>
                 <td>
-                  <div className="flex justify-end gap-2">
+                  <div className="flex items-center justify-end gap-1">
                     <button
                       type="button"
                       onClick={() => onToggle(s)}
                       disabled={pending}
-                      className="text-primary hover:underline disabled:opacity-50"
+                      className="text-primary inline-flex min-h-11 items-center px-2 hover:underline disabled:opacity-50 md:min-h-0 md:px-1"
                     >
                       {s.enabled ? "비활성화" : "활성화"}
                     </button>
@@ -219,7 +220,7 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
                       type="button"
                       onClick={() => onEdit(s)}
                       disabled={pending}
-                      className="text-primary hover:underline disabled:opacity-50"
+                      className="text-primary inline-flex min-h-11 items-center px-2 hover:underline disabled:opacity-50 md:min-h-0 md:px-1"
                     >
                       수정
                     </button>
@@ -227,7 +228,7 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
                       type="button"
                       onClick={() => onDelete(s)}
                       disabled={pending}
-                      className="text-destructive hover:underline disabled:opacity-50"
+                      className="text-destructive inline-flex min-h-11 items-center px-2 hover:underline disabled:opacity-50 md:min-h-0 md:px-1"
                     >
                       삭제
                     </button>
