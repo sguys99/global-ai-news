@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { ArticleCard } from "@/components/ArticleCard";
 import { FilterBar } from "@/components/FilterBar";
+import { FilterSheet } from "@/components/mobile/FilterSheet";
 import { SearchInput } from "@/components/SearchInput";
 import { getActiveTags, getSourcesWithCounts, searchArticles, type SearchOptions } from "@/lib/db";
 
@@ -37,7 +38,11 @@ export default async function SearchPage({
         <SearchInput />
       </Suspense>
 
-      <FilterBar current={options} sources={sources} tags={tags} basePath="/search" />
+      {/* 데스크톱: 인라인 FilterBar / 모바일: 바텀시트 트리거 (mobile-plan Phase 4) */}
+      <div className="hidden md:block">
+        <FilterBar current={options} sources={sources} tags={tags} basePath="/search" />
+      </div>
+      <FilterSheet current={options} sources={sources} tags={tags} basePath="/search" />
 
       {!hasQuery ? (
         <p className="text-muted-foreground text-body">

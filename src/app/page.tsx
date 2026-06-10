@@ -1,5 +1,6 @@
 import { ArticleCard } from "@/components/ArticleCard";
 import { FilterBar } from "@/components/FilterBar";
+import { FilterSheet } from "@/components/mobile/FilterSheet";
 import { getActiveTags, getFeed, getSourcesWithCounts, type FeedOptions } from "@/lib/db";
 
 /** 배치 수집 주기에 맞춰 1시간마다 ISR 재검증. */
@@ -31,7 +32,11 @@ export default async function Home({
         매일 한 곳에서 보는 글로벌 AI 뉴스
       </h1>
 
-      <FilterBar current={options} sources={sources} tags={tags} />
+      {/* 데스크톱: 인라인 FilterBar / 모바일: 바텀시트 트리거 (mobile-plan Phase 4) */}
+      <div className="hidden md:block">
+        <FilterBar current={options} sources={sources} tags={tags} />
+      </div>
+      <FilterSheet current={options} sources={sources} tags={tags} />
 
       {articles.length === 0 ? (
         <p className="text-muted-foreground text-body">
