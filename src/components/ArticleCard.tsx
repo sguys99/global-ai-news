@@ -21,7 +21,7 @@ export function ArticleCard({ article }: { article: ArticleCardType }) {
   return (
     <Link
       href={`/article/${article.id}`}
-      className="bg-card border-border hover:border-foreground flex flex-col gap-3 rounded-lg border p-6 transition-colors"
+      className="bg-card border-border hover:border-foreground flex flex-col gap-3 rounded-lg border p-4 transition-colors md:p-6"
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">

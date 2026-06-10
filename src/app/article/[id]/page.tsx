@@ -20,8 +20,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
   const title = article.titleKo || article.titleOriginal;
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-12">
-      <Link href="/" className="text-caption text-muted-foreground hover:text-primary w-fit">
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6 md:px-6 md:py-12">
+      <Link
+        href="/"
+        className="text-caption text-muted-foreground hover:text-primary bg-background/80 sticky top-13 z-10 -mx-4 px-4 py-3 backdrop-blur md:static md:mx-0 md:w-fit md:bg-transparent md:p-0 md:backdrop-blur-none"
+      >
         ← 피드로
       </Link>
 
@@ -53,7 +56,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
         href={article.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="bg-primary text-primary-foreground rounded-pill text-body w-fit px-6 py-3 font-medium"
+        className="bg-primary text-primary-foreground rounded-pill text-body flex w-full items-center justify-center px-6 py-3 font-medium md:inline-flex md:w-fit"
       >
         원문 보기 →
       </a>

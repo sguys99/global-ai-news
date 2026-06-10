@@ -26,7 +26,7 @@ export default async function Home({
   const tags = getActiveTags(8);
 
   return (
-    <main className="mx-auto flex max-w-[1440px] flex-col gap-8 px-6 py-12">
+    <main className="mx-auto flex max-w-[1440px] flex-col gap-8 px-4 py-6 md:px-6 md:py-12">
       <h1 className="text-display-md font-semibold tracking-tight">
         매일 한 곳에서 보는 글로벌 AI 뉴스
       </h1>
