@@ -1,2 +1,0 @@
-- [커밋/푸시 금지](feedback_no_auto_commit.md) — 명시적 지시 없이 git commit/push 절대 금지
-- [별도 브랜치 금지](feedback_no_separate_branch.md) — 임의 feature 브랜치 금지, main에서 직접 작업
