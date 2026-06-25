@@ -2,13 +2,16 @@
 
 **Daily AI Brief** — 글로벌·한국의 AI/IT 뉴스를 매일 1회 자동 수집하고 LLM으로 한국어 요약·분류·중요도 평가하여 카드형 피드로 제공하는, 토큰 비용을 최소화한 큐레이션 웹서비스입니다.
 
-운영비 ≈ 0을 목표로 **SQLite 파일 DB + GitHub Actions cron + Vercel 정적/ISR** 위에서 동작하며, 신규 항목만 LLM 단일 호출로 가공해 토큰 비용을 구조적으로 절감합니다.
+운영비 ≈ 0을 목표로 **SQLite 파일 DB + GitHub Actions cron + GitHub Pages 정적 배포(전환 진행 중)** 위에서 동작하며, 신규 항목만 LLM 단일 호출로 가공해 토큰 비용을 구조적으로 절감합니다.
 
 - 요구사항 원천: [docs/PRD.md](docs/PRD.md) (Daily AI Brief PRD v1.0)
 - 개발 계획·진행 현황: [docs/WORK-PLAN.md](docs/WORK-PLAN.md)
+- 배포 전환: [docs/PRD-github-pages.md](docs/PRD-github-pages.md) (GitHub Pages 배포 전환 PRD v1.0)
 - 디자인 토큰/원칙: [DESIGN.md](DESIGN.md)
 
 > **현재 구현 단계:** Phase 0~6 전체 완료. 수집 파이프라인·LLM 가공·검색·Admin 콘솔·GitHub Actions 자동화까지 모두 구현됨. 단계별 상세·체크리스트는 [docs/WORK-PLAN.md](docs/WORK-PLAN.md)를 단일 출처로 참조합니다.
+
+> **배포 전환 진행 중 (`deploy/github-pages`):** Vercel → GitHub Pages 정적 호스팅 전환 작업 중입니다. 목표 아키텍처는 본 문서에 반영했으나 일부는 아직 코드 미구현 상태입니다(`output:'export'`, `deploy.yml`, 클라이언트 검색 등) — 아래 "(전환 후)"/"(예정)" 마커와 [docs/PRD-github-pages.md](docs/PRD-github-pages.md)를 참조하세요. 공개 3페이지(피드/상세/검색)·디자인·데이터 모델·수집·LLM 가공은 변경하지 않습니다.
 
 ## 기술 스택
 
@@ -23,7 +26,8 @@
 - **Linter/Formatter**: ESLint (next flat config), Prettier (+ prettier-plugin-tailwindcss)
 - **Test**: Vitest + React Testing Library (jsdom)
 - **Runtime**: Node.js 20+
-- **인프라**: GitHub Actions cron(일 1회, `0 21 * * *` UTC = 06:00 KST) → `data/app.db` git 커밋 → Vercel ISR 자동 배포
+- **인프라(전환 후 목표)**: GitHub Actions cron(일 1회, `0 21 * * *` UTC = 06:00 KST) → `data/app.db` git 커밋 → `deploy.yml`이 정적 export(`next build`, `output:'export'`) → GitHub Pages 배포
+  - _현재 코드는 아직 `output:'standalone'` + Vercel ISR 재배포 전제입니다(전환 진행 중)._
 
 ## 디렉토리 구조
 
@@ -32,14 +36,14 @@
 ├── src/                          # 웹 애플리케이션 소스
 │   ├── app/                      # Next.js App Router
 │   │   ├── layout.tsx
-│   │   ├── page.tsx              # 피드(홈, /) — ISR
+│   │   ├── page.tsx              # 피드(홈, /) — SSG(빌드타임) + 클라 필터 (전환 후)
 │   │   ├── globals.css           # Tailwind v4 + DESIGN.md 디자인 토큰
-│   │   ├── article/[id]/page.tsx # 상세(/article/[id]) — SSG+ISR
-│   │   ├── search/page.tsx       # 검색(/search) — 동적
-│   │   ├── admin/
+│   │   ├── article/[id]/page.tsx # 상세(/article/[id]) — SSG generateStaticParams (전환 후)
+│   │   ├── search/page.tsx       # 검색(/search) — 정적 셸 + 클라이언트 검색 (전환 후)
+│   │   ├── admin/                # 운영 콘솔 — 로컬 전용(배포 제외, 전환 후)
 │   │   │   ├── page.tsx          # 운영 콘솔(/admin) — SSR+인증
 │   │   │   └── login/page.tsx    # 로그인
-│   │   └── api/
+│   │   └── api/                  # Route Handler — 로컬 전용(배포 제외, 전환 후)
 │   │       ├── health/route.ts   # 헬스체크
 │   │       └── admin/
 │   │           ├── login/route.ts
@@ -62,9 +66,10 @@
 │   │   ├── sources.ts            # sources.json 로컬 읽기/쓰기
 │   │   ├── config.ts             # configs/ 로더
 │   │   └── utils.ts              # shadcn cn() 유틸
-│   └── middleware.ts             # /admin/* 인증 보호
+│   └── middleware.ts             # /admin/* 인증 보호 — 로컬 전용(정적 export 시 미산출, 전환 후)
 ├── scripts/                      # 배치 파이프라인 (tsx 실행)
 │   ├── collect.ts                # 수집→전처리→LLM→SQLite 오케스트레이터
+│   ├── export-search-index.ts    # 검색 인덱스 JSON 생성 (예정)
 │   ├── kpi.ts                    # KPI CLI (npm run kpi)
 │   └── lib/
 │       ├── schema.ts             # CATEGORIES enum, articleEnrichmentSchema(Zod)
@@ -86,11 +91,12 @@
 │       ├── enrich.system.md      # 시스템 프롬프트 (캐싱)
 │       └── enrich.fewshot.json   # few-shot 예시 (캐싱)
 ├── .github/workflows/
-│   └── collect.yml               # cron 일 1회 + workflow_dispatch
+│   ├── collect.yml               # cron 일 1회 + workflow_dispatch
+│   └── deploy.yml                # 정적 빌드 → GitHub Pages 배포 (예정)
 ├── data/
 │   └── app.db                    # SQLite DB (db:init/collect로 생성)
-├── docs/                         # PRD.md, WORK-PLAN.md
-├── public/                       # 정적 자산
+├── docs/                         # PRD.md, PRD-github-pages.md, WORK-PLAN.md
+├── public/                       # 정적 자산 (search-index.json: 빌드 생성, 예정)
 └── DESIGN.md                     # Apple 기반 디자인 토큰/가이드
 ```
 
@@ -103,18 +109,20 @@
 3. **LLM 통합 가공** — 신규 1건당 `generateObject`(Haiku) **단일 호출**로 한국어 제목·요약·카테고리·태그·중요도를 Zod 스키마로 생성. Anthropic prompt caching 적용.
 4. **저장** — `better-sqlite3`로 `articles`/`tags`/`article_tags` upsert + 실행 통계(`llm_calls`/토큰/비용/상태)를 `collection_runs`에 1행 기록.
 
-결과 `data/app.db`를 git 커밋(`[skip ci]`) → Vercel이 ISR로 정적 재생성.
+결과 `data/app.db`를 git 커밋 → **(전환 후)** `deploy.yml`(GitHub Actions)이 정적 export(`output:'export'`)로 빌드해 `out/`을 생성하고 GitHub Pages에 배포. `[skip ci]`/트리거 정책은 배포 워크플로에 맞춰 조정합니다(PRD-github-pages.md §3.6). _(현재 코드는 `[skip ci]` 커밋 → Vercel ISR 재배포 전제입니다.)_
 
 ### 라우트 & 렌더링
 
-| 경로                                       | 페이지                    | 렌더링 / 접근   | 상태             |
-| ------------------------------------------ | ------------------------- | --------------- | ---------------- |
-| `/`                                        | 피드(홈)                  | ISR · 공개      | 구현됨 |
-| `/article/[id]`                            | 상세                      | SSG+ISR · 공개  | 구현됨 |
-| `/search`                                  | 검색                      | 동적 · 공개     | 구현됨 |
-| `/admin`                                   | 운영 콘솔                 | SSR · 인증 필요 | 구현됨 |
-| `/api/admin/sources`, `/api/admin/collect` | 소스 커밋 / 재수집 트리거 | serverless      | 구현됨 |
-| `/api/health`                              | 헬스체크                  | 동적            | 구현됨 |
+렌더링/접근 열은 **전환 후 목표** 기준입니다(현재 코드는 Vercel 런타임 기준 — 위 전환 배너 참조).
+
+| 경로                                       | 페이지                    | 렌더링 / 접근 (전환 후)        | 배포 포함     |
+| ------------------------------------------ | ------------------------- | ------------------------------ | ------------- |
+| `/`                                        | 피드(홈)                  | SSG(빌드타임) + 클라 필터 · 공개 | ✅            |
+| `/article/[id]`                            | 상세                      | SSG(generateStaticParams) · 공개 | ✅            |
+| `/search`                                  | 검색                      | 정적 셸 + 클라이언트 검색 · 공개 | ✅            |
+| `/admin`                                   | 운영 콘솔                 | 로컬 전용(`next dev`) · 인증    | ❌ 배포 제외  |
+| `/api/admin/sources`, `/api/admin/collect` | 소스 커밋 / 재수집 트리거 | 로컬 전용                       | ❌ 배포 제외  |
+| `/api/health`                              | 헬스체크                  | 로컬 전용                       | ❌ 배포 제외  |
 
 ## 개발 워크플로우
 
@@ -175,12 +183,13 @@ docker compose up --build
 
 | 변수                                        | 용도                                              | 필수 여부              |
 | ------------------------------------------- | ------------------------------------------------- | ---------------------- |
-| `ANTHROPIC_API_KEY`                         | LLM 가공 호출                                     | 필수                   |
+| `ANTHROPIC_API_KEY`                         | LLM 가공 호출 (수집 `collect.yml` 전용 — 변화 없음) | 필수                   |
 | `LLM_MODEL`                                 | 모델 전환 (기본 `claude-haiku-4-5`)               | 선택                   |
-| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` | Reddit OAuth2 `client_credentials`                | 선택 (Reddit 수집 시)  |
-| `GITHUB_PAT`                                | `configs/sources.json` 커밋 + `workflow_dispatch` | 선택 (GitHub 연동 시)  |
-| `GITHUB_REPO`                               | `owner/repo`                                      | 선택 (GitHub 연동 시)  |
-| `ADMIN_PASSWORD`                            | 운영자 인증                                       | 필수 (Admin 콘솔 사용) |
+| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` | Reddit OAuth2 `client_credentials` (수집 전용 — 변화 없음) | 선택 (Reddit 수집 시)  |
+| `GITHUB_PAT`                                | `configs/sources.json` 커밋 + `workflow_dispatch` — **로컬 admin 전용(배포 불필요)** | 선택 (GitHub 연동 시)  |
+| `GITHUB_REPO`                               | `owner/repo` — **로컬 admin 전용(배포 불필요)**    | 선택 (GitHub 연동 시)  |
+| `ADMIN_PASSWORD`                            | 운영자 인증 — **로컬 admin 전용(배포 불필요)**     | 필수 (로컬 Admin 사용) |
+| `STATIC_EXPORT`                             | 빌드 시 `output:'export'` 토글 + admin/api/middleware 배포 제외 (예정) | 선택 (정적 배포 시)    |
 
 ## 데이터 모델
 
