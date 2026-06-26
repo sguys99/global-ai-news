@@ -1,28 +1,12 @@
-import { ArticleCard } from "@/components/ArticleCard";
-import { FilterBar } from "@/components/FilterBar";
-import { FilterSheet } from "@/components/mobile/FilterSheet";
-import { getActiveTags, getFeed, getSourcesWithCounts, type FeedOptions } from "@/lib/db";
+import { Suspense } from "react";
+import { FeedClient } from "@/components/FeedClient";
+import { FeedView } from "@/components/FeedView";
+import { getActiveTags, getFeed, getSourcesWithCounts } from "@/lib/db";
 
-/** 배치 수집 주기에 맞춰 1시간마다 ISR 재검증. */
-export const revalidate = 3600;
-
-function parseOptions(sp: Record<string, string | string[] | undefined>): FeedOptions {
-  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-  const sort = one(sp.sort);
-  return {
-    source: one(sp.source) || undefined,
-    tag: one(sp.tag) || undefined,
-    sort: sort === "latest" || sort === "importance" ? sort : undefined,
-  };
-}
-
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const options = parseOptions(await searchParams);
-  const articles = getFeed(options);
+export default function Home() {
+  // 빌드타임 1회 SSG: 전체 카드·소스·태그를 조회해 클라이언트 셸에 넘긴다.
+  // 필터/정렬은 FeedClient가 URL 쿼리로 브라우저에서 수행한다(정적 export 제약).
+  const articles = getFeed();
   const sources = getSourcesWithCounts();
   const tags = getActiveTags(8);
 
@@ -32,25 +16,16 @@ export default async function Home({
         매일 한 곳에서 보는 글로벌 AI 뉴스
       </h1>
 
-      {/* 데스크톱: 인라인 FilterBar / 모바일: 바텀시트 트리거 (mobile-plan Phase 4) */}
-      <div className="hidden md:block">
-        <FilterBar current={options} sources={sources} tags={tags} />
-      </div>
-      <FilterSheet current={options} sources={sources} tags={tags} />
-
-      {articles.length === 0 ? (
-        <p className="text-muted-foreground text-body">
-          {options.source || options.tag
-            ? "조건에 맞는 기사가 없습니다. 필터를 해제해 보세요."
-            : "아직 수집된 기사가 없습니다. `npm run collect` 실행 후 새로고침하세요."}
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {articles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
-          ))}
-        </div>
-      )}
+      {/*
+       * useSearchParams는 정적 export에서 Suspense 경계가 필수이고, 해당 하위 트리는
+       * 클라이언트 전용으로 bailout된다. fallback에 기본 옵션 FeedView(서버 렌더)를 두어
+       * 정적 HTML에 카드가 담기도록 한다(LCP·SEO). 기본 URL에선 fallback==클라 결과라 무깜빡임.
+       */}
+      <Suspense
+        fallback={<FeedView articles={articles} sources={sources} tags={tags} options={{}} />}
+      >
+        <FeedClient articles={articles} sources={sources} tags={tags} />
+      </Suspense>
     </main>
   );
 }

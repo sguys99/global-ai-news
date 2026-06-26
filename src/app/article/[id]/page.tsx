@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CategoryBadge, TagChips } from "@/components/ArticleMeta";
-import { getArticle } from "@/lib/db";
+import { getAllArticleIds, getArticle } from "@/lib/db";
+
+/** 정적 export: 전 기사 상세를 빌드타임에 전수 사전 생성한다. */
+export function generateStaticParams() {
+  return getAllArticleIds().map((id) => ({ id: String(id) }));
+}
+
+/** 목록 밖 id는 산출물에 없어 정적 404(generateStaticParams로만 생성). */
+export const dynamicParams = false;
 
 /** ISO8601 → 'YYYY.MM.DD' 표기. */
 function formatDate(iso: string): string {

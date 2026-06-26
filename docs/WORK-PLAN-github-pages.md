@@ -32,7 +32,7 @@
 ## 진행 현황 개요
 
 - [x] **Phase 0** — 정적 export 기반 설정 (PRD §3.1)
-- [ ] **Phase 1** — 피드·상세 정적화 (PRD §3.2, §3.3)
+- [x] **Phase 1** — 피드·상세 정적화 (PRD §3.2, §3.3)
 - [ ] **Phase 2** — 검색 클라이언트 전환 (PRD §3.4)
 - [ ] **Phase 3** — admin/api/middleware 배포 분리 (PRD §3.5)
 - [ ] **Phase 4** — 자동 빌드·배포 파이프라인 (PRD §3.6)
@@ -91,51 +91,52 @@
 
 - **필터/정렬 = URL 쿼리 기반 클라이언트 필터링(서버 분기 제거).** [FilterBar](../src/components/FilterBar.tsx)·[FilterSheet](../src/components/mobile/FilterSheet.tsx)의 `Link`/`href` 네비게이션(`?tag=&source=&sort=`)은 **그대로 유지**한다(공유 가능한 URL·칩 시각·active 표현 불변). 정적 export에서 `/?tag=x`는 동일한 `out/index.html`을 서빙하고, 클라이언트가 쿼리를 읽어 메모리상 전체 카드 목록을 필터/정렬한다. → 두 컴포넌트는 **무변경**이고, 피드의 옵션 파싱·데이터 렌더만 클라이언트로 옮긴다.
 - **필터/정렬 의미 단일 출처 = `src/lib/feedFilter.ts`(신규 순수 함수).** [db.ts](../src/lib/db.ts)의 `buildFilters`(소스·태그)와 `orderByFor`(3종 정렬: 기본 `trending desc → published desc`, `latest` = `published desc`, `importance` = `importance desc → trending desc`) **의미를 `ArticleCard[]` 대상 순수 함수로 1:1 이전**한다. 빌드(서버 SQL)와 런타임(클라 JS)의 동작 일치를 단위 테스트로 고정하고, Phase 2 검색 결과 정렬에도 재활용한다.
-- **피드 렌더 = 서버(빌드 데이터) + 클라이언트 셸.** [page.tsx](../src/app/page.tsx)는 빌드타임에 전체 카드(`getFeed({})`)·소스·태그를 조회해 `<FeedClient>`(`"use client"`)에 props로 넘기는 서버 컴포넌트로 남고, `FeedClient`가 `useSearchParams()`로 현재 옵션을 읽어 `feedFilter`로 거른 뒤 FilterBar/FilterSheet/카드 그리드/빈 상태를 렌더한다. **`useSearchParams`는 정적 export에서 `<Suspense>` 경계가 필수**(누락 시 빌드 에러 `should be wrapped in a suspense boundary`) → `page.tsx`에서 감싼다.
+- **피드 렌더 = 서버(빌드 데이터) + 클라이언트 셸.** [page.tsx](../src/app/page.tsx)는 빌드타임에 전체 카드(`getFeed()`)·소스·태그를 조회하는 서버 컴포넌트로 남는다. **`useSearchParams`는 정적 export에서 `<Suspense>` 경계가 필수**(누락 시 빌드 에러 `should be wrapped in a suspense boundary`)이고, 해당 하위 트리는 **클라이언트 전용으로 bailout**된다 → `fallback`이 그대로 정적 HTML이 되므로 `fallback={null}`이면 **피드가 빈 채로 정적 생성**(LCP·SEO·"피드 정적 생성" 위배). 따라서 렌더를 두 조각으로 나눈다:
+  - `src/components/FeedView.tsx`(신규, 훅 없는 프레젠테이션) — `options`를 받아 `feedFilter` 적용 후 FilterBar/FilterSheet/카드 그리드/빈 상태를 렌더. **서버·클라 공용**.
+  - `src/components/FeedClient.tsx`(신규, `"use client"`) — `useSearchParams()`로 옵션 파싱 → `<FeedView>`.
+  - `page.tsx`: `<Suspense fallback={<FeedView options={{}} …/>}><FeedClient …/></Suspense>`. fallback(서버 렌더 기본 피드)이 정적 HTML에 카드를 담고, 하이드레이션 후 FeedClient가 URL 쿼리로 재필터링한다. 기본 URL에선 fallback==클라 결과라 무깜빡임.
 - **상세 = `generateStaticParams` 전수 + `dynamicParams = false`.** 전 기사 `id`를 사전 생성하고, 목록 밖 id는 산출물에 없어 정적 404가 된다. 페이지 내부 로직(요약/원문 병기·태그·원문 새 탭)은 무변경.
 
 ### 작업
 
 **1.1 DB 헬퍼 — [src/lib/db.ts](../src/lib/db.ts)**
 
-- [ ] `getAllArticleIds(conn: DatabaseType = getDb()): number[]` 추가 — `SELECT id FROM articles`(readonly). 정렬 불필요(빌드 파라미터 열거 전용). 기존 함수는 **추가만, 수정 없음**.
+- [x] `getAllArticleIds(conn: DatabaseType = getDb()): number[]` 추가 — `SELECT id FROM articles`(readonly). 정렬 불필요(빌드 파라미터 열거 전용). 기존 함수는 **추가만, 수정 없음**.
 
 **1.2 상세 정적화 — [src/app/article/[id]/page.tsx](../src/app/article/[id]/page.tsx)**
 
-- [ ] `export function generateStaticParams()` 추가 → `getAllArticleIds().map((id) => ({ id: String(id) }))`.
-- [ ] `export const dynamicParams = false` 추가 — 목록 밖 id는 빌드 산출에 없어 정적 404(기존 `notFound()` 가드 유지).
-- [ ] 본문(요약+원문 병기·`TagChips`·원문 `target="_blank"`)·`getArticle(Number(id))` 호출은 **변경 없음**.
+- [x] `export function generateStaticParams()` 추가 → `getAllArticleIds().map((id) => ({ id: String(id) }))`.
+- [x] `export const dynamicParams = false` 추가 — 목록 밖 id는 빌드 산출에 없어 정적 404(기존 `notFound()` 가드 유지).
+- [x] 본문(요약+원문 병기·`TagChips`·원문 `target="_blank"`)·`getArticle(Number(id))` 호출은 **변경 없음**.
 
 **1.3 필터/정렬 순수 함수 — `src/lib/feedFilter.ts`(신규)**
 
-- [ ] `filterAndSortFeed(articles: ArticleCard[], opts: FeedOptions): ArticleCard[]` — `opts.source`(=`source.id` 일치)·`opts.tag`(`tags` 배열 포함) 필터 후 `opts.sort`별 정렬. 정렬 비교자는 `db.ts orderByFor`와 1:1(동점 시 보조 키까지 동일). `FeedOptions`는 `@/lib/db`에서 재사용(중복 타입 금지).
+- [x] `filterAndSortFeed(articles: ArticleCard[], opts: FeedOptions): ArticleCard[]` — `opts.source`(=`source.id` 일치)·`opts.tag`(`tags` 배열 포함) 필터 후 `opts.sort`별 정렬. 정렬 비교자는 `db.ts orderByFor`와 1:1(동점 시 보조 키까지 동일). `FeedOptions`는 `@/lib/db`에서 재사용(중복 타입 금지). 입력 배열 불변(`filter`→`sort` 새 배열).
 
-**1.4 피드 클라이언트 셸 — `src/components/FeedClient.tsx`(신규, `"use client"`)**
+**1.4 피드 프레젠테이션 + 클라이언트 셸 — `FeedView.tsx`·`FeedClient.tsx`(신규)**
 
-- [ ] props: `articles: ArticleCard[]`, `sources`, `tags`. `useSearchParams()`로 `{ source, tag, sort }` 파싱(현재 [page.tsx](../src/app/page.tsx#L9)의 `parseOptions` 로직 이전) → `filterAndSortFeed(articles, opts)`.
-- [ ] FilterBar(데스크톱 `hidden md:block`)·FilterSheet(모바일)·카드 그리드·빈 상태(필터 유무 분기 메시지)를 **현재 `page.tsx`와 동일 마크업**으로 렌더. `current`에 파싱된 옵션을 그대로 전달(칩 active 표현 보존).
+- [x] `src/components/FeedView.tsx`(훅 없음, 서버·클라 공용) — `options`를 받아 `filterAndSortFeed` 적용 후 FilterBar(`hidden md:block`)·FilterSheet·카드 그리드·빈 상태를 **기존 `page.tsx`와 동일 마크업**으로 렌더.
+- [x] `src/components/FeedClient.tsx`(`"use client"`) — `useSearchParams()`로 `{ source, tag, sort }` 파싱(기존 `parseOptions` 로직 이전) → `<FeedView>`. Link 네비게이션으로 쿼리가 바뀌면 재필터링.
 
 **1.5 피드 페이지 SSG화 — [src/app/page.tsx](../src/app/page.tsx)**
 
-- [ ] `export const revalidate = 3600` **제거**(빌드타임 1회 SSG).
-- [ ] 서버 컴포넌트 유지하되 `searchParams` prop·`parseOptions` 제거. 빌드타임 `getFeed({})`(전량)·`getSourcesWithCounts()`·`getActiveTags(8)` 조회 → `<h1>` 제목(서버) + `<Suspense fallback={…}><FeedClient … /></Suspense>` 렌더.
+- [x] `export const revalidate = 3600` **제거**(빌드타임 1회 SSG).
+- [x] `searchParams` prop·`parseOptions` 제거. 빌드타임 `getFeed()`(전량)·`getSourcesWithCounts()`·`getActiveTags(8)` 조회 → `<h1>` 제목(서버) + `<Suspense fallback={<FeedView options={{}} …/>}><FeedClient …/></Suspense>`. fallback이 정적 HTML에 카드를 담는다(빈 fallback 금지).
 
 ### 핵심 파일
 
-신규: `src/lib/feedFilter.ts`, `src/components/FeedClient.tsx`.
+신규: `src/lib/feedFilter.ts`, `src/components/FeedView.tsx`, `src/components/FeedClient.tsx`.
 수정: `src/lib/db.ts`(`getAllArticleIds` 추가), `src/app/article/[id]/page.tsx`(`generateStaticParams`·`dynamicParams`), `src/app/page.tsx`(revalidate 제거·셸화).
 **무변경(불변):** [FilterBar](../src/components/FilterBar.tsx)·[FilterSheet](../src/components/mobile/FilterSheet.tsx)·[ArticleCard](../src/components/ArticleCard.tsx)·[ArticleMeta](../src/components/ArticleMeta.tsx)의 `Link` 네비게이션·칩 시각·카드/상세 마크업·DESIGN 토큰·태그 이동·원문 새 탭, `db.ts` 기존 함수 시그니처.
 
 ### Acceptance / Tests / Verify
 
-- [ ] `npm run build` 시 모든 기사 상세가 `out/article/<id>/index.html`로 정적 생성된다(개수 = `getAllArticleIds().length`).
-- [ ] 피드가 ISR 없이 정적 생성되고 최신 `data/app.db` 내용이 반영된다(`out/index.html`).
-- [ ] 서브경로 서빙(`npx serve out` → `/global-ai-news`)에서 태그·소스 필터 + 최신순/중요도순 정렬이 원본과 동일하게 동작한다(클라 필터링, URL 쿼리 갱신·공유).
-- [ ] 카드 클릭 → `/article/[id]` 정적 페이지 이동, 한국어 요약·원문 병기·태그 이동·원문 새 탭 정상.
-- [ ] 존재하지 않는 id(`/article/999999`)는 정적 404.
-- [ ] (test) `getAllArticleIds` 스모크(전 id 반환·readonly) — [getFeed.test.ts](../src/__tests__/getFeed.test.ts)의 in-memory 시드 패턴 재사용.
-- [ ] (test) `feedFilter` 단위 — `getFeed.test.ts`의 3종 정렬·소스/태그/복합 필터 케이스를 `ArticleCard[]` 입력으로 미러링해 db 의미와 동일 결과 검증.
-- [ ] `npm run lint && npm run typecheck && npm test` 통과.
+- [x] 빌드 시 모든 기사 상세가 `out/article/<id>/index.html`로 정적 생성된다(개수 = `getAllArticleIds().length` = 170, SSG). _Phase 1 단독 검증은 admin/api/search를 임시 제외하고 `npm run build`(170 SSG·`out/` 정상). 전체 빌드는 Phase 2(search)·Phase 3(api 제외) 완료 후 통과._
+- [x] 피드가 ISR 없이 정적 생성되고 최신 `data/app.db` 내용이 반영된다(`out/index.html`에 카드 170개·`bg-card`·`<h2>` 확인 — fallback 서버 렌더).
+- [x] 카드 링크에 `basePath`가 baked-in 된다(`href="/global-ai-news/article/<id>"` 170건), `better-sqlite3` 클라이언트 chunk 미포함(grep 0건). _필터/정렬·서브경로 인터랙션 점검은 Phase 5에서 `npx serve out`로 종합._
+- [x] (test) `getAllArticleIds` 스모크(전 id 반환·빈 DB·readonly) — [getAllArticleIds.test.ts](../src/__tests__/getAllArticleIds.test.ts).
+- [x] (test) `feedFilter` 단위 — `getFeed.test.ts`의 3종 정렬·소스/태그/복합 필터를 `ArticleCard[]` 입력으로 미러링 + 입력 불변 검증 — [feedFilter.test.ts](../src/__tests__/feedFilter.test.ts).
+- [x] `npm run lint && npm run typecheck && npm test` 통과(119 tests).
 
 ### 의존성·주의
 

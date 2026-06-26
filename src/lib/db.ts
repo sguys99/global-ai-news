@@ -291,3 +291,12 @@ export function getArticle(id: number): ArticleCard | null {
   const row = getDb().prepare(`${ARTICLE_SELECT} WHERE a.id = ?`).get(id) as ArticleRow | undefined;
   return row ? toArticleCard(row) : null;
 }
+
+/**
+ * 전 기사 id 열거(readonly). 정적 export의 `generateStaticParams`에서
+ * 상세 페이지 전수 사전 생성용으로만 쓴다(정렬 불필요).
+ */
+export function getAllArticleIds(conn: DatabaseType = getDb()): number[] {
+  const rows = conn.prepare(`SELECT id FROM articles`).all() as { id: number }[];
+  return rows.map((r) => r.id);
+}
