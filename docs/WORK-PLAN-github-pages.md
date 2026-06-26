@@ -31,7 +31,7 @@
 
 ## 진행 현황 개요
 
-- [ ] **Phase 0** — 정적 export 기반 설정 (PRD §3.1)
+- [x] **Phase 0** — 정적 export 기반 설정 (PRD §3.1)
 - [ ] **Phase 1** — 피드·상세 정적화 (PRD §3.2, §3.3)
 - [ ] **Phase 2** — 검색 클라이언트 전환 (PRD §3.4)
 - [ ] **Phase 3** — admin/api/middleware 배포 분리 (PRD §3.5)
@@ -63,9 +63,9 @@
 
 ### 작업
 
-- [ ] [next.config.ts](../next.config.ts): `output:'export'`를 **기본값**으로 설정 + `basePath:'/global-ai-news'`, `assetPrefix:'/global-ai-news/'`, `images:{unoptimized:true}`, `trailingSlash:true`. 기존 `output:'standalone'`·`serverExternalPackages` **제거**.
-- [ ] `better-sqlite3`가 빌드타임 전용(런타임 번들 미포함)임을 확인 — 정적 export에선 서버 런타임이 없으므로 `serverExternalPackages` 없이도 정상.
-- [ ] admin/api/middleware의 프로덕션 빌드 제외 메커니즘 결정(빌드 phase 감지 또는 빌드 전용 플래그) — 상세 구현은 Phase 3. 플래그를 둔다면 [.env.example](../.env.example)에 용도 주석.
+- [x] [next.config.ts](../next.config.ts): `output:'export'`를 **빌드 기본값**으로 설정 + `basePath:'/global-ai-news'`, `assetPrefix:'/global-ai-news/'`, `images:{unoptimized:true}`, `trailingSlash:true`. 기존 `output:'standalone'`·`serverExternalPackages` **제거**. _단, `output:'export'`는 `next dev`까지 정적 제약을 강제해 로컬 admin/api/middleware를 깨뜨림이 확인됨 → 계획서가 허용한 **빌드 phase 감지**(`PHASE_PRODUCTION_BUILD`)로 프로덕션 빌드에만 적용(수동 토글 없음·dev 무회귀). `next.config.ts`를 phase 함수 형태로 전환._
+- [x] `better-sqlite3`가 빌드타임 전용(런타임 번들 미포함)임을 확인 — 정적 export 클라이언트 chunk에 미포함 확인(`grep .next/static/chunks` → 0건), `serverExternalPackages` 없이도 정상.
+- [x] admin/api/middleware의 프로덕션 빌드 제외 메커니즘 결정 = **빌드 phase 감지**(`PHASE_PRODUCTION_BUILD`). 동시에 빌드 전용 플래그 `STATIC_EXPORT`를 [.env.example](../.env.example)에 용도 주석으로 문서화(deploy.yml 전용). 라우트 제외 상세 구현은 Phase 3.
 
 ### 핵심 파일
 
@@ -73,10 +73,10 @@
 
 ### Acceptance / Tests / Verify
 
-- [ ] `npm run build`가 `out/`을 생성하고 SSR/ISR/Route Handler 의존 오류 없이 완료된다. _(이 시점에는 §3.2~§3.5 미적용분으로 일부 실패 가능 → Phase 1~3에서 해소. Phase 0 단독 검증은 `output:'export'` 기본 적용·basePath 반영까지)_
-- [ ] `basePath`/`assetPrefix`가 빌드 산출에 반영된다.
-- [ ] `better-sqlite3`가 클라이언트 번들에 포함되지 않는다(빌드타임 전용).
-- [ ] `npm run dev`는 기존과 동일하게 동작한다(admin/api 포함 — `output` 설정 무영향, 회귀 없음).
+- [x] `npm run build`가 `output:'export'` 모드로 진입함을 확인(에러 메시지 `... with "output: export"`). _현재는 §3.5 미적용으로 `/api/*` 라우트(`force-dynamic`/`force-static` 미지정)에서 실패 → Phase 3에서 해소. Phase 0 단독 검증 범위(`output:'export'` 기본 적용·basePath 반영)는 충족._
+- [x] `basePath`/`assetPrefix`가 빌드 산출에 반영된다(`.next/static` chunk·`_buildManifest.js`에 `/global-ai-news` baked-in 확인).
+- [x] `better-sqlite3`가 클라이언트 번들에 포함되지 않는다(빌드타임 전용 — chunk grep 0건).
+- [x] `npm run dev`는 기존과 동일하게 동작한다(`/` 200·`/api/health` 200·`/admin/login` 200). _phase 게이팅으로 dev엔 export 미적용._
 
 ---
 

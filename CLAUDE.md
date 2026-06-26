@@ -18,15 +18,15 @@
 
 - **Framework**: Next.js 15 (App Router), React 19, TypeScript (strict)
 - **Styling**: TailwindCSS v4, shadcn/ui (New York, baseColor: zinc)
-- **Database**: SQLite (`better-sqlite3`) — 파일 DB `data/app.db`, 빌드/렌더 시 readonly 조회
+- **Database**: SQLite (`better-sqlite3`) — 파일 DB `data/app.db`, **빌드타임 readonly 조회**(정적 export → 공개 페이지 런타임 DB 접근 없음; 로컬 `next dev` admin만 런타임 조회)
 - **수집**: `rss-parser` (RSS/Atom), HN/GitHub/HuggingFace/Reddit 집계 API
-- **AI/LLM**: Vercel AI SDK (`ai`, `@ai-sdk/anthropic`) — `generateObject` + Zod, 기본 모델 `claude-haiku-4-5`
+- **AI/LLM**: AI SDK (`ai`, `@ai-sdk/anthropic` — 라이브러리 명칭이며 Vercel 호스팅과 무관, 수집 파이프라인 전용) — `generateObject` + Zod, 기본 모델 `claude-haiku-4-5`
 - **스키마/검증**: `zod` (LLM 출력 구조화)
 - **스크립트 실행**: `tsx` (배치 `scripts/*.ts`)
 - **Package manager**: npm
 - **Linter/Formatter**: ESLint (next flat config), Prettier (+ prettier-plugin-tailwindcss)
 - **Test**: Vitest + React Testing Library (jsdom)
-- **Runtime**: Node.js 20+
+- **Runtime**: Node.js 20+ (빌드/스크립트 기준; 빌드·CI(`deploy.yml`)는 Node 22 고정)
 - **인프라(전환 후 목표 — 클린 컷오버)**: GitHub Actions cron(일 1회, `0 21 * * *` UTC = 06:00 KST) → `data/app.db` git 커밋 → `deploy.yml`이 정적 export(`npm run build`, `output:'export'` 기본값) → GitHub Pages 배포
   - _현재 코드는 아직 `output:'standalone'` + Vercel ISR 재배포 전제이며, 전환 시 standalone/Vercel 전제는 제거됩니다(되돌릴 땐 git revert)._
 
