@@ -7,11 +7,12 @@
 - 요구사항 원천: [docs/PRD.md](docs/PRD.md) (Daily AI Brief PRD v1.0)
 - 개발 계획·진행 현황: [docs/WORK-PLAN.md](docs/WORK-PLAN.md)
 - 배포 전환: [docs/PRD-github-pages.md](docs/PRD-github-pages.md) (GitHub Pages 배포 전환 PRD v1.0)
+- 배포 전환 작업 계획·진행 현황: [docs/WORK-PLAN-github-pages.md](docs/WORK-PLAN-github-pages.md) (Phase 0~5 체크리스트)
 - 디자인 토큰/원칙: [DESIGN.md](DESIGN.md)
 
 > **현재 구현 단계:** Phase 0~6 전체 완료. 수집 파이프라인·LLM 가공·검색·Admin 콘솔·GitHub Actions 자동화까지 모두 구현됨. 단계별 상세·체크리스트는 [docs/WORK-PLAN.md](docs/WORK-PLAN.md)를 단일 출처로 참조합니다.
 
-> **배포 전환 진행 중 (`deploy/github-pages`):** Vercel → GitHub Pages 정적 호스팅 전환 작업 중입니다. 목표 아키텍처는 본 문서에 반영했으나 일부는 아직 코드 미구현 상태입니다(`output:'export'`, `deploy.yml`, 클라이언트 검색 등) — 아래 "(전환 후)"/"(예정)" 마커와 [docs/PRD-github-pages.md](docs/PRD-github-pages.md)를 참조하세요. 공개 3페이지(피드/상세/검색)·디자인·데이터 모델·수집·LLM 가공은 변경하지 않습니다.
+> **배포 전환 진행 중 — 클린 컷오버 (`deploy/github-pages`):** Vercel/`standalone`을 **폐기**하고 GitHub Pages 정적 호스팅으로 **완전 전환**합니다(공존·토글 없음). `output:'export'`를 빌드 기본값으로 삼아 `npm run build`가 곧 정적 export이며, `deploy.yml`이 GitHub Pages로 배포합니다. 목표 아키텍처는 본 문서에 반영했으나 일부는 아직 코드 미구현 상태입니다(`output:'export'`, `deploy.yml`, 클라이언트 검색 등) — 아래 "(전환 후)"/"(예정)" 마커와 [docs/PRD-github-pages.md](docs/PRD-github-pages.md)·[docs/WORK-PLAN-github-pages.md](docs/WORK-PLAN-github-pages.md)를 참조하세요. admin/api/middleware는 **로컬 `next dev` 운영 도구로 잔존**(프로덕션 빌드에서만 제외)하며, 공개 3페이지(피드/상세/검색)·디자인·데이터 모델·수집·LLM 가공은 변경하지 않습니다.
 
 ## 기술 스택
 
@@ -26,8 +27,8 @@
 - **Linter/Formatter**: ESLint (next flat config), Prettier (+ prettier-plugin-tailwindcss)
 - **Test**: Vitest + React Testing Library (jsdom)
 - **Runtime**: Node.js 20+
-- **인프라(전환 후 목표)**: GitHub Actions cron(일 1회, `0 21 * * *` UTC = 06:00 KST) → `data/app.db` git 커밋 → `deploy.yml`이 정적 export(`next build`, `output:'export'`) → GitHub Pages 배포
-  - _현재 코드는 아직 `output:'standalone'` + Vercel ISR 재배포 전제입니다(전환 진행 중)._
+- **인프라(전환 후 목표 — 클린 컷오버)**: GitHub Actions cron(일 1회, `0 21 * * *` UTC = 06:00 KST) → `data/app.db` git 커밋 → `deploy.yml`이 정적 export(`npm run build`, `output:'export'` 기본값) → GitHub Pages 배포
+  - _현재 코드는 아직 `output:'standalone'` + Vercel ISR 재배포 전제이며, 전환 시 standalone/Vercel 전제는 제거됩니다(되돌릴 땐 git revert)._
 
 ## 디렉토리 구조
 
@@ -97,7 +98,7 @@
 │   └── app.db                    # SQLite DB (db:init/collect로 생성)
 ├── docs/                         # PRD.md, PRD-github-pages.md, WORK-PLAN.md
 ├── public/                       # 정적 자산 (search-index.json: 빌드 생성, 예정)
-└── DESIGN.md                     # Apple 기반 디자인 토큰/가이드
+└── DESIGN.md                     # 모노크롬·타이포 중심 디자인 토큰/가이드
 ```
 
 ## 아키텍처 / 파이프라인
@@ -189,7 +190,7 @@ docker compose up --build
 | `GITHUB_PAT`                                | `configs/sources.json` 커밋 + `workflow_dispatch` — **로컬 admin 전용(배포 불필요)** | 선택 (GitHub 연동 시)  |
 | `GITHUB_REPO`                               | `owner/repo` — **로컬 admin 전용(배포 불필요)**    | 선택 (GitHub 연동 시)  |
 | `ADMIN_PASSWORD`                            | 운영자 인증 — **로컬 admin 전용(배포 불필요)**     | 필수 (로컬 Admin 사용) |
-| `STATIC_EXPORT`                             | 빌드 시 `output:'export'` 토글 + admin/api/middleware 배포 제외 (예정) | 선택 (정적 배포 시)    |
+| `STATIC_EXPORT`                             | 프로덕션 빌드에서 admin/api/middleware 제외용(빌드 전용, 빌드 phase 감지로 대체 가능). `output:'export'`는 기본값이라 토글 불필요 (예정) | 선택 (배포 빌드 시)    |
 
 ## 데이터 모델
 
@@ -237,12 +238,11 @@ npx shadcn@latest add card dialog input
 
 ## 디자인 가이드 (DESIGN.md)
 
-프로젝트 루트의 `DESIGN.md`는 Apple 디자인 시스템 분석 기반의 UI 스타일 가이드입니다.
-(`npx getdesign@latest add apple`로 설치, [getdesign.md](https://getdesign.md/apple/design-md))
+프로젝트 루트의 `DESIGN.md`는 모노크롬·타이포그래피 중심의 모바일 우선 뉴스 리더 UI 스타일 가이드입니다.
 
 - **UI 마크업/스타일링 작업 전 반드시 `DESIGN.md`를 참조**합니다.
-- 디자인 토큰은 `src/app/globals.css`에 CSS 변수로 매핑되어 있습니다.
-- 핵심 원칙: 단일 강조색 Action Blue(`#0066cc`), SF Pro Display 타이포(대체 Inter), 라이트/패치먼트 교차 레이아웃, 미니멀한 chrome, `store-utility-card` 카드형. 그림자·2차 강조색·데코 그라데이션 금지.
+- 디자인 토큰은 `src/app/globals.css`에 CSS 변수로 매핑되어 있습니다(Tailwind v4 `@theme inline` — 단일 출처).
+- 핵심 원칙: **브랜드 강조색 없음 — 강조는 색이 아닌 대비**(잉크 `#1d1d1f` ↔ 파치먼트 `#f5f5f7`, 다크모드 반전). 단일 자체 호스팅 폰트 **Pretendard Variable**(한글·라틴 통합). 라이트/다크 동등 지원(`next-themes` `.dark` 클래스). 헤어라인 보더 카드(반경 18px)·풀 pill 칩/배지. 모바일 우선 앱 셸(데스크톱 프로스티드 헤더 ↔ 모바일 상단바+하단 탭바). **그림자·그라데이션·2차 강조색 금지.** 유일한 유채색은 `destructive`(빨강)로 Admin 파괴적 동작에만 사용.
 
 ## Claude 에이전트 목록
 

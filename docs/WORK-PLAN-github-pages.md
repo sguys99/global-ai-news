@@ -1,0 +1,288 @@
+# Daily AI Brief — GitHub Pages 배포 전환 상세 작업 계획서 (Work Plan)
+
+## Context
+
+[PRD-github-pages.md](PRD-github-pages.md)(GitHub Pages 배포 전환 PRD v1.0)를 실행 가능한 단계별 작업 계획으로 분해한다.
+본 계획서는 **원본 서비스 PRD([PRD.md](PRD.md))를 분해한 [WORK-PLAN.md](WORK-PLAN.md)와 달리, "배포 타깃만 Vercel → GitHub Pages로 전환"하는 마이그레이션 PRD를 분해**한다.
+서비스·데이터 모델·수집/LLM 파이프라인·디자인([DESIGN.md](../DESIGN.md))은 **변경하지 않고**, 정적 호스팅 제약(서버 런타임 없음)에 맞춰 렌더링·검색·배포 방식만 바꾼다.
+
+**작성 방식(하이브리드):** PRD의 기능 단위(§3.1~§3.6)를 의존 순서대로 vertical-slice Phase로 묶고, 각 Phase에 파일 경로·Acceptance·Verify를 결합한다. 각 Phase는 "정적 빌드 후 해당 화면/동작이 서브경로에서 정상"임을 **단독으로 검증 가능**하다.
+
+**현재 코드 상태(전환 전):** PRD의 "before"와 일치한다.
+
+- [next.config.ts](../next.config.ts): `output:"standalone"` + `serverExternalPackages:["better-sqlite3"]` (basePath/assetPrefix/images/trailingSlash·`STATIC_EXPORT` 처리 없음).
+- [src/app/page.tsx:7](../src/app/page.tsx#L7): `export const revalidate = 3600`(ISR), 서버측 `searchParams` 파싱 + `Link` 기반 `FilterBar`(서버 컴포넌트).
+- [src/app/article/[id]/page.tsx](../src/app/article/[id]/page.tsx): `generateStaticParams` **없음**, `notFound()` 사용.
+- [src/app/search/page.tsx:9](../src/app/search/page.tsx#L9): `export const dynamic = "force-dynamic"` + 서버 `searchArticles()`(FTS5). `SearchInput`은 이미 `"use client"` 라이브 검색.
+- [src/lib/db.ts](../src/lib/db.ts): `getFeed`/`getArticle`/`searchArticles`/`getSourcesWithCounts`/`getActiveTags`/`getRecentRuns`/`getKpiSummary` 존재, `getAllArticleIds` **없음**. `new Database(DB_PATH,{readonly:true,fileMustExist:true})`.
+- `.github/workflows/`: `collect.yml`만 존재(`[skip ci]` 커밋), `deploy.yml` **없음**.
+- `scripts/export-search-index.ts`·`public/search-index.json` **없음**, FlexSearch/Fuse.js **미설치**, `next/image` 사용처 **0건**.
+
+**확정된 결정(전 Phase 공통):**
+
+- **전환 전략 = 클린 컷오버.** Vercel/`standalone`을 **폐기**하고 `output:'export'`(정적 export)를 **빌드 기본값**으로 삼는다. `npm run build` = 정적 export. "전환 진행 중"식 공존/하위호환 코드는 두지 않는다(되돌릴 땐 git revert).
+- 클라이언트 검색 라이브러리 = **FlexSearch** (한글 토크나이즈·경량 인덱스).
+- admin/api/middleware = **프로덕션 빌드에서만 제외**(빌드 phase 감지 또는 빌드 전용 플래그). `next dev`는 영향받지 않으므로 로컬 admin은 그대로 동작.
+- 배포 트리거 브랜치 = **`deploy/github-pages`** (`collect.yml`·`deploy.yml` 모두 이 브랜치 기준으로 정렬).
+
+**진행 기록 방법:** 각 Phase와 작업 항목에 체크박스(`- [ ]`)를 두어 진행 상황을 직접 체크한다. 아래 **진행 현황 개요**로 전체를 한눈에 추적한다.
+
+---
+
+## 진행 현황 개요
+
+- [ ] **Phase 0** — 정적 export 기반 설정 (PRD §3.1)
+- [ ] **Phase 1** — 피드·상세 정적화 (PRD §3.2, §3.3)
+- [ ] **Phase 2** — 검색 클라이언트 전환 (PRD §3.4)
+- [ ] **Phase 3** — admin/api/middleware 배포 분리 (PRD §3.5)
+- [ ] **Phase 4** — 자동 빌드·배포 파이프라인 (PRD §3.6)
+- [ ] **Phase 5** — 동작 동일성·`basePath`·KPI 검증 (PRD §9)
+
+---
+
+## Architectural decisions (전 Phase 공통, 변하지 않는 결정)
+
+- **배포 타깃**: Vercel **폐기** → **GitHub Pages**(저장소 Settings → Pages → Source = **GitHub Actions**)가 유일한 배포. 프로젝트 페이지 서브경로 `basePath:/global-ai-news`.
+- **빌드 모드**: `output:'export'`가 **빌드 기본값**(분기·토글 없음). `standalone`/`serverExternalPackages` 등 Vercel 전제는 제거.
+- **렌더링 전략**:
+  - `/` 피드 — **SSG**(빌드타임 `getFeed`) + **클라이언트 필터/정렬**.
+  - `/article/[id]` 상세 — **SSG**(`generateStaticParams` 전수 생성).
+  - `/search` 검색 — **정적 셸 + 클라이언트 검색**(FlexSearch).
+- **DB 접근**: 빌드타임 readonly 조회만(런타임 번들 미포함). [src/lib/db.ts](../src/lib/db.ts) 조회 코드는 변경 없이 그대로 쓰며 `getAllArticleIds()` 헬퍼 1개만 추가.
+- **검색 인덱스**: 빌드 시 `public/search-index.json`(`id/titleKo/summaryKo/tags/source/category/publishedAt` — 본문 전문 제외) 생성 → 클라이언트가 fetch 후 FlexSearch로 검색.
+- **admin/api/middleware**: **프로덕션 빌드(`npm run build`)에서만 export 산출에서 제외**(빌드 phase 감지 또는 빌드 전용 플래그). 로컬 `next dev`는 영향받지 않아 admin/api가 그대로 동작 → 운영자 도구로 잔존.
+- **자동화**: `collect.yml`(수집 → `data/app.db` 커밋) → `deploy.yml`(정적 빌드 → Pages 배포). 둘 다 **`deploy/github-pages`** 기준, `concurrency: pages`로 직렬화.
+- **`basePath` 정합성**: `next/link`·`next/image`는 자동 반영, **수동 경로 문자열(fetch URL 등)은 `basePath` 명시**. 검색 인덱스 fetch = `${basePath}/search-index.json`.
+- **불변(원본 PRD 유지)**: SQLite 6개 테이블·수집 어댑터·`generateObject` LLM 가공·`DESIGN.md` 토큰·공개 3페이지의 시각/인터랙션.
+
+---
+
+## Phase 0: 정적 export 기반 설정 (PRD §3.1)
+
+**목표:** `npm run build`가 곧바로 `output:'export'`로 `out/` 정적 산출물을 생성하도록 기반을 깐다(클린 컷오버 — standalone/Vercel 전제 제거). (이후 모든 Phase의 전제)
+
+### 작업
+
+- [ ] [next.config.ts](../next.config.ts): `output:'export'`를 **기본값**으로 설정 + `basePath:'/global-ai-news'`, `assetPrefix:'/global-ai-news/'`, `images:{unoptimized:true}`, `trailingSlash:true`. 기존 `output:'standalone'`·`serverExternalPackages` **제거**.
+- [ ] `better-sqlite3`가 빌드타임 전용(런타임 번들 미포함)임을 확인 — 정적 export에선 서버 런타임이 없으므로 `serverExternalPackages` 없이도 정상.
+- [ ] admin/api/middleware의 프로덕션 빌드 제외 메커니즘 결정(빌드 phase 감지 또는 빌드 전용 플래그) — 상세 구현은 Phase 3. 플래그를 둔다면 [.env.example](../.env.example)에 용도 주석.
+
+### 핵심 파일
+
+`next.config.ts`, `.env.example`
+
+### Acceptance / Tests / Verify
+
+- [ ] `npm run build`가 `out/`을 생성하고 SSR/ISR/Route Handler 의존 오류 없이 완료된다. _(이 시점에는 §3.2~§3.5 미적용분으로 일부 실패 가능 → Phase 1~3에서 해소. Phase 0 단독 검증은 `output:'export'` 기본 적용·basePath 반영까지)_
+- [ ] `basePath`/`assetPrefix`가 빌드 산출에 반영된다.
+- [ ] `better-sqlite3`가 클라이언트 번들에 포함되지 않는다(빌드타임 전용).
+- [ ] `npm run dev`는 기존과 동일하게 동작한다(admin/api 포함 — `output` 설정 무영향, 회귀 없음).
+
+---
+
+## Phase 1: 피드·상세 정적화 (PRD §3.2, §3.3)
+
+**User story:** _열람자 "정적 사이트에서도 동일한 피드·필터·정렬·상세를 쓰고 싶다."_
+**목표:** ISR 제거 → 빌드타임 SSG. 피드 필터/정렬을 클라이언트로 전환하고, 전 기사 상세를 사전 생성한다.
+
+### 작업
+
+- [ ] [src/lib/db.ts](../src/lib/db.ts): `getAllArticleIds()`(readonly) 추가 — 전 기사 `id` 열거(또는 `getFeed` limit 없이 활용).
+- [ ] [src/app/article/[id]/page.tsx](../src/app/article/[id]/page.tsx): `generateStaticParams()` 추가(`getAllArticleIds().map(id => ({id:String(id)}))`). 존재하지 않는 ID는 정적 404(`notFound`) 유지. 페이지 내부 로직(한국어 요약+원문 병기·태그 클릭·원문 새 탭)은 변경 없음.
+- [ ] [src/app/page.tsx](../src/app/page.tsx): `export const revalidate` 제거 → 빌드타임 1회 SSG. 전체 카드 데이터를 페이지에 포함.
+- [ ] 필터/정렬(`?tag=`/`?source=`/`?sort=`)을 **클라이언트 측 필터·정렬**로 전환. 현재 서버 `searchParams` + `Link` 기반 [FilterBar](../src/components/FilterBar.tsx)는 정적 환경에서 쿼리별 페이지가 생성되지 않으므로, 브라우저에서 카드 데이터를 필터링하도록 변경(시각·UX는 원본과 동일 유지).
+
+### 핵심 파일
+
+`src/lib/db.ts`(`getAllArticleIds`), `src/app/article/[id]/page.tsx`(`generateStaticParams`), `src/app/page.tsx`(revalidate 제거·클라 필터), `src/components/FilterBar.tsx`
+
+### Acceptance / Tests / Verify
+
+- [ ] 빌드 시 모든 기사 상세가 `out/article/<id>/index.html`로 정적 생성된다.
+- [ ] 피드가 ISR 없이 정적 생성되고 최신 `data/app.db` 내용이 반영된다.
+- [ ] 태그·소스 필터 + 최신순/중요도순 정렬이 정적 환경에서 원본과 동일하게 동작한다(클라 필터링).
+- [ ] 카드 클릭 → `/article/[id]` 정적 페이지 이동, 한국어 요약·원문 병기·태그 이동·원문 새 탭 정상.
+- [ ] (test) `getAllArticleIds` 스모크(전 id 반환·readonly).
+
+---
+
+## Phase 2: 검색 클라이언트 전환 (PRD §3.4)
+
+**User story:** _열람자 "서버 없이도 동일한 검색 화면·UX로 과거 기사를 탐색하고 싶다."_
+**목표:** 서버 FTS5 검색을 빌드 시 JSON 인덱스 + 클라이언트 FlexSearch 검색으로 대체하되 화면·필터 UX는 그대로 유지한다.
+
+### 작업
+
+- [ ] `scripts/export-search-index.ts`(신규): readonly DB 조회로 `SearchIndexEntry[]`(`id/titleKo/summaryKo/tags/source/category/publishedAt`, 본문 제외) → `public/search-index.json` 생성.
+- [ ] [package.json](../package.json): `prebuild`(또는 deploy 단계)에서 인덱스 생성을 빌드 직전에 실행하도록 연결. `export-search-index` npm 스크립트 추가.
+- [ ] FlexSearch 의존성 추가. [src/app/search/page.tsx](../src/app/search/page.tsx)를 정적 셸로 export(`force-dynamic` 제거). 클라이언트가 마운트 시 `${basePath}/search-index.json`을 fetch → FlexSearch로 검색.
+- [ ] 입력 디바운스([SearchInput](../src/components/SearchInput.tsx))·결과 카드([ArticleCard](../src/components/ArticleCard.tsx) 재사용)·결과 없음 상태 유지. FlexSearch 한글 토크나이즈 설정.
+
+### 핵심 파일
+
+`scripts/export-search-index.ts`, `package.json`, `src/app/search/page.tsx`, `src/components/SearchInput.tsx`, `src/lib/types.ts`(`SearchIndexEntry`)
+
+### Acceptance / Tests / Verify
+
+- [ ] 빌드 시 `public/search-index.json`이 생성되고, 기사 추가/변경이 재빌드로 반영된다.
+- [ ] `/search`가 정적 export되며 한국어 제목·요약·태그를 대상으로 클라이언트에서 검색된다.
+- [ ] 결과가 피드와 동일 카드로 표시되고 결과 없음 상태가 명확히 노출된다.
+- [ ] 검색 인덱스 fetch 경로가 `basePath`를 포함해 서브경로에서 200 응답한다.
+- [ ] (test) `export-search-index` 출력 스키마 스모크, FlexSearch 한글 매칭 샘플.
+
+---
+
+## Phase 3: admin/api/middleware 배포 분리 (PRD §3.5)
+
+**User story:** _운영자 "소스 관리·재수집·KPI를 로컬에서 그대로 쓰되, 공개 배포에는 admin이 노출/포함되지 않길 원한다."_
+**목표:** admin을 로컬 운영 도구로 유지하고 정적 배포 산출물에서 제외한다.
+
+### 작업
+
+- [ ] 프로덕션 빌드(`npm run build`)에서 `/admin/*`·`/api/*`·[src/middleware.ts](../src/middleware.ts)가 export 대상에서 제외되도록 처리(가장 단순·안전한 1택 — 빌드 phase 감지 또는 빌드 전용 플래그). `next dev`에는 적용되지 않아야 한다.
+- [ ] 공개 사이트 네비게이션/링크에 admin 진입점이 노출되지 않음을 확인.
+- [ ] `npm run dev`에서 admin 소스 CRUD·재수집·KPI가 기존과 동일하게 동작함을 회귀 확인.
+
+### 핵심 파일
+
+`next.config.ts`/라우트 조건부 처리, `src/middleware.ts`, `src/app/admin/*`, `src/app/api/*`
+
+### Acceptance / Tests / Verify
+
+- [ ] 정적 산출물 `out/`에 `/admin/*`·`/api/*`가 포함되지 않는다.
+- [ ] 정적 export 빌드가 admin/api/middleware 때문에 실패하지 않는다.
+- [ ] `npm run dev`에서 admin 기능(소스 CRUD·재수집 트리거·KPI 대시보드)이 기존과 동일하게 동작한다.
+- [ ] 공개 사이트에 admin 진입점이 노출되지 않는다.
+
+---
+
+## Phase 4: 자동 빌드·배포 파이프라인 (PRD §3.6)
+
+**User story:** _운영자 "수집만 돌면 빌드·배포까지 자동으로 끝나길 원한다."_
+**목표:** Vercel 대신 GitHub Actions가 정적 빌드 후 GitHub Pages로 배포한다. DB 커밋이 배포를 트리거한다.
+
+### 작업
+
+- [ ] `.github/workflows/deploy.yml`(신규): 트리거 = `push`(`deploy/github-pages`의 `data/app.db`·`configs/**`·`src/**`·`next.config.ts`) + `workflow_dispatch`. 단계 = `actions/checkout` → `setup-node`(22, cache npm) → `npm ci` → 검색 인덱스 생성 → `npm run build`(정적 export 기본) → `configure-pages` → `upload-pages-artifact(out)` → `deploy-pages`. `permissions: pages:write, id-token:write`, `concurrency: {group:pages, cancel-in-progress:true}`.
+- [ ] [collect.yml](../.github/workflows/collect.yml) 조정: `data/app.db` 커밋이 `deploy.yml`을 트리거하도록 `[skip ci]` 정책 조정(제거 또는 paths 트리거 정렬). 커밋/푸시 브랜치를 `deploy/github-pages`로 정렬.
+- [ ] (운영자 수동) 저장소 Settings → Pages → Source = **GitHub Actions** 설정 — 문서에 명시.
+
+### 핵심 파일
+
+`.github/workflows/deploy.yml`(신규), `.github/workflows/collect.yml`(조정)
+
+### Acceptance / Tests / Verify
+
+- [ ] 수집이 `data/app.db`를 커밋하면 추가 수작업 없이 `deploy.yml`이 트리거되어 빌드·배포까지 완료된다.
+- [ ] Pages 소스가 GitHub Actions로 설정되고 `out/` 산출물이 배포된다.
+- [ ] `workflow_dispatch`로 즉시 재배포할 수 있다.
+- [ ] 동시 배포가 `concurrency`로 직렬화된다.
+- [ ] (verify) `deploy.yml` YAML 구조 검증, 테스트 push로 트리거 동작 확인(운영자).
+
+---
+
+## Phase 5: 동작 동일성 · basePath · KPI 검증 (PRD §9, §6, §10)
+
+**목표:** 빌드 산출물을 서브경로로 서빙해 공개 3페이지 동일성과 경로 정합성을 점검하고, KPI 측정 항목을 정리한다.
+
+### 작업
+
+- [ ] PRD §9.2 동작 동일성 체크리스트 점검 — `npx serve out` + `/global-ai-news` 경로로 서빙(또는 Pages 미리보기).
+  - [ ] 피드: 카드 렌더·태그/소스 필터·최신/중요도 정렬·카드→상세 이동.
+  - [ ] 상세: 한국어 요약+원문 병기·태그 이동·원문 새 탭.
+  - [ ] 검색: 인덱스 로드·한글 검색·결과 카드·결과 없음 상태.
+  - [ ] 셸/디자인: 다크모드·모바일 상단바/하단 탭바/필터 시트·Pretendard 폰트 로드.
+- [ ] `basePath` 경로 회귀 0건: 폰트(`public/fonts/*`)·자산·내부 링크·`search-index.json` fetch가 `/global-ai-news` 하에서 200 응답.
+- [ ] PRD §9.3 빌드 환경: CI(Ubuntu, Node 22)에서 `better-sqlite3` 네이티브 빌드 성공·빌드타임 DB 조회 정상, `out/`에 `/admin`·`/api` 부재 확인.
+- [ ] KPI(정적 빌드 성공률 ≥95%·수집→배포 ≤10분·피드 LCP ≤2.0s·추가 운영비 $0·`basePath` 회귀 0건)는 운영자 cron 누적/Lighthouse로 점검하는 항목으로 안내.
+
+### 핵심 파일
+
+(검증 전용 — 신규 코드 없음. 점검 절차·결과 기록)
+
+### Acceptance / Tests / Verify
+
+- [ ] 공개 3페이지 동작 동일성 100%(§9.2 전부 통과).
+- [ ] `basePath` 경로 회귀 0건.
+- [ ] `out/`에 `/admin`·`/api` 경로 부재.
+
+---
+
+## Phase 의존성
+
+```
+Phase 0 (정적 export 기반)
+   ├─ Phase 1 (피드·상세 정적화)
+   │     └─ Phase 2 (검색 클라이언트 전환)   ← 피드 카드/컴포넌트 재사용
+   └─ Phase 3 (admin/api 배포 분리)
+         └─ Phase 4 (빌드·배포 파이프라인)   ← Phase 1~3 정적화 완료 필요
+               └─ Phase 5 (동일성·basePath·KPI 검증)
+```
+
+---
+
+## 비호환 항목 처리 매핑 (PRD §7 요약)
+
+| 원본 기능              | 정적 비호환 이유          | 정적 대체 방식                          | Phase |
+| ---------------------- | ------------------------- | --------------------------------------- | :---: |
+| ISR 피드(`revalidate`) | 서버 재검증 필요          | 빌드타임 SSG + 매 배포 갱신             | 1     |
+| 동적 상세              | dynamic param 런타임 조회 | `generateStaticParams` 전수 사전 생성  | 1     |
+| `force-dynamic` 검색   | 요청시 FTS5 쿼리          | JSON 인덱스 + 클라이언트 FlexSearch     | 2     |
+| Route Handler `/api/*` | serverless 미지원         | 로컬 전용 분리, 프로덕션 빌드에서 제외   | 3     |
+| Admin SSR · 미들웨어   | SSR+인증·런타임 필요      | 로컬 `next dev` 전용, 프로덕션 빌드 제외 | 3     |
+| `next/image` 최적화    | 최적화 서버 필요          | `images.unoptimized`(현재 사용처 0건)   | 0     |
+| Vercel ISR 트리거 배포 | Vercel 의존              | Actions `deploy.yml` 빌드·배포          | 4     |
+
+---
+
+## 검증 지표 (PRD §9.1 KPI)
+
+측정 수단은 Phase 4~5에서 구축. 달성 여부는 실 cron/배포 누적으로 운영자가 점검한다.
+
+| 항목                  | 목표값                                  | 측정 수단                        | 달성 |
+| --------------------- | --------------------------------------- | -------------------------------- | :--: |
+| 정적 빌드 성공률      | ≥ 95% (`next build` export, 최근 30일)  | Actions 로그 (자동)              | [ ]  |
+| 수집→배포 자동화 시간 | ≤ 10분 (DB 커밋 → Pages 반영, 수동 0회) | Actions 타임스탬프 (수동)        | [ ]  |
+| 공개 3페이지 동일성   | 100% (§9.2 체크리스트 전부 통과)        | 빌드 후 서브경로 서빙 점검 (수동)| [ ]  |
+| 피드 LCP              | ≤ 2.0s (데스크톱)                       | Lighthouse (수동)                | [ ]  |
+| 추가 운영비           | $0 (Pages·Actions 무료 범위)            | 청구 확인 (수동)                 | [ ]  |
+| `basePath` 경로 회귀  | 0건 (자산·링크·검색 fetch 깨짐 없음)    | §9.2 경로 항목 (수동)            | [ ]  |
+
+---
+
+## 위험 요소 & 완화 (PRD §10 요약)
+
+- **`basePath` 누락** → 수동 fetch에 `basePath` 명시, §9.2 회귀 체크.
+- **대량 기사 빌드 시간 증가** → MVP는 전체 빌드 허용, 필요 시 최신 N개만 정적+나머지 인덱스화(Post-MVP).
+- **FTS5 → FlexSearch 품질차** → 한글 토크나이즈 설정·§9.2 검색 항목 검수.
+- **admin/api 배제 방식 오류** → 프로덕션 빌드에서만 제외(빌드 phase 감지/플래그), `out/` 부재 확인(§9.3).
+- **`better-sqlite3` CI 빌드** → Node 22 고정, `npm ci`, 빌드 로그 점검.
+
+---
+
+## 전체 검증 방법
+
+1. `npm run build` → 검색 인덱스 생성 + `out/` 정적 산출(정적 export 기본).
+2. `npx serve out` → `http://localhost:3000/global-ai-news`에서 피드 필터·정렬, `/article/[id]` 병기, `/search` 검색(인덱스 로드) 점검.
+3. `out/`에 `/admin`·`/api` 부재 확인, 폰트·자산·검색 fetch 200 확인(`basePath`).
+4. `npm run lint && npm run typecheck && npm test` 통과.
+5. `npm run dev`에서 admin/api/middleware 기존 동작 회귀 없음 확인(로컬 운영 도구 잔존).
+6. (배포) `deploy/github-pages`에 `data/app.db` 변경 push → `deploy.yml` 자동 트리거 → Pages 반영 확인. `workflow_dispatch`로 즉시 재배포 확인.
+
+---
+
+## MVP 제외 / 향후 계획 (PRD §8, §11)
+
+- 증분 빌드(변경분만 재생성), 검색 인덱스 분할/압축·형태소 토크나이즈·하이라이트.
+- admin 별도 호스팅(serverless), 커스텀 도메인(`basePath` 제거·CNAME), Actions 빌드 캐싱.
+- 배포된 공개 사이트에서의 admin 동작·요청시 서버 검색(FTS5)·ISR/온디맨드 재검증은 **비목표**(정적 호스팅 제약).
+
+---
+
+## 주요 참조
+
+- [PRD-github-pages.md](PRD-github-pages.md) — 마이그레이션 요구사항 원천
+- [PRD.md](PRD.md) — 원본 서비스 요구사항(불변)
+- [WORK-PLAN.md](WORK-PLAN.md) — 원본 서비스 작업 계획(Phase 0~6, 양식 출처)
+- [../DESIGN.md](../DESIGN.md) — 디자인 토큰(불변)
+- [../CLAUDE.md](../CLAUDE.md) — 스택/컨벤션
