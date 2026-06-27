@@ -15,6 +15,9 @@
 /.next/
 /out/
 
+# 검색 인덱스: prebuild/deploy.yml 빌드 시 data/app.db에서 생성(커밋하지 않음).
+/public/search-index.json
+
 # production
 /build
 

@@ -69,3 +69,11 @@ export interface ArticleCard {
   importance: number; // 1~5
   publishedAt: string; // ISO8601
 }
+
+/**
+ * 클라이언트 검색 인덱스(public/search-index.json) 한 항목.
+ * 카드 렌더(titleOriginal 폴백·trendingScore 배지)와 정렬(importance)에 필요한 필드를
+ * 모두 포함하되, 용량/비용의 주범인 원문 본문(contentRaw)만 제외한다.
+ * ArticleCard 와 구조 호환 → ArticleCard 컴포넌트·filterAndSortFeed 를 캐스팅 없이 재사용.
+ */
+export type SearchIndexEntry = Omit<ArticleCard, "contentRaw">;

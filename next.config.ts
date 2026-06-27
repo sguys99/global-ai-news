@@ -24,6 +24,9 @@ const nextConfig = (phase: string): NextConfig => {
     output: "export",
     basePath: BASE_PATH,
     assetPrefix: `${BASE_PATH}/`,
+    // 클라이언트 수동 fetch(검색 인덱스)가 basePath를 명시할 수 있게 노출(next.config 단일 출처).
+    // dev 분기에선 미설정 → process.env.NEXT_PUBLIC_BASE_PATH 가 undefined → "".
+    env: { NEXT_PUBLIC_BASE_PATH: BASE_PATH },
     // 정적 호스팅엔 이미지 최적화 서버가 없다(현재 next/image 사용처 0건).
     images: { unoptimized: true },
     // 디렉토리형 산출(`out/article/<id>/index.html`)로 서브경로 서빙 안정화.

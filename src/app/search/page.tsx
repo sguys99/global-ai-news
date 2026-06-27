@@ -1,32 +1,14 @@
 import { Suspense } from "react";
-import { ArticleCard } from "@/components/ArticleCard";
-import { FilterBar } from "@/components/FilterBar";
-import { FilterSheet } from "@/components/mobile/FilterSheet";
-import { SearchInput } from "@/components/SearchInput";
-import { getActiveTags, getSourcesWithCounts, searchArticles, type SearchOptions } from "@/lib/db";
+import { SearchClient } from "@/components/SearchClient";
+import { getActiveTags, getSourcesWithCounts } from "@/lib/db";
 
-/** 검색은 쿼리(q)에 의존하므로 동적 렌더링. */
-export const dynamic = "force-dynamic";
-
-function parseOptions(sp: Record<string, string | string[] | undefined>): SearchOptions {
-  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-  const sort = one(sp.sort);
-  return {
-    q: one(sp.q) || undefined,
-    source: one(sp.source) || undefined,
-    tag: one(sp.tag) || undefined,
-    sort: sort === "latest" || sort === "importance" ? sort : undefined,
-  };
-}
-
-export default async function SearchPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const options = parseOptions(await searchParams);
-  const hasQuery = Boolean(options.q);
-  const articles = hasQuery ? searchArticles(options) : [];
+/**
+ * 검색 페이지 = 정적 셸 + 클라이언트 검색(정적 export).
+ * 빌드타임엔 소스·태그(필터 칩 옵션)만 조회하고, 실제 검색은 SearchClient 가
+ * search-index.json 을 fetch 해 FlexSearch 로 수행한다. useSearchParams 사용 →
+ * 정적 export에서 <Suspense> 경계 필수(Phase 1과 동일).
+ */
+export default function SearchPage() {
   const sources = getSourcesWithCounts();
   const tags = getActiveTags(8);
 
@@ -35,30 +17,8 @@ export default async function SearchPage({
       <h1 className="text-display-md font-semibold tracking-tight">기사 검색</h1>
 
       <Suspense fallback={null}>
-        <SearchInput />
+        <SearchClient sources={sources} tags={tags} />
       </Suspense>
-
-      {/* 데스크톱: 인라인 FilterBar / 모바일: 바텀시트 트리거 (mobile-plan Phase 4) */}
-      <div className="hidden md:block">
-        <FilterBar current={options} sources={sources} tags={tags} basePath="/search" />
-      </div>
-      <FilterSheet current={options} sources={sources} tags={tags} basePath="/search" />
-
-      {!hasQuery ? (
-        <p className="text-muted-foreground text-body">
-          키워드를 입력하면 제목·요약·원문·태그에서 기사를 검색합니다.
-        </p>
-      ) : articles.length === 0 ? (
-        <p className="text-muted-foreground text-body">
-          “{options.q}”에 대한 검색 결과가 없습니다.
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {articles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
-          ))}
-        </div>
-      )}
     </main>
   );
 }

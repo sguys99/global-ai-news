@@ -33,7 +33,7 @@
 
 - [x] **Phase 0** — 정적 export 기반 설정 (PRD §3.1)
 - [x] **Phase 1** — 피드·상세 정적화 (PRD §3.2, §3.3)
-- [ ] **Phase 2** — 검색 클라이언트 전환 (PRD §3.4)
+- [x] **Phase 2** — 검색 클라이언트 전환 (PRD §3.4)
 - [ ] **Phase 3** — admin/api/middleware 배포 분리 (PRD §3.5)
 - [ ] **Phase 4** — 자동 빌드·배포 파이프라인 (PRD §3.6)
 - [ ] **Phase 5** — 동작 동일성·`basePath`·KPI 검증 (PRD §9)
@@ -150,24 +150,68 @@
 **User story:** _열람자 "서버 없이도 동일한 검색 화면·UX로 과거 기사를 탐색하고 싶다."_
 **목표:** 서버 FTS5 검색을 빌드 시 JSON 인덱스 + 클라이언트 FlexSearch 검색으로 대체하되 화면·필터 UX는 그대로 유지한다.
 
+### 설계 결정 (Phase 2 한정)
+
+검색은 피드와 달리 빌드타임에 결과를 만들 수 없다(쿼리는 런타임 입력). 따라서 "**서버가 요청마다 FTS5로 다른 결과를 만들던 것**"을 "**빌드 시 1회 인덱스 JSON 생성 → 브라우저가 fetch 후 FlexSearch로 검색**"으로 바꾼다. Phase 1에서 만든 카드·필터·정렬 자산을 최대한 재사용해 변경 표면을 최소화한다.
+
+- **검색 인덱스 = 카드 DTO − 본문(`contentRaw`).** `SearchIndexEntry = Omit<ArticleCard, "contentRaw">`로 정의한다. 카드 렌더(`titleOriginal` 폴백·`trendingScore` 배지)와 정렬(`importance`)에 필요한 필드를 모두 포함하되, **비용/용량의 주범인 원문 본문(`content_raw`)만 제외**한다. 인덱스 항목이 곧 `ArticleCard`로 호환되므로 [ArticleCard](../src/components/ArticleCard.tsx)·`filterAndSortFeed`를 캐스팅 없이 그대로 재사용한다(서버 FTS의 원문 본문 매칭만 손실 — §10 위험으로 수용).
+- **인덱스 생성 = `getFeed()` 재사용으로 매핑 일치 보장.** `scripts/export-search-index.ts`는 readonly DB에서 `getFeed({}, conn)`(=피드와 동일한 `toArticleCard` 매핑) 결과에서 `contentRaw`만 떼어 `SearchIndexEntry[]`를 만든다. 별도 SQL/매핑을 두지 않아 피드와 카드 데이터가 구조적으로 일치한다.
+- **검색 질의 = 순수 헬퍼 `src/lib/searchIndex.ts`로 분리.** FlexSearch `Document`(`tokenize:"full"` — 한글 부분일치 = FTS5+LIKE 폴백 동작 근사) 인덱스 빌드(`buildSearchDocument`)와 질의→id 목록(`queryMatchingIds`)을 순수 함수로 분리한다. UI(SearchClient)와 단위 테스트가 동일 로직을 공유한다. 태그는 `tagsText`(공백 조인) 파생 필드로 색인한다.
+- **검색 화면 = 정적 셸 + 클라이언트 검색(`SearchClient.tsx`).** Phase 1의 FeedClient 패턴을 따른다. `page.tsx`는 빌드타임에 소스·태그만 조회하는 서버 컴포넌트로 남고, `<Suspense>`로 감싼 `SearchClient`(`"use client"`)가 ① 마운트 시 `${basePath}/search-index.json` fetch → 인덱스 빌드 ② `useSearchParams()`로 `{q,source,tag,sort}` 파싱 ③ `queryMatchingIds` → id를 항목으로 매핑 → `filterAndSortFeed`로 소스/태그 필터·정렬 ④ [SearchInput](../src/components/SearchInput.tsx)·FilterBar·FilterSheet·결과 카드·결과 없음 상태를 **기존 마크업 그대로** 렌더. `useSearchParams`는 정적 export에서 `<Suspense>` 경계 필수(Phase 1과 동일).
+- **`basePath` 정합 fetch.** 수동 fetch URL은 `next/link`처럼 자동 반영되지 않으므로 basePath를 명시한다. [next.config.ts](../next.config.ts) 프로덕션 분기에 `env:{ NEXT_PUBLIC_BASE_PATH: BASE_PATH }`를 추가해 클라이언트가 `process.env.NEXT_PUBLIC_BASE_PATH`로 읽고(`dev`는 미설정 → `""`), `fetch(\`${BASE_PATH}/search-index.json\`)`로 서브경로에서 200을 보장한다. next.config가 basePath 단일 출처로 유지된다(deploy env 불필요).
+- **SearchInput·필터 무변경.** `router.push("/search?...")`·FilterBar/FilterSheet `Link`는 전역 basePath가 자동 반영되므로 코드 변경 없이 그대로 둔다(공유 URL·디바운스·칩 시각 불변).
+
 ### 작업
 
-- [ ] `scripts/export-search-index.ts`(신규): readonly DB 조회로 `SearchIndexEntry[]`(`id/titleKo/summaryKo/tags/source/category/publishedAt`, 본문 제외) → `public/search-index.json` 생성.
-- [ ] [package.json](../package.json): `prebuild`(또는 deploy 단계)에서 인덱스 생성을 빌드 직전에 실행하도록 연결. `export-search-index` npm 스크립트 추가.
-- [ ] FlexSearch 의존성 추가. [src/app/search/page.tsx](../src/app/search/page.tsx)를 정적 셸로 export(`force-dynamic` 제거). 클라이언트가 마운트 시 `${basePath}/search-index.json`을 fetch → FlexSearch로 검색.
-- [ ] 입력 디바운스([SearchInput](../src/components/SearchInput.tsx))·결과 카드([ArticleCard](../src/components/ArticleCard.tsx) 재사용)·결과 없음 상태 유지. FlexSearch 한글 토크나이즈 설정.
+**2.1 인덱스 항목 타입 — [src/lib/types.ts](../src/lib/types.ts)**
+
+- [x] `export type SearchIndexEntry = Omit<ArticleCard, "contentRaw">` 추가 — 본문만 제외, 카드/정렬 필드 전부 포함. 주석으로 "본문 전문 제외, ArticleCard 호환" 명시.
+
+**2.2 경로 상수 — [src/lib/paths.ts](../src/lib/paths.ts)**
+
+- [x] `PUBLIC_DIR`·`SEARCH_INDEX_PATH`(=`public/search-index.json`) 추가(런타임 경로 상수 단일 출처 규약).
+
+**2.3 인덱스 생성 스크립트 — `scripts/export-search-index.ts`(신규)**
+
+- [x] `buildSearchIndex(conn): SearchIndexEntry[]` — `getFeed({}, conn)`에서 `contentRaw` 제거(피드와 동일 매핑 재사용).
+- [x] `writeSearchIndex(outPath, conn)` — JSON 직렬화 후 파일 기록. `reindexFts.ts` 패턴(export 함수 + `import.meta.url` main 가드)으로 `npm run export-search-index` 시 `SEARCH_INDEX_PATH`에 기록.
+
+**2.4 검색 질의 헬퍼 — `src/lib/searchIndex.ts`(신규)**
+
+- [x] `buildSearchDocument(entries): Document` — FlexSearch `Document`(`tokenize:"full"`, 색인 `titleKo/summaryKo/titleOriginal/tagsText`).
+- [x] `queryMatchingIds(index, q): number[]` — `index.search(q)` 결과의 모든 필드 id 합집합(중복 제거). 빈 q → `[]`.
+
+**2.5 패키지 스크립트 — [package.json](../package.json)**
+
+- [x] `"export-search-index": "tsx scripts/export-search-index.ts"` 추가.
+- [x] `"prebuild": "tsx scripts/export-search-index.ts"` 추가 — `npm run build` 직전 자동 실행(npm 생명주기 prebuild; `dev` 미영향). 매 빌드마다 최신 `data/app.db` 반영.
+
+**2.6 FlexSearch 의존성 + 검색 셸 — `SearchClient.tsx`(신규)·[search/page.tsx](../src/app/search/page.tsx)·[next.config.ts](../next.config.ts)**
+
+- [x] `flexsearch`(+`@types/flexsearch`) 설치.
+- [x] `src/components/SearchClient.tsx`(`"use client"`) — 인덱스 fetch·빌드 → `useSearchParams` 파싱 → `queryMatchingIds`+`filterAndSortFeed` → SearchInput/FilterBar/FilterSheet/카드/빈 상태 렌더(기존 마크업). 빈 질의 안내 문구는 본문 미색인에 맞춰 "제목·요약·태그"로 갱신(원문 제외).
+- [x] `src/app/search/page.tsx` — `export const dynamic="force-dynamic"`·`searchParams`·서버 `searchArticles` **제거**. 빌드타임 `getSourcesWithCounts()`·`getActiveTags(8)` 조회 → `<h1>` + `<Suspense><SearchClient …/></Suspense>`.
+- [x] `next.config.ts` 프로덕션 분기에 `env:{ NEXT_PUBLIC_BASE_PATH: BASE_PATH }` 추가.
 
 ### 핵심 파일
 
-`scripts/export-search-index.ts`, `package.json`, `src/app/search/page.tsx`, `src/components/SearchInput.tsx`, `src/lib/types.ts`(`SearchIndexEntry`)
+신규: `scripts/export-search-index.ts`, `src/lib/searchIndex.ts`, `src/components/SearchClient.tsx`.
+수정: `src/lib/types.ts`(`SearchIndexEntry`), `src/lib/paths.ts`(경로 상수), `src/app/search/page.tsx`(셸화), `next.config.ts`(`env`), `package.json`(스크립트).
+**무변경(불변):** [SearchInput](../src/components/SearchInput.tsx)·[FilterBar](../src/components/FilterBar.tsx)·[FilterSheet](../src/components/mobile/FilterSheet.tsx)·[ArticleCard](../src/components/ArticleCard.tsx) 마크업/네비게이션, `db.ts` 기존 함수, `feedFilter.ts`.
 
 ### Acceptance / Tests / Verify
 
-- [ ] 빌드 시 `public/search-index.json`이 생성되고, 기사 추가/변경이 재빌드로 반영된다.
-- [ ] `/search`가 정적 export되며 한국어 제목·요약·태그를 대상으로 클라이언트에서 검색된다.
-- [ ] 결과가 피드와 동일 카드로 표시되고 결과 없음 상태가 명확히 노출된다.
-- [ ] 검색 인덱스 fetch 경로가 `basePath`를 포함해 서브경로에서 200 응답한다.
-- [ ] (test) `export-search-index` 출력 스키마 스모크, FlexSearch 한글 매칭 샘플.
+- [x] 빌드 시 `public/search-index.json`이 생성되고, 기사 추가/변경이 재빌드로 반영된다(`prebuild`). _`npm run export-search-index` → 170 entries·`contentRaw` 부재 확인._
+- [x] `/search`가 정적 export되며 한국어 제목·요약·태그를 대상으로 클라이언트에서 검색된다. _`force-dynamic`·`searchParams` 제거 + `<Suspense>` 셸로 정적화. 서브경로 실서빙 점검은 Phase 5(`npx serve out`)에서 종합._
+- [x] 결과가 피드와 동일 카드로 표시되고 결과 없음 상태가 명확히 노출된다. _`ArticleCard`·`filterAndSortFeed` 재사용, 빈/로딩/무결과 상태 분기._
+- [x] 검색 인덱스 fetch 경로가 `basePath`를 포함해 서브경로에서 200 응답한다(`NEXT_PUBLIC_BASE_PATH`). _`next.config` 프로덕션 분기 `env` 주입 + `SearchClient`가 `${NEXT_PUBLIC_BASE_PATH}/search-index.json` fetch. 실제 200 서빙 검증은 Phase 5._
+- [x] (test) `buildSearchIndex` 출력 스키마 스모크(본문 제외·카드 필드 보존) — [exportSearchIndex.test.ts](../src/__tests__/exportSearchIndex.test.ts), FlexSearch 한글/영문/태그 매칭 샘플(`queryMatchingIds`) — [searchIndex.test.ts](../src/__tests__/searchIndex.test.ts).
+- [x] `npm run lint && npm run typecheck && npm test` 통과(128 tests).
+
+### 의존성·주의
+
+- **선행:** Phase 1(`ArticleCard`·`filterAndSortFeed`·FilterBar/FilterSheet 재사용). **후행:** Phase 3(api 제외) 완료 전까지 전체 `npm run build`는 `/api/*`에서 실패하므로, Phase 2 단독 검증은 인덱스 생성·search 정적화·테스트로 한정한다(Phase 1과 동일 방식).
+- 서버 FTS의 **원문 본문(`content_raw`) 매칭만 손실**된다(인덱스에서 본문 제외) — §10 위험으로 수용. 제목·요약·원문 제목·태그 검색은 보존.
 
 ---
 
