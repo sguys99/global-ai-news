@@ -1,0 +1,67 @@
+name: deploy
+
+# 정적 export(`output:'export'`, out/) → GitHub Pages 배포.
+# 트리거: deploy/github-pages 브랜치에 배포 산출에 영향 주는 파일이 push 되면 자동 실행
+#         (collect.yml의 data/app.db 커밋이 이 워크플로를 트리거한다 — [skip ci] 제거됨).
+#         + 수동 재배포(workflow_dispatch).
+# 저장소 Settings → Pages → Source = "GitHub Actions" 로 설정해야 동작한다.
+
+on:
+  push:
+    branches: [deploy/github-pages]
+    paths:
+      - "data/app.db" # 일 1회 수집 결과 — 콘텐츠 갱신의 주 트리거
+      - "configs/**" # 소스/프롬프트 변경
+      - "src/**" # 페이지/컴포넌트 변경
+      - "next.config.ts" # basePath/export 설정 변경
+      - "package.json" # 의존성/스크립트 변경
+      - ".github/workflows/deploy.yml" # 배포 파이프라인 자체 변경
+  workflow_dispatch: {} # 즉시 재배포
+
+# GitHub Pages 배포에 필요한 권한.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 동시 배포를 직렬화한다(최신 배포만 유효 → 진행 중 배포 취소).
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 정적 export. prebuild(scripts/export-search-index.ts)가 build 직전 자동 실행되어
+      # 최신 data/app.db로 public/search-index.json을 생성한다 → next build가 out/ 산출.
+      - name: Build static export
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

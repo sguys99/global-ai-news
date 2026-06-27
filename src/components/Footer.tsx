@@ -24,9 +24,7 @@ export function Footer() {
           <Link href="/search" className="hover:text-primary">
             검색
           </Link>
-          <Link href="/admin" className="hover:text-primary">
-            운영 콘솔
-          </Link>
+          {/* 운영 콘솔(/admin)은 로컬 전용 도구 — 정적 배포 산출엔 없으므로 공개 푸터에 노출하지 않는다(Phase 3). */}
         </nav>
 
         <p className="text-[12px] leading-none">

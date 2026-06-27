@@ -1,7 +1,8 @@
 name: collect
 
 # 일 1회 자동 수집 + 수동/관리자 콘솔 트리거(workflow_dispatch).
-# scripts/collect.ts 실행 → data/app.db 변경분만 커밋·푸시 → Vercel 재배포.
+# scripts/collect.ts 실행 → data/app.db 변경분만 deploy/github-pages 에 커밋·푸시
+# → 그 push가 deploy.yml(GitHub Pages 정적 배포)을 트리거한다([skip ci] 미사용).
 # 관리자 콘솔(src/lib/github.ts)이 정확히 이 파일명("collect.yml")으로 dispatch 한다.
 
 on:
@@ -32,7 +33,11 @@ jobs:
       LLM_MODEL: ${{ vars.LLM_MODEL }}
       MAX_ITEMS_PER_RUN: ${{ vars.MAX_ITEMS_PER_RUN }}
     steps:
+      # 배포 트리거 브랜치로 고정 정렬. schedule 실행은 기본 브랜치 컨텍스트로 돌므로
+      # deploy/github-pages 를 명시 checkout 해 동일 브랜치에 커밋·push 한다.
       - uses: actions/checkout@v4
+        with:
+          ref: deploy/github-pages
 
       - uses: actions/setup-node@v4
         with:
@@ -52,6 +57,9 @@ jobs:
           echo "code=$?" >> "$GITHUB_OUTPUT"
 
       - name: Commit & push DB if changed
+        # 배포 트리거 브랜치 고정. [skip ci] 미사용 → 이 push가 deploy.yml 을 트리거한다.
+        env:
+          DEPLOY_BRANCH: deploy/github-pages
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -60,11 +68,11 @@ jobs:
             exit 0
           fi
           git add data/app.db
-          git commit -m "chore(data): daily collect $(date -u +%Y-%m-%d) [skip ci]"
+          git commit -m "chore(data): daily collect $(date -u +%Y-%m-%d)"
           # 푸시 경쟁(다른 커밋이 먼저 들어온 경우) 대비 rebase 후 재시도.
           for i in 1 2 3; do
-            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" \
-              && git push origin "HEAD:${GITHUB_REF_NAME}" \
+            git pull --rebase --autostash origin "${DEPLOY_BRANCH}" \
+              && git push origin "HEAD:${DEPLOY_BRANCH}" \
               && break
             echo "push attempt $i failed — retrying"
             sleep 5

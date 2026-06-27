@@ -34,7 +34,7 @@
 - [x] **Phase 0** — 정적 export 기반 설정 (PRD §3.1)
 - [x] **Phase 1** — 피드·상세 정적화 (PRD §3.2, §3.3)
 - [x] **Phase 2** — 검색 클라이언트 전환 (PRD §3.4)
-- [ ] **Phase 3** — admin/api/middleware 배포 분리 (PRD §3.5)
+- [x] **Phase 3** — admin/api/middleware 배포 분리 (PRD §3.5)
 - [ ] **Phase 4** — 자동 빌드·배포 파이프라인 (PRD §3.6)
 - [ ] **Phase 5** — 동작 동일성·`basePath`·KPI 검증 (PRD §9)
 
@@ -222,20 +222,20 @@
 
 ### 작업
 
-- [ ] 프로덕션 빌드(`npm run build`)에서 `/admin/*`·`/api/*`·[src/middleware.ts](../src/middleware.ts)가 export 대상에서 제외되도록 처리(가장 단순·안전한 1택 — 빌드 phase 감지 또는 빌드 전용 플래그). `next dev`에는 적용되지 않아야 한다.
-- [ ] 공개 사이트 네비게이션/링크에 admin 진입점이 노출되지 않음을 확인.
-- [ ] `npm run dev`에서 admin 소스 CRUD·재수집·KPI가 기존과 동일하게 동작함을 회귀 확인.
+- [x] 프로덕션 빌드(`npm run build`)에서 `/admin/*`·`/api/*`·`src/middleware.ts`가 export 대상에서 제외되도록 처리. **메커니즘 = `pageExtensions` 게이팅(빌드 phase 감지, 파일 이동·삭제 없이 reversible).** 라우트/미들웨어 파일을 `page.local.tsx`/`route.local.ts`/`middleware.local.ts`로 두고, [next.config.ts](../next.config.ts)가 `next dev`(=`PHASE_PRODUCTION_BUILD` 분기 밖)엔 `local.*` 확장자를 `pageExtensions`에 포함해 그대로 노출, 프로덕션 빌드엔 제외해 라우트로 인식되지 않게 한다. `next dev`엔 미적용(무회귀).
+- [x] 공개 사이트 네비게이션/링크에 admin 진입점이 노출되지 않음을 확인. [Footer](../src/components/Footer.tsx)의 `/admin`("운영 콘솔") 링크 **제거**. (`BottomTabBar`의 `ADMIN_TABS`는 `pathname.startsWith("/admin")` 일 때만 렌더 → 정적 사이트엔 `/admin/*` 페이지가 없어 공개 노출 안 됨. 빌드된 `out/index.html`에 admin 링크 0건 확인.)
+- [x] `npm run dev`에서 admin 소스 CRUD·재수집·KPI가 기존과 동일하게 동작함을 회귀 확인. (`/api/health` 200·`/admin/login` 200·`/admin`→`/admin/login` 307(middleware)·`/api/admin/sources` 401(middleware) 확인.)
 
 ### 핵심 파일
 
-`next.config.ts`/라우트 조건부 처리, `src/middleware.ts`, `src/app/admin/*`, `src/app/api/*`
+`next.config.ts`(`pageExtensions` phase 게이팅), `src/middleware.local.ts`, `src/app/admin/**/page.local.tsx`, `src/app/api/**/route.local.ts`, [Footer.tsx](../src/components/Footer.tsx)(admin 링크 제거), 테스트 import 경로 갱신(`health.test.ts`·`sources-route.test.ts`).
 
 ### Acceptance / Tests / Verify
 
-- [ ] 정적 산출물 `out/`에 `/admin/*`·`/api/*`가 포함되지 않는다.
-- [ ] 정적 export 빌드가 admin/api/middleware 때문에 실패하지 않는다.
-- [ ] `npm run dev`에서 admin 기능(소스 CRUD·재수집 트리거·KPI 대시보드)이 기존과 동일하게 동작한다.
-- [ ] 공개 사이트에 admin 진입점이 노출되지 않는다.
+- [x] 정적 산출물 `out/`에 `/admin/*`·`/api/*`가 포함되지 않는다. (`find out -path '*admin*' -o -path '*api*'` → 0건, `out/` 최상위 = `404 article fonts search index.html search-index.json`.)
+- [x] 정적 export 빌드가 admin/api/middleware 때문에 실패하지 않는다. (`npm run build` 성공 — 라우트 `/`·`/article/[id]`·`/search`만 산출, `middleware-manifest.json` = `{ middleware:{}, sortedMiddleware:[] }`.)
+- [x] `npm run dev`에서 admin 기능(소스 CRUD·재수집 트리거·KPI 대시보드)이 기존과 동일하게 동작한다. (위 dev 회귀 확인.)
+- [x] 공개 사이트에 admin 진입점이 노출되지 않는다. (Footer 링크 제거, `out/index.html`에 admin href 0건. 잔존 `/admin` 문자열은 `ADMIN_TABS` 정의뿐 — 공개 경로에선 미렌더.)
 
 ---
 
