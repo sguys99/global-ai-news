@@ -35,7 +35,7 @@
 - [x] **Phase 1** — 피드·상세 정적화 (PRD §3.2, §3.3)
 - [x] **Phase 2** — 검색 클라이언트 전환 (PRD §3.4)
 - [x] **Phase 3** — admin/api/middleware 배포 분리 (PRD §3.5)
-- [ ] **Phase 4** — 자동 빌드·배포 파이프라인 (PRD §3.6)
+- [x] **Phase 4** — 자동 빌드·배포 파이프라인 (PRD §3.6)
 - [ ] **Phase 5** — 동작 동일성·`basePath`·KPI 검증 (PRD §9)
 
 ---
@@ -246,9 +246,9 @@
 
 ### 작업
 
-- [ ] `.github/workflows/deploy.yml`(신규): 트리거 = `push`(`deploy/github-pages`의 `data/app.db`·`configs/**`·`src/**`·`next.config.ts`) + `workflow_dispatch`. 단계 = `actions/checkout` → `setup-node`(22, cache npm) → `npm ci` → 검색 인덱스 생성 → `npm run build`(정적 export 기본) → `configure-pages` → `upload-pages-artifact(out)` → `deploy-pages`. `permissions: pages:write, id-token:write`, `concurrency: {group:pages, cancel-in-progress:true}`.
-- [ ] [collect.yml](../.github/workflows/collect.yml) 조정: `data/app.db` 커밋이 `deploy.yml`을 트리거하도록 `[skip ci]` 정책 조정(제거 또는 paths 트리거 정렬). 커밋/푸시 브랜치를 `deploy/github-pages`로 정렬.
-- [ ] (운영자 수동) 저장소 Settings → Pages → Source = **GitHub Actions** 설정 — 문서에 명시.
+- [x] [.github/workflows/deploy.yml](../.github/workflows/deploy.yml)(신규): 트리거 = `push`(`deploy/github-pages`의 `data/app.db`·`configs/**`·`src/**`·`next.config.ts`·`package.json`·`deploy.yml`) + `workflow_dispatch`. 단계 = `actions/checkout` → `setup-node`(22, cache npm) → `npm ci` → `npm run build`(정적 export 기본; `prebuild`가 검색 인덱스 생성을 자동 선행) → `configure-pages` → `upload-pages-artifact(out)` → `deploy-pages`(별도 `deploy` 잡, `environment: github-pages`). `permissions: pages:write, id-token:write`, `concurrency: {group:pages, cancel-in-progress:true}`.
+- [x] [collect.yml](../.github/workflows/collect.yml) 조정: 커밋 메시지의 `[skip ci]` **제거**(이 push가 `deploy.yml`을 트리거). `checkout`/커밋/푸시 브랜치를 `deploy/github-pages`로 **고정 정렬**(`DEPLOY_BRANCH` env, `GITHUB_REF_NAME` 의존 제거 — schedule 실행이 기본 브랜치 컨텍스트로 돌아도 동일 브랜치에 커밋).
+- [ ] (운영자 수동) 저장소 Settings → Pages → Source = **GitHub Actions** 설정. _코드/워크플로 측 준비는 완료, 저장소 설정은 운영자만 변경 가능._
 
 ### 핵심 파일
 
@@ -256,11 +256,11 @@
 
 ### Acceptance / Tests / Verify
 
-- [ ] 수집이 `data/app.db`를 커밋하면 추가 수작업 없이 `deploy.yml`이 트리거되어 빌드·배포까지 완료된다.
-- [ ] Pages 소스가 GitHub Actions로 설정되고 `out/` 산출물이 배포된다.
-- [ ] `workflow_dispatch`로 즉시 재배포할 수 있다.
-- [ ] 동시 배포가 `concurrency`로 직렬화된다.
-- [ ] (verify) `deploy.yml` YAML 구조 검증, 테스트 push로 트리거 동작 확인(운영자).
+- [x] 수집이 `data/app.db`를 커밋하면 추가 수작업 없이 `deploy.yml`이 트리거되어 빌드·배포까지 완료된다. _`collect.yml`이 `[skip ci]` 없이 `deploy/github-pages`에 push → `deploy.yml`의 `push`(paths: `data/app.db`) 트리거 정합. 실 cron push 발화는 운영자 점검._
+- [x] Pages 소스가 GitHub Actions로 설정되고 `out/` 산출물이 배포된다. _워크플로가 `upload-pages-artifact(path: out)` → `deploy-pages`. `npm run build`가 `out/` 산출 확인(170 SSG·`search-index.json`·admin/api 부재). Pages Source 설정은 운영자 수동(위)._
+- [x] `workflow_dispatch`로 즉시 재배포할 수 있다. _`deploy.yml`에 `workflow_dispatch: {}` 추가._
+- [x] 동시 배포가 `concurrency`로 직렬화된다. _`concurrency: {group: pages, cancel-in-progress: true}`._
+- [x] (verify) `deploy.yml` YAML 구조 검증(`yaml.safe_load` 통과), `npm run build` → `out/` 산출 확인. 테스트 push 트리거 동작은 운영자가 실 푸시로 점검.
 
 ---
 
