@@ -30,9 +30,9 @@ export function hasGithubConfig(): boolean {
   return Boolean(process.env.GITHUB_REPO && process.env.GITHUB_PAT);
 }
 
-/** 기본 브랜치(미지정 시 main). */
+/** 배포 운영 브랜치(미지정 시 deploy/github-pages). */
 export function defaultBranch(): string {
-  return process.env.GITHUB_BRANCH || "main";
+  return process.env.GITHUB_BRANCH || "deploy/github-pages";
 }
 
 function headers(pat: string): HeadersInit {

@@ -2,7 +2,9 @@ name: collect
 
 # 일 1회 자동 수집 + 수동/관리자 콘솔 트리거(workflow_dispatch).
 # scripts/collect.ts 실행 → data/app.db 변경분만 deploy/github-pages 에 커밋·푸시
-# → 그 push가 deploy.yml(GitHub Pages 정적 배포)을 트리거한다([skip ci] 미사용).
+# → DB 변경 시 deploy.yml(GitHub Pages 정적 배포)을 명시적으로 workflow_dispatch 한다.
+#   (빌트인 GITHUB_TOKEN 의 push 이벤트는 다른 워크플로를 트리거하지 못하므로 —
+#    재귀 방지 정책 — push 트리거에 기대지 않고 직접 dispatch 한다. dispatch 는 예외로 동작.)
 # 관리자 콘솔(src/lib/github.ts)이 정확히 이 파일명("collect.yml")으로 dispatch 한다.
 
 on:
@@ -17,6 +19,7 @@ concurrency:
 
 permissions:
   contents: write # data/app.db 커밋/푸시 (빌트인 GITHUB_TOKEN 사용, 별도 PAT 불필요)
+  actions: write # deploy.yml 을 workflow_dispatch 로 트리거
 
 jobs:
   collect:
@@ -57,7 +60,8 @@ jobs:
           echo "code=$?" >> "$GITHUB_OUTPUT"
 
       - name: Commit & push DB if changed
-        # 배포 트리거 브랜치 고정. [skip ci] 미사용 → 이 push가 deploy.yml 을 트리거한다.
+        id: commit
+        # 배포 트리거 브랜치 고정. DB 변경 시 changed=true 를 출력해 다음 스텝이 배포를 dispatch.
         env:
           DEPLOY_BRANCH: deploy/github-pages
         run: |
@@ -65,6 +69,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git diff --quiet -- data/app.db; then
             echo "no DB change — nothing to commit"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git add data/app.db
@@ -77,6 +82,14 @@ jobs:
             echo "push attempt $i failed — retrying"
             sleep 5
           done
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger Pages deploy
+        # GITHUB_TOKEN push 는 워크플로를 트리거하지 못하므로 deploy.yml 을 명시적으로 dispatch.
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy.yml --ref deploy/github-pages
 
       - name: Reflect pipeline health in run status
         # 잡 배지를 파이프라인 건강도(성공률 KPI)에 맞춘다. DB 커밋은 이미 끝났다.
