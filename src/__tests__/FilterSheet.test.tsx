@@ -10,9 +10,7 @@ const sources = [
 const tags = ["LLM", "오픈소스"];
 
 function renderSheet(current: SearchOptions = {}) {
-  return render(
-    <FilterSheet current={current} sources={sources} tags={tags} basePath="/search" />,
-  );
+  return render(<FilterSheet current={current} sources={sources} tags={tags} basePath="/search" />);
 }
 
 afterEach(() => {

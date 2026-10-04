@@ -2,11 +2,11 @@
 
 /**
  * 검색 입력. 입력값을 디바운스(300ms) 후 URL 쿼리 q 로 반영한다.
- * source/tag/sort 등 기존 필터는 보존한다. DESIGN: hairline border, 그림자 금지.
+ * category/source/tag/sort 등 기존 필터는 보존한다. DESIGN.md v2: 잉크 밑줄 입력(지면의 괘선 문법).
  */
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 const DEBOUNCE_MS = 300;
 
@@ -38,14 +38,17 @@ export function SearchInput() {
   }
 
   return (
-    <Input
-      type="search"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="키워드로 기사 검색 (제목·요약·원문·태그)"
-      aria-label="기사 검색"
-      autoFocus
-      className="text-body h-11 rounded-lg shadow-none"
-    />
+    <label className="border-rule focus-within:border-brand flex items-center gap-3 border-b-2 pb-2 transition-colors">
+      <Search aria-hidden className="text-muted-foreground size-6 shrink-0" />
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="키워드로 검색 — 제목·요약·원문·태그"
+        aria-label="기사 검색"
+        autoFocus
+        className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent py-2 text-[1.375rem] font-medium tracking-[-0.03em] outline-none md:text-[1.75rem]"
+      />
+    </label>
   );
 }

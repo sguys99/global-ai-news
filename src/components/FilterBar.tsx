@@ -1,49 +1,44 @@
 /**
- * 피드 필터/정렬 바. 서버 컴포넌트 + 링크 기반(쿼리스트링) 네비게이션으로
- * 클라이언트 JS 없이 동작한다. PRD §3.5, DESIGN: rounded.pill / Action Blue.
+ * 피드/검색 필터·정렬 바. 링크 기반(쿼리스트링) 네비게이션 — 클라이언트 JS 없이 동작한다(PRD §3.5).
+ * DESIGN.md §5: 정렬은 밑줄 탭, 분야·소스·태그는 pill 칩(활성 = 잉크 채움).
  *
- * 정렬은 단일 선택, 소스·태그는 클릭 시 토글(같은 값 재클릭하면 해제)한다.
+ * 정렬은 단일 선택(화제순 = 쿼리 없음 = 기본), 분야·소스·태그는 클릭 시 토글(같은 값 재클릭 시 해제).
  */
 import Link from "next/link";
 import type { SearchOptions } from "@/lib/db";
+import { CATEGORY_LABELS, shortSourceName } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-const SORTS: { value: "latest" | "importance"; label: string }[] = [
+/** 기본 정렬(sort 미지정)은 트렌딩 점수순 — feedFilter/db 의 기본 정렬과 동일. */
+const SORTS: { value: SearchOptions["sort"]; label: string }[] = [
+  { value: undefined, label: "화제순" },
   { value: "latest", label: "최신순" },
   { value: "importance", label: "중요도순" },
 ];
 
-/** 필터 칩에서만 쓰는 소스명 축약 맵 (카드 등 다른 곳은 원래 이름 유지). */
-const SOURCE_SHORT_LABEL: Record<string, string> = {
-  "TechCrunch AI": "TechCrunch",
-  "GitHub (topic:llm)": "GitHub",
-  "HuggingFace Daily Papers": "HuggingFace",
-  "MIT Technology Review": "MIT Tech. Review",
-};
-
 /**
  * 현재 필터에 patch 를 병합해 `${basePath}?...` href 생성.
  * 값이 빈 문자열/undefined면 해당 키 제거. 검색어 q 는 보존한다.
+ * anchor(예: "#all")를 주면 이동 후 해당 위치로 스크롤한다(홈 지면 중간의 전체 기사 목록).
  */
-function buildHref(
+export function buildHref(
   basePath: string,
   current: SearchOptions,
   patch: Partial<SearchOptions>,
+  anchor = "",
 ): string {
   const merged = { ...current, ...patch };
   const params = new URLSearchParams();
   if (merged.q) params.set("q", merged.q);
+  if (merged.category) params.set("category", merged.category);
   if (merged.source) params.set("source", merged.source);
   if (merged.tag) params.set("tag", merged.tag);
   if (merged.sort) params.set("sort", merged.sort);
   const qs = params.toString();
-  return qs ? `${basePath}?${qs}` : basePath;
+  return (qs ? `${basePath}?${qs}` : basePath) + anchor;
 }
 
-const chip =
-  "rounded-pill inline-flex min-h-11 items-center border px-3 py-2 text-[13px] transition-colors md:min-h-0 md:py-1";
-const chipOff = "border-border text-muted-foreground hover:border-foreground";
-const chipOn = "border-foreground bg-foreground text-background font-semibold";
+const focus = "outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function Chip({
   href,
@@ -55,9 +50,28 @@ function Chip({
   children: React.ReactNode;
 }) {
   return (
-    <Link href={href} className={cn(chip, active ? chipOn : chipOff)}>
+    <Link
+      href={href}
+      aria-current={active ? "true" : undefined}
+      className={cn(
+        "rounded-pill text-meta inline-flex min-h-11 items-center border px-3.5 transition-colors md:min-h-8",
+        active
+          ? "border-foreground bg-foreground text-background font-semibold"
+          : "border-border text-foreground-soft hover:border-foreground hover:text-foreground",
+        focus,
+      )}
+    >
       {children}
     </Link>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+      <span className="text-label text-muted-foreground w-10 shrink-0 font-semibold">{label}</span>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </div>
   );
 }
 
@@ -66,67 +80,75 @@ export function FilterBar({
   sources,
   tags,
   basePath = "/",
+  anchor = "",
 }: {
   current: SearchOptions;
   sources: { id: string; name: string }[];
   tags: string[];
   basePath?: string;
+  anchor?: string;
 }) {
+  const href = (patch: Partial<SearchOptions>) => buildHref(basePath, current, patch, anchor);
   return (
     <div className="flex flex-col gap-3">
-      {/* 정렬 */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-caption text-muted-foreground mr-1">정렬</span>
+      <div role="group" aria-label="정렬" className="flex gap-5">
         {SORTS.map((s) => {
-          const active = (current.sort ?? "latest") === s.value;
+          const active = current.sort === s.value;
           return (
-            <Chip
-              key={s.value}
-              href={buildHref(basePath, current, { sort: active ? undefined : s.value })}
-              active={active}
+            <Link
+              key={s.label}
+              href={href({ sort: s.value })}
+              aria-current={active ? "true" : undefined}
+              className={cn(
+                "text-caption min-h-11 border-b-2 font-semibold transition-colors md:min-h-0 md:py-1.5",
+                active
+                  ? "border-brand text-foreground"
+                  : "text-muted-foreground hover:text-foreground border-transparent",
+                "inline-flex items-center",
+                focus,
+              )}
             >
               {s.label}
-            </Chip>
+            </Link>
           );
         })}
       </div>
 
-      {/* 소스 */}
+      <Row label="분야">
+        {Object.keys(CATEGORY_LABELS).map((c) => {
+          const active = current.category === c;
+          return (
+            <Chip key={c} href={href({ category: active ? undefined : c })} active={active}>
+              {CATEGORY_LABELS[c]}
+            </Chip>
+          );
+        })}
+      </Row>
+
       {sources.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-caption text-muted-foreground mr-1">소스</span>
+        <Row label="매체">
           {sources.map((s) => {
             const active = current.source === s.id;
             return (
-              <Chip
-                key={s.id}
-                href={buildHref(basePath, current, { source: active ? undefined : s.id })}
-                active={active}
-              >
-                {SOURCE_SHORT_LABEL[s.name] ?? s.name}
+              <Chip key={s.id} href={href({ source: active ? undefined : s.id })} active={active}>
+                {shortSourceName(s.name)}
               </Chip>
             );
           })}
-        </div>
+        </Row>
       )}
 
-      {/* 태그 */}
       {tags.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-caption text-muted-foreground mr-1">태그</span>
+        <Row label="태그">
           {tags.map((t) => {
             const active = current.tag === t;
             return (
-              <Chip
-                key={t}
-                href={buildHref(basePath, current, { tag: active ? undefined : t })}
-                active={active}
-              >
+              <Chip key={t} href={href({ tag: active ? undefined : t })} active={active}>
                 {t}
               </Chip>
             );
           })}
-        </div>
+        </Row>
       )}
     </div>
   );

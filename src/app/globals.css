@@ -4,59 +4,69 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Daily AI Brief 디자인 토큰 (DESIGN.md 기반).
- * shadcn 변수 "이름"은 유지하고 "값"만 DESIGN.md로 치환한다 → 기존 프리미티브 호환.
- * 핵심 원칙: 단일 강조색 = 무채색 잉크(#1d1d1f), 활성/호버는 색조 없이 대비로 표현, 그림자·2차 강조색 금지.
+ * Daily AI Brief 디자인 토큰 — DESIGN.md v2 "Edition" (에디토리얼 매거진).
+ * shadcn 변수 "이름"은 유지하고 "값"만 교체한다 → 기존 프리미티브 호환.
+ * 핵심: 뉴스프린트 종이 + 잉크, 코발트 단일 강조(brand), 굵은 잉크 괘선(rule), 세리프 헤드라인.
  */
 :root {
-  --background: #f5f5f7; /* canvas-parchment */
-  --foreground: #1d1d1f; /* ink */
-  --card: #ffffff; /* canvas */
-  --card-foreground: #1d1d1f;
-  --popover: #ffffff;
-  --popover-foreground: #1d1d1f;
-  --primary: #1d1d1f; /* ink (무채색 강조) */
-  --primary-foreground: #ffffff;
-  --secondary: #f5f5f7;
-  --secondary-foreground: #1d1d1f;
-  --muted: #f5f5f7;
-  --muted-foreground: #7a7a7a; /* ink-muted-48 */
-  --accent: #f5f5f7;
-  --accent-foreground: #1d1d1f;
-  --destructive: #d70015;
+  --background: #f4f4f1; /* paper */
+  --foreground: #141519; /* ink */
+  --foreground-soft: #3a3c43; /* ink-2: 요약·리드문 */
+  --card: #fbfbf9; /* sheet */
+  --card-foreground: #141519;
+  --popover: #fbfbf9;
+  --popover-foreground: #141519;
+  --primary: #141519; /* 채움 버튼 = 잉크 */
+  --primary-foreground: #f4f4f1;
+  --secondary: #eaeae5;
+  --secondary-foreground: #141519;
+  --muted: #eaeae5;
+  --muted-foreground: #66686f;
+  --accent: #eaeae5; /* hover 표면 */
+  --accent-foreground: #141519;
+  --brand: #2140e8; /* cobalt — 키커·순위·활성·링크 */
+  --brand-foreground: #ffffff;
+  --brand-soft: rgb(33 64 232 / 0.08);
+  --destructive: #c8102e;
   --destructive-foreground: #ffffff;
-  --border: #e0e0e0; /* hairline */
-  --input: #e0e0e0;
-  --ring: #1d1d1f;
-  --radius: 18px; /* rounded.lg */
+  --border: #d8d8d2; /* hairline rule */
+  --input: #c9c9c2;
+  --rule: #141519; /* 굵은 잉크 괘선 */
+  --ring: #2140e8;
+  --radius: 12px;
 }
 
-/* 다크 섹션(라이트/다크 교차): 검정/ink 배경, 흰 텍스트, on-dark 강조색 */
 .dark {
-  --background: #000000; /* surface-black */
-  --foreground: #ffffff;
-  --card: #1d1d1f;
-  --card-foreground: #ffffff;
-  --popover: #1d1d1f;
-  --popover-foreground: #ffffff;
-  --primary: #f5f5f7; /* near-white ink (다크 위 무채색 강조) */
-  --primary-foreground: #1d1d1f;
-  --secondary: #1d1d1f;
-  --secondary-foreground: #ffffff;
-  --muted: #1d1d1f;
-  --muted-foreground: #cccccc; /* body-muted */
-  --accent: #1d1d1f;
-  --accent-foreground: #ffffff;
-  --destructive: #ff453a;
-  --destructive-foreground: #ffffff;
-  --border: #333333; /* ink-muted-80 */
-  --input: #333333;
-  --ring: #f5f5f7;
+  --background: #0f1118; /* night ink-blue */
+  --foreground: #eceae4;
+  --foreground-soft: #bcbbb5;
+  --card: #151823;
+  --card-foreground: #eceae4;
+  --popover: #151823;
+  --popover-foreground: #eceae4;
+  --primary: #eceae4;
+  --primary-foreground: #0f1118;
+  --secondary: #1c1f2b;
+  --secondary-foreground: #eceae4;
+  --muted: #1c1f2b;
+  --muted-foreground: #8d8f9a;
+  --accent: #1c1f2b;
+  --accent-foreground: #eceae4;
+  --brand: #93a3ff;
+  --brand-foreground: #0f1118;
+  --brand-soft: rgb(147 163 255 / 0.1);
+  --destructive: #ff6b6b;
+  --destructive-foreground: #0f1118;
+  --border: #2a2d39;
+  --input: #3a3e4d;
+  --rule: #eceae4;
+  --ring: #93a3ff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-foreground-soft: var(--foreground-soft);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -69,44 +79,74 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-rule: var(--rule);
   --color-ring: var(--ring);
 
-  /* DESIGN.md 보조 컬러 토큰 (bg-canvas / bg-parchment / border-hairline 등) */
-  --color-canvas: #ffffff;
-  --color-parchment: #f5f5f7;
-  --color-hairline: #e0e0e0;
-  --color-ink: #1d1d1f;
-
-  /* 반경 (DESIGN.md) */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
+  /* 반경: 에디토리얼 지면은 각진 면이 기본. 칩·버튼만 pill. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-pill: 9999px;
 
-  /* 타이포그래피 스케일 (DESIGN.md) */
+  /* 서체: 세리프 = 헤드라인·제호(Hahmlet), 산세리프 = 본문·메타(Pretendard) */
   --font-sans:
     var(--font-pretendard), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", system-ui, sans-serif; /* Pretendard 우선, 한글·라틴 통일 */
-  --text-caption: 14px;
-  --text-caption--line-height: 1.43;
-  --text-body: 17px;
-  --text-body--line-height: 1.47;
-  --text-display-md: 34px;
-  --text-display-md--line-height: 1.47;
+    "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-serif: var(--font-hahmlet), "Noto Serif KR", AppleMyungjo, Batang, serif;
 
-  /* 모바일 셸 (mobile-plan Phase 1): 하단 탭 바 높이 */
+  /* 타입 스케일 (DESIGN.md §9 typography) */
+  --text-nameplate: clamp(3rem, 8.4vw, 7.5rem);
+  --text-nameplate--line-height: 0.95;
+  --text-nameplate--letter-spacing: -0.045em;
+  --text-display-xl: clamp(2.125rem, 4.6vw, 3.75rem);
+  --text-display-xl--line-height: 1.14;
+  --text-display-xl--letter-spacing: -0.045em;
+  --text-display-lg: clamp(1.875rem, 3.6vw, 2.75rem);
+  --text-display-lg--line-height: 1.2;
+  --text-display-lg--letter-spacing: -0.04em;
+  --text-display-md: clamp(1.625rem, 2.6vw, 1.875rem);
+  --text-display-md--line-height: 1.2;
+  --text-display-md--letter-spacing: -0.045em;
+  --text-headline: 1.3125rem;
+  --text-headline--line-height: 1.38;
+  --text-headline--letter-spacing: -0.035em;
+  --text-dek: 1.1875rem;
+  --text-dek--line-height: 1.7;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.75;
+  --text-title: 1rem;
+  --text-title--line-height: 1.5;
+  --text-caption: 0.875rem;
+  --text-caption--line-height: 1.55;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.4;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.3;
+
+  /* 모바일 셸: 하단 탭 바 높이 */
   --tabbar-h: 3.5rem;
-}
 
-/* 좁은 폰(≤419px)에서 hero 타이포 축소 */
-@media (max-width: 419px) {
-  :root {
-    --text-display-md: 28px;
+  --animate-rise: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-draw: draw 0.9s cubic-bezier(0.6, 0, 0.2, 1) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0.001;
+      transform: translateY(10px);
+    }
+  }
+  @keyframes draw {
+    from {
+      transform: scaleX(0.001);
+    }
   }
 }
 
@@ -116,17 +156,40 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+    letter-spacing: -0.01em;
+    /* 한글은 어절 단위로 줄바꿈(단어 중간 분리 방지), 긴 URL·영문은 필요 시 분리 */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  ::selection {
+    background: var(--brand);
+    color: var(--brand-foreground);
   }
 }
 
-/* 접근성(mobile-plan Phase 6): 모션 민감 사용자는 transition/animation 무력화.
- * DESIGN의 transform·color transition은 장식이므로 안전하게 제거 가능. */
+/* 카드 링크 hover: 제목(.headline)만 코발트로 — 카드 전체 색 변화 없음 */
+@utility story-link {
+  & .headline {
+    transition: color 0.15s ease-out;
+  }
+  &:hover .headline {
+    color: var(--brand);
+  }
+}
+
+/* 접근성: 모션 민감 사용자는 transition/animation 무력화(모든 모션은 장식). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }

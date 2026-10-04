@@ -26,7 +26,7 @@ describe("BottomTabBar", () => {
     expect(search).toHaveClass("text-muted-foreground");
   });
 
-  it("활성 탭에만 aria-current=\"page\"를 부여한다(접근성, Phase 6)", () => {
+  it('활성 탭에만 aria-current="page"를 부여한다(접근성, Phase 6)', () => {
     usePathname.mockReturnValue("/");
     render(<BottomTabBar />);
 

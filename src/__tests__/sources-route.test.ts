@@ -23,9 +23,7 @@ vi.mock("@/lib/github", () => ({
 }));
 
 // 모킹 후 라우트 import
-const { GET, POST, PUT, DELETE } = await import(
-  "@/app/api/admin/sources/route.local"
-);
+const { GET, POST, PUT, DELETE } = await import("@/app/api/admin/sources/route.local");
 
 const rss: SourceConfig = {
   id: "techcrunch_ai",

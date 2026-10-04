@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArticleCard } from "@/components/ArticleCard";
+import Link from "next/link";
 import { FilterBar } from "@/components/FilterBar";
 import { FilterSheet } from "@/components/mobile/FilterSheet";
 import { SearchInput } from "@/components/SearchInput";
-import type { SearchOptions } from "@/lib/db";
-import { filterAndSortFeed } from "@/lib/feedFilter";
+import { StoryIndex } from "@/components/StoryIndex";
+import { filterAndSortFeed, parseFeedOptions } from "@/lib/feedFilter";
 import { buildSearchDocument, queryMatchingIds, type SearchDocument } from "@/lib/searchIndex";
 import type { SearchIndexEntry } from "@/lib/types";
 
@@ -19,9 +19,9 @@ const INDEX_URL = `${BASE_PATH}/search-index.json`;
  * 검색 클라이언트 셸 (정적 export).
  *
  * 서버 FTS5 검색을 대체한다. 마운트 시 search-index.json 을 fetch 해 FlexSearch 인덱스를 빌드하고,
- * URL 쿼리(`?q=&source=&tag=&sort=`)를 읽어 ① 질의어로 id 매칭 → ② Phase 1의 filterAndSortFeed 로
- * 소스/태그 필터·정렬을 적용한다. SearchInput·FilterBar·FilterSheet·ArticleCard·결과 없음 상태는
- * standalone 시절과 동일 마크업/UX(공유 URL·디바운스·칩 시각)를 유지한다.
+ * URL 쿼리(`?q=&category=&source=&tag=&sort=`)를 읽어 ① 질의어로 id 매칭 → ② filterAndSortFeed 로
+ * 분야/매체/태그 필터·정렬을 적용한다. 결과는 피드와 같은 StoryEntry 색인으로 렌더한다.
+ * 검색어가 없으면 인기 태그를 추천 검색어로 보여 준다.
  */
 export function SearchClient({
   sources,
@@ -52,15 +52,7 @@ export function SearchClient({
     };
   }, []);
 
-  const options: SearchOptions = useMemo(() => {
-    const sort = searchParams.get("sort");
-    return {
-      q: searchParams.get("q") || undefined,
-      source: searchParams.get("source") || undefined,
-      tag: searchParams.get("tag") || undefined,
-      sort: sort === "latest" || sort === "importance" ? sort : undefined,
-    };
-  }, [searchParams]);
+  const options = useMemo(() => parseFeedOptions(searchParams), [searchParams]);
 
   const hasQuery = Boolean(options.q);
   const loading = entries === null;
@@ -81,24 +73,41 @@ export function SearchClient({
       <div className="hidden md:block">
         <FilterBar current={options} sources={sources} tags={tags} basePath="/search" />
       </div>
-      <FilterSheet current={options} sources={sources} tags={tags} basePath="/search" />
+      <div className="md:hidden">
+        <FilterSheet current={options} sources={sources} tags={tags} basePath="/search" />
+      </div>
 
       {!hasQuery ? (
-        <p className="text-muted-foreground text-body">
-          키워드를 입력하면 제목·요약·태그에서 기사를 검색합니다.
-        </p>
+        <section aria-labelledby="suggest-heading" className="flex flex-col gap-3 pt-4">
+          <h2 id="suggest-heading" className="text-label text-muted-foreground font-bold">
+            많이 다뤄진 주제
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {tags.map((t) => (
+              <Link
+                key={t}
+                href={`/search?q=${encodeURIComponent(t)}`}
+                className="rounded-pill border-border hover:border-foreground focus-visible:ring-ring text-caption border px-4 py-2 font-semibold transition-colors outline-none focus-visible:ring-2"
+              >
+                {t}
+              </Link>
+            ))}
+          </div>
+        </section>
       ) : loading ? (
-        <p className="text-muted-foreground text-body">검색 인덱스를 불러오는 중…</p>
+        <p className="text-muted-foreground text-body py-6">검색 인덱스를 불러오는 중…</p>
       ) : results.length === 0 ? (
-        <p className="text-muted-foreground text-body">
-          “{options.q}”에 대한 검색 결과가 없습니다.
+        <p className="text-muted-foreground text-body py-6">
+          “{options.q}”에 대한 검색 결과가 없습니다. 다른 키워드나 필터를 시도해 보세요.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {results.map((article) => (
-            <ArticleCard key={article.id} article={article} />
-          ))}
-        </div>
+        <section aria-label="검색 결과">
+          <p className="border-rule text-caption text-muted-foreground border-b-2 pb-2">
+            “<span className="text-foreground font-semibold">{options.q}</span>” 검색 결과{" "}
+            <span className="text-foreground font-semibold tabular-nums">{results.length}</span>건
+          </p>
+          <StoryIndex key={JSON.stringify(options)} articles={results} />
+        </section>
       )}
     </>
   );

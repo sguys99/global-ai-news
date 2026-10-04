@@ -23,8 +23,32 @@ function seed(): DatabaseType {
         trending_score, title_ko, summary_ko, category, importance)
      VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
   );
-  ins.run("k1", "hackernews", "https://a", "A", "본문 전문 매우 긴 내용", "2026-01-03T00:00:00Z", 90, "에이", "요약", "Agents", 4);
-  ins.run("k2", "hackernews", "https://b", "B", "또 다른 본문", "2026-01-01T00:00:00Z", 50, "비", "요약2", "Dev Tools", 2);
+  ins.run(
+    "k1",
+    "hackernews",
+    "https://a",
+    "A",
+    "본문 전문 매우 긴 내용",
+    "2026-01-03T00:00:00Z",
+    90,
+    "에이",
+    "요약",
+    "Agents",
+    4,
+  );
+  ins.run(
+    "k2",
+    "hackernews",
+    "https://b",
+    "B",
+    "또 다른 본문",
+    "2026-01-01T00:00:00Z",
+    50,
+    "비",
+    "요약2",
+    "Dev Tools",
+    2,
+  );
 
   db.prepare("INSERT INTO tags (id, name) VALUES (1,'llm'),(2,'agent')").run();
   db.prepare("INSERT INTO article_tags (article_id, tag_id) VALUES (1,1),(1,2),(2,1)").run();

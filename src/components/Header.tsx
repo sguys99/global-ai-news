@@ -1,28 +1,21 @@
-import Link from "next/link";
-import { Search } from "lucide-react";
+import { HeaderNav } from "@/components/HeaderNav";
+import { HeaderWordmark } from "@/components/HeaderWordmark";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Button } from "@/components/ui/button";
 
 /**
- * 전역 헤더. 테마 적응형 슬림 바 (DESIGN.md global-nav 변형).
- * 배경은 테마에 따라 흰/파치먼트 ↔ 검정으로 전환되고, 하단 hairline으로 구분한다.
- * 모바일(<md)에서는 `MobileTopBar`가 대신 노출되므로 `hidden md:flex`로 데스크톱 전용.
+ * 데스크톱 전역 헤더 (DESIGN.md v2 site-header). 종이색 프로스티드 슬림 바 + 하단 hairline.
+ * 좌: 워드마크(홈에선 제호를 지나면 등장), 우: 주 메뉴 · 테마 토글.
+ * 모바일(<md)에서는 `MobileTopBar`가 대신 노출되므로 `hidden md:block`으로 데스크톱 전용.
  */
 export function Header() {
   return (
-    <header className="border-border bg-background/80 sticky top-0 z-50 hidden border-b backdrop-blur md:block">
-      <div className="mx-auto flex h-13 max-w-[1440px] items-center justify-between px-6">
-        <Link href="/" className="text-primary text-[18px] font-semibold tracking-tight">
-          Daily AI Brief
-        </Link>
-        <nav className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" asChild aria-label="검색">
-            <Link href="/search">
-              <Search />
-            </Link>
-          </Button>
+    <header className="border-border bg-background/85 sticky top-0 z-50 hidden border-b backdrop-blur-md md:block">
+      <div className="mx-auto flex h-13 max-w-[1240px] items-center gap-8 px-8">
+        <HeaderWordmark />
+        <div className="ml-auto flex items-center gap-6">
+          <HeaderNav />
           <ThemeToggle />
-        </nav>
+        </div>
       </div>
     </header>
   );

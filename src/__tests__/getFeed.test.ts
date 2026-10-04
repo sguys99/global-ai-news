@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import Database, { type Database as DatabaseType } from "better-sqlite3";
 import { beforeEach, describe, expect, it } from "vitest";
-import { getActiveTags, getFeed, getSourcesWithCounts } from "@/lib/db";
+import { getActiveTags, getEditionInfo, getFeed, getSourcesWithCounts } from "@/lib/db";
 
 const SCHEMA_PATH = path.join(process.cwd(), "scripts/lib/schema.sql");
 
@@ -109,6 +109,28 @@ describe("getFeed", () => {
   it("source + tag 동시 필터", () => {
     const rows = getFeed({ source: "techcrunch_ai", tag: "llm" }, db);
     expect(rows.map((a) => a.titleOriginal)).toEqual(["B"]);
+  });
+
+  it("category 필터", () => {
+    expect(getFeed({ category: "MLOps" }, db).map((a) => a.titleOriginal)).toEqual(["C"]);
+  });
+
+  it("category + source 동시 필터 (불일치면 0건)", () => {
+    expect(getFeed({ category: "Dev Tools", source: "hackernews" }, db)).toEqual([]);
+  });
+});
+
+describe("getEditionInfo", () => {
+  it("실행 이력이 없으면 호수 0, 발행 시각 null", () => {
+    expect(getEditionInfo(db)).toEqual({ issueNo: 0, publishedAt: null });
+  });
+
+  it("실패를 제외한 실행 수가 호수, 마지막 실행 시작 시각이 발행 시각", () => {
+    const ins = db.prepare("INSERT INTO collection_runs (started_at, status) VALUES (?, ?)");
+    ins.run("2026-10-01T21:00:00Z", "success");
+    ins.run("2026-10-02T21:00:00Z", "partial");
+    ins.run("2026-10-03T21:00:00Z", "failed");
+    expect(getEditionInfo(db)).toEqual({ issueNo: 2, publishedAt: "2026-10-02T21:00:00Z" });
   });
 });
 

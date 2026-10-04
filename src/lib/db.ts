@@ -66,6 +66,8 @@ const ARTICLE_SELECT = `
 export interface FeedOptions {
   tag?: string;
   source?: string;
+  /** 카테고리 데이터 값(예: "Agents"). 홈 섹션의 "전체 보기" 링크가 사용한다. */
+  category?: string;
   sort?: "latest" | "importance";
 }
 
@@ -74,7 +76,7 @@ export interface SearchOptions extends FeedOptions {
   q?: string;
 }
 
-/** 소스·태그 필터를 WHERE 절 조각 + 바인딩 파라미터로 구성한다(getFeed/searchArticles 공유). */
+/** 소스·태그·카테고리 필터를 WHERE 절 조각 + 바인딩 파라미터로 구성한다(getFeed/searchArticles 공유). */
 function buildFilters(opts: FeedOptions): {
   clauses: string[];
   params: (string | number)[];
@@ -93,6 +95,10 @@ function buildFilters(opts: FeedOptions): {
                 WHERE at.article_id = a.id AND t.name = ?)`,
     );
     params.push(opts.tag);
+  }
+  if (opts.category) {
+    clauses.push("a.category = ?");
+    params.push(opts.category);
   }
   return { clauses, params };
 }
@@ -284,6 +290,23 @@ export function getKpiSummary(days = 30, conn: DatabaseType = getDb()): KpiSumma
     avgDailyNew,
     duplicateKeys: dup.n,
   };
+}
+
+/** 마스트헤드 발행 정보: 호수 = 실패를 제외한 배치 실행 수, 발행 시각 = 마지막 실행 시작 시각. */
+export interface EditionInfo {
+  issueNo: number;
+  publishedAt: string | null;
+}
+
+export function getEditionInfo(conn: DatabaseType = getDb()): EditionInfo {
+  const row = conn
+    .prepare(
+      `SELECT COUNT(*) AS n, MAX(started_at) AS last
+         FROM collection_runs
+        WHERE status != 'failed'`,
+    )
+    .get() as { n: number; last: string | null };
+  return { issueNo: row.n, publishedAt: row.last };
 }
 
 /** 단건 상세 조회. 없으면 null. */
