@@ -13,7 +13,14 @@ export const INDEX_PAGE_SIZE = 30;
  * 나머지는 클라이언트에서 펼친다(데이터는 이미 정적 페이로드에 포함 — 추가 요청 없음).
  * 필터·정렬이 바뀌면 부모가 `key`를 바꿔 노출 건수를 초기화한다.
  */
-export function StoryIndex({ articles }: { articles: ArticleCard[] }) {
+export function StoryIndex({
+  articles,
+  hideCategory = false,
+}: {
+  articles: ArticleCard[];
+  /** 분야 필터가 걸린 목록에서는 항목마다 같은 키커를 반복하지 않는다. */
+  hideCategory?: boolean;
+}) {
   const [shown, setShown] = useState(INDEX_PAGE_SIZE);
   const remaining = articles.length - shown;
 
@@ -21,7 +28,7 @@ export function StoryIndex({ articles }: { articles: ArticleCard[] }) {
     <>
       <div className="grid grid-cols-1 gap-x-10 lg:grid-cols-2">
         {articles.slice(0, shown).map((article) => (
-          <StoryEntry key={article.id} article={article} />
+          <StoryEntry key={article.id} article={article} hideCategory={hideCategory} />
         ))}
       </div>
       {remaining > 0 && (

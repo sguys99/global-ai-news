@@ -156,7 +156,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
           </div>
           <div className="flex flex-col">
             {related.map((a) => (
-              <StoryEntry key={a.id} article={a} />
+              <StoryEntry key={a.id} article={a} hideCategory />
             ))}
           </div>
         </section>

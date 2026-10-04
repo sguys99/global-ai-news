@@ -63,12 +63,15 @@ export function Byline({
   showTrend = false,
   fullSource = false,
   compact = false,
+  showDate = true,
   className,
 }: {
   article: Pick<ArticleCard, "source" | "publishedAt" | "importance" | "trendingScore">;
   showTrend?: boolean;
   fullSource?: boolean;
   compact?: boolean;
+  /** 날짜를 별도 칼럼에 이미 보여 주는 목록(StoryEntry)에서는 끈다. */
+  showDate?: boolean;
   className?: string;
 }) {
   if (compact) {
@@ -100,8 +103,12 @@ export function Byline({
       <span className="text-foreground-soft font-semibold">
         {fullSource ? article.source.name : shortSourceName(article.source.name)}
       </span>
-      <Dot />
-      <span className="tabular-nums">{formatDate(article.publishedAt)}</span>
+      {showDate && (
+        <>
+          <Dot />
+          <span className="tabular-nums">{formatDate(article.publishedAt)}</span>
+        </>
+      )}
       {article.importance > 0 && (
         <>
           <Dot />

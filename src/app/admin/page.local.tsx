@@ -37,31 +37,39 @@ export default async function AdminPage() {
   return (
     <main className="mx-auto flex max-w-[1440px] flex-col gap-8 px-4 py-8 md:gap-10 md:px-6 md:py-12">
       <header className="flex items-center justify-between">
-        <h1 className="text-display-md font-semibold tracking-tight">운영 콘솔</h1>
+        <h1 className="text-display-lg font-serif font-extrabold">운영 콘솔</h1>
         <LogoutButton />
       </header>
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-body font-semibold tracking-tight">소스 관리</h2>
+          <h2 className="border-rule border-t-2 pt-3 font-serif text-2xl font-extrabold tracking-[-0.04em]">
+            소스 관리
+          </h2>
         </div>
         <SourceManager initial={sources} />
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-body font-semibold tracking-tight">재수집</h2>
+        <h2 className="border-rule border-t-2 pt-3 font-serif text-2xl font-extrabold tracking-[-0.04em]">
+          재수집
+        </h2>
         <CollectButton />
       </section>
 
       {kpi && (
         <section className="flex flex-col gap-4">
-          <h2 className="text-body font-semibold tracking-tight">KPI 요약</h2>
+          <h2 className="border-rule border-t-2 pt-3 font-serif text-2xl font-extrabold tracking-[-0.04em]">
+            KPI 요약
+          </h2>
           <KpiPanel kpi={kpi} />
         </section>
       )}
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-body font-semibold tracking-tight">실행 이력 · 비용</h2>
+        <h2 className="border-rule border-t-2 pt-3 font-serif text-2xl font-extrabold tracking-[-0.04em]">
+          실행 이력 · 비용
+        </h2>
         <RunsTable runs={runs} />
       </section>
     </main>

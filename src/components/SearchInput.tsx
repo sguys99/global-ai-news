@@ -47,7 +47,7 @@ export function SearchInput() {
         placeholder="키워드로 검색 — 제목·요약·원문·태그"
         aria-label="기사 검색"
         autoFocus
-        className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent py-2 text-[1.375rem] font-medium tracking-[-0.03em] outline-none md:text-[1.75rem]"
+        className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent py-2 text-[1.375rem] font-medium tracking-[-0.03em] outline-none md:text-[1.75rem] [&::-webkit-search-cancel-button]:appearance-none"
       />
     </label>
   );

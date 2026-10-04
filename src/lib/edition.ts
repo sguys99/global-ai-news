@@ -22,7 +22,13 @@ export interface Edition {
   sections: EditionSection[];
 }
 
-export const EDITION_LIMITS = { seconds: 3, trending: 10, sectionItems: 4 } as const;
+export interface EditionLimits {
+  seconds: number;
+  trending: number;
+  sectionItems: number;
+}
+
+export const EDITION_LIMITS: EditionLimits = { seconds: 3, trending: 10, sectionItems: 4 };
 
 /** 중요도 → 트렌딩 → 최신 순 비교자(편집 판단 정렬). */
 function byEditorial(a: ArticleCard, b: ArticleCard): number {
@@ -33,7 +39,10 @@ function byEditorial(a: ArticleCard, b: ArticleCard): number {
   );
 }
 
-export function buildEdition(articles: ArticleCard[], limits = EDITION_LIMITS): Edition {
+export function buildEdition(
+  articles: ArticleCard[],
+  limits: EditionLimits = EDITION_LIMITS,
+): Edition {
   const editorial = [...articles].sort(byEditorial);
   const [lead = null, ...rest] = editorial;
   const seconds = rest.slice(0, limits.seconds);

@@ -146,6 +146,7 @@ function AllStories({
         <StoryIndex
           key={`${options.category}|${options.source}|${options.tag}|${options.sort}`}
           articles={visible}
+          hideCategory={Boolean(options.category)}
         />
       )}
     </section>

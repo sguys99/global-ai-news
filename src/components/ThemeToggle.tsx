@@ -15,13 +15,15 @@ export function ThemeToggle() {
 
   useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === "dark";
+  // 서버는 테마를 모르므로 마운트 전에는 중립 라벨을 써야 aria-label 하이드레이션 불일치가 없다.
+  const isDark = mounted && resolvedTheme === "dark";
+  const label = !mounted ? "테마 전환" : isDark ? "라이트 모드로 전환" : "다크 모드로 전환";
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      aria-label={isDark ? "라이트 모드로 전환" : "다크 모드로 전환"}
+      aria-label={label}
       onClick={() => setTheme(isDark ? "light" : "dark")}
     >
       {/* 마운트 전에는 아이콘을 숨겨 깜빡임을 막는다 */}

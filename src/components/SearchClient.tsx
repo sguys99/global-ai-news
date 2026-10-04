@@ -106,7 +106,11 @@ export function SearchClient({
             “<span className="text-foreground font-semibold">{options.q}</span>” 검색 결과{" "}
             <span className="text-foreground font-semibold tabular-nums">{results.length}</span>건
           </p>
-          <StoryIndex key={JSON.stringify(options)} articles={results} />
+          <StoryIndex
+            key={JSON.stringify(options)}
+            articles={results}
+            hideCategory={Boolean(options.category)}
+          />
         </section>
       )}
     </>

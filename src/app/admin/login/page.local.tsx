@@ -7,7 +7,7 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex max-w-sm flex-col justify-center gap-6 px-4 py-16 md:px-6 md:py-24">
       <header className="flex flex-col gap-2">
-        <h1 className="text-display-md font-semibold tracking-tight">관리자 로그인</h1>
+        <h1 className="text-display-lg font-serif font-extrabold">관리자 로그인</h1>
         <p className="text-muted-foreground text-body">운영 콘솔에 접근하려면 인증이 필요합니다.</p>
       </header>
       <LoginForm />

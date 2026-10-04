@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * PRD §9 KPI 요약 패널. getKpiSummary() 자동 산출 지표를 목표 대비 충족/미달로 표시한다.
- * DESIGN: hairline 보더 카드, rounded.lg, 그림자 금지. 충족=Action Blue, 미달=destructive.
+ * DESIGN.md v2: hairline 보더 카드, rounded.lg. 충족=잉크(primary), 미달=destructive.
  * LCP·한국어 품질 등 수동 측정 항목은 "수동 점검" 배지로 별도 표기한다.
  */
 

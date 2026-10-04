@@ -78,7 +78,14 @@ export function StorySectionItem({
   );
 }
 
-export function StoryEntry({ article }: { article: ArticleCard }) {
+export function StoryEntry({
+  article,
+  hideCategory = false,
+}: {
+  article: ArticleCard;
+  /** 이미 분야가 정해진 목록(상세의 "같은 분야 기사")에서는 키커를 생략한다. */
+  hideCategory?: boolean;
+}) {
   return (
     <Link
       href={hrefOf(article)}
@@ -91,7 +98,7 @@ export function StoryEntry({ article }: { article: ArticleCard }) {
         {formatShortDate(article.publishedAt)}
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">
-        <CategoryKicker category={article.category} className="text-label" />
+        {!hideCategory && <CategoryKicker category={article.category} className="text-label" />}
         <h3 className="headline text-title font-semibold tracking-[-0.02em]">{titleOf(article)}</h3>
         {article.summaryKo && (
           <p className="text-caption text-muted-foreground mt-0.5 line-clamp-2">
@@ -99,7 +106,7 @@ export function StoryEntry({ article }: { article: ArticleCard }) {
           </p>
         )}
       </div>
-      <Byline article={article} showTrend className="col-start-2 mt-1" />
+      <Byline article={article} showTrend showDate={false} className="col-start-2 mt-1" />
     </Link>
   );
 }
