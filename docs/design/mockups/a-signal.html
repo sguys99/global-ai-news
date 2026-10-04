@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>시안 A · Signal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* Layout: 뉴스 터미널 — 1px 그리드 셀로 나뉜 12열 지면, 상단 트렌딩 티커, 수치는 전부 모노.
+   다크 퍼스트: bare :root = 다크, 라이트는 prefers/data-theme 로 재정의. */
+:root {
+  --bg: #0b0c0e; --panel: #101215; --raise: #16191d;
+  --line: #23262c; --line-strong: #343941;
+  --fg: #ecebe7; --fg-2: #b6bac2; --muted: #7c828c;
+  --accent: #ffb020; --accent-text: #ffb020; --accent-ink: #1a1204;
+  --accent-soft: rgba(255, 176, 32, 0.1);
+  --font-sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #e9ebee; --panel: #f6f7f8; --raise: #ffffff;
+    --line: #d2d6dc; --line-strong: #b5bbc4;
+    --fg: #0f1114; --fg-2: #39404a; --muted: #5d6570;
+    --accent: #f29d00; --accent-text: #9a5000; --accent-ink: #1a1204;
+    --accent-soft: rgba(242, 157, 0, 0.12);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #e9ebee; --panel: #f6f7f8; --raise: #ffffff;
+  --line: #d2d6dc; --line-strong: #b5bbc4;
+  --fg: #0f1114; --fg-2: #39404a; --muted: #5d6570;
+  --accent: #f29d00; --accent-text: #9a5000; --accent-ink: #1a1204;
+  --accent-soft: rgba(242, 157, 0, 0.12);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 15px/1.6 var(--font-sans); letter-spacing: -0.005em;
+  word-break: keep-all; overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+.mono { font-family: var(--font-mono); letter-spacing: 0; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 24px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── 헤더 ─────────────────────────── */
+.top {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(12px); border-bottom: 1px solid var(--line);
+}
+.top .wrap { height: 52px; display: flex; align-items: center; gap: 24px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 600 13px/1 var(--font-mono); letter-spacing: 0.14em; }
+.brand-mark { width: 14px; height: 14px; background: var(--accent); display: grid; place-items: center; }
+.brand-mark::after { content: ""; width: 6px; height: 6px; background: var(--accent-ink); }
+.brand small { color: var(--muted); letter-spacing: 0.08em; font-weight: 400; }
+.nav { display: flex; gap: 2px; }
+.nav a { font-size: 14px; padding: 6px 12px; color: var(--muted); border-radius: 4px; }
+.nav a.on { color: var(--fg); background: var(--raise); }
+.nav a:hover { color: var(--fg); }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+.stamp { font: 400 12px/1 var(--font-mono); color: var(--muted); }
+.stamp b { color: var(--fg-2); font-weight: 500; }
+.live { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 6px; vertical-align: 1px; animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.25; } }
+.icon-btn {
+  width: 34px; height: 34px; display: grid; place-items: center; border-radius: 4px;
+  border: 1px solid var(--line); background: transparent; color: var(--fg-2); cursor: pointer;
+}
+.icon-btn:hover { border-color: var(--line-strong); color: var(--fg); }
+.icon-btn svg { width: 16px; height: 16px; }
+
+/* ── 티커 ─────────────────────────── */
+.ticker { display: flex; border-bottom: 1px solid var(--line); background: var(--panel); overflow: hidden; }
+.ticker-label {
+  flex: none; display: flex; align-items: center; gap: 6px; padding: 0 14px;
+  background: var(--accent); color: var(--accent-ink); font: 600 11px/1 var(--font-mono); letter-spacing: 0.12em;
+}
+.ticker-track { display: flex; width: max-content; animation: tick 70s linear infinite; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+@keyframes tick { to { transform: translateX(-50%); } }
+.tick { display: flex; align-items: center; gap: 10px; padding: 11px 22px; white-space: nowrap; font-size: 13px; color: var(--fg-2); border-right: 1px solid var(--line); }
+.tick .v { font: 600 12px/1 var(--font-mono); color: var(--accent-text); }
+.tick:hover { color: var(--fg); }
+
+/* ── 에디션 스트립 ─────────────────── */
+.edition { display: grid; grid-template-columns: 1.6fr repeat(4, 1fr); border-bottom: 1px solid var(--line); }
+.edition > div { padding: 20px 20px 18px; border-right: 1px solid var(--line); min-width: 0; }
+.edition > div:last-child { border-right: 0; }
+.ed-title { font-weight: 700; font-size: 26px; line-height: 1.25; letter-spacing: -0.03em; text-wrap: balance; }
+.ed-title span { color: var(--muted); font-weight: 400; }
+.k { font: 500 11px/1 var(--font-mono); letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+.kv { font: 500 28px/1.1 var(--font-mono); margin-top: 10px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.kv small { font-size: 12px; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+
+/* ── 공통 패널 ────────────────────── */
+.grid-main { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); border-bottom: 1px solid var(--line); }
+.panel-h {
+  display: flex; align-items: center; gap: 10px; padding: 12px 20px;
+  border-bottom: 1px solid var(--line); font: 500 11px/1 var(--font-mono); letter-spacing: 0.12em; color: var(--muted);
+}
+.panel-h .tag { color: var(--accent-ink); background: var(--accent); padding: 4px 6px; font-weight: 600; }
+.panel-h .note { letter-spacing: 0.02em; font-family: var(--font-sans); font-size: 12px; }
+.panel-h .end { margin-left: auto; }
+.code {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line-strong);
+  font: 600 11px/1 var(--font-mono); letter-spacing: 0.08em; color: var(--fg-2);
+}
+.code.hot { border-color: var(--accent); color: var(--accent-text); }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font: 400 12px/1.4 var(--font-mono); color: var(--muted); }
+.meta .sep { color: var(--line-strong); }
+.meter { display: inline-flex; gap: 2px; vertical-align: middle; }
+.meter i { width: 8px; height: 8px; background: var(--line-strong); }
+.meter i.on { background: var(--fg-2); }
+.imp-hi .meter i.on { background: var(--accent); }
+.trn { color: var(--accent-text); font-weight: 600; }
+
+/* ── 리드 ─────────────────────────── */
+.lead { border-right: 1px solid var(--line); min-width: 0; }
+.lead-main { display: block; padding: 28px 28px 30px; border-bottom: 1px solid var(--line); }
+.lead-main h1 {
+  margin: 14px 0 14px; font-size: clamp(30px, 3.4vw, 44px); line-height: 1.2; font-weight: 700; letter-spacing: -0.035em;
+  text-wrap: balance; max-width: 22ch;
+}
+.lead-main p { margin: 0 0 20px; font-size: 17px; line-height: 1.7; color: var(--fg-2); max-width: 62ch; }
+.lead-main:hover h1, .sub:hover h3, .rank a:hover .rt, .desk-item:hover .dt, .row:hover .rtitle { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 4px; text-decoration-thickness: 2px; }
+.subs { display: grid; grid-template-columns: 1fr 1fr; }
+.sub { display: flex; flex-direction: column; gap: 10px; padding: 20px 24px 22px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; transition: background 0.15s; }
+.sub:nth-child(2n) { border-right: 0; }
+.sub:nth-last-child(-n + 2) { border-bottom: 0; }
+.sub:hover, .desk-item:hover, .row:hover { background: var(--raise); }
+.sub h3 { margin: 0; font-size: 18px; line-height: 1.45; font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
+.sub p { margin: 0; font-size: 14px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sub .meta { margin-top: auto; }
+
+/* ── 트렌딩 ───────────────────────── */
+.trend { min-width: 0; background: var(--panel); }
+.rank { list-style: none; margin: 0; padding: 0; }
+.rank a { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 4px 10px; padding: 14px 20px; border-bottom: 1px solid var(--line); transition: background 0.15s; }
+.rank li:last-child a { border-bottom: 0; }
+.rank a:hover { background: var(--raise); }
+.rn { font: 500 13px/1.5 var(--font-mono); color: var(--muted); }
+.rank li:nth-child(-n + 3) .rn { color: var(--accent-text); font-weight: 600; }
+.rt { font-size: 14.5px; line-height: 1.45; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rbar { grid-column: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; font: 400 11px/1 var(--font-mono); color: var(--muted); }
+.track { height: 3px; background: var(--line); position: relative; }
+.track span { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.rbar .num { color: var(--fg-2); font-weight: 600; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+
+/* ── 데스크 (카테고리) ──────────────── */
+.sec-h { display: flex; align-items: baseline; gap: 14px; padding: 36px 0 14px; }
+.sec-h h2 { margin: 0; font-size: 22px; letter-spacing: -0.03em; font-weight: 700; }
+.sec-h .k { margin-left: auto; }
+.desks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-right: 0; border-bottom: 0; }
+.desk { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; display: flex; flex-direction: column; }
+.desk-h { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.desk-h .name { font-weight: 600; font-size: 15px; }
+.desk-h .cnt { margin-left: auto; font: 500 12px/1 var(--font-mono); color: var(--muted); }
+.desk-h .cnt b { color: var(--fg); font-weight: 600; }
+.desk-item { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 8px; padding: 13px 18px; border-bottom: 1px dashed var(--line); transition: background 0.15s; }
+.desk-item:last-child { border-bottom: 0; }
+.desk-item .dd { font: 400 12px/1.6 var(--font-mono); color: var(--muted); }
+.desk-item .dt { font-size: 14.5px; line-height: 1.5; font-weight: 500; }
+.desk-item .meta { grid-column: 2; }
+.desk-more { margin-top: auto; padding: 12px 18px; font: 500 12px/1 var(--font-mono); color: var(--muted); border-top: 1px solid var(--line); }
+.desk-more:hover { color: var(--accent-text); }
+
+/* ── 스트림 ───────────────────────── */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 0 0 16px; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); }
+.seg button { font: 500 12px/1 var(--font-mono); padding: 9px 14px; background: transparent; color: var(--muted); border: 0; border-right: 1px solid var(--line-strong); cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--fg); color: var(--bg); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 400 12px/1 var(--font-mono); padding: 8px 10px; border: 1px solid var(--line); color: var(--muted); background: transparent; cursor: pointer; }
+.chip:hover { border-color: var(--line-strong); color: var(--fg); }
+.chip.on { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+.chip b { color: var(--fg-2); font-weight: 500; margin-left: 4px; }
+.table { border-top: 1px solid var(--line-strong); }
+.row {
+  display: grid; grid-template-columns: 56px 52px minmax(0, 1fr) 140px 64px 44px; align-items: center; gap: 16px;
+  padding: 14px 8px; border-bottom: 1px solid var(--line); transition: background 0.15s;
+}
+.row .c-d, .row .c-s, .row .c-t { font: 400 12px/1.4 var(--font-mono); color: var(--muted); }
+.row .c-t { text-align: right; }
+.rtitle { font-size: 15px; font-weight: 500; line-height: 1.45; }
+.rsum { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.th { padding-block: 10px; }
+.th > * { font: 500 10.5px/1 var(--font-mono) !important; letter-spacing: 0.12em; color: var(--muted) !important; text-transform: uppercase; }
+.th:hover { background: transparent; }
+
+/* ── 푸터 / 모바일 탭바 ───────────── */
+footer { margin-top: 56px; border-top: 1px solid var(--line); background: var(--panel); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: center; padding-block: 28px; font: 400 12px/1.5 var(--font-mono); color: var(--muted); }
+footer .brand { color: var(--fg); }
+.tabbar { display: none; }
+
+/* ── 모션 ─────────────────────────── */
+.rise { animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes rise { from { opacity: 0.001; transform: translateY(8px); } }
+
+/* ── 반응형 ───────────────────────── */
+@media (max-width: 1023px) {
+  .grid-main { grid-template-columns: 1fr; }
+  .lead { border-right: 0; border-bottom: 1px solid var(--line); }
+  .desks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .edition { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .edition > div:first-child { grid-column: 1 / -1; border-right: 0; border-bottom: 1px solid var(--line); }
+  .row { grid-template-columns: 52px minmax(0, 1fr) 64px 40px; }
+  .row .c-c, .row .c-s { display: none; }
+}
+@media (max-width: 767px) {
+  .wrap { padding-inline: 16px; }
+  .nav, .stamp { display: none; }
+  .top .wrap { height: 48px; }
+  .edition { grid-template-columns: 1fr 1fr; }
+  .edition > div:nth-child(3) { border-right: 0; }
+  .edition > div:nth-child(2), .edition > div:nth-child(3) { border-bottom: 1px solid var(--line); }
+  .edition > div { padding: 14px 16px; }
+  .ed-title { font-size: 21px; }
+  .kv { font-size: 22px; margin-top: 8px; }
+  .lead-main { padding: 22px 16px 24px; }
+  .lead-main p { font-size: 16px; }
+  .subs { grid-template-columns: 1fr; }
+  .sub { border-right: 0; padding: 18px 16px; }
+  .sub:nth-last-child(-n + 2) { border-bottom: 1px solid var(--line); }
+  .sub:last-child { border-bottom: 0; }
+  .panel-h { padding: 12px 16px; }
+  .rank a { padding: 13px 16px; }
+  .desks { grid-template-columns: 1fr; }
+  .row { grid-template-columns: minmax(0, 1fr) 40px; gap: 10px; padding: 14px 4px; }
+  .row .c-d, .row .c-i { display: none; }
+  .th { display: none; }
+  .rsum { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .controls .chips { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; padding-bottom: 2px; }
+  .chip { white-space: nowrap; }
+  body { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  .tabbar {
+    display: flex; position: fixed; inset: auto 0 0 0; z-index: 50; padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+  }
+  .tabbar a { flex: 1; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: 500 10.5px/1 var(--font-mono); letter-spacing: 0.1em; color: var(--muted); }
+  .tabbar a.on { color: var(--accent-text); }
+  .tabbar a.on::before { background: var(--accent); }
+  .tabbar a::before { content: ""; width: 18px; height: 3px; background: transparent; margin-bottom: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#"><span class="brand-mark"></span>DAILY AI BRIEF <small>/ KR</small></a>
+    <nav class="nav"><a class="on" href="#">피드</a><a href="#">검색</a></nav>
+    <div class="top-right">
+      <span class="stamp"><span class="live"></span>LAST SYNC <b id="sync"></b> 06:00 KST</span>
+      <button class="icon-btn" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="icon-btn" aria-label="테마 전환" onclick="KIT.toggleTheme()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<div class="ticker" aria-label="트렌딩 티커">
+  <div class="ticker-label">▲ TRENDING</div>
+  <div style="overflow:hidden;min-width:0;flex:1"><div class="ticker-track" id="ticker"></div></div>
+</div>
+
+<main>
+  <div class="wrap" style="padding-inline:0;max-width:1280px">
+    <section class="edition rise" id="edition"></section>
+    <section class="grid-main">
+      <div class="lead rise" style="animation-delay:.06s">
+        <div class="panel-h"><span class="tag">LEAD</span><span class="note">LLM 중요도 기준 편집 선정</span><span class="end" id="lead-date"></span></div>
+        <div id="lead"></div>
+      </div>
+      <aside class="trend rise" style="animation-delay:.12s" aria-labelledby="trend-h">
+        <div class="panel-h"><span class="tag" id="trend-h">TRENDING</span><span class="note">커뮤니티 반응 지수 0–100</span></div>
+        <ol class="rank" id="rank"></ol>
+      </aside>
+    </section>
+  </div>
+
+  <div class="wrap">
+    <div class="sec-h"><h2>분야별 데스크</h2><span class="k">6 DESKS</span></div>
+    <section class="desks rise" style="animation-delay:.18s" id="desks"></section>
+
+    <div class="sec-h"><h2>전체 기사</h2><span class="k" id="all-n"></span></div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="정렬"><button class="on">최신순</button><button>중요도순</button><button>트렌딩순</button></div>
+      <div class="chips" id="src-chips"></div>
+    </div>
+    <div class="table" id="stream"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="brand"><span class="brand-mark"></span>DAILY AI BRIEF</span>
+    <span>글로벌·한국 AI 뉴스를 매일 06:00 KST 한국어로 요약합니다.</span>
+    <span style="margin-left:auto">© 2026 Nasica Inc.</span>
+  </div>
+</footer>
+
+<nav class="tabbar" aria-label="모바일 내비게이션"><a class="on" href="#">FEED</a><a href="#">SEARCH</a></nav>
+
+<script src="data.js"></script>
+<script src="kit.js"></script>
+<script>
+(function () {
+  const D = window.DATA, K = window.KIT, e = K.esc;
+  KIT.switcher("A");
+  document.getElementById("sync").textContent = K.ymd(D.latestDate);
+  document.getElementById("lead-date").textContent = K.ymd(D.latestDate);
+
+  const meta = (a, opts = {}) =>
+    `<div class="meta ${a.imp >= 4 ? "imp-hi" : ""}">${opts.code === false ? "" : `<span class="code ${a.imp >= 5 ? "hot" : ""}">${K.cat(a.cat).code}</span>`}<span>${e(K.src(a.src))}</span><span class="sep">/</span><span>${K.md(a.d)}</span>${K.meter(a.imp)}${a.tr > 0 ? `<span class="trn">▲${a.tr}</span>` : ""}</div>`;
+
+  // 티커
+  const ticks = D.trending.map((a) => `<a class="tick" href="#"><span class="v">▲${a.tr}</span>${e(a.t)}</a>`).join("");
+  document.getElementById("ticker").innerHTML = ticks + ticks;
+
+  // 에디션 스트립
+  document.getElementById("edition").innerHTML = `
+    <div><div class="k">${K.longDate(D.latestDate)}</div><div class="ed-title" style="margin-top:10px">오늘의 AI 브리핑 <span>— 중요도 5 기사 ${D.lead.filter((a) => a.imp === 5).length}건</span></div></div>
+    <div><div class="k">Stories</div><div class="kv">${D.total}</div></div>
+    <div><div class="k">Sources</div><div class="kv">${D.sources}</div></div>
+    <div><div class="k">Top trend</div><div class="kv">${D.trending[0].tr}<small>/100</small></div></div>
+    <div><div class="k">Next sync</div><div class="kv">06:00<small>KST</small></div></div>`;
+
+  // 리드
+  const [L, ...S] = D.lead;
+  document.getElementById("lead").innerHTML = `
+    <a class="lead-main" href="#">
+      <span class="code hot">${K.cat(L.cat).code}</span> <span class="k" style="margin-left:6px">${e(K.cat(L.cat).ko)}</span>
+      <h1>${e(L.t)}</h1>
+      <p>${e(L.s)}</p>
+      ${meta(L, { code: false })}
+    </a>
+    <div class="subs">${S.slice(0, 4).map((a) => `
+      <a class="sub" href="#">
+        <div class="meta"><span class="code ${a.imp >= 5 ? "hot" : ""}">${K.cat(a.cat).code}</span><span>${e(K.src(a.src))}</span></div>
+        <h3>${e(a.t)}</h3>
+        <p>${e(a.s)}</p>
+        <div class="meta ${a.imp >= 4 ? "imp-hi" : ""}"><span>${K.md(a.d)}</span>${K.meter(a.imp)}${a.tr > 0 ? `<span class="trn">▲${a.tr}</span>` : ""}</div>
+      </a>`).join("")}
+    </div>`;
+
+  // 랭킹
+  document.getElementById("rank").innerHTML = D.trending.map((a, i) => `
+    <li><a href="#">
+      <span class="rn">${String(i + 1).padStart(2, "0")}</span>
+      <span class="rt">${e(a.t)}</span>
+      <span class="rbar"><span class="track"><span style="width:${a.tr}%"></span></span><span>${e(K.src(a.src))}</span><span class="num">${a.tr}</span></span>
+    </a></li>`).join("");
+
+  // 데스크
+  document.getElementById("desks").innerHTML = Object.entries(D.byCat).filter(([, v]) => v.items.length).map(([c, v]) => `
+    <section class="desk" aria-label="${e(K.cat(c).ko)}">
+      <div class="desk-h"><span class="code">${K.cat(c).code}</span><span class="name">${e(K.cat(c).ko)}</span><span class="cnt"><b>${v.n}</b> STORIES</span></div>
+      ${v.items.slice(0, 3).map((a) => `
+        <a class="desk-item" href="#"><span class="dd">${K.md(a.d)}</span><span class="dt">${e(a.t)}</span>
+          <div class="meta ${a.imp >= 4 ? "imp-hi" : ""}"><span>${e(K.src(a.src))}</span>${K.meter(a.imp)}${a.tr > 0 ? `<span class="trn">▲${a.tr}</span>` : ""}</div></a>`).join("")}
+      <a class="desk-more" href="#">${K.cat(c).code} 전체 보기 →</a>
+    </section>`).join("");
+
+  // 스트림
+  document.getElementById("all-n").textContent = D.total + " STORIES";
+  document.getElementById("src-chips").innerHTML =
+    `<button class="chip on">ALL<b>${D.total}</b></button>` +
+    D.srcCounts.slice(0, 8).map(([s, n]) => `<button class="chip">${e(K.src(s))}<b>${n}</b></button>`).join("");
+  document.getElementById("stream").innerHTML =
+    `<div class="row th"><span class="c-d">Date</span><span class="c-c">Desk</span><span>Headline</span><span class="c-s">Source</span><span class="c-i">Imp</span><span class="c-t">Trnd</span></div>` +
+    D.latest.map((a) => `
+    <a class="row" href="#">
+      <span class="c-d">${K.md(a.d)}</span>
+      <span class="c-c"><span class="code">${K.cat(a.cat).code}</span></span>
+      <span style="min-width:0"><div class="rtitle">${e(a.t)}</div><div class="rsum">${e(a.s)}</div></span>
+      <span class="c-s">${e(K.src(a.src))}</span>
+      <span class="c-i ${a.imp >= 4 ? "imp-hi" : ""}">${K.meter(a.imp)}</span>
+      <span class="c-t">${a.tr > 0 ? `<span class="trn">▲${a.tr}</span>` : "—"}</span>
+    </a>`).join("");
+})();
+</script>
+</body>
+</html>

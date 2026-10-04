@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>시안 C · Spectrum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+@font-face {
+  font-family: "Pretendard Variable";
+  src: url("assets/PretendardVariable.woff2") format("woff2"), url("../../../public/fonts/PretendardVariable.woff2") format("woff2");
+  font-weight: 45 920; font-display: swap;
+}
+/* Layout: 벤토 그리드 — 리드 타일(카테고리 틴트) + 반전된 트렌딩 타일 + 서브 타일,
+   분야 분포 스펙트럼 바, 6색 카테고리 카드. 카테고리 색 = 분야를 스캔하는 유일한 색 체계. */
+:root {
+  --bg: #eef0f4; --tile: #ffffff; --ink: #0d0f14; --ink-2: #434855; --muted: #6a7080; --line: #e1e4ea;
+  --inv: #0d0f14; --inv-fg: #f3f4f7; --inv-muted: #8d93a3; --inv-line: #262a35;
+  --llm: #5847f5; --llm-t: #eeecff;
+  --agt: #e2600e; --agt-t: #fff0e5;
+  --dev: #0b8a5c; --dev-t: #e3f5ec;
+  --ops: #0878a0; --ops-t: #e2f2f9;
+  --res: #bb2593; --res-t: #fbe8f5;
+  --biz: #9c6500; --biz-t: #fcf1d9;
+  --none: #6a7080; --none-t: #eceef2;
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #090b10; --tile: #12151c; --ink: #f1f2f6; --ink-2: #b9becb; --muted: #858b9b; --line: #222631;
+    --inv: #f1f2f6; --inv-fg: #0d0f14; --inv-muted: #5d6372; --inv-line: #d9dce4;
+    --llm: #a197ff; --llm-t: rgba(161, 151, 255, 0.13);
+    --agt: #ff9a5c; --agt-t: rgba(255, 154, 92, 0.13);
+    --dev: #42d491; --dev-t: rgba(66, 212, 145, 0.12);
+    --ops: #52c4ec; --ops-t: rgba(82, 196, 236, 0.12);
+    --res: #f07ccf; --res-t: rgba(240, 124, 207, 0.12);
+    --biz: #f2bf4b; --biz-t: rgba(242, 191, 75, 0.12);
+    --none: #858b9b; --none-t: rgba(133, 139, 155, 0.12);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #090b10; --tile: #12151c; --ink: #f1f2f6; --ink-2: #b9becb; --muted: #858b9b; --line: #222631;
+  --inv: #f1f2f6; --inv-fg: #0d0f14; --inv-muted: #5d6372; --inv-line: #d9dce4;
+  --llm: #a197ff; --llm-t: rgba(161, 151, 255, 0.13);
+  --agt: #ff9a5c; --agt-t: rgba(255, 154, 92, 0.13);
+  --dev: #42d491; --dev-t: rgba(66, 212, 145, 0.12);
+  --ops: #52c4ec; --ops-t: rgba(82, 196, 236, 0.12);
+  --res: #f07ccf; --res-t: rgba(240, 124, 207, 0.12);
+  --biz: #f2bf4b; --biz-t: rgba(242, 191, 75, 0.12);
+  --none: #858b9b; --none-t: rgba(133, 139, 155, 0.12);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 15.5px/1.6 var(--font-sans); letter-spacing: -0.012em;
+  word-break: keep-all; overflow-wrap: anywhere; -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 24px; }
+.mono { font-family: var(--font-mono); letter-spacing: 0; }
+
+/* 카테고리 → 색 매핑 */
+.c-llm { --c: var(--llm); --ct: var(--llm-t); } .c-agt { --c: var(--agt); --ct: var(--agt-t); }
+.c-dev { --c: var(--dev); --ct: var(--dev-t); } .c-ops { --c: var(--ops); --ct: var(--ops-t); }
+.c-res { --c: var(--res); --ct: var(--res-t); } .c-biz { --c: var(--biz); --ct: var(--biz-t); }
+.c-none { --c: var(--none); --ct: var(--none-t); }
+
+/* ── 헤더 ─────────────────────────── */
+.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 80%, transparent); backdrop-filter: blur(16px) saturate(1.4); }
+.top .wrap { height: 60px; display: flex; align-items: center; gap: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; letter-spacing: -0.04em; }
+.spec { display: grid; grid-template-columns: repeat(3, 7px); gap: 2px; }
+.spec i { width: 7px; height: 7px; border-radius: 2px; background: var(--c); }
+.seg { display: flex; padding: 3px; border-radius: 999px; background: var(--tile); border: 1px solid var(--line); }
+.seg a { padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.seg a.on { background: var(--ink); color: var(--bg); }
+.top .right { margin-left: auto; display: flex; gap: 8px; }
+.ibtn { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 999px; background: var(--tile); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; }
+.ibtn:hover { color: var(--ink); border-color: var(--muted); }
+.ibtn svg { width: 17px; height: 17px; }
+
+/* ── 인트로 + 스펙트럼 바 ─────────── */
+.intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px 48px; align-items: end; padding-block: 28px 24px; }
+.intro h1 { margin: 0; font-size: clamp(34px, 4.4vw, 56px); line-height: 1.08; font-weight: 800; letter-spacing: -0.055em; text-wrap: balance; }
+.intro h1 span { color: var(--muted); }
+.dist-h { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.dist-h b { color: var(--ink); font-weight: 700; }
+.dist { display: flex; height: 14px; gap: 3px; }
+.dist span { background: var(--c); border-radius: 4px; min-width: 6px; transform-origin: left; animation: grow 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes grow { from { transform: scaleX(0.001); } }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 8px; height: 8px; border-radius: 3px; background: var(--c); }
+.legend b { font: 500 12px/1 var(--font-mono); color: var(--muted); }
+
+/* ── 공통 ─────────────────────────── */
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--ct); color: var(--c); font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em; width: fit-content; }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 13px; color: var(--muted); }
+.meta .src { font-weight: 600; color: var(--ink-2); }
+.num { font: 500 12.5px/1 var(--font-mono); }
+.meter { display: inline-flex; gap: 2px; }
+.meter i { width: 10px; height: 4px; border-radius: 2px; background: var(--line); }
+.meter i.on { background: var(--c, var(--ink)); }
+.tile { background: var(--tile); border-radius: 24px; border: 1px solid var(--line); transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1), border-color 0.2s; }
+a.tile:hover { transform: translateY(-2px); border-color: var(--c, var(--muted)); }
+
+/* ── 벤토 ─────────────────────────── */
+.bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+.lead { grid-column: span 7; grid-row: span 2; display: flex; flex-direction: column; gap: 18px; padding: 32px; background: var(--ct); border-color: transparent; position: relative; overflow: hidden; }
+.lead::after { content: ""; position: absolute; right: -60px; top: -60px; width: 240px; height: 240px; border-radius: 50%; border: 36px solid var(--c); opacity: 0.12; }
+.lead h2 { margin: 0; font-size: clamp(30px, 3.4vw, 46px); line-height: 1.16; font-weight: 800; letter-spacing: -0.05em; text-wrap: balance; position: relative; }
+.lead p { margin: 0; font-size: 17px; line-height: 1.7; color: var(--ink-2); max-width: 36em; }
+.lead .meta { margin-top: auto; }
+.lead .imp { display: inline-flex; align-items: center; gap: 8px; }
+.trend { grid-column: span 5; grid-row: span 2; background: var(--inv); color: var(--inv-fg); border-color: transparent; padding: 24px 24px 12px; }
+.trend-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+.trend-h h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.04em; }
+.trend-h span { font-size: 12px; color: var(--inv-muted); }
+.rank { list-style: none; margin: 0; padding: 0; }
+.rank a { display: grid; grid-template-columns: 26px minmax(0, 1fr) 54px; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--inv-line); }
+.rank li:first-child a { border-top: 0; }
+.rn { font: 600 13px/1 var(--font-mono); color: var(--inv-muted); }
+.rank li:nth-child(-n + 3) .rn { color: var(--inv-fg); }
+.rt { font-size: 14.5px; font-weight: 600; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank a:hover .rt { text-decoration: underline; text-underline-offset: 3px; }
+.rv { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.rv b { font: 600 13px/1 var(--font-mono); }
+.rv i { display: block; height: 3px; border-radius: 2px; background: var(--c); }
+.sub { grid-column: span 4; display: flex; flex-direction: column; gap: 12px; padding: 22px 22px 20px; }
+.sub h3 { margin: 0; font-size: 18.5px; line-height: 1.4; font-weight: 750; letter-spacing: -0.035em; text-wrap: balance; }
+.sub p { margin: 0; font-size: 14px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sub .meta { margin-top: auto; }
+
+/* ── 분야 카드 ────────────────────── */
+.sec-h { display: flex; align-items: baseline; gap: 12px; margin: 48px 0 16px; }
+.sec-h h2 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.05em; }
+.sec-h span { font-size: 14px; color: var(--muted); }
+.cats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.cat { padding: 8px; display: flex; flex-direction: column; }
+.cat-h { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 16px 14px 14px; border-radius: 18px; background: var(--ct); }
+.cat-h h3 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -0.04em; color: var(--c); }
+.cat-h .n { font: 600 22px/1 var(--font-mono); color: var(--c); letter-spacing: -0.04em; }
+.cat-h .bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--c) 18%, transparent); overflow: hidden; }
+.cat-h .bar i { display: block; height: 100%; background: var(--c); border-radius: 2px; }
+.ci { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; transition: background 0.15s; }
+.ci + .ci { border-top: 1px solid var(--line); border-radius: 0 0 14px 14px; }
+.ci:hover { background: var(--bg); }
+.ci h4 { margin: 0; font-size: 15px; font-weight: 650; line-height: 1.45; letter-spacing: -0.02em; }
+.cat .more { margin-top: auto; padding: 12px 14px 8px; font-size: 13px; font-weight: 700; color: var(--c); }
+
+/* ── 스트림 ───────────────────────── */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.fpill { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--tile); color: var(--ink-2); font: 600 13px/1 var(--font-sans); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.fpill.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.fpill .d { width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.fpill:hover { border-color: var(--muted); }
+.stream { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.card { display: flex; flex-direction: column; gap: 10px; padding: 20px; }
+.card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.card h4 { margin: 0; font-size: 16.5px; font-weight: 750; line-height: 1.45; letter-spacing: -0.03em; }
+.card p { margin: 0; font-size: 14px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .meta { margin-top: auto; }
+.trn { display: inline-flex; align-items: center; gap: 4px; font: 600 12px/1 var(--font-mono); color: var(--ink); background: var(--bg); padding: 5px 8px; border-radius: 999px; }
+
+footer { margin-top: 64px; padding-block: 32px 40px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; color: var(--muted); font-size: 13px; }
+footer .brand { color: var(--ink); font-size: 16px; }
+.tabbar { display: none; }
+
+.rise { animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes rise { from { opacity: 0.001; transform: translateY(12px) scale(0.985); } }
+
+@media (max-width: 1023px) {
+  .intro { grid-template-columns: 1fr; }
+  .lead, .trend { grid-column: 1 / -1; grid-row: auto; }
+  .sub { grid-column: span 6; }
+  .sub:last-child { grid-column: 1 / -1; }
+  .cats, .stream { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+  .wrap { padding-inline: 16px; }
+  .top .seg { display: none; }
+  .top .wrap { height: 54px; }
+  .intro { padding-block: 18px 20px; }
+  .bento { gap: 12px; }
+  .lead { padding: 24px 22px; border-radius: 22px; }
+  .lead p { font-size: 16px; }
+  .sub, .sub:last-child { grid-column: 1 / -1; }
+  .cats, .stream { grid-template-columns: 1fr; }
+  .filters { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+  .fpill { flex: none; }
+  body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .tabbar {
+    display: flex; position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 50;
+    padding: 5px; gap: 4px; border-radius: 999px; background: color-mix(in srgb, var(--tile) 82%, transparent);
+    backdrop-filter: blur(18px) saturate(1.5); border: 1px solid var(--line);
+    box-shadow: 0 8px 30px rgba(10, 12, 20, 0.12);
+  }
+  .tabbar a { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; height: 46px; padding: 0 22px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--muted); }
+  .tabbar a.on { background: var(--ink); color: var(--bg); }
+  .tabbar svg { width: 17px; height: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#"><span class="spec"><i class="c-llm"></i><i class="c-agt"></i><i class="c-dev"></i><i class="c-ops"></i><i class="c-res"></i><i class="c-biz"></i></span>Daily AI Brief</a>
+    <nav class="seg"><a class="on" href="#">피드</a><a href="#">검색</a></nav>
+    <div class="right">
+      <button class="ibtn" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="ibtn" aria-label="테마 전환" onclick="KIT.toggleTheme()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="intro rise">
+    <h1 id="hello"></h1>
+    <div>
+      <div class="dist-h"><span>오늘 지면의 분야 구성</span><span><b id="tot"></b>개 기사</span></div>
+      <div class="dist" id="dist" role="img" aria-label="분야별 기사 수 분포"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <section class="bento" id="bento"></section>
+
+  <div class="sec-h"><h2>분야별</h2><span>6개 분야 · 중요도 순</span></div>
+  <section class="cats" id="cats"></section>
+
+  <div class="sec-h"><h2>전체 기사</h2><span id="all-n"></span></div>
+  <div class="filters" id="filters"></div>
+  <section class="stream" id="stream"></section>
+</main>
+
+<footer><div class="wrap"><span class="brand">Daily AI Brief</span><span>글로벌·한국 AI 뉴스를 매일 06:00 KST 한국어로 요약합니다.</span><span style="margin-left:auto">© 2026 Nasica Inc.</span></div></footer>
+<nav class="tabbar" aria-label="모바일 내비게이션">
+  <a class="on" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="8" height="10" rx="2"/><rect x="13" y="3" width="8" height="6" rx="2"/><rect x="13" y="11" width="8" height="10" rx="2"/><rect x="3" y="15" width="8" height="6" rx="2"/></svg>피드</a>
+  <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>검색</a>
+</nav>
+
+<script src="data.js"></script>
+<script src="kit.js"></script>
+<script>
+(function () {
+  const D = window.DATA, K = window.KIT, e = K.esc;
+  KIT.switcher("C");
+  const ck = (c) => "c-" + K.cat(c).key;
+  const chip = (c) => `<span class="chip ${ck(c)}">${e(K.cat(c).ko)}</span>`;
+  const d = new Date(D.latestDate);
+  document.getElementById("hello").innerHTML = `${d.getMonth() + 1}월 ${d.getDate()}일의<br>AI 브리핑 <span>${D.lead.filter((a) => a.imp === 5).length}건의 핵심</span>`;
+  document.getElementById("tot").textContent = D.total;
+
+  const cats = Object.entries(D.byCat).sort((a, b) => b[1].n - a[1].n);
+  document.getElementById("dist").innerHTML = cats.map(([c, v], i) =>
+    `<span class="${ck(c)}" style="flex:${v.n};animation-delay:${i * 60}ms" title="${e(K.cat(c).ko)} ${v.n}"></span>`).join("");
+  document.getElementById("legend").innerHTML = cats.map(([c, v]) =>
+    `<span class="${ck(c)}"><i></i>${e(K.cat(c).ko)} <b>${v.n}</b></span>`).join("");
+
+  const meta = (a) => `<div class="meta"><span class="src">${e(K.src(a.src))}</span><span class="num">${K.md(a.d)}</span>${K.meter(a.imp)}</div>`;
+  const [L, ...S] = D.lead;
+  document.getElementById("bento").innerHTML = `
+    <a class="tile lead rise ${ck(L.cat)}" style="animation-delay:.08s" href="#">
+      ${chip(L.cat)}
+      <h2>${e(L.t)}</h2>
+      <p>${e(L.s)}</p>
+      <div class="meta"><span class="src">${e(K.src(L.src))}</span><span class="num">${K.ymd(L.d)}</span><span class="imp">${K.meter(L.imp)}<span class="num">중요도 ${L.imp}/5</span></span></div>
+    </a>
+    <aside class="tile trend rise" style="animation-delay:.14s" aria-labelledby="th">
+      <div class="trend-h"><h2 id="th">지금 뜨는 이야기</h2><span>반응 지수 0–100</span></div>
+      <ol class="rank">${D.trending.map((a, i) => `
+        <li><a href="#" class="${ck(a.cat)}"><span class="rn">${String(i + 1).padStart(2, "0")}</span><span class="rt">${e(a.t)}</span>
+          <span class="rv"><b>${a.tr}</b><i style="width:${Math.round(a.tr * 0.54)}px"></i></span></a></li>`).join("")}
+      </ol>
+    </aside>
+    ${S.slice(0, 3).map((a, i) => `
+      <a class="tile sub rise ${ck(a.cat)}" style="animation-delay:${0.2 + i * 0.05}s" href="#">${chip(a.cat)}<h3>${e(a.t)}</h3><p>${e(a.s)}</p>${meta(a)}</a>`).join("")}`;
+
+  document.getElementById("cats").innerHTML = Object.entries(D.byCat).filter(([, v]) => v.items.length).map(([c, v]) => `
+    <section class="tile cat ${ck(c)}" aria-label="${e(K.cat(c).ko)}">
+      <div class="cat-h"><h3>${e(K.cat(c).ko)}</h3><span class="n">${v.n}</span><span class="bar"><i style="width:${Math.max(3, (v.n / D.total) * 100)}%"></i></span></div>
+      ${v.items.slice(0, 3).map((a) => `<a class="ci" href="#"><h4>${e(a.t)}</h4>${meta(a)}</a>`).join("")}
+      <a class="more" href="#">${e(K.cat(c).ko)} 더 보기 →</a>
+    </section>`).join("");
+
+  document.getElementById("all-n").textContent = `${D.total}건 · 최신순`;
+  document.getElementById("filters").innerHTML = `<button class="fpill on">전체</button>` +
+    cats.map(([c]) => `<button class="fpill ${ck(c)}"><span class="d"></span>${e(K.cat(c).ko)}</button>`).join("") +
+    `<button class="fpill">소스 ▾</button><button class="fpill">정렬: 최신순 ▾</button>`;
+  document.getElementById("stream").innerHTML = D.latest.slice(0, 9).map((a) => `
+    <a class="tile card ${ck(a.cat)}" href="#">
+      <div class="card-top">${chip(a.cat)}${a.tr > 0 ? `<span class="trn">▲ ${a.tr}</span>` : ""}</div>
+      <h4>${e(a.t)}</h4><p>${e(a.s)}</p>${meta(a)}
+    </a>`).join("");
+})();
+</script>
+</body>
+</html>

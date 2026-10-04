@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>시안 B · Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+@font-face {
+  font-family: "Pretendard Variable";
+  src: url("assets/PretendardVariable.woff2") format("woff2"), url("../../../public/fonts/PretendardVariable.woff2") format("woff2");
+  font-weight: 45 920; font-display: swap;
+}
+/* Layout: 매일 발행되는 한 호(號) — 대형 마스트헤드, 굵은 잉크 괘선으로 나뉜 12열 지면,
+   리드(8) + 화제(4) 1면, 이어서 분야별 섹션 밴드와 전체 기사 색인. 라이트 퍼스트. */
+:root {
+  --paper: #f4f4f1; --sheet: #fbfbf9; --ink: #141519; --ink-2: #3a3c43; --muted: #6b6d76;
+  --rule: #d8d8d2; --rule-ink: #141519;
+  --accent: #2140e8; --accent-soft: rgba(33, 64, 232, 0.08);
+  --font-display: "Hahmlet", "Noto Serif KR", "AppleMyungjo", "Batang", serif;
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1118; --sheet: #151823; --ink: #eceae4; --ink-2: #bcbbb5; --muted: #8a8c97;
+    --rule: #2a2d39; --rule-ink: #eceae4;
+    --accent: #93a3ff; --accent-soft: rgba(147, 163, 255, 0.1);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1118; --sheet: #151823; --ink: #eceae4; --ink-2: #bcbbb5; --muted: #8a8c97;
+  --rule: #2a2d39; --rule-ink: #eceae4;
+  --accent: #93a3ff; --accent-soft: rgba(147, 163, 255, 0.1);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 400 16px/1.65 var(--font-sans); letter-spacing: -0.01em;
+  word-break: keep-all; overflow-wrap: anywhere; -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 32px; }
+.serif { font-family: var(--font-display); }
+
+/* ── 마스트헤드 ───────────────────── */
+.folio { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding-block: 18px 0; font-size: 13px; color: var(--muted); }
+.folio b { color: var(--ink); font-weight: 600; }
+.folio .tools { margin-left: auto; display: flex; gap: 6px; }
+.tbtn { height: 34px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--rule); border-radius: 999px; background: transparent; color: var(--ink-2); font: 500 13px/1 var(--font-sans); cursor: pointer; }
+.tbtn:hover { border-color: var(--ink); color: var(--ink); }
+.tbtn svg { width: 15px; height: 15px; }
+.nameplate {
+  margin: 10px 0 0; font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(48px, 8.4vw, 120px); line-height: 0.95; letter-spacing: -0.045em; white-space: nowrap;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 24px;
+}
+.nameplate em { font-style: normal; color: var(--accent); }
+.nameplate small { font: 500 14px/1.5 var(--font-sans); letter-spacing: -0.01em; color: var(--muted); text-align: right; max-width: 15em; white-space: normal; }
+.rules { margin-top: 18px; border-top: 4px solid var(--rule-ink); height: 4px; border-bottom: 1px solid var(--rule-ink); transform-origin: left; animation: draw 0.9s cubic-bezier(0.6, 0, 0.2, 1) both; }
+@keyframes draw { from { transform: scaleX(0.001); } }
+.secnav {
+  position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--rule);
+}
+.secnav .wrap { display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.secnav a { flex: none; padding: 13px 12px; font-size: 14px; font-weight: 500; color: var(--ink-2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.secnav a:hover { color: var(--ink); }
+.secnav a.on { color: var(--ink); border-color: var(--accent); }
+.secnav .mini { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em; padding-left: 0; margin-right: 10px; color: var(--ink); }
+
+/* ── 공통 메타 ────────────────────── */
+.kicker { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; }
+.byline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; color: var(--muted); }
+.byline .src { color: var(--ink-2); font-weight: 600; }
+.byline .dot { width: 2px; height: 2px; background: currentColor; border-radius: 50%; }
+.meter { display: inline-flex; gap: 3px; vertical-align: middle; }
+.meter i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--muted); }
+.meter i.on { background: var(--ink); border-color: var(--ink); }
+.hi .meter i.on { background: var(--accent); border-color: var(--accent); }
+.hl { transition: color 0.15s; }
+a:hover .hl { color: var(--accent); }
+
+/* ── 1면 ──────────────────────────── */
+.front { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 0 40px; padding-top: 32px; }
+.front > * { min-width: 0; }
+.lead { display: grid; gap: 14px; padding-bottom: 28px; border-bottom: 1px solid var(--rule); }
+.lead h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(34px, 4.6vw, 60px); line-height: 1.12; letter-spacing: -0.045em; text-wrap: balance; }
+.lead .dek { margin: 0; font-size: 19px; line-height: 1.7; color: var(--ink-2); max-width: 40em; }
+.seconds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.second { display: flex; flex-direction: column; gap: 10px; padding: 22px 22px 6px 0; }
+.second + .second { padding-left: 22px; border-left: 1px solid var(--rule); }
+.second h3 { margin: 0; font-family: var(--font-display); font-size: 21px; line-height: 1.35; font-weight: 700; letter-spacing: -0.035em; text-wrap: balance; }
+.second p { margin: 0; font-size: 14.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.second .byline { margin-top: auto; }
+
+.hot { border-left: 1px solid var(--rule); padding-left: 32px; }
+.hot-h { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid var(--rule-ink); padding-bottom: 10px; }
+.hot-h h2 { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 800; letter-spacing: -0.04em; }
+.hot-h span { font-size: 12px; color: var(--muted); }
+.rank { list-style: none; margin: 0; padding: 0; }
+.rank a { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 2px 8px; padding: 13px 0; border-bottom: 1px solid var(--rule); }
+.rn { grid-row: span 2; font-family: var(--font-display); font-size: 30px; line-height: 1; font-weight: 700; color: var(--accent); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.rank li:nth-child(n + 4) .rn { color: var(--muted); font-weight: 500; }
+.rt { font-size: 15px; line-height: 1.45; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rs { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.rs .bar { flex: 1; height: 2px; background: var(--rule); position: relative; }
+.rs .bar span { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.rs b { font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 600; }
+
+/* ── 섹션 밴드 ────────────────────── */
+.band { margin-top: 56px; }
+.band-h { display: flex; align-items: baseline; gap: 14px; border-top: 2px solid var(--rule-ink); padding-top: 12px; margin-bottom: 18px; }
+.band-h h2 { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 800; letter-spacing: -0.045em; }
+.band-h .n { font-size: 13px; color: var(--muted); }
+.band-h .more { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--accent); }
+.band-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); }
+.item { display: flex; flex-direction: column; gap: 8px; padding: 2px 22px 4px; border-left: 1px solid var(--rule); }
+.item:first-child { padding-left: 0; border-left: 0; }
+.item h3 { margin: 0; font-size: 16.5px; line-height: 1.45; font-weight: 650; letter-spacing: -0.02em; }
+.item:first-child h3 { font-family: var(--font-display); font-size: 24px; line-height: 1.3; font-weight: 700; letter-spacing: -0.04em; }
+.item p { margin: 0; font-size: 14.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.item .byline { margin-top: auto; padding-top: 4px; }
+
+/* ── 전체 기사 색인 ────────────────── */
+.index-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; margin-bottom: 8px; }
+.tabs { display: flex; gap: 18px; }
+.tabs button { background: none; border: 0; padding: 6px 0; font: 600 15px/1 var(--font-sans); color: var(--muted); border-bottom: 2px solid transparent; cursor: pointer; }
+.tabs button.on { color: var(--ink); border-color: var(--accent); }
+.srcs { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { font: 500 13px/1 var(--font-sans); padding: 8px 12px; border-radius: 999px; border: 1px solid var(--rule); background: transparent; color: var(--ink-2); cursor: pointer; }
+.pill:hover { border-color: var(--ink); }
+.pill.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.index { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+.entry { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 4px 12px; padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.entry .d { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.entry h4 { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; letter-spacing: -0.02em; }
+.entry .byline { grid-column: 2; }
+.entry .kicker { font-size: 12px; }
+
+footer { margin-top: 72px; border-top: 4px solid var(--rule-ink); }
+footer .wrap { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding-block: 28px 40px; align-items: end; }
+footer .np { font-family: var(--font-display); font-weight: 800; font-size: 40px; letter-spacing: -0.045em; line-height: 1; }
+footer p { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+footer nav { display: flex; gap: 20px; font-size: 14px; font-weight: 600; }
+.tabbar { display: none; }
+
+.rise { animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes rise { from { opacity: 0.001; transform: translateY(10px); } }
+
+@media (max-width: 1023px) {
+  .front { grid-template-columns: 1fr; }
+  .hot { border-left: 0; padding-left: 0; margin-top: 36px; }
+  .band-grid { grid-template-columns: 1fr 1fr; gap: 20px 0; }
+  .item:nth-child(3) { padding-left: 0; border-left: 0; }
+  .index { grid-template-columns: 1fr; }
+}
+@media (max-width: 767px) {
+  .wrap { padding-inline: 16px; }
+  .folio .meta-x { display: none; }
+  .nameplate { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .nameplate small { text-align: left; }
+  .lead .dek { font-size: 17px; }
+  .seconds { grid-template-columns: 1fr; }
+  .second, .second + .second { padding: 18px 0; border-left: 0; border-bottom: 1px solid var(--rule); }
+  .band { margin-top: 44px; }
+  .band-h h2 { font-size: 26px; }
+  .band-grid { grid-template-columns: 1fr; gap: 0; }
+  .item, .item:first-child { padding: 14px 0; border-left: 0; border-top: 1px solid var(--rule); }
+  .item:first-child { border-top: 0; padding-top: 0; }
+  .item:not(:first-child) p { display: none; }
+  .srcs { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+  .pill { white-space: nowrap; }
+  footer .wrap { grid-template-columns: 1fr; }
+  body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+  .tabbar {
+    display: flex; position: fixed; inset: auto 0 0 0; z-index: 50; padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--rule-ink);
+  }
+  .tabbar a { flex: 1; height: 60px; display: grid; place-items: center; font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--muted); }
+  .tabbar a.on { color: var(--ink); text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header class="wrap">
+  <div class="folio">
+    <span><b id="today"></b></span><span class="meta-x" id="issue"></span><span class="meta-x" id="count"></span>
+    <span class="tools">
+      <button class="tbtn" aria-label="검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>검색</button>
+      <button class="tbtn" aria-label="테마 전환" onclick="KIT.toggleTheme()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></svg></button>
+    </span>
+  </div>
+  <h1 class="nameplate rise"><span>Daily <em>AI</em> Brief</span><small>세계와 한국의 AI 소식을 매일 아침 여섯 시, 한국어로 정리합니다.</small></h1>
+  <div class="rules"></div>
+</header>
+
+<nav class="secnav" aria-label="섹션">
+  <div class="wrap" id="secnav"></div>
+</nav>
+
+<main class="wrap">
+  <section class="front">
+    <div>
+      <a class="lead rise" style="animation-delay:.1s" href="#" id="lead"></a>
+      <div class="seconds rise" style="animation-delay:.18s" id="seconds"></div>
+    </div>
+    <aside class="hot rise" style="animation-delay:.24s" aria-labelledby="hot-h">
+      <div class="hot-h"><h2 id="hot-h">지금 화제</h2><span>커뮤니티 반응 지수</span></div>
+      <ol class="rank" id="rank"></ol>
+    </aside>
+  </section>
+
+  <div id="bands"></div>
+
+  <section class="band" id="all">
+    <div class="band-h"><h2>전체 기사</h2><span class="n" id="all-n"></span></div>
+    <div class="index-tools">
+      <div class="tabs" role="group" aria-label="정렬"><button class="on">최신순</button><button>중요도순</button><button>화제순</button></div>
+      <div class="srcs" id="srcs"></div>
+    </div>
+    <div class="index" id="index"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div><div class="np">Daily AI Brief</div><p>글로벌·한국 AI 뉴스를 LLM이 한국어로 요약·분류합니다. © 2026 Nasica Inc.</p></div>
+    <nav><a href="#">피드</a><a href="#">검색</a></nav>
+  </div>
+</footer>
+<nav class="tabbar" aria-label="모바일 내비게이션"><a class="on" href="#">오늘의 지면</a><a href="#">검색</a></nav>
+
+<script src="data.js"></script>
+<script src="kit.js"></script>
+<script>
+(function () {
+  const D = window.DATA, K = window.KIT, e = K.esc;
+  KIT.switcher("B");
+  const issueNo = Math.round((new Date(D.latestDate) - new Date("2026-05-22")) / 864e5) + 1;
+  document.getElementById("today").textContent = K.longDate(D.latestDate);
+  document.getElementById("issue").textContent = `제 ${issueNo}호`;
+  document.getElementById("count").textContent = `기사 ${D.total}건 · 매체 ${D.sources}곳`;
+
+  const byline = (a, extra = "") =>
+    `<div class="byline ${a.imp >= 4 ? "hi" : ""}"><span class="src">${e(K.src(a.src))}</span><span class="dot"></span><span>${K.ymd(a.d)}</span>${a.imp ? `<span class="dot"></span>${K.meter(a.imp)}` : ""}${extra}</div>`;
+
+  const cats = Object.entries(D.byCat).filter(([, v]) => v.items.length);
+  document.getElementById("secnav").innerHTML =
+    `<a class="mini" href="#">DAB</a><a class="on" href="#">1면</a>` +
+    cats.map(([c]) => `<a href="#">${e(K.cat(c).ko)}</a>`).join("") + `<a href="#all">전체 기사</a>`;
+
+  const [L, ...S] = D.lead;
+  document.getElementById("lead").innerHTML = `
+    <span class="kicker">${e(K.cat(L.cat).ko)}</span>
+    <h1 class="hl">${e(L.t)}</h1>
+    <p class="dek">${e(L.s)}</p>
+    ${byline(L)}`;
+  document.getElementById("seconds").innerHTML = S.slice(0, 3).map((a) => `
+    <a class="second" href="#"><span class="kicker">${e(K.cat(a.cat).ko)}</span><h3 class="hl">${e(a.t)}</h3><p>${e(a.s)}</p>${byline(a)}</a>`).join("");
+
+  document.getElementById("rank").innerHTML = D.trending.map((a, i) => `
+    <li><a href="#"><span class="rn">${i + 1}</span><span class="rt hl">${e(a.t)}</span>
+      <span class="rs"><span>${e(K.src(a.src))}</span><span class="bar"><span style="width:${a.tr}%"></span></span><b>${a.tr}</b></span></a></li>`).join("");
+
+  document.getElementById("bands").innerHTML = cats.map(([c, v]) => `
+    <section class="band" aria-label="${e(K.cat(c).ko)}">
+      <div class="band-h"><h2>${e(K.cat(c).ko)}</h2><span class="n">${v.n}건</span><a class="more" href="#">섹션 전체 보기 →</a></div>
+      <div class="band-grid">${v.items.slice(0, 4).map((a) => `
+        <a class="item" href="#"><h3 class="hl">${e(a.t)}</h3><p>${e(a.s)}</p>${byline(a)}</a>`).join("")}
+      </div>
+    </section>`).join("");
+
+  document.getElementById("all-n").textContent = `${D.total}건`;
+  document.getElementById("srcs").innerHTML = `<button class="pill on">전체</button>` +
+    D.srcCounts.slice(0, 7).map(([s]) => `<button class="pill">${e(K.src(s))}</button>`).join("");
+  document.getElementById("index").innerHTML = D.latest.map((a) => `
+    <a class="entry" href="#"><span class="d">${K.md(a.d)}</span>
+      <div><span class="kicker">${e(K.cat(a.cat).ko)}</span><h4 class="hl">${e(a.t)}</h4></div>
+      ${byline(a, a.tr ? `<span class="dot"></span><span>화제 ${a.tr}</span>` : "")}</a>`).join("");
+})();
+</script>
+</body>
+</html>
