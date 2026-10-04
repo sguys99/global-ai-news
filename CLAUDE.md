@@ -52,15 +52,22 @@
 │   │           ├── sources/route.ts   # 소스 CRUD
 │   │           └── collect/route.ts   # workflow_dispatch 트리거
 │   ├── components/
-│   │   ├── ArticleCard.tsx       # 피드/검색 공용 카드
-│   │   ├── ArticleMeta.tsx       # 카테고리 배지·태그 칩
-│   │   ├── FilterBar.tsx         # 태그/소스/정렬 필터 pill
+│   │   ├── Masthead.tsx          # 홈 마스트헤드(발행일·호수·세리프 제호·섹션 내비)
+│   │   ├── Edition.tsx           # 1면(리드·서브·지금 화제)·분야 섹션 밴드
+│   │   ├── Story.tsx             # 스토리 변형 4종(Lead/Secondary/SectionItem/Entry)
+│   │   ├── StoryIndex.tsx        # 전체 기사 색인(30건씩 더 보기)
+│   │   ├── ArticleMeta.tsx       # 신호: 키커·중요도 미터·바이라인·화제 바·태그
+│   │   ├── FilterBar.tsx         # 정렬 탭 + 분야/매체/태그 필터 칩
+│   │   ├── HeaderWordmark.tsx    # 헤더 워드마크(홈에선 제호를 지나면 등장)
 │   │   ├── SearchInput.tsx       # 클라이언트 라이브 검색 (디바운스)
 │   │   ├── admin/                # Admin 전용 컴포넌트 (KpiPanel 등)
 │   │   └── ui/                   # shadcn/ui 프리미티브
 │   ├── lib/
 │   │   ├── db.ts                 # SQLite readonly 조회 (getFeed/getArticle/searchArticles/getRecentRuns/getKpiSummary)
 │   │   ├── types.ts              # RawItem, ArticleCard, SourceConfig, RunRow 등
+│   │   ├── edition.ts            # 홈 편집 지면 선정(buildEdition: 리드·화제·섹션)
+│   │   ├── labels.ts             # 카테고리 표시명·소스 축약명·KST 날짜 포맷
+│   │   ├── feedFilter.ts         # 클라 필터·정렬 + URL 옵션 파싱
 │   │   ├── paths.ts              # 프로젝트 경로 상수 (DB_PATH 등)
 │   │   ├── auth.ts               # HMAC 서명 쿠키 인증
 │   │   ├── github.ts             # sources.json GitHub 커밋
@@ -98,7 +105,7 @@
 │   └── app.db                    # SQLite DB (db:init/collect로 생성)
 ├── docs/                         # PRD.md, PRD-github-pages.md, WORK-PLAN.md
 ├── public/                       # 정적 자산 (search-index.json: 빌드 생성, 예정)
-└── DESIGN.md                     # 모노크롬·타이포 중심 디자인 토큰/가이드
+└── DESIGN.md                     # v2 "Edition" 에디토리얼 디자인 토큰/가이드
 ```
 
 ## 아키텍처 / 파이프라인
@@ -220,7 +227,7 @@ LLM 호출은 채팅 엔드포인트가 아니라 **배치 파이프라인** 안
 - `@/lib/db` → `src/lib/db.ts`
 - `@/lib/types` → `src/lib/types.ts`
 - `@/lib/paths` → `src/lib/paths.ts`
-- `@/components/ArticleCard` → `src/components/ArticleCard.tsx`
+- `@/components/Story` → `src/components/Story.tsx`
 
 > `scripts/`는 별도 tsx 실행 영역으로 `@/*` 별칭 대상이 아니며 상대 경로를 사용합니다.
 
@@ -238,11 +245,11 @@ npx shadcn@latest add card dialog input
 
 ## 디자인 가이드 (DESIGN.md)
 
-프로젝트 루트의 `DESIGN.md`는 모노크롬·타이포그래피 중심의 모바일 우선 뉴스 리더 UI 스타일 가이드입니다.
+프로젝트 루트의 `DESIGN.md`(v2 "Edition", 2026-10-04 전면 개정)는 매일 발행되는 한 호(號)처럼 읽히는 에디토리얼 뉴스 리더 UI 스타일 가이드입니다. 시안 원본은 `docs/design/mockups/`.
 
 - **UI 마크업/스타일링 작업 전 반드시 `DESIGN.md`를 참조**합니다.
 - 디자인 토큰은 `src/app/globals.css`에 CSS 변수로 매핑되어 있습니다(Tailwind v4 `@theme inline` — 단일 출처).
-- 핵심 원칙: **브랜드 강조색 없음 — 강조는 색이 아닌 대비**(잉크 `#1d1d1f` ↔ 파치먼트 `#f5f5f7`, 다크모드 반전). 단일 자체 호스팅 폰트 **Pretendard Variable**(한글·라틴 통합). 라이트/다크 동등 지원(`next-themes` `.dark` 클래스). 헤어라인 보더 카드(반경 18px)·풀 pill 칩/배지. 모바일 우선 앱 셸(데스크톱 프로스티드 헤더 ↔ 모바일 상단바+하단 탭바). **그림자·그라데이션·2차 강조색 금지.** 유일한 유채색은 `destructive`(빨강)로 Admin 파괴적 동작에만 사용.
+- 핵심 원칙: **편집 위계**(마스트헤드 → 1면 리드·지금 화제 → 분야 섹션 밴드 → 전체 기사)와 **데이터 신호**(중요도 도트·화제 바·분야 키커)가 시각 언어. 뉴스프린트 종이 `#f4f4f1` + 잉크 `#141519`, **강조색은 코발트 `brand` 하나**(키커·순위·활성 밑줄·hover 제목 — 채움 버튼은 잉크). 굵은 잉크 괘선(`rule`)으로 구획하고 카드 박스·그림자·그라데이션은 쓰지 않음. 서체는 **Hahmlet**(세리프 헤드라인, `next/font/google` 자체 호스팅) + **Pretendard**(본문). 한글은 `word-break: keep-all`. 다크는 심야 잉크블루 `#0f1118` + 밝은 코발트 `#93a3ff`. 날짜는 `src/lib/labels.ts`로 KST 고정 표기. 모바일 앱 셸(상단 바 + 하단 탭 바 + 필터 바텀시트)·44px 터치 타깃·safe-area는 유지.
 
 ## Claude 에이전트 목록
 

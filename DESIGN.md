@@ -1,29 +1,136 @@
 ---
-version: 2.0-draft
+version: 2.0
 name: Daily-AI-Brief-design
-status: "구조(IA·컴포넌트·신호 시각화) 확정 / 비주얼 아이덴티티(§9) 시안 선택 대기"
+identity: Edition
+status: "확정 (2026-10-04, 시안 B 선택) — 구현: src/app/globals.css"
 description: >-
-  테크 프로덕트의 정밀함과 에디토리얼 매거진의 위계를 결합한 데일리 AI 뉴스 브리핑.
-  모든 기사를 같은 카드로 나열하던 v1(무채색 균일 그리드)을 폐기하고, 편집 위계(주요 뉴스 →
-  트렌딩 랭킹 → 카테고리 섹션 → 전체 스트림)와 데이터 신호(중요도·트렌딩·카테고리)를 시각 언어로
-  삼는다. 색·서체 토큰은 §9의 후보 A/B/C 중 하나로 확정한다.
+  매일 발행되는 한 호(號)처럼 읽히는 에디토리얼 AI 뉴스 브리핑. 뉴스프린트 종이와 잉크,
+  코발트 단일 강조, 굵은 잉크 괘선, 한글 세리프(Hahmlet) 헤드라인과 Pretendard 본문.
+  편집 위계(마스트헤드 → 1면 → 섹션 밴드 → 전체 기사)와 데이터 신호(중요도·화제 지수·분야)가
+  시각 언어다. v1(무채색 균일 카드 그리드)을 전면 대체한다.
+
+colors:
+  # Light (:root)
+  background: "#f4f4f1" # paper
+  foreground: "#141519" # ink
+  foreground-soft: "#3a3c43" # ink-2 (요약·리드문)
+  card: "#fbfbf9" # sheet
+  primary: "#141519" # 채움 버튼 = 잉크
+  primary-foreground: "#f4f4f1"
+  secondary: "#eaeae5"
+  muted: "#eaeae5"
+  muted-foreground: "#66686f"
+  accent: "#eaeae5" # hover 표면
+  brand: "#2140e8" # cobalt
+  brand-foreground: "#ffffff"
+  brand-soft: "rgb(33 64 232 / 0.08)"
+  destructive: "#c8102e"
+  border: "#d8d8d2" # hairline rule
+  input: "#c9c9c2"
+  rule: "#141519" # 굵은 잉크 괘선
+  ring: "#2140e8"
+  # Dark (.dark)
+  background-dark: "#0f1118"
+  foreground-dark: "#eceae4"
+  foreground-soft-dark: "#bcbbb5"
+  card-dark: "#151823"
+  primary-dark: "#eceae4"
+  primary-foreground-dark: "#0f1118"
+  secondary-dark: "#1c1f2b"
+  muted-foreground-dark: "#8d8f9a"
+  brand-dark: "#93a3ff"
+  brand-foreground-dark: "#0f1118"
+  destructive-dark: "#ff6b6b"
+  border-dark: "#2a2d39"
+  input-dark: "#3a3e4d"
+  rule-dark: "#eceae4"
+  ring-dark: "#93a3ff"
+
+typography:
+  serif: "var(--font-hahmlet), Noto Serif KR, AppleMyungjo, Batang, serif" # 제호·헤드라인
+  sans: "var(--font-pretendard), Pretendard Variable, -apple-system, Apple SD Gothic Neo, Malgun Gothic, system-ui, sans-serif"
+  nameplate:
+    {
+      size: "clamp(48px, 8.4vw, 120px)",
+      lineHeight: 0.95,
+      tracking: -0.045em,
+      family: serif,
+      weight: 800,
+    }
+  display-xl:
+    {
+      size: "clamp(34px, 4.6vw, 60px)",
+      lineHeight: 1.14,
+      tracking: -0.045em,
+      family: serif,
+      weight: 700,
+      use: "리드 제목",
+    }
+  display-lg:
+    {
+      size: "clamp(30px, 3.6vw, 44px)",
+      lineHeight: 1.2,
+      tracking: -0.04em,
+      family: serif,
+      weight: 800,
+      use: "상세·검색·필터 결과 h1",
+    }
+  display-md:
+    {
+      size: "clamp(26px, 2.6vw, 30px)",
+      lineHeight: 1.2,
+      tracking: -0.045em,
+      family: serif,
+      weight: 800,
+      use: "섹션 밴드",
+    }
+  headline:
+    {
+      size: 21px,
+      lineHeight: 1.38,
+      tracking: -0.035em,
+      family: serif,
+      weight: 700,
+      use: "서브 리드·섹션 대표",
+    }
+  dek: { size: 19px, lineHeight: 1.7, use: "리드문·상세 요약" }
+  body: { size: 17px, lineHeight: 1.75, use: "상세 원문 발췌" }
+  title: { size: 16px, lineHeight: 1.5, weight: 600, use: "목록 항목 제목" }
+  caption: { size: 14px, lineHeight: 1.55, use: "요약·필터·내비" }
+  meta: { size: 13px, lineHeight: 1.4, use: "바이라인·키커·칩" }
+  label: { size: 12px, lineHeight: 1.3, use: "필드 라벨·보조 표기" }
+
+rounded:
+  sm: 6px
+  md: 10px
+  lg: 12px # --radius (shadcn 입력·버튼 기본)
+  xl: 16px # 모바일 시트 상단
+  pill: 9999px # 칩·CTA·더 보기
+
+layout:
+  container-feed: 1240px
+  container-article: 720px
+  gutter: "16px (mobile) / 32px (md+)"
+  header-h: 52px
+  tabbar-h: 56px
 ---
 
 # Daily AI Brief — DESIGN v2
 
 > **SSOT:** 토큰의 실제 값은 [src/app/globals.css](src/app/globals.css)가 단일 출처이며 본 문서는 그것을 서술한다.
 > v1(“모노크롬·균일 카드 그리드”)은 v2로 **전면 대체**된다. v1의 원칙 중 계승되는 것은 §2 말미에 명시한다.
+> 컴포넌트 구현 위치: `Masthead`·`Edition`(1면·화제·섹션)·`Story`(4개 변형)·`StoryIndex`·`ArticleMeta`(신호)·`FilterBar`·`HeaderWordmark` — 모두 `src/components/`.
 
 ## 1. 개정 배경
 
 v1 화면에 대한 피드백(2026-10-04)은 네 가지로 수렴한다.
 
-| 문제 | v1의 원인 | v2의 처방 |
-| --- | --- | --- |
-| 색이 없어 밋밋함 | 브랜드 강조색·유채색 금지 규칙 | 아이덴티티별 **강조색 체계 도입**(§9) |
-| 위계가 없음 | 170건을 같은 카드·같은 크기로 3열 나열 | **편집 위계 IA**(§3): 리드 → 랭킹 → 섹션 → 스트림 |
-| 개성/브랜드가 없음 | 템플릿형 헤더·워드마크, 단일 서체 | **마스트헤드**·전용 서체 페어링·고유 표기 체계 |
-| 정보 밀도·리듬 | 모든 카드 동일 패딩/동일 정보량 | 카드 **변형(L/M/S/Row)** 으로 밀도에 강약 |
+| 문제               | v1의 원인                              | v2의 처방                                         |
+| ------------------ | -------------------------------------- | ------------------------------------------------- |
+| 색이 없어 밋밋함   | 브랜드 강조색·유채색 금지 규칙         | 아이덴티티별 **강조색 체계 도입**(§9)             |
+| 위계가 없음        | 170건을 같은 카드·같은 크기로 3열 나열 | **편집 위계 IA**(§3): 리드 → 랭킹 → 섹션 → 스트림 |
+| 개성/브랜드가 없음 | 템플릿형 헤더·워드마크, 단일 서체      | **마스트헤드**·전용 서체 페어링·고유 표기 체계    |
+| 정보 밀도·리듬     | 모든 카드 동일 패딩/동일 정보량        | 카드 **변형(L/M/S/Row)** 으로 밀도에 강약         |
 
 ## 2. 디자인 원칙
 
@@ -54,63 +161,64 @@ v1 화면에 대한 피드백(2026-10-04)은 네 가지로 수렴한다.
 └────────────────────────────────────────────────────────┘
 ```
 
-| 영역 | 선정 규칙 (코드 기준) | 비고 |
-| --- | --- | --- |
-| Lead | `importance DESC, trendingScore DESC, publishedAt DESC` 상위 1 + 다음 2–4 | 편집 판단(LLM 중요도) |
-| Trending | `trendingScore DESC` 상위 10, `trendingScore > 0`만 | 커뮤니티 신호(HN·Reddit·GitHub) |
-| Category | 카테고리별 Lead 정렬 상위 3–4, Lead에 실린 기사 제외 | 빈 카테고리는 섹션 생략 |
-| Stream | 기존 `filterAndSortFeed` 그대로 | 필터·정렬 URL 계약 불변 |
+| 영역     | 선정 규칙 (코드 기준)                                                   | 비고                                                      |
+| -------- | ----------------------------------------------------------------------- | --------------------------------------------------------- |
+| Lead     | `importance DESC, trendingScore DESC, publishedAt DESC` 상위 1 + 다음 3 | 편집 판단(LLM 중요도)                                     |
+| Trending | `trendingScore DESC` 상위 10, `trendingScore > 0`만                     | 커뮤니티 신호(HN·Reddit·GitHub)                           |
+| Category | 카테고리별 Lead 정렬 상위 4, 1면에 실린 기사 제외                       | 빈 카테고리는 섹션 생략, "섹션 전체 보기" → `/?category=` |
+| Stream   | `filterAndSortFeed` (기본 정렬 = 화제순)                                | 30건씩 "더 보기"(`StoryIndex`)                            |
 
-- **필터 모드:** `?source=`·`?tag=`·`?sort=` 중 하나라도 있으면 Lead·Trending·Category를 생략하고 결과 스트림만 보여 준다(결과 건수 + 해제 칩 표시).
+- **필터 모드:** `?category=`·`?source=`·`?tag=` 중 하나라도 있으면 마스트헤드·1면·섹션을 생략하고 결과 헤더(조건 · 건수 · 모두 해제) + 결과 목록만 보여 준다. `?sort=`만 있으면 지면을 유지하고 전체 기사 목록만 재정렬한다(링크에 `#all` 앵커).
+- 선정 로직은 순수 함수 `buildEdition()`([src/lib/edition.ts](src/lib/edition.ts))이 단일 출처이며 단위 테스트로 고정한다.
 - **랭킹 번호는 실제 순위**이므로 번호를 쓴다. 다른 곳에서는 장식용 번호(01/02/03)를 쓰지 않는다.
-- 상세(`/article/[id]`)·검색(`/search`)의 URL 계약·동작은 변경하지 않는다.
+- 기존 URL 계약(`source`/`tag`/`sort`/`q`)은 그대로이고 `category`만 추가됐다. 상세(`/article/[id]`)는 신호 패널·원제·같은 분야 기사 4건을 더한다.
 
 ## 4. 신호 시각화 규칙
 
-| 신호 | 범위 | 표현 | 규칙 |
-| --- | --- | --- | --- |
-| 중요도 `importance` | 1–5 (0=미가공) | **5칸 세그먼트 미터** | 채운 칸 = 값. 4–5는 강조색. 0이면 미표시. 스크린리더 텍스트 `중요도 4/5` |
-| 트렌딩 `trendingScore` | 0–100 | 숫자 + **수평 바**(랭킹), 카드에선 숫자 배지 | 0이면 미표시. 바 길이 = 값/100 (스케일 고정) |
-| 카테고리 `category` | 6종 | 아이덴티티별 표기(코드 / 한글 키커 / 색 칩) | 아래 표시명 맵 사용. 빈 값이면 미표시 |
-| 소스 `source.name` | 10곳 | 메타 행 첫 요소 | 칩에서는 축약명 맵(기존 `SOURCE_SHORT_LABEL`) |
-| 날짜 `publishedAt` | ISO | `MM.DD` (카드) / `YYYY.MM.DD` (상세) | 마스트헤드는 `YYYY년 M월 D일 (요일)` |
+| 신호                   | 범위           | 표현                                         | 규칙                                                                     |
+| ---------------------- | -------------- | -------------------------------------------- | ------------------------------------------------------------------------ |
+| 중요도 `importance`    | 1–5 (0=미가공) | **5칸 세그먼트 미터**                        | 채운 칸 = 값. 4–5는 강조색. 0이면 미표시. 스크린리더 텍스트 `중요도 4/5` |
+| 트렌딩 `trendingScore` | 0–100          | 숫자 + **수평 바**(랭킹), 카드에선 숫자 배지 | 0이면 미표시. 바 길이 = 값/100 (스케일 고정)                             |
+| 카테고리 `category`    | 6종            | 아이덴티티별 표기(코드 / 한글 키커 / 색 칩)  | 아래 표시명 맵 사용. 빈 값이면 미표시                                    |
+| 소스 `source.name`     | 10곳           | 메타 행 첫 요소                              | 칩에서는 축약명 맵(기존 `SOURCE_SHORT_LABEL`)                            |
+| 날짜 `publishedAt`     | ISO            | `MM.DD` (카드) / `YYYY.MM.DD` (상세)         | 마스트헤드는 `YYYY년 M월 D일 (요일)`                                     |
 
 **카테고리 표시명 맵** (데이터 값은 불변, 표시만 변환):
 
-| 데이터 값 | 한글 표시명 | 코드(3–4자) |
-| --- | --- | --- |
-| `Language Models` | 언어 모델 | LLM |
-| `Agents` | 에이전트 | AGT |
-| `Dev Tools` | 개발 도구 | DEV |
-| `MLOps` | MLOps | OPS |
-| `연구·논문` | 연구·논문 | RES |
-| `산업·정책` | 산업·정책 | BIZ |
+| 데이터 값         | 한글 표시명 | 코드(3–4자) |
+| ----------------- | ----------- | ----------- |
+| `Language Models` | 언어 모델   | LLM         |
+| `Agents`          | 에이전트    | AGT         |
+| `Dev Tools`       | 개발 도구   | DEV         |
+| `MLOps`           | MLOps       | OPS         |
+| `연구·논문`       | 연구·논문   | RES         |
+| `산업·정책`       | 산업·정책   | BIZ         |
 
 ## 5. 컴포넌트 해부
 
-| 컴포넌트 | 구성 | 쓰임 |
-| --- | --- | --- |
-| `masthead` | 워드마크 · 발행일 · 에디션 통계 · (데스크톱) 섹션 내비 | 홈 최상단. 전역 헤더와 별개 |
-| `story-lead` (L) | 카테고리 표기 · 대형 제목 · 요약 2–3줄 · 메타(소스·날짜·중요도·트렌딩) | 리드 1건 |
-| `story-card` (M) | 카테고리 · 제목 · 요약 2줄 · 메타 | 서브 리드 |
-| `story-compact` (S) | 카테고리(섹션 안에서는 생략) · 제목 · 메타 1줄 | 카테고리 섹션 |
-| `story-row` (Row) | 날짜 · 제목 · 소스 · 신호 (한 줄–두 줄) | 스트림·검색 결과 |
-| `rank-item` | 순위 · 제목 · 소스 · 트렌딩 바 | Trending Top 10 |
-| `section-header` | 섹션명 · 건수 · (선택) 보조 링크 | 각 섹션 상단 |
-| `importance-meter` | 5칸 세그먼트 | 카드 메타 |
-| `category-label` | 아이덴티티별 표기 | 모든 카드 |
-| `filter-bar` / `filter-sheet` | v1 구조 유지, 스타일만 교체 | 스트림 상단 / 모바일 시트 |
-| `article-detail` | 카테고리 · 대형 제목 · 신호 패널 · 요약 · 원문 발췌 · CTA | `/article/[id]` |
+| 컴포넌트                      | 구성                                                                   | 쓰임                            |
+| ----------------------------- | ---------------------------------------------------------------------- | ------------------------------- |
+| `masthead`                    | 워드마크 · 발행일 · 에디션 통계 · (데스크톱) 섹션 내비                 | 홈 최상단. 전역 헤더와 별개     |
+| `story-lead` (L)              | 카테고리 표기 · 대형 제목 · 요약 2–3줄 · 메타(소스·날짜·중요도·트렌딩) | 리드 1건                        |
+| `story-card` (M)              | 카테고리 · 제목 · 요약 2줄 · 메타                                      | 서브 리드                       |
+| `story-compact` (S)           | 카테고리(섹션 안에서는 생략) · 제목 · 메타 1줄                         | 카테고리 섹션                   |
+| `story-entry` (Row)           | 날짜 칼럼 · 키커 · 제목 · 요약 2줄 · 소스·중요도·화제                  | 스트림·검색 결과·상세 관련 기사 |
+| `rank-item`                   | 순위 · 제목 · 소스 · 트렌딩 바                                         | Trending Top 10                 |
+| `section-header`              | 섹션명 · 건수 · (선택) 보조 링크                                       | 각 섹션 상단                    |
+| `importance-meter`            | 5칸 세그먼트                                                           | 카드 메타                       |
+| `category-label`              | 아이덴티티별 표기                                                      | 모든 카드                       |
+| `filter-bar` / `filter-sheet` | v1 구조 유지, 스타일만 교체                                            | 스트림 상단 / 모바일 시트       |
+| `article-detail`              | 카테고리 · 대형 제목 · 신호 패널 · 요약 · 원문 발췌 · CTA              | `/article/[id]`                 |
 
 모든 카드는 전체가 하나의 링크(`/article/[id]`)이며 포커스 링이 보인다.
 
 ## 6. 레이아웃 & 반응형
 
-- 컨테이너: 피드·검색 `max-w-[1280px]`, 상세 본문 `max-w-[720px]`(읽기 폭 ≈ 65자).
+- 컨테이너: 피드·검색 `max-w-[1240px]`, 상세 본문 `max-w-[720px]`(읽기 폭 ≈ 65자). 좌우 여백 16px → `md` 32px.
 - 피벗은 v1과 같이 **`md`(768px)**: 데스크톱 헤더 ↔ 모바일 상단 바 + 하단 탭 바.
 - Lead 영역: `lg` 이상 2열(리드 8 : 랭킹 4), 미만 1열(리드 → 랭킹 순 적층).
-- Category 섹션: `lg` 3열 / `sm` 2열 / 모바일 1열.
-- 스트림: 모바일 Row 리스트, `md` 이상 Row 리스트 또는 2열(아이덴티티별).
+- Category 섹션 밴드: `lg` 4열(대표 1.5fr + 3) / `md` 2열 / 모바일 1열(대표 외 요약 생략).
+- 스트림: 모바일 1열, `lg` 이상 2열 색인(`StoryEntry`).
 - safe-area·44px 터치 타깃·하단 탭 바 여백은 v1 규칙 그대로.
 
 ## 7. 모션
@@ -125,30 +233,57 @@ v1 화면에 대한 피드백(2026-10-04)은 네 가지로 수렴한다.
 - 신호(중요도·트렌딩)는 색만으로 전달하지 않는다(숫자·칸 수·`aria-label` 병행).
 - 랭킹은 `<ol>`, 섹션은 `<section aria-labelledby>`, 카드 링크에는 제목이 접근 가능한 이름이 된다.
 
-## 9. 비주얼 아이덴티티 — 후보 (선택 대기)
+## 9. 비주얼 아이덴티티 — Edition (확정)
 
-> 아래 셋 중 하나를 선택하면 이 절은 선택된 아이덴티티의 **확정 토큰 표**로 교체되고, frontmatter에 토큰이 기록된다.
+> 2026-10-04 시안 A(Signal)·B(Edition)·C(Spectrum) 중 **B Edition** 선택. 시안 원본: [docs/design/mockups/](docs/design/mockups/index.html).
+> 토큰 값은 frontmatter와 [src/app/globals.css](src/app/globals.css)가 같다(globals.css가 SSOT).
 
-### A. Signal — 뉴스 터미널 (다크 퍼스트, 단일 앰버 강조)
+**콘셉트.** 매일 아침 발행되는 한 호(號). 대형 세리프 제호, 발행일·호수 폴리오, 굵은 잉크 괘선으로 나뉜 지면.
+대담함은 **헤드라인 타이포그래피** 한 곳에 두고 색은 절제한다.
 
-- 콘셉트: 금융 터미널·통신사 와이어의 밀도. 카테고리를 **티커 코드**(LLM/AGT/DEV…)로, 신호를 모노스페이스 수치로 표기.
-- 서체: IBM Plex Sans KR(한글 본문·제목) + IBM Plex Mono(코드·수치·라벨) — 같은 슈퍼패밀리.
-- 색: 그래파이트 바탕 + **앰버** 단일 강조(트렌딩·중요도 4–5·활성 상태). 라이트는 쿨그레이 종이 + 진한 앰버.
-- 대담함의 위치: 상단 **트렌딩 티커 테이프**와 수치 타이포.
+### 색
 
-### B. Edition — 에디토리얼 매거진 (라이트 퍼스트, 단일 코발트 강조)
+| 역할     | 토큰               | Light     | Dark      | 쓰임                                                         |
+| -------- | ------------------ | --------- | --------- | ------------------------------------------------------------ |
+| 종이     | `background`       | `#f4f4f1` | `#0f1118` | 페이지 바탕                                                  |
+| 잉크     | `foreground`       | `#141519` | `#eceae4` | 제목·본문                                                    |
+| 잉크 2   | `foreground-soft`  | `#3a3c43` | `#bcbbb5` | 리드문·요약·바이라인 소스                                    |
+| 흐림     | `muted-foreground` | `#66686f` | `#8d8f9a` | 날짜·보조 메타 (종이 대비 ≥ 4.5:1)                           |
+| 코발트   | `brand`            | `#2140e8` | `#93a3ff` | 키커·순위 1–3·중요도 4–5·활성 밑줄·hover 제목·링크·포커스 링 |
+| 괘선     | `rule`             | `#141519` | `#eceae4` | 섹션 상단 2px·마스트헤드 4px+1px·푸터 4px                    |
+| 헤어라인 | `border`           | `#d8d8d2` | `#2a2d39` | 항목 구분·칼럼 세로선                                        |
+| 위험     | `destructive`      | `#c8102e` | `#ff6b6b` | Admin 파괴적 동작·임계 초과만                                |
 
-- 콘셉트: 매일 발행되는 한 호(號). **마스트헤드**(제호·발행일·호수)와 대형 세리프 헤드라인.
-- 서체: Hahmlet(한글 세리프, 제목·마스트헤드) + Pretendard(본문·메타).
-- 색: 뉴스프린트 오프화이트 + 잉크 + **코발트 블루** 단일 강조(키커·링크·랭킹 번호). 다크는 심야 잉크블루.
-- 대담함의 위치: **헤드라인 타이포그래피**와 지면 그리드.
+- **강조색은 코발트 하나.** 채움 버튼(원문 읽기·더 보기·활성 칩)은 잉크로 채운다 — 코발트는 "선·글자"에만.
+- 다크는 단순 반전이 아닌 **심야 잉크블루** 바탕에 밝힌 코발트(`#93a3ff`).
+- 그라데이션·그림자 없음. 깊이는 괘선과 헤어라인, 프로스티드 바(`bg-background/85 backdrop-blur-md`)로만.
 
-### C. Spectrum — 벤토 프로덕트 (라이트 퍼스트, 카테고리 컬러 코딩)
+### 서체
 
-- 콘셉트: 프로덕트 대시보드의 벤토 그리드. 카테고리마다 고유 색을 부여해 지면을 **색으로 스캔**.
-- 서체: Pretendard(굵은 800 디스플레이 + 본문) + Geist Mono(수치).
-- 색: 쿨화이트 바탕 + 카테고리 6색(채도 낮춘 틴트 배경 + 진한 전경). 다크는 깊은 남색 바탕에 발광 틴트.
-- 대담함의 위치: **리드 타일의 카테고리 컬러 블록**과 벤토 레이아웃.
+- **Hahmlet**(한글 세리프, 가변 100–900) — 제호·리드·서브·섹션명·순위 숫자·날짜 칼럼. `next/font/google`로 빌드타임 다운로드·자체 호스팅(unicode-range 조각 93개, 필요한 조각만 로드). `preload: false`.
+- **Pretendard Variable** — 본문·메타·내비·칩. `public/fonts` 자체 호스팅.
+- 한글 줄바꿈은 `word-break: keep-all` + `overflow-wrap: anywhere`(전역). 제목은 `text-wrap: balance`.
+- 굵기: 세리프 700/800, 산세리프 400/600/700. 제목 자간은 음수(-0.02 ~ -0.045em).
+
+### 형태
+
+- 지면은 **각진 면**이 기본: 카드 박스 없이 괘선·헤어라인·칼럼 세로선으로 구획한다.
+- pill은 칩·태그·CTA·"더 보기"·필터 트리거에만. 입력은 검색창처럼 **밑줄형**(2px 잉크, 포커스 시 코발트).
+
+### 신호 표기 (§4 구체화)
+
+| 신호      | Edition 표기                                                                        |
+| --------- | ----------------------------------------------------------------------------------- |
+| 분야      | 코발트 굵은 키커(13px, 한글 표시명)                                                 |
+| 중요도    | 지름 6px 원형 도트 5칸. 채움 = 잉크, 4–5는 코발트, 빈칸 = 흐림 테두리               |
+| 화제 지수 | 세리프 순위 숫자(1–3 코발트) + 2px 코발트 바(고정 0–100 스케일) + 수치              |
+| 발행      | 폴리오 `YYYY년 M월 D일 요일 · 제 N호 · 기사 N건 · 매체 M곳` (N = 실패 제외 실행 수) |
+
+### 모션
+
+- 마스트헤드 괘선 `animate-draw`(왼쪽에서 그어짐 0.9s), 제호·리드·서브·화제 `animate-rise` 스태거(80/160/240ms).
+- 헤더 워드마크: 홈에선 제호가 보이는 동안 숨기고 지나가면 페이드인(`HeaderWordmark`).
+- hover는 제목 색(코발트)만 바뀐다(`story-link` 유틸리티). `prefers-reduced-motion`에서 전부 제거.
 
 ## 10. 구현 원칙
 
