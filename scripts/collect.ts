@@ -20,14 +20,18 @@ import { fetchRss, type SourceConfig } from "./lib/collect/rss";
 import { estimateCost } from "./lib/cost";
 import { dedupKey } from "./lib/dedup";
 import { enrichArticle } from "./lib/enrich";
+import { envNonNegativeInt, envString } from "./lib/env";
 import { saveTags } from "./lib/tags";
 import { trendingScore } from "./lib/trending";
 
 /** 가공 비용 추정에 쓰는 모델 (enrich.ts 와 동일 기본값). */
-const MODEL = process.env.LLM_MODEL ?? "claude-haiku-4-5";
+const MODEL = envString("LLM_MODEL", "claude-haiku-4-5");
 
-/** 1회 실행당 LLM 가공 상한. 초과 시 trending_score 상위만 가공한다(비용 가드). */
-const MAX_ITEMS_PER_RUN = Number(process.env.MAX_ITEMS_PER_RUN ?? 150);
+/**
+ * 1회 실행당 LLM 가공 상한. 초과 시 trending_score 상위만 가공한다(비용 가드).
+ * Actions 에서 vars 미설정 시 빈 문자열이 들어와도 기본값 150 을 쓴다(envNonNegativeInt).
+ */
+const MAX_ITEMS_PER_RUN = envNonNegativeInt("MAX_ITEMS_PER_RUN", 150);
 
 /** kind → 수집 어댑터. WEB 은 등록만 하고 수집하지 않는다(Post-MVP). */
 const ADAPTERS: Record<string, (s: SourceConfig) => Promise<RawItem[]>> = {

@@ -11,6 +11,7 @@ import path from "node:path";
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
 import { PROMPTS_DIR } from "../../src/lib/paths";
+import { envString } from "./env";
 import type { RawItem } from "../../src/lib/types";
 import { articleEnrichmentSchema, type ArticleEnrichment } from "./schema";
 
@@ -20,7 +21,7 @@ const MAX_INPUT_CHARS = 2500;
 const MAX_OUTPUT_TOKENS = 400;
 
 /** 기본 모델. LLM_MODEL 환경변수로 전환 가능. */
-const MODEL = process.env.LLM_MODEL ?? "claude-haiku-4-5";
+const MODEL = envString("LLM_MODEL", "claude-haiku-4-5");
 
 interface FewShotExample {
   input: { source: string; title: string; content: string };
