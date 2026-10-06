@@ -5,10 +5,10 @@ import { FrontPage, SectionBands } from "@/components/Edition";
 import { EditionPager } from "@/components/EditionPager";
 import { Masthead } from "@/components/Masthead";
 import { StoryIndex } from "@/components/StoryIndex";
-import { getArticlesUntil, getEditionRefs } from "@/lib/db";
+import { getArticlesUntil, getEditionRefs, toListCards } from "@/lib/db";
 import { buildEdition } from "@/lib/edition";
 import { formatLongDate } from "@/lib/labels";
-import { SITE_NAME, editionMetadata } from "@/lib/site";
+import { SITE_NAME, editionMetadata, editionPath } from "@/lib/site";
 
 /**
  * 호 고정 링크(`/edition/YYYY-MM-DD/`). 홈은 매일 새 호로 바뀌므로, 공유한 날의 지면을
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { ref, edition } = data;
   return {
     title: `${formatLongDate(ref.publishedAt)} 제${ref.issueNo}호 — ${SITE_NAME}`,
-    ...editionMetadata(edition, ref),
+    ...editionMetadata(edition, ref, editionPath(ref.date)),
   };
 }
 
@@ -50,9 +50,8 @@ export default async function EditionPage({ params }: Props) {
   const data = loadEdition((await params).date);
   if (!data) notFound();
   const { ref, prev, next, edition } = data;
-  // 색인(StoryIndex)은 클라이언트 컴포넌트라 props 가 페이지 페이로드에 실린다
-  // → 상세 전용 원문 발췌는 빼서 호 페이지가 날마다 쌓이는 용량을 줄인다.
-  const index = edition.issue.map((a) => ({ ...a, contentRaw: undefined }));
+  // 색인(StoryIndex)은 클라이언트 컴포넌트라 props 가 페이지에 실린다 → 목록용 카드로.
+  const index = toListCards(edition.issue);
 
   return (
     <>

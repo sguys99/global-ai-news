@@ -105,9 +105,9 @@ describe("shareMetadata", () => {
 });
 
 describe("editionMetadata — 홈·호 고정 링크 공유 메타", () => {
-  it("og:url = 그날(KST) 호 고정 링크, 썸네일 = 그날 1면 + 버전", () => {
+  it("호 고정 링크: og:url = 그 경로, 썸네일 = 그날(KST) 1면 + 버전", () => {
     const lead = card({ id: 7, titleKo: "리드" });
-    const m = editionMetadata({ lead, seconds: [] }, info);
+    const m = editionMetadata({ lead, seconds: [] }, info, "/edition/2026-10-06/");
     expect(m.openGraph).toMatchObject({
       title: "리드",
       url: "/edition/2026-10-06/",
@@ -116,8 +116,16 @@ describe("editionMetadata — 홈·호 고정 링크 공유 메타", () => {
   });
 
   it("리드가 없으면 홈 경로 + 기본 썸네일", () => {
-    const m = editionMetadata({ lead: null, seconds: [] }, info);
+    const m = editionMetadata({ lead: null, seconds: [] }, info, "/");
     expect(m.openGraph).toMatchObject({ url: "/", images: [{ url: OG_DEFAULT_IMAGE }] });
+  });
+
+  it("og:url 은 넘긴 경로 그대로 — 홈은 홈 자신(다른 페이지로 스크랩을 넘기지 않음)", () => {
+    const lead = card({ id: 7, titleKo: "리드" });
+    expect(editionMetadata({ lead, seconds: [] }, info, "/").openGraph).toMatchObject({
+      url: "/",
+      images: [{ url: "/og/edition/2026-10-06.png?v=42-7" }],
+    });
   });
 });
 

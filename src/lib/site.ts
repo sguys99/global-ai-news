@@ -3,10 +3,11 @@
  *
  * 카카오톡 스크랩봇은 og:title·og:description·og:image·og:url 을 읽는다.
  * - og:image 는 JPG/PNG, 비율 1:1·2:1·4:3 만 그대로 쓴다(그 밖은 자동 크롭) → 2:1.
- * - og:url 이 요청 URL과 다르면 og:url 쪽 메타를 다시 읽는다 → 페이지 경로를 정확히 넣는다.
- * - 같은 URL은 "약 1시간 이상" 캐시된다. 홈은 매일 내용이 바뀌므로 og:url 을 그날 호의
- *   고정 링크(/edition/[date]/)로, 썸네일을 호 날짜 파일로 두고 같은 날 재발행에 대비해
- *   버전 쿼리까지 붙여 이전 호 미리보기가 재사용되지 않게 한다.
+ * - og:url 이 요청 URL과 다르면 og:url 쪽 메타를 다시 읽는다 → 각 페이지 자신의 경로를 정확히
+ *   넣는다(다른 페이지를 가리키면 스크랩이 한 단계 늘어 실패 지점이 생긴다).
+ * - 같은 URL은 "약 1시간 이상" 캐시된다. 홈은 매일 내용이 바뀌므로 썸네일을 호 날짜 파일로
+ *   두고 같은 날 재발행에 대비해 버전 쿼리까지 붙여 이전 호 미리보기가 재사용되지 않게 한다.
+ * - 스크랩은 페이지 HTML 전체를 받으므로 목록 페이지는 가볍게 유지한다(db.ts toListCards).
  */
 import type { Metadata } from "next";
 import type { EditionInfo } from "@/lib/db";
@@ -129,20 +130,21 @@ export function editionShare(
 }
 
 /**
- * 호 공유 메타(홈·호 고정 링크 공용). og:url 을 그날 호 고정 링크로 두어, 홈 링크를 공유해도
- * 미리보기가 그날 지면을 가리키고 다음 날 다시 공유하면 새 호로 바뀐다.
+ * 호 공유 메타(홈·호 고정 링크 공용): 제목 = 1면 리드, 썸네일 = 그날 1면.
+ * `path` 는 og:url — 공유되는 페이지 자신의 경로(홈 "/", 호 고정 링크 "/edition/[date]/").
  */
 export function editionMetadata(
   edition: Pick<Edition, "lead" | "seconds">,
   info: EditionInfo,
+  path: string,
 ): Pick<Metadata, "openGraph" | "twitter"> {
   const { title, description, version } = editionShare(edition, info);
-  if (!edition.lead || !info.publishedAt) return shareMetadata({ title, description, path: "/" });
+  if (!edition.lead || !info.publishedAt) return shareMetadata({ title, description, path });
   const date = kstDateKey(info.publishedAt);
   return shareMetadata({
     title,
     description,
-    path: editionPath(date),
+    path,
     image: {
       path: ogEditionImagePath(date),
       alt: `${formatMonthDay(info.publishedAt)} 1면: ${title}`,

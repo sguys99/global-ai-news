@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import Database, { type Database as DatabaseType } from "better-sqlite3";
 import { beforeEach, describe, expect, it } from "vitest";
-import { getArticlesUntil, getEditionRefs, getLatestPublishedAt } from "@/lib/db";
+import { getArticlesUntil, getEditionRefs, getLatestPublishedAt, toListCards } from "@/lib/db";
 
 const SCHEMA_PATH = path.join(process.cwd(), "scripts/lib/schema.sql");
 
@@ -91,5 +91,17 @@ describe("getArticlesUntil / getLatestPublishedAt", () => {
     article("2026-10-05 10:00:00", "2026-10-05T10:00:00Z");
     article("2026-10-05 10:00:00", "2026-10-06T10:00:00Z", false);
     expect(getLatestPublishedAt(db)).toBe("2026-10-05T10:00:00Z");
+  });
+});
+
+describe("toListCards", () => {
+  it("상세 전용 원문 발췌(contentRaw) 키만 빼고 나머지는 그대로", () => {
+    article("2026-10-05 10:00:00", "2026-10-05T10:00:00Z");
+    db.prepare("UPDATE articles SET content_raw = 'long body'").run();
+    const [full] = getArticlesUntil("2026-10-06T00:00:00.000Z", db);
+    expect(full.contentRaw).toBe("long body");
+    const [card] = toListCards([full]);
+    expect("contentRaw" in card).toBe(false);
+    expect(card).toEqual({ ...full, contentRaw: undefined });
   });
 });

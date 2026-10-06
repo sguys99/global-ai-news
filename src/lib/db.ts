@@ -146,6 +146,19 @@ export function getFeed(opts: FeedOptions = {}, conn: DatabaseType = getDb()): A
   return rows.map(toArticleCard);
 }
 
+/**
+ * 목록·지면용 카드: 상세 전용 원문 발췌(contentRaw)를 뺀다. 홈·호 페이지는 카드 배열을
+ * 클라이언트 컴포넌트에 넘겨 페이지 HTML 에 그대로 실리므로, 빼지 않으면 페이지가 수백 KB
+ * 커지고 링크 미리보기 스크랩(카카오톡 등)이 실패할 위험도 커진다.
+ */
+export function toListCards(articles: ArticleCard[]): ArticleCard[] {
+  return articles.map((article) => {
+    const card = { ...article };
+    delete card.contentRaw;
+    return card;
+  });
+}
+
 /** FTS5 MATCH 표현식 생성: 공백 토큰화 → 각 토큰 prefix("tok"*) → OR 결합. */
 function ftsMatchExpr(q: string): string {
   return q
