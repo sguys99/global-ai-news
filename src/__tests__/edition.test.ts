@@ -65,6 +65,9 @@ describe("buildEdition", () => {
     expect(e.trending.map((x) => x.id)).not.toContain(old.id);
     // 섹션 개수는 기간 제한 없는 전체 기준
     expect(e.sections.find((s) => s.category === "Agents")?.count).toBe(5);
+    // 이번 호 기사 목록 = 기간 안 기사, 편집 순
+    expect(e.issue.map((x) => x.id)).not.toContain(old.id);
+    expect(e.issue).toHaveLength(fresh.length);
   });
 
   it("이번 호 기사가 1면을 못 채우면 전체 기사로 대체", () => {
@@ -75,6 +78,12 @@ describe("buildEdition", () => {
   });
 
   it("기사가 없으면 빈 지면", () => {
-    expect(buildEdition([])).toEqual({ lead: null, seconds: [], trending: [], sections: [] });
+    expect(buildEdition([])).toEqual({
+      lead: null,
+      seconds: [],
+      trending: [],
+      sections: [],
+      issue: [],
+    });
   });
 });

@@ -4,7 +4,9 @@ import {
   categorySlug,
   formatDate,
   formatLongDate,
+  formatMonthDay,
   formatShortDate,
+  kstDateKey,
   shortSourceName,
 } from "@/lib/labels";
 
@@ -16,6 +18,8 @@ describe("labels — 날짜는 KST 고정", () => {
     expect(formatShortDate(iso)).toBe("10.04");
     expect(formatDate(iso)).toBe("2026.10.04");
     expect(formatLongDate(iso)).toBe("2026년 10월 4일 일요일");
+    expect(formatMonthDay(iso)).toBe("10월 4일(일)");
+    expect(kstDateKey(iso)).toBe("2026-10-04");
   });
 
   it("잘못된 입력은 빈 문자열", () => {

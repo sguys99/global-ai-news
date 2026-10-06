@@ -1,4 +1,5 @@
 import Database, { type Database as DatabaseType } from "better-sqlite3";
+import { kstDateKey } from "@/lib/labels";
 import { DB_PATH } from "@/lib/paths";
 import type { ArticleCard, RelatedCoverage, RunRow } from "@/lib/types";
 
@@ -327,6 +328,63 @@ export function getEditionInfo(conn: DatabaseType = getDb()): EditionInfo {
     )
     .get() as { n: number; last: string | null };
   return { issueNo: row.n, publishedAt: row.last };
+}
+
+/**
+ * 호 고정 링크(`/edition/[date]`) 단위. getEditionInfo 와 같은 기준(실패 아닌 수집 실행 1회 = 1호)으로
+ * KST 날짜마다 그날 마지막 호를 그 날짜의 지면으로 삼는다.
+ */
+export interface EditionRef extends EditionInfo {
+  /** KST 날짜 'YYYY-MM-DD' — 경로 키. */
+  date: string;
+  publishedAt: string;
+  /** 지면 마감 = 다음 날 00:00 KST(UTC ISO). 이 시각 전에 수집된 기사로 그날 지면을 재구성한다. */
+  cutoff: string;
+}
+
+const DAY_MS = 24 * 3600 * 1000;
+
+/** 호 목록(오래된 순). 첫 공개 기사가 들어오기 전 날짜(빈 지면)는 뺀다. */
+export function getEditionRefs(conn: DatabaseType = getDb()): EditionRef[] {
+  const runs = conn
+    .prepare(`SELECT started_at FROM collection_runs WHERE status != 'failed' ORDER BY started_at`)
+    .all() as { started_at: string }[];
+  const { first } = conn
+    .prepare(
+      `SELECT strftime('%Y-%m-%dT%H:%M:%SZ', MIN(a.created_at)) AS first
+         FROM articles a WHERE ${PUBLISHED}`,
+    )
+    .get() as { first: string | null };
+  if (!first) return [];
+
+  const byDate = new Map<string, EditionRef>();
+  runs.forEach((run, i) => {
+    const date = kstDateKey(run.started_at);
+    const cutoff = new Date(Date.parse(`${date}T00:00:00+09:00`) + DAY_MS).toISOString();
+    byDate.set(date, { date, issueNo: i + 1, publishedAt: run.started_at, cutoff });
+  });
+  return [...byDate.values()].filter((e) => Date.parse(e.cutoff) > Date.parse(first));
+}
+
+/** 호 재구성용: cutoff(UTC ISO) 전에 수집된 공개 기사(getFeed 기본 정렬). */
+export function getArticlesUntil(cutoff: string, conn: DatabaseType = getDb()): ArticleCard[] {
+  const rows = conn
+    .prepare(
+      `${ARTICLE_SELECT} WHERE ${PUBLISHED} AND julianday(a.created_at) < julianday(?)
+        ORDER BY ${orderByFor(undefined)}`,
+    )
+    .all(cutoff) as ArticleRow[];
+  return rows.map(toArticleCard);
+}
+
+/** 공개 기사 중 최신 게시 시각(기사 썸네일 생성 기간의 기준). 기사가 없으면 null. */
+export function getLatestPublishedAt(conn: DatabaseType = getDb()): string | null {
+  const row = conn
+    .prepare(`SELECT MAX(a.published_at) AS latest FROM articles a WHERE ${PUBLISHED}`)
+    .get() as {
+    latest: string | null;
+  };
+  return row.latest;
 }
 
 /** 단건 상세 조회. 없으면 null. */

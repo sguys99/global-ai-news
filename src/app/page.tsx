@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FeedClient } from "@/components/FeedClient";
 import { FeedView } from "@/components/FeedView";
 import { getActiveTags, getEditionInfo, getFeed, getSourcesWithCounts } from "@/lib/db";
+import { buildEdition } from "@/lib/edition";
+import { editionMetadata } from "@/lib/site";
+
+/** 홈 공유 미리보기 = 오늘의 1면(리드 헤드라인 제목·썸네일), og:url 은 오늘 호 고정 링크. */
+export function generateMetadata(): Metadata {
+  return editionMetadata(buildEdition(getFeed()), getEditionInfo());
+}
 
 export default function Home() {
   // 빌드타임 1회 SSG: 전체 카드·소스·태그·발행 정보를 조회해 클라이언트 셸에 넘긴다.

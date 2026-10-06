@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { BottomTabBar } from "@/components/mobile/BottomTabBar";
 import { MobileTopBar } from "@/components/mobile/MobileTopBar";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, shareMetadata } from "@/lib/site";
 import "./globals.css";
 
 /** 한글·라틴 본문 폰트. Pretendard Variable 자가 호스팅, font-display: swap(globals.css --font-sans). */
@@ -29,8 +30,12 @@ const hahmlet = Hahmlet({
 });
 
 export const metadata: Metadata = {
-  title: "Daily AI Brief",
-  description: "글로벌·한국 AI/IT 뉴스를 매일 한국어 요약으로 제공하는 데일리 브리핑",
+  // og:url·og:image 상대 경로의 절대화 기준(basePath 포함).
+  metadataBase: new URL(SITE_URL),
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  // 공유 메타를 따로 정의하지 않은 페이지의 기본값. og:url 은 페이지마다 달라 두지 않는다.
+  ...shareMetadata({ title: SITE_NAME, description: SITE_DESCRIPTION }),
 };
 
 /** 모바일 셸(mobile-plan Phase 1): notch/safe-area 대응 + 테마별 브라우저 크롬 색. */

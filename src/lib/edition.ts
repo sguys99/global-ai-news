@@ -8,6 +8,7 @@
  * - lead/seconds: LLM 중요도 순(편집 판단) 상위 1 + 다음 N
  * - trending:     트렌딩 점수 순(커뮤니티 신호) 상위 10, 점수 > 0만
  * - sections:     카테고리별 중요도 순 상위 N(리드·서브에 실린 기사 제외), 빈 섹션 생략
+ * - issue:        이번 호 기사 전체(편집 순) — 호 고정 링크 지면의 "이 호의 기사" 목록
  */
 import { CATEGORY_LABELS } from "@/lib/labels";
 import type { ArticleCard } from "@/lib/types";
@@ -24,6 +25,7 @@ export interface Edition {
   seconds: ArticleCard[];
   trending: ArticleCard[];
   sections: EditionSection[];
+  issue: ArticleCard[];
 }
 
 export interface EditionLimits {
@@ -85,5 +87,5 @@ export function buildEdition(
     })
     .filter((s) => s.items.length > 0);
 
-  return { lead, seconds, trending, sections };
+  return { lead, seconds, trending, sections, issue: editorial };
 }

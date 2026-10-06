@@ -1,9 +1,12 @@
-import { categoryLabel, categorySlug, formatLongDate } from "@/lib/labels";
+import Link from "next/link";
+import { categoryLabel, categorySlug, formatLongDate, kstDateKey } from "@/lib/labels";
+import { SITE_TAGLINE, editionPath } from "@/lib/site";
 
 /**
  * 홈 마스트헤드 (DESIGN.md §5 masthead). 발행일·호수·에디션 통계 폴리오 + 대형 세리프 제호 +
  * 이중 잉크 괘선 + 섹션 내비(앵커). 홈(`/`)의 필터 없는 편집 지면에서만 렌더한다.
  * `id="masthead"` 는 헤더 워드마크가 스크롤 위치를 감지하는 기준점이다(HeaderWordmark).
+ * 발행일은 그 호의 고정 링크(`/edition/[date]/`)다 — 날짜가 지나도 같은 지면을 다시 열 수 있다.
  */
 export function Masthead({
   issueNo,
@@ -11,20 +14,27 @@ export function Masthead({
   total,
   sourceCount,
   categories,
+  indexLabel = "전체 기사",
 }: {
   issueNo: number;
   publishedAt: string | null;
   total: number;
   sourceCount: number;
   categories: string[];
+  /** 섹션 내비 마지막 항목(#all) 라벨. 호 고정 링크 지면은 "이 호의 기사". */
+  indexLabel?: string;
 }) {
   return (
     <header id="masthead" className="mx-auto max-w-[1240px] px-4 pt-5 md:px-8 md:pt-7">
       <div className="text-meta text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
         {publishedAt && (
-          <time dateTime={publishedAt} className="text-foreground font-semibold">
-            {formatLongDate(publishedAt)}
-          </time>
+          <Link
+            href={editionPath(kstDateKey(publishedAt))}
+            title="이 호의 고정 링크"
+            className="text-foreground focus-visible:ring-ring font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2"
+          >
+            <time dateTime={publishedAt}>{formatLongDate(publishedAt)}</time>
+          </Link>
         )}
         {issueNo > 0 && <span>제 {issueNo}호</span>}
         <span>
@@ -38,7 +48,7 @@ export function Masthead({
           Daily <span className="text-brand">AI</span> Brief
         </h1>
         <p className="text-caption text-muted-foreground max-w-[17em] md:pb-2 md:text-right">
-          세계와 한국의 AI 소식을 매일 아침, 한국어로 요약해 전합니다.
+          {SITE_TAGLINE}
         </p>
       </div>
 
@@ -57,7 +67,7 @@ export function Masthead({
             href: `#section-${categorySlug(c)}`,
             label: categoryLabel(c),
           })),
-          { href: "#all", label: "전체 기사" },
+          { href: "#all", label: indexLabel },
         ].map((item, i) => (
           <a
             key={item.href}

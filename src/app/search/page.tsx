@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { SearchClient } from "@/components/SearchClient";
 import { getActiveTags, getSourcesWithCounts } from "@/lib/db";
+import { SITE_DESCRIPTION, SITE_NAME, shareMetadata } from "@/lib/site";
+
+export const metadata: Metadata = shareMetadata({
+  title: `기사 찾기 — ${SITE_NAME}`,
+  description: SITE_DESCRIPTION,
+  path: "/search/",
+});
 
 /**
  * 검색 페이지 = 정적 셸 + 클라이언트 검색(정적 export).

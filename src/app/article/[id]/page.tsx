@@ -4,8 +4,15 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { CategoryKicker, ImportanceMeter, TagChips, TrendBar } from "@/components/ArticleMeta";
 import { StoryEntry } from "@/components/Story";
-import { getAllArticleIds, getArticle, getFeed } from "@/lib/db";
+import { getAllArticleIds, getArticle, getFeed, getLatestPublishedAt } from "@/lib/db";
 import { categoryLabel, formatDate, shortSourceName } from "@/lib/labels";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  hasArticleThumbnail,
+  ogArticleImagePath,
+  shareMetadata,
+} from "@/lib/site";
 
 /** 정적 export: 전 기사 상세를 빌드타임에 전수 사전 생성한다. */
 export function generateStaticParams() {
@@ -23,9 +30,25 @@ export async function generateMetadata({
   const { id } = await params;
   const article = getArticle(Number(id));
   if (!article) return {};
+  const title = article.titleKo || article.titleOriginal;
+  const description = article.summaryKo || SITE_DESCRIPTION;
   return {
-    title: `${article.titleKo || article.titleOriginal} — Daily AI Brief`,
+    title: `${title} — ${SITE_NAME}`,
     description: article.summaryKo || undefined,
+    ...shareMetadata({
+      title,
+      description,
+      path: `/article/${article.id}/`,
+      // 최근 기사만 전용 썸네일(og/article/[file]), 그 밖은 기본 썸네일.
+      image: hasArticleThumbnail(article.publishedAt, getLatestPublishedAt())
+        ? { path: ogArticleImagePath(article.id), alt: title }
+        : undefined,
+      article: {
+        publishedTime: article.publishedAt,
+        section: categoryLabel(article.category) || undefined,
+        tags: article.tags,
+      },
+    }),
   };
 }
 

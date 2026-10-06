@@ -41,6 +41,8 @@
 │   │   ├── globals.css           # Tailwind v4 + DESIGN.md 디자인 토큰
 │   │   ├── article/[id]/page.tsx # 상세(/article/[id]) — SSG generateStaticParams (전환 후)
 │   │   ├── search/page.tsx       # 검색(/search) — 정적 셸 + 클라이언트 검색 (전환 후)
+│   │   ├── edition/[date]/page.tsx # 호 고정 링크(/edition/YYYY-MM-DD) — 그날 마감 시점 지면 SSG
+│   │   ├── og/                   # 공유 썸네일(og:image) — 빌드타임 PNG: edition/<날짜>·article/<id>(최근 7일)·default
 │   │   ├── admin/                # 운영 콘솔 — 로컬 전용(배포 제외, 전환 후)
 │   │   │   ├── page.tsx          # 운영 콘솔(/admin) — SSR+인증
 │   │   │   └── login/page.tsx    # 로그인
@@ -68,6 +70,8 @@
 │   │   ├── edition.ts            # 홈 편집 지면 선정(buildEdition: 리드·화제·섹션)
 │   │   ├── labels.ts             # 카테고리 표시명·소스 축약명·KST 날짜 포맷
 │   │   ├── feedFilter.ts         # 클라 필터·정렬 + URL 옵션 파싱
+│   │   ├── site.ts               # 사이트 정체성·공유 메타(OG/카카오톡 미리보기) 단일 출처
+│   │   ├── ogImage.tsx           # 공유 썸네일 렌더러(next/og + Google Fonts 정적 TTF)
 │   │   ├── paths.ts              # 프로젝트 경로 상수 (DB_PATH 등)
 │   │   ├── auth.ts               # HMAC 서명 쿠키 인증
 │   │   ├── github.ts             # sources.json GitHub 커밋
@@ -126,14 +130,16 @@
 
 렌더링/접근 열은 **전환 후 목표** 기준입니다(현재 코드는 Vercel 런타임 기준 — 위 전환 배너 참조).
 
-| 경로                                       | 페이지                    | 렌더링 / 접근 (전환 후)        | 배포 포함     |
-| ------------------------------------------ | ------------------------- | ------------------------------ | ------------- |
-| `/`                                        | 피드(홈)                  | SSG(빌드타임) + 클라 필터 · 공개 | ✅            |
-| `/article/[id]`                            | 상세                      | SSG(generateStaticParams) · 공개 | ✅            |
-| `/search`                                  | 검색                      | 정적 셸 + 클라이언트 검색 · 공개 | ✅            |
-| `/admin`                                   | 운영 콘솔                 | 로컬 전용(`next dev`) · 인증    | ❌ 배포 제외  |
-| `/api/admin/sources`, `/api/admin/collect` | 소스 커밋 / 재수집 트리거 | 로컬 전용                       | ❌ 배포 제외  |
-| `/api/health`                              | 헬스체크                  | 로컬 전용                       | ❌ 배포 제외  |
+| 경로                                                                | 페이지                    | 렌더링 / 접근 (전환 후)          | 배포 포함    |
+| ------------------------------------------------------------------- | ------------------------- | -------------------------------- | ------------ |
+| `/`                                                                 | 피드(홈)                  | SSG(빌드타임) + 클라 필터 · 공개 | ✅           |
+| `/article/[id]`                                                     | 상세                      | SSG(generateStaticParams) · 공개 | ✅           |
+| `/search`                                                           | 검색                      | 정적 셸 + 클라이언트 검색 · 공개 | ✅           |
+| `/edition/[date]`                                                   | 호 고정 링크(지난 호)     | SSG(generateStaticParams) · 공개 | ✅           |
+| `/og/edition/[date].png`, `/og/article/[id].png`, `/og/default.png` | 공유 썸네일(og:image)     | 빌드타임 정적 PNG · 공개         | ✅           |
+| `/admin`                                                            | 운영 콘솔                 | 로컬 전용(`next dev`) · 인증     | ❌ 배포 제외 |
+| `/api/admin/sources`, `/api/admin/collect`                          | 소스 커밋 / 재수집 트리거 | 로컬 전용                        | ❌ 배포 제외 |
+| `/api/health`                                                       | 헬스체크                  | 로컬 전용                        | ❌ 배포 제외 |
 
 ## 개발 워크플로우
 

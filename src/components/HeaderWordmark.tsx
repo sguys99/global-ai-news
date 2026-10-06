@@ -12,11 +12,12 @@ const HEADER_OFFSET = 56;
  * 헤더 워드마크. 홈 마스트헤드(`#masthead`)의 대형 제호가 화면에 보이는 동안에는 숨겨
  * 제호가 두 번 보이지 않게 하고, 스크롤로 지나가면 페이드인한다(신문 사이트의 축약 로고 패턴).
  * 마스트헤드가 없는 화면(상세·검색·필터 결과)에서는 항상 보인다.
- * SSR 초기값: 홈은 숨김(최상단 = 제호 노출), 그 외 표시 → 하이드레이션 깜빡임 없음.
+ * SSR 초기값: 마스트헤드가 있는 홈·호 고정 링크는 숨김(최상단 = 제호 노출), 그 외 표시
+ * → 하이드레이션 깜빡임 없음.
  */
 export function HeaderWordmark({ className }: { className?: string }) {
   const pathname = usePathname();
-  const [visible, setVisible] = useState(pathname !== "/");
+  const [visible, setVisible] = useState(pathname !== "/" && !pathname.startsWith("/edition/"));
 
   useEffect(() => {
     let frame = 0;

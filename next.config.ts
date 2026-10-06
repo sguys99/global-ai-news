@@ -3,6 +3,8 @@ import { PHASE_PRODUCTION_BUILD } from "next/constants";
 
 // GitHub Pages 프로젝트 페이지 서브경로. 커스텀 도메인 전환 시 제거(Post-MVP).
 const BASE_PATH = "/global-ai-news";
+// 공유 미리보기(og:url·og:image)의 절대 URL 기준. 커스텀 도메인 전환 시 함께 변경.
+const SITE_ORIGIN = "https://sguys99.github.io";
 
 // 클린 컷오버: Vercel/standalone 폐기 → 정적 export를 빌드 기본값으로.
 // `npm run build`(= PHASE_PRODUCTION_BUILD)는 곧 정적 export(`out/`).
@@ -41,7 +43,8 @@ const nextConfig = (phase: string): NextConfig => {
     assetPrefix: `${BASE_PATH}/`,
     // 클라이언트 수동 fetch(검색 인덱스)가 basePath를 명시할 수 있게 노출(next.config 단일 출처).
     // dev 분기에선 미설정 → process.env.NEXT_PUBLIC_BASE_PATH 가 undefined → "".
-    env: { NEXT_PUBLIC_BASE_PATH: BASE_PATH },
+    // NEXT_PUBLIC_SITE_URL 은 메타데이터 metadataBase(src/lib/site.ts). dev 에선 localhost 폴백.
+    env: { NEXT_PUBLIC_BASE_PATH: BASE_PATH, NEXT_PUBLIC_SITE_URL: `${SITE_ORIGIN}${BASE_PATH}` },
     // 정적 호스팅엔 이미지 최적화 서버가 없다(현재 next/image 사용처 0건).
     images: { unoptimized: true },
     // 디렉토리형 산출(`out/article/<id>/index.html`)로 서브경로 서빙 안정화.

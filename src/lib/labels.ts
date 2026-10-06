@@ -83,6 +83,18 @@ export function formatDate(iso: string): string {
   return p ? `${p.y}.${pad(p.m)}.${pad(p.d)}` : "";
 }
 
+/** 'YYYY-MM-DD' KST (호 고정 링크 `/edition/[date]` 경로 키). */
+export function kstDateKey(iso: string): string {
+  const p = kstParts(iso);
+  return p ? `${p.y}-${pad(p.m)}-${pad(p.d)}` : "";
+}
+
+/** 'M월 D일(요)' (공유 미리보기 문구). */
+export function formatMonthDay(iso: string): string {
+  const p = kstParts(iso);
+  return p ? `${p.m}월 ${p.d}일(${WEEKDAYS[p.w]})` : "";
+}
+
 /** 'YYYY년 M월 D일 (요)요일' (마스트헤드). */
 export function formatLongDate(iso: string): string {
   const p = kstParts(iso);
