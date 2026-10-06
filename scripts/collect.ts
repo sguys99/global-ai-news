@@ -3,7 +3,7 @@
  * 실행: npm run collect  (= tsx scripts/collect.ts)
  *
  * ① 다중 어댑터 수집(RSS/HN/GitHub/HF/Reddit) → ② 정규화/dedup/trendingScore
- * → ③ 신규 후보 중 트렌딩 상위 MAX_ITEMS_PER_RUN 건만 LLM 가공(1건당 1호출)
+ * → ③ 신규 후보 + 최근 미가공분(백필) 중 트렌딩 상위 MAX_ITEMS_PER_RUN 건만 LLM 가공(1건당 1호출)
  * → ④ SQLite 저장 + collection_runs(비용·소스별 건수) 기록.
  *
  * 소스별 try/catch 로 부분 실패를 격리한다(한 소스 실패가 전체를 막지 않음).
@@ -33,6 +33,12 @@ const MODEL = envString("LLM_MODEL", "claude-haiku-4-5");
  */
 const MAX_ITEMS_PER_RUN = envNonNegativeInt("MAX_ITEMS_PER_RUN", 150);
 
+/**
+ * 이미 저장됐지만 LLM 가공에 실패한(summary_ko IS NULL) 기사를 재가공 후보로 되살리는 기간.
+ * dedup 이 기존 행을 영구 스킵하므로, 백필이 없으면 한 번 가공에 실패한 기사는 끝까지 미가공으로 남는다.
+ */
+const BACKFILL_DAYS = 7;
+
 /** kind → 수집 어댑터. WEB 은 등록만 하고 수집하지 않는다(Post-MVP). */
 const ADAPTERS: Record<string, (s: SourceConfig) => Promise<RawItem[]>> = {
   rss: fetchRss,
@@ -43,11 +49,23 @@ const ADAPTERS: Record<string, (s: SourceConfig) => Promise<RawItem[]>> = {
   arxiv: fetchArxiv,
 };
 
-/** 수집·dedup 을 통과한 신규 후보(아직 미가공). */
+/** 수집·dedup 을 통과한 신규 후보, 또는 재가공할 기존 미가공 행(articleId 있음). */
 interface Candidate {
   item: RawItem;
   key: string;
   score: number;
+  articleId?: number;
+}
+
+interface UnenrichedRow {
+  id: number;
+  dedup_key: string;
+  source_id: string;
+  url: string;
+  title_original: string;
+  content_raw: string | null;
+  published_at: string;
+  trending_score: number;
 }
 
 function loadSources(): SourceConfig[] {
@@ -62,6 +80,7 @@ async function main(): Promise<void> {
 
   let itemsCollected = 0;
   let itemsNew = 0;
+  let itemsBackfilled = 0;
   let llmCalls = 0;
   let inputTokens = 0;
   let outputTokens = 0;
@@ -69,6 +88,12 @@ async function main(): Promise<void> {
   const notes: string[] = [];
 
   try {
+    // 키 없이 진행하면 신규 기사가 미가공(영문 원제·중요도 0)으로 저장돼 지면에 오르지 못한다.
+    // 아무것도 저장하지 않고 실패 처리해 잡을 빨갛게 만들고, 후보는 다음 실행의 신규로 남긴다.
+    if (MAX_ITEMS_PER_RUN > 0 && !process.env.ANTHROPIC_API_KEY?.trim()) {
+      throw new Error("ANTHROPIC_API_KEY 미설정 — LLM 가공 불가로 수집을 중단합니다");
+    }
+
     const sources = loadSources().filter((s) => s.enabled === 1 && s.kind in ADAPTERS);
 
     const upsertSource = db.prepare(
@@ -121,6 +146,32 @@ async function main(): Promise<void> {
       }
     }
 
+    // ── 백필: 최근 미가공 행을 신규 후보와 같은 풀에서 경쟁시킨다 ──
+    const since = new Date(Date.now() - BACKFILL_DAYS * 86_400_000).toISOString();
+    const unenriched = db
+      .prepare(
+        `SELECT id, dedup_key, source_id, url, title_original, content_raw,
+                published_at, trending_score
+           FROM articles
+          WHERE summary_ko IS NULL AND published_at >= ?`,
+      )
+      .all(since) as UnenrichedRow[];
+    for (const row of unenriched) {
+      candidates.push({
+        item: {
+          sourceId: row.source_id,
+          url: row.url,
+          title: row.title_original,
+          contentRaw: row.content_raw ?? undefined,
+          publishedAt: row.published_at,
+        },
+        key: row.dedup_key,
+        score: row.trending_score,
+        articleId: row.id,
+      });
+    }
+    if (unenriched.length) notes.push(`backfill 후보: 미가공 ${unenriched.length}건`);
+
     // ── 비용 가드: 후보 > 상한이면 trending_score 상위만 가공 ──
     candidates.sort((a, b) => b.score - a.score);
     const selected = candidates.slice(0, MAX_ITEMS_PER_RUN);
@@ -128,8 +179,15 @@ async function main(): Promise<void> {
       notes.push(`capped: 후보 ${candidates.length}건 중 ${selected.length}건 가공`);
     }
 
-    // ── 2패스: 선정된 후보만 LLM 가공 후 완성 INSERT ──
-    for (const { item, key, score } of selected) {
+    const updateEnrichment = db.prepare(
+      `UPDATE articles
+          SET title_ko = @title_ko, summary_ko = @summary_ko,
+              category = @category, importance = @importance
+        WHERE id = @id`,
+    );
+
+    // ── 2패스: 선정된 후보만 LLM 가공 후 완성 INSERT(백필은 UPDATE) ──
+    for (const { item, key, score, articleId } of selected) {
       const result = await enrichArticle(item);
       if (result) {
         llmCalls += 1;
@@ -137,6 +195,22 @@ async function main(): Promise<void> {
         outputTokens += result.usage.outputTokens;
       }
       const enrichment = result?.enrichment ?? null;
+
+      if (articleId !== undefined) {
+        // 백필 실패는 행이 그대로 남아 다음 실행에서 다시 후보가 되므로 별도 처리 불필요.
+        if (enrichment) {
+          updateEnrichment.run({
+            id: articleId,
+            title_ko: enrichment.title_ko,
+            summary_ko: enrichment.summary_ko,
+            category: enrichment.category,
+            importance: enrichment.importance,
+          });
+          saveTags(db, articleId, enrichment.tags);
+          itemsBackfilled += 1;
+        }
+        continue;
+      }
 
       const insert = insertArticle.run({
         dedup_key: key,
@@ -162,6 +236,13 @@ async function main(): Promise<void> {
         }
       }
     }
+
+    // 후보가 있었는데 한 건도 가공되지 않았다면(키 오류·크레딧 소진 등) 파이프라인 고장이다.
+    if (selected.length > 0 && llmCalls === 0) {
+      status = "failed";
+      notes.push(`LLM 가공 전부 실패(${selected.length}건) — API 키·크레딧을 확인하세요`);
+    }
+    if (itemsBackfilled) notes.push(`backfill: ${itemsBackfilled}건 재가공`);
   } catch (err) {
     status = "failed";
     notes.push((err as Error).message);
@@ -190,6 +271,7 @@ async function main(): Promise<void> {
 
   console.log(
     `[collect] status=${status} collected=${itemsCollected} new=${itemsNew} ` +
+      `backfilled=${itemsBackfilled} ` +
       `llm_calls=${llmCalls} tokens=${inputTokens}/${outputTokens} ` +
       `est_cost=$${estimateCost(inputTokens, outputTokens, MODEL).toFixed(4)}`,
   );
