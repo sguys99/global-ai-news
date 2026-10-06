@@ -12,6 +12,8 @@ export interface SourceConfig {
   kind: string;
   url: string;
   enabled: number;
+  /** 1회 신규 후보 상한(화제 점수 → 최신 순). 기사가 많은 소스가 선별 풀을 독식하지 않게 한다. 미지정 시 무제한. */
+  maxItems?: number;
 }
 
 /** content_raw 길이 상한 (LLM 입력 비용 가드와 별개로 저장 용량 제한). */

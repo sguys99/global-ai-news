@@ -2,7 +2,7 @@
 
 **Daily AI Brief** — 글로벌·한국의 AI/IT 뉴스를 매일 1회 자동 수집하고 LLM으로 한국어 요약·분류·중요도 평가하여 카드형 피드로 제공하는, 토큰 비용을 최소화한 큐레이션 웹서비스입니다.
 
-운영비 ≈ 0을 목표로 **SQLite 파일 DB + GitHub Actions cron + GitHub Pages 정적 배포(전환 진행 중)** 위에서 동작하며, 신규 항목만 LLM 단일 호출로 가공해 토큰 비용을 구조적으로 절감합니다.
+운영비 ≈ 0을 목표로 **SQLite 파일 DB + GitHub Actions cron + GitHub Pages 정적 배포(전환 진행 중)** 위에서 동작하며, LLM이 하루치 후보에서 30건 이하만 골라(같은 사건 묶기) 묶음 가공하고 Message Batches API(50% 할인)로 보내 1회 수집 비용을 $0.1 이하로 묶습니다.
 
 - 요구사항 원천: [docs/PRD.md](docs/PRD.md) (Daily AI Brief PRD v1.0)
 - 개발 계획·진행 현황: [docs/WORK-PLAN.md](docs/WORK-PLAN.md)
@@ -20,7 +20,7 @@
 - **Styling**: TailwindCSS v4, shadcn/ui (New York, baseColor: zinc)
 - **Database**: SQLite (`better-sqlite3`) — 파일 DB `data/app.db`, **빌드타임 readonly 조회**(정적 export → 공개 페이지 런타임 DB 접근 없음; 로컬 `next dev` admin만 런타임 조회)
 - **수집**: `rss-parser` (RSS/Atom), HN/GitHub/HuggingFace/Reddit 집계 API
-- **AI/LLM**: AI SDK (`ai`, `@ai-sdk/anthropic` — 라이브러리 명칭이며 Vercel 호스팅과 무관, 수집 파이프라인 전용) — `generateObject` + Zod, 기본 모델 `claude-haiku-4-5`
+- **AI/LLM**: Anthropic SDK (`@anthropic-ai/sdk`, 수집 파이프라인 전용) — Message Batches API + 구조화 출력(`output_config.format`, `zod/v4` 스키마), 기본 모델 `claude-haiku-4-5`
 - **스키마/검증**: `zod` (LLM 출력 구조화)
 - **스크립트 실행**: `tsx` (배치 `scripts/*.ts`)
 - **Package manager**: npm
@@ -80,14 +80,16 @@
 │   ├── export-search-index.ts    # 검색 인덱스 JSON 생성 (예정)
 │   ├── kpi.ts                    # KPI CLI (npm run kpi)
 │   └── lib/
-│       ├── schema.ts             # CATEGORIES enum, articleEnrichmentSchema(Zod)
+│       ├── schema.ts             # CATEGORIES enum, 선별·가공 출력 스키마(zod/v4)
 │       ├── schema.sql            # SQLite DDL + FTS5 트리거
-│       ├── initDb.ts             # 테이블 생성 (npm run db:init)
+│       ├── initDb.ts             # 테이블 생성 (npm run db:init) + ensureSchema(컬럼 마이그레이션)
 │       ├── reindexFts.ts         # FTS 재색인 (npm run db:reindex)
 │       ├── dedup.ts              # URL 정규화 + dedup_key(sha256)
 │       ├── trending.ts           # 코드 기반 트렌딩 점수
-│       ├── enrich.ts             # generateObject + prompt caching
-│       ├── cost.ts               # 토큰→비용 산출 (Haiku 단가)
+│       ├── llm.ts                # Claude 호출 계층 (Batches API + 일반 호출 대체, usage 비용 누적)
+│       ├── triage.ts             # LLM 선별: 후보 풀 → 최대 N건 선정·같은 사건 묶기·중요도
+│       ├── enrich.ts             # LLM 가공: 선정 기사 10건씩 묶음 → 한국어 제목·요약·분류·태그
+│       ├── cost.ts               # 토큰→비용 산출 (Haiku 단가, Batches 50% 할인)
 │       ├── tags.ts               # tags/article_tags upsert
 │       └── collect/
 │           ├── rss.ts            # RSS/Atom 어댑터
@@ -96,8 +98,9 @@
 ├── configs/
 │   ├── sources.json              # 소스 정의 (Admin이 GitHub API로 커밋)
 │   └── prompts/
-│       ├── enrich.system.md      # 시스템 프롬프트 (캐싱)
-│       └── enrich.fewshot.json   # few-shot 예시 (캐싱)
+│       ├── triage.system.md      # 선별 시스템 프롬프트 (선정 기준·묶기·중요도)
+│       ├── enrich.system.md      # 가공 시스템 프롬프트
+│       └── enrich.fewshot.json   # 가공 few-shot 예시
 ├── .github/workflows/
 │   ├── collect.yml               # cron 일 1회 + workflow_dispatch
 │   └── deploy.yml                # 정적 빌드 → GitHub Pages 배포 (예정)
@@ -113,9 +116,9 @@
 배치(`scripts/collect.ts`)가 GitHub Actions cron으로 일 1회 실행되어 다음 4단계를 수행합니다 (PRD §4):
 
 1. **수집** — `rss-parser`로 RSS/Atom, HN Algolia·GitHub Search·HuggingFace Daily Papers API, Reddit OAuth2(`client_credentials`)에서 raw item 수집. 소스별 try/catch로 부분 실패 격리.
-2. **코드 전처리** — `normalize(url)` + `dedup_key`(sha256) 중복 제거, `trendingScore()`로 1차 트렌딩 점수 산출. 기존 DB 항목은 스킵 → 신규만 다음 단계로. 신규 > `MAX_ITEMS_PER_RUN`(150) 시 상위만 가공(비용 가드).
-3. **LLM 통합 가공** — 신규 1건당 `generateObject`(Haiku) **단일 호출**로 한국어 제목·요약·카테고리·태그·중요도를 Zod 스키마로 생성. Anthropic prompt caching 적용.
-4. **저장** — `better-sqlite3`로 `articles`/`tags`/`article_tags` upsert + 실행 통계(`llm_calls`/토큰/비용/상태)를 `collection_runs`에 1행 기록.
+2. **코드 전처리** — `normalize(url)` + `dedup_key`(sha256) 중복 제거(`articles`·`seen_items` 모두 스킵), `trendingScore()` 산출, 소스별 신규 상한(`sources.json`의 `maxItems`). 신규 후보 + 최근 7일 가공 실패분을 소스별 라운드로빈으로 선별 풀(`TRIAGE_POOL_SIZE`, 150건)에 담는다.
+3. **LLM 선별 → 가공** — 선별 1회(제목·출처·짧은 발췌만)로 최대 `MAX_PICKS_PER_RUN`(30)건을 고르고 같은 사건을 묶고 중요도(1~5)를 상대 평가한다. 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그를 생성한다. 모든 호출은 Message Batches API(50% 할인, 시간 초과 시 일반 호출로 대체), 실행당 비용 상한 `MAX_COST_USD_PER_RUN`($0.1).
+4. **저장** — 선정 기사는 `articles`(+`related_json`: 묶인 다른 매체 보도)·`tags`/`article_tags`, 미선정 후보는 `seen_items`에 키만 기록. 실행 통계(`llm_calls`/토큰/비용/상태)를 `collection_runs`에 1행 기록. 공개 페이지는 가공을 마친 기사(`summary_ko IS NOT NULL`)만 노출한다.
 
 결과 `data/app.db`를 git 커밋 → **(전환 후)** `deploy.yml`(GitHub Actions)이 정적 export(`output:'export'`)로 빌드해 `out/`을 생성하고 GitHub Pages에 배포. `[skip ci]`/트리거 정책은 배포 워크플로에 맞춰 조정합니다(PRD-github-pages.md §3.6). _(현재 코드는 `[skip ci]` 커밋 → Vercel ISR 재배포 전제입니다.)_
 
@@ -147,7 +150,7 @@ cp .env.example .env.local
 ### 데이터 파이프라인
 
 ```bash
-npm run db:init   # data/app.db 에 6개 테이블 생성
+npm run db:init   # data/app.db 에 7개 테이블 생성
 npm run collect   # 수집 → 전처리(dedup/trending) → (LLM) → SQLite 배치 1회
 ```
 
@@ -193,6 +196,9 @@ docker compose up --build
 | ------------------------------------------- | ------------------------------------------------- | ---------------------- |
 | `ANTHROPIC_API_KEY`                         | LLM 가공 호출 (수집 `collect.yml` 전용 — 변화 없음) | 필수                   |
 | `LLM_MODEL`                                 | 모델 전환 (기본 `claude-haiku-4-5`)               | 선택                   |
+| `MAX_PICKS_PER_RUN` / `TRIAGE_POOL_SIZE`    | 1회 게재(가공) 상한 30 / 선별 후보 상한 150 (Actions `vars`로 조정) | 선택                   |
+| `MAX_COST_USD_PER_RUN`                      | 1회 LLM 비용 상한 (기본 0.1)                       | 선택                   |
+| `LLM_USE_BATCH` / `BATCH_TIMEOUT_MIN`       | Batches API 사용(기본 1) / 배치 대기 상한(기본 25분) | 선택                   |
 | `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` | Reddit OAuth2 `client_credentials` (수집 전용 — 변화 없음) | 선택 (Reddit 수집 시)  |
 | `GITHUB_PAT`                                | `configs/sources.json` 커밋 + `workflow_dispatch` — **로컬 admin 전용(배포 불필요)** | 선택 (GitHub 연동 시)  |
 | `GITHUB_REPO`                               | `owner/repo` — **로컬 admin 전용(배포 불필요)**    | 선택 (GitHub 연동 시)  |
@@ -201,24 +207,28 @@ docker compose up --build
 
 ## 데이터 모델
 
-SQLite 6개 테이블 (DDL: `scripts/lib/schema.sql`, 상세: PRD §5):
+SQLite 7개 테이블 (DDL: `scripts/lib/schema.sql`, 상세: PRD §5):
 
 - `sources` — 소스 메타 (`configs/sources.json`과 동기화)
-- `articles` — 수집 원본 + LLM 가공 결과 통합
+- `articles` — 선별된 기사: 수집 원본 + LLM 가공 결과 + `related_json`(같은 사건의 다른 매체 보도)
+- `seen_items` — 선별에서 떨어진 후보의 dedup 키(본문 미저장, 30일 보존)
 - `tags`, `article_tags` — 태그 다대다 매핑
 - `articles_fts` — FTS5 검색 가상 테이블 (Phase 4)
 - `collection_runs` — 배치 실행 이력 (토큰·비용·상태)
 
-핵심 타입: `RawItem`(수집 원본)·`ArticleCard`(렌더 DTO) → `src/lib/types.ts`, `articleEnrichmentSchema`(LLM 출력 Zod)·`CATEGORIES`(6종 enum) → `scripts/lib/schema.ts`.
+핵심 타입: `RawItem`(수집 원본)·`ArticleCard`(렌더 DTO) → `src/lib/types.ts`, `triageSchema`·`enrichBatchSchema`(LLM 출력 zod/v4)·`CATEGORIES`(6종 enum) → `scripts/lib/schema.ts`.
 
 ## LLM 가공
 
-LLM 호출은 채팅 엔드포인트가 아니라 **배치 파이프라인** 안에서만 일어납니다. 신규 기사 1건당 `generateObject` + `articleEnrichmentSchema`(Zod)로 한국어 제목·요약·카테고리·태그·중요도를 단일 호출 JSON으로 생성합니다.
+LLM 호출은 채팅 엔드포인트가 아니라 **배치 파이프라인** 안에서만 일어나며, 2단계로 나뉩니다.
 
-- 구현 위치: `scripts/lib/enrich.ts`
-- 프롬프트: `configs/prompts/enrich.system.md`(시스템·캐싱), `enrich.fewshot.json`(few-shot·캐싱) + 가변 유저 메시지 (PRD §7)
-- 비용 절감: 코드 선필터(신규만) → 단일 호출 통합 → Anthropic prompt caching → 입력/출력 토큰 상한 (PRD §3.4)
-- 비용 기록: `scripts/lib/cost.ts`(Haiku 단가 $1/$5 per M) → `collection_runs` 실행마다 1행 기록
+1. **선별**(`scripts/lib/triage.ts`) — 후보 풀(최대 150건)을 `번호 | 매체 | 날짜 | 화제 | 제목 | 발췌` 한 줄씩 1회 호출로 보내, 최대 30건 선정·같은 사건 묶기(`duplicates`)·중요도(그날 후보끼리 상대 평가)를 받는다.
+2. **가공**(`scripts/lib/enrich.ts`) — 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그를 받는다.
+
+- 호출 계층: `scripts/lib/llm.ts` — Message Batches API로 제출, `BATCH_TIMEOUT_MIN` 초과·개별 실패 시 일반 호출로 1회 재시도. 출력은 구조화 출력(`output_config.format`)으로 받고 zod 로 검증한다.
+- 프롬프트: `configs/prompts/triage.system.md`(선별), `enrich.system.md` + `enrich.fewshot.json`(가공) + 가변 유저 메시지 (PRD §7)
+- 비용 절감: 코드 선필터(신규·소스별 상한) → LLM 선별(30건 이하) → 묶음 가공(지시문 반복 제거) → Batches 50% 할인 → 실행당 비용 상한. 프롬프트 캐싱은 쓰지 않는다(Haiku 4.5 는 4,096토큰 미만 프리픽스를 캐시하지 않음).
+- 비용 기록: `scripts/lib/cost.ts`(Haiku 단가 $1/$5 per M, 배치 50%) → `collection_runs` 실행마다 1행 기록
 
 ## 주요 경로 별칭
 

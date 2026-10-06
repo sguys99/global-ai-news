@@ -1,6 +1,6 @@
 import Database, { type Database as DatabaseType } from "better-sqlite3";
 import { DB_PATH } from "@/lib/paths";
-import type { ArticleCard, RunRow } from "@/lib/types";
+import type { ArticleCard, RelatedCoverage, RunRow } from "@/lib/types";
 
 /**
  * 읽기 전용 SQLite 커넥션 싱글톤.
@@ -29,7 +29,19 @@ interface ArticleRow {
   summary_ko: string | null;
   category: string | null;
   importance: number | null;
+  related_json: string | null;
   tags: string | null; // GROUP_CONCAT 결과 (',' 구분), 태그 없으면 null
+}
+
+/** related_json → 관련 보도 목록. 손상된 값은 빈 목록으로 본다. */
+function parseRelated(json: string | null): RelatedCoverage[] {
+  if (!json) return [];
+  try {
+    const parsed = JSON.parse(json) as unknown;
+    return Array.isArray(parsed) ? (parsed as RelatedCoverage[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 /** DB 행 → 렌더 DTO. LLM 미가공(null) 필드는 빈 값으로 채운다. */
@@ -47,13 +59,14 @@ function toArticleCard(row: ArticleRow): ArticleCard {
     trendingScore: row.trending_score,
     importance: row.importance ?? 0,
     publishedAt: row.published_at,
+    related: parseRelated(row.related_json),
   };
 }
 
 const ARTICLE_SELECT = `
   SELECT a.id, a.source_id, s.name AS source_name, a.url,
          a.title_original, a.content_raw, a.published_at, a.trending_score,
-         a.title_ko, a.summary_ko, a.category, a.importance,
+         a.title_ko, a.summary_ko, a.category, a.importance, a.related_json,
          (SELECT GROUP_CONCAT(t.name)
             FROM article_tags at
             JOIN tags t ON t.id = at.tag_id
@@ -61,6 +74,12 @@ const ARTICLE_SELECT = `
   FROM articles a
   JOIN sources s ON s.id = a.source_id
 `;
+
+/**
+ * 공개 조건: LLM 가공을 마친 기사만 노출한다. 가공 실패 행은 다음 수집에서 재시도되기 전까지
+ * 영문 원제·중요도 없음 상태라 지면에 올리지 않는다(scripts/collect.ts 재심사).
+ */
+const PUBLISHED = "a.summary_ko IS NOT NULL";
 
 /** 피드 필터/정렬 옵션 (URL 쿼리에서 파싱). */
 export interface FeedOptions {
@@ -81,7 +100,7 @@ function buildFilters(opts: FeedOptions): {
   clauses: string[];
   params: (string | number)[];
 } {
-  const clauses: string[] = [];
+  const clauses: string[] = [PUBLISHED];
   const params: (string | number)[] = [];
 
   if (opts.source) {
@@ -195,6 +214,7 @@ export function getSourcesWithCounts(
       `SELECT s.id, s.name, COUNT(a.id) AS count
          FROM sources s
          JOIN articles a ON a.source_id = s.id
+        WHERE ${PUBLISHED}
         GROUP BY s.id
         ORDER BY count DESC`,
     )
@@ -311,7 +331,9 @@ export function getEditionInfo(conn: DatabaseType = getDb()): EditionInfo {
 
 /** 단건 상세 조회. 없으면 null. */
 export function getArticle(id: number): ArticleCard | null {
-  const row = getDb().prepare(`${ARTICLE_SELECT} WHERE a.id = ?`).get(id) as ArticleRow | undefined;
+  const row = getDb().prepare(`${ARTICLE_SELECT} WHERE a.id = ? AND ${PUBLISHED}`).get(id) as
+    | ArticleRow
+    | undefined;
   return row ? toArticleCard(row) : null;
 }
 
@@ -320,6 +342,8 @@ export function getArticle(id: number): ArticleCard | null {
  * 상세 페이지 전수 사전 생성용으로만 쓴다(정렬 불필요).
  */
 export function getAllArticleIds(conn: DatabaseType = getDb()): number[] {
-  const rows = conn.prepare(`SELECT id FROM articles`).all() as { id: number }[];
+  const rows = conn.prepare(`SELECT id FROM articles a WHERE ${PUBLISHED}`).all() as {
+    id: number;
+  }[];
   return rows.map((r) => r.id);
 }

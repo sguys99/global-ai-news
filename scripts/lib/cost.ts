@@ -33,12 +33,26 @@ export function pricingFor(model: string): ModelPricing {
   return pricing;
 }
 
-/** 입력/출력 토큰 수 → 추정 비용(USD). */
+/** Message Batches API 는 입력·출력 토큰 모두 표준 단가의 50%. */
+export const BATCH_DISCOUNT = 0.5;
+
+/** 입력/출력 토큰 수 → 추정 비용(USD). batch=true 면 Batches API 할인을 적용한다. */
 export function estimateCost(
   inputTokens: number,
   outputTokens: number,
   model = "claude-haiku-4-5",
+  { batch = false }: { batch?: boolean } = {},
 ): number {
   const { inputPerM, outputPerM } = pricingFor(model);
-  return (inputTokens / 1_000_000) * inputPerM + (outputTokens / 1_000_000) * outputPerM;
+  const cost = (inputTokens / 1_000_000) * inputPerM + (outputTokens / 1_000_000) * outputPerM;
+  return batch ? cost * BATCH_DISCOUNT : cost;
+}
+
+/**
+ * 호출 전 비용 가드용 토큰 근사치(2글자당 1토큰). count_tokens 실측 기준 한글 위주 시스템
+ * 프롬프트는 약 0.65토큰/자, 영문 기사 본문은 약 0.3토큰/자라 영문이 대부분인 입력에서는
+ * 넉넉하게 잡힌다. 실제 과금은 응답 usage 로 기록한다.
+ */
+export function approxTokens(text: string): number {
+  return Math.ceil(text.length / 2);
 }

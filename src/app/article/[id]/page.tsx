@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { CategoryKicker, ImportanceMeter, TagChips, TrendBar } from "@/components/ArticleMeta";
 import { StoryEntry } from "@/components/Story";
 import { getAllArticleIds, getArticle, getFeed } from "@/lib/db";
-import { categoryLabel, formatDate } from "@/lib/labels";
+import { categoryLabel, formatDate, shortSourceName } from "@/lib/labels";
 
 /** 정적 export: 전 기사 상세를 빌드타임에 전수 사전 생성한다. */
 export function generateStaticParams() {
@@ -100,6 +100,38 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
               한국어 요약
             </h2>
             <p className="text-dek md:text-[1.25rem] md:leading-[1.75]">{article.summaryKo}</p>
+          </section>
+        )}
+
+        {article.related && article.related.length > 0 && (
+          <section
+            aria-labelledby="coverage-heading"
+            className="border-border mt-9 flex flex-col gap-1 border-t pt-7"
+          >
+            <h2
+              id="coverage-heading"
+              className="text-label text-muted-foreground mb-2 font-bold tracking-[0.04em]"
+            >
+              같은 소식, 다른 매체 · {article.related.length}곳
+            </h2>
+            <ul className="flex flex-col">
+              {article.related.map((r) => (
+                <li key={r.url} className="border-border border-b last:border-b-0">
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="story-link focus-visible:ring-ring flex min-h-11 items-baseline gap-3 py-2.5 outline-none focus-visible:ring-2"
+                  >
+                    <span className="text-meta text-foreground-soft w-24 shrink-0 truncate font-semibold">
+                      {shortSourceName(r.source)}
+                    </span>
+                    <span className="headline text-caption min-w-0 flex-1">{r.title}</span>
+                    <ArrowUpRight className="text-muted-foreground size-3.5 shrink-0 self-center" />
+                  </a>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

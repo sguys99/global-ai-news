@@ -66,7 +66,7 @@ export function Byline({
   showDate = true,
   className,
 }: {
-  article: Pick<ArticleCard, "source" | "publishedAt" | "importance" | "trendingScore">;
+  article: Pick<ArticleCard, "source" | "publishedAt" | "importance" | "trendingScore" | "related">;
   showTrend?: boolean;
   fullSource?: boolean;
   compact?: boolean;
@@ -84,6 +84,7 @@ export function Byline({
       >
         <span className="text-foreground-soft max-w-full truncate font-semibold">
           {shortSourceName(article.source.name)}
+          <OtherSources count={article.related?.length} />
         </span>
         <Dot className="md:hidden" />
         <span className="flex items-center gap-2.5">
@@ -102,6 +103,7 @@ export function Byline({
     >
       <span className="text-foreground-soft font-semibold">
         {fullSource ? article.source.name : shortSourceName(article.source.name)}
+        <OtherSources count={article.related?.length} />
       </span>
       {showDate && (
         <>
@@ -123,6 +125,12 @@ export function Byline({
       )}
     </div>
   );
+}
+
+/** 같은 사건을 다룬 다른 매체 수 — "외 N곳". 대표 기사 하나로 묶인 보도의 폭을 보여 준다. */
+function OtherSources({ count }: { count?: number }) {
+  if (!count) return null;
+  return <span className="text-muted-foreground font-normal"> 외 {count}곳</span>;
 }
 
 /** 화제 지수 0–100 바. 길이 = 값/100 (고정 스케일). */

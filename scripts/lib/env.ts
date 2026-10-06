@@ -19,3 +19,19 @@ export function envNonNegativeInt(name: string, fallback: number): number {
   const n = Number(raw);
   return Number.isInteger(n) && n >= 0 ? n : fallback;
 }
+
+/** 0 이상 실수 환경변수(예: 비용 한도 "0.1"). 미설정·빈 값·숫자 아님·음수면 fallback. */
+export function envNonNegativeNumber(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+/** 불리언 플래그. 1/true/yes/on → true, 0/false/no/off → false, 그 외(미설정 포함)는 fallback. */
+export function envFlag(name: string, fallback: boolean): boolean {
+  const raw = process.env[name]?.trim().toLowerCase();
+  if (raw && ["1", "true", "yes", "on"].includes(raw)) return true;
+  if (raw && ["0", "false", "no", "off"].includes(raw)) return false;
+  return fallback;
+}

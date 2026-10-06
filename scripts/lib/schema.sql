@@ -29,9 +29,19 @@ CREATE TABLE IF NOT EXISTS articles (
   title_ko        TEXT,
   summary_ko      TEXT,
   category        TEXT,                    -- CATEGORIES enum
-  importance      INTEGER,                 -- 1~5 (LLM 보조)
+  importance      INTEGER,                 -- 1~5 (LLM 선별 단계의 상대 평가)
+  -- 같은 사건을 다룬 다른 매체 기사(선별 단계에서 묶음). '[{"source":..,"url":..,"title":..}]'
+  related_json    TEXT,
   -- 메타
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 본 적 있는 미선정 기사(dedup 전용, 본문 미저장).
+-- articles 는 선별된 기사만 담고, 선별에서 떨어진 후보는 키만 남겨 다음 실행에서 재심사하지 않는다.
+-- collect.ts 가 SEEN_RETENTION_DAYS 지난 행을 정리한다.
+CREATE TABLE IF NOT EXISTS seen_items (
+  dedup_key  TEXT PRIMARY KEY,
+  seen_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- 태그

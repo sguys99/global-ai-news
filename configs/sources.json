@@ -46,21 +46,24 @@
     "name": "AI타임스",
     "kind": "rss",
     "url": "https://www.aitimes.com/rss/allArticle.xml",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 15
   },
   {
     "id": "etnews_ai",
     "name": "전자신문 AI",
     "kind": "rss",
     "url": "https://rss.etnews.com/04046.xml",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 10
   },
   {
     "id": "byline_network",
     "name": "바이라인네트워크",
     "kind": "rss",
     "url": "https://byline.network/feed/",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 8
   },
   {
     "id": "techcrunch_robotics",
@@ -109,28 +112,32 @@
     "name": "Google News: humanoid robot",
     "kind": "rss",
     "url": "https://news.google.com/rss/search?q=%22humanoid+robot%22+when:1d&hl=en-US&gl=US&ceid=US:en",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 8
   },
   {
     "id": "gnews_vla",
     "name": "Google News: VLA",
     "kind": "rss",
     "url": "https://news.google.com/rss/search?q=%22vision-language-action%22+OR+%22VLA+model%22&hl=en-US&gl=US&ceid=US:en",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 8
   },
   {
     "id": "gnews_physical_ai",
     "name": "Google News: physical/embodied AI",
     "kind": "rss",
     "url": "https://news.google.com/rss/search?q=%22physical+AI%22+OR+%22embodied+AI%22&hl=en-US&gl=US&ceid=US:en",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 8
   },
   {
     "id": "takara_tldr",
     "name": "Takara TLDR",
     "kind": "rss",
     "url": "https://papers.takara.ai/api/feed",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 10
   },
   {
     "id": "ahead_of_ai",
@@ -200,7 +207,8 @@
     "name": "GitHub Trending",
     "kind": "rss",
     "url": "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 10
   },
   {
     "id": "robohub",
@@ -221,14 +229,16 @@
     "name": "Hacker News Front Page",
     "kind": "rss",
     "url": "https://hnrss.org/frontpage",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 15
   },
   {
     "id": "geeknews",
     "name": "GeekNews",
     "kind": "rss",
     "url": "https://news.hada.io/rss/news",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 15
   },
   {
     "id": "hackernews",
@@ -242,7 +252,8 @@
     "name": "GitHub (topic:llm)",
     "kind": "github",
     "url": "https://api.github.com/search/repositories",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 10
   },
   {
     "id": "hf_daily_papers",
@@ -256,7 +267,8 @@
     "name": "arXiv cs.CL (NLP)",
     "kind": "arxiv",
     "url": "cs.CL",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 10
   },
   {
     "id": "arxiv_cs_ai",

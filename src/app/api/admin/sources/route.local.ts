@@ -60,7 +60,8 @@ export async function PUT(req: Request) {
   if (idx === -1) return fail(`존재하지 않는 id 입니다: ${source.id}`, 404);
 
   const next = [...sources];
-  next[idx] = source;
+  // 폼이 다루지 않는 필드(maxItems 등)는 기존 값을 유지한다.
+  next[idx] = { ...sources[idx], ...source };
   return persist(next, `chore(sources): update ${source.id}`);
 }
 

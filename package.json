@@ -20,9 +20,8 @@
     "kpi": "tsx --env-file-if-exists=.env.local scripts/kpi.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.0.0",
+    "@anthropic-ai/sdk": "^0.131.0",
     "@radix-ui/react-slot": "^1.1.0",
-    "ai": "^4.0.0",
     "better-sqlite3": "^11.8.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -34,7 +33,7 @@
     "react-dom": "^19.0.0",
     "rss-parser": "^3.13.0",
     "tailwind-merge": "^2.5.4",
-    "zod": "^3.24.1"
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

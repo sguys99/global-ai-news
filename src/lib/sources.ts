@@ -32,6 +32,7 @@ export const sourceSchema = z
     kind: z.enum(SOURCE_KINDS as [SourceKind, ...SourceKind[]]),
     url: z.string().min(1),
     enabled: z.union([z.literal(0), z.literal(1)]),
+    maxItems: z.number().int().positive().optional(),
   })
   .superRefine((s, ctx) => {
     if (s.kind === "reddit") {

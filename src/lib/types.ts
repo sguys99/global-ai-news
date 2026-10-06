@@ -17,6 +17,7 @@ export interface SourceConfig {
   kind: SourceKind;
   url: string;
   enabled: number; // 1=활성, 0=비활성
+  maxItems?: number; // 1회 신규 후보 상한(scripts/collect.ts)
 }
 
 /** collection_runs 한 행(배치 실행 이력). 대시보드에서 사용. */
@@ -68,6 +69,15 @@ export interface ArticleCard {
   trendingScore: number; // 0~100
   importance: number; // 1~5
   publishedAt: string; // ISO8601
+  /** 같은 사건을 다룬 다른 매체 기사(선별 단계에서 묶음). DB 조회 결과에는 항상 채워진다. */
+  related?: RelatedCoverage[];
+}
+
+/** 대표 기사에 묶인 다른 매체 보도. */
+export interface RelatedCoverage {
+  source: string; // 매체 표시명
+  url: string;
+  title: string; // 원제
 }
 
 /**

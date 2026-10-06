@@ -26,7 +26,9 @@ permissions:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # LLM 은 Message Batches API(50% 할인)로 보낸다. 선별·가공 두 배치가 각각 최대
+    # BATCH_TIMEOUT_MIN(기본 25분)까지 기다린 뒤 일반 호출로 대체되므로 넉넉히 둔다.
+    timeout-minutes: 75
     env:
       # 수집·LLM 가공에 필요한 비밀은 이 잡의 env 로만 주입(로그 echo 금지).
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -35,8 +37,13 @@ jobs:
       # GitHub Search 레이트리밋 완화용(선택). GITHUB_ 접두 시크릿명은 금지되므로
       # GH_SEARCH_PAT 시크릿을 GITHUB_PAT 환경변수에 매핑한다.
       GITHUB_PAT: ${{ secrets.GH_SEARCH_PAT }}
+      # 아래 vars 는 미설정 시 빈 문자열 → 코드 기본값(scripts/collect.ts)을 쓴다.
       LLM_MODEL: ${{ vars.LLM_MODEL }}
-      MAX_ITEMS_PER_RUN: ${{ vars.MAX_ITEMS_PER_RUN }}
+      MAX_PICKS_PER_RUN: ${{ vars.MAX_PICKS_PER_RUN }} # 기본 30
+      TRIAGE_POOL_SIZE: ${{ vars.TRIAGE_POOL_SIZE }} # 기본 150
+      MAX_COST_USD_PER_RUN: ${{ vars.MAX_COST_USD_PER_RUN }} # 기본 0.1
+      LLM_USE_BATCH: ${{ vars.LLM_USE_BATCH }} # 기본 true
+      BATCH_TIMEOUT_MIN: ${{ vars.BATCH_TIMEOUT_MIN }} # 기본 25
     steps:
       # 배포 트리거 브랜치로 고정 정렬. schedule 실행은 기본 브랜치 컨텍스트로 돌므로
       # deploy/github-pages 를 명시 checkout 해 동일 브랜치에 커밋·push 한다.

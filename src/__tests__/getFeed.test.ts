@@ -144,3 +144,31 @@ describe("getSourcesWithCounts / getActiveTags", () => {
     expect(getActiveTags(20, db)).toEqual(["llm", "agent"]); // llm 2, agent 1
   });
 });
+
+describe("공개 조건 · 관련 보도", () => {
+  /** 가공 실패(미가공) 행 1건 + 관련 보도가 묶인 기사 1건을 추가한다. */
+  function addRows(): void {
+    db.prepare(
+      `INSERT INTO articles (dedup_key, source_id, url, title_original, published_at, trending_score)
+       VALUES ('k4', 'hackernews', 'https://d', 'D', '2026-01-04T00:00:00Z', 99)`,
+    ).run();
+    db.prepare("UPDATE articles SET related_json = ? WHERE dedup_key = 'k1'").run(
+      JSON.stringify([{ source: "The Verge", url: "https://v", title: "V" }]),
+    );
+  }
+
+  it("가공 전(summary_ko 없음) 기사는 피드·소스 집계에 나오지 않는다", () => {
+    addRows();
+    expect(getFeed({}, db).map((a) => a.titleOriginal)).not.toContain("D");
+    expect(getSourcesWithCounts(db)[0]).toMatchObject({ id: "hackernews", count: 2 });
+  });
+
+  it("related_json 을 관련 보도 목록으로 매핑, 없으면 빈 목록", () => {
+    addRows();
+    const byTitle = new Map(getFeed({}, db).map((a) => [a.titleOriginal, a]));
+    expect(byTitle.get("A")?.related).toEqual([
+      { source: "The Verge", url: "https://v", title: "V" },
+    ]);
+    expect(byTitle.get("B")?.related).toEqual([]);
+  });
+});

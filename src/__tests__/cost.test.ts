@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { estimateCost, pricingFor } from "../../scripts/lib/cost";
+import { approxTokens, estimateCost, pricingFor } from "../../scripts/lib/cost";
 
 describe("estimateCost", () => {
   it("토큰 0 이면 비용 0", () => {
@@ -23,5 +23,20 @@ describe("estimateCost", () => {
     expect(fallback).toEqual(pricingFor("claude-haiku-4-5"));
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+});
+
+describe("Batches 할인 · 토큰 근사", () => {
+  it("batch=true 면 표준 단가의 50%", () => {
+    const std = estimateCost(100_000, 20_000, "claude-haiku-4-5");
+    expect(estimateCost(100_000, 20_000, "claude-haiku-4-5", { batch: true })).toBeCloseTo(
+      std / 2,
+      10,
+    );
+  });
+
+  it("approxTokens 는 2글자당 1토큰(올림)", () => {
+    expect(approxTokens("")).toBe(0);
+    expect(approxTokens("abc")).toBe(2);
   });
 });
