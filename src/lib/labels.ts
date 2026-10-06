@@ -39,6 +39,11 @@ const SOURCE_SHORT_LABELS: Record<string, string> = {
   "GitHub (topic:llm)": "GitHub",
   "HuggingFace Daily Papers": "HuggingFace",
   "MIT Technology Review": "MIT Tech Review",
+  "NVIDIA Technical Blog (Robotics)": "NVIDIA Dev",
+  "Google News: humanoid robot": "Google News",
+  "Google News: VLA": "Google News",
+  "Google News: physical/embodied AI": "Google News",
+  "Hacker News Front Page": "Hacker News",
 };
 
 export function shortSourceName(name: string): string {

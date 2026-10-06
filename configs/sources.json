@@ -63,6 +63,174 @@
     "enabled": 1
   },
   {
+    "id": "techcrunch_robotics",
+    "name": "TechCrunch Robotics",
+    "kind": "rss",
+    "url": "https://techcrunch.com/category/robotics/feed/",
+    "enabled": 1
+  },
+  {
+    "id": "science_robotics",
+    "name": "Science Robotics",
+    "kind": "rss",
+    "url": "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=scirobotics",
+    "enabled": 1
+  },
+  {
+    "id": "industrial_ai",
+    "name": "Industrial AI",
+    "kind": "rss",
+    "url": "https://fabiobottacci.substack.com/feed",
+    "enabled": 1
+  },
+  {
+    "id": "it_can_think",
+    "name": "It Can Think!",
+    "kind": "rss",
+    "url": "https://itcanthink.substack.com/feed",
+    "enabled": 1
+  },
+  {
+    "id": "cmu_ri",
+    "name": "CMU Robotics Institute",
+    "kind": "rss",
+    "url": "https://www.ri.cmu.edu/feed/",
+    "enabled": 1
+  },
+  {
+    "id": "nvidia_dev_robotics",
+    "name": "NVIDIA Technical Blog (Robotics)",
+    "kind": "rss",
+    "url": "https://developer.nvidia.com/blog/category/robotics/feed/",
+    "enabled": 1
+  },
+  {
+    "id": "gnews_humanoid",
+    "name": "Google News: humanoid robot",
+    "kind": "rss",
+    "url": "https://news.google.com/rss/search?q=%22humanoid+robot%22+when:1d&hl=en-US&gl=US&ceid=US:en",
+    "enabled": 1
+  },
+  {
+    "id": "gnews_vla",
+    "name": "Google News: VLA",
+    "kind": "rss",
+    "url": "https://news.google.com/rss/search?q=%22vision-language-action%22+OR+%22VLA+model%22&hl=en-US&gl=US&ceid=US:en",
+    "enabled": 1
+  },
+  {
+    "id": "gnews_physical_ai",
+    "name": "Google News: physical/embodied AI",
+    "kind": "rss",
+    "url": "https://news.google.com/rss/search?q=%22physical+AI%22+OR+%22embodied+AI%22&hl=en-US&gl=US&ceid=US:en",
+    "enabled": 1
+  },
+  {
+    "id": "takara_tldr",
+    "name": "Takara TLDR",
+    "kind": "rss",
+    "url": "https://papers.takara.ai/api/feed",
+    "enabled": 1
+  },
+  {
+    "id": "ahead_of_ai",
+    "name": "Ahead of AI",
+    "kind": "rss",
+    "url": "https://magazine.sebastianraschka.com/feed",
+    "enabled": 1
+  },
+  {
+    "id": "simon_willison",
+    "name": "Simon Willison",
+    "kind": "rss",
+    "url": "https://simonwillison.net/atom/everything/",
+    "enabled": 1
+  },
+  {
+    "id": "interconnects",
+    "name": "Interconnects",
+    "kind": "rss",
+    "url": "https://www.interconnects.ai/feed",
+    "enabled": 1
+  },
+  {
+    "id": "anthropic_news",
+    "name": "Anthropic News",
+    "kind": "rss",
+    "url": "https://rsshub.bestblogs.dev/anthropic/news",
+    "enabled": 1
+  },
+  {
+    "id": "nvidia_blog",
+    "name": "NVIDIA Blog",
+    "kind": "rss",
+    "url": "https://blogs.nvidia.com/feed/",
+    "enabled": 1
+  },
+  {
+    "id": "hf_blog",
+    "name": "Hugging Face Blog",
+    "kind": "rss",
+    "url": "https://huggingface.co/blog/feed.xml",
+    "enabled": 1
+  },
+  {
+    "id": "google_ai_blog",
+    "name": "Google AI Blog",
+    "kind": "rss",
+    "url": "https://blog.google/technology/ai/rss/",
+    "enabled": 1
+  },
+  {
+    "id": "deepmind_news",
+    "name": "Google DeepMind",
+    "kind": "rss",
+    "url": "https://deepmind.google/blog/rss.xml",
+    "enabled": 1
+  },
+  {
+    "id": "openai_news",
+    "name": "OpenAI News",
+    "kind": "rss",
+    "url": "https://openai.com/news/rss.xml",
+    "enabled": 1
+  },
+  {
+    "id": "github_trending",
+    "name": "GitHub Trending",
+    "kind": "rss",
+    "url": "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
+    "enabled": 1
+  },
+  {
+    "id": "robohub",
+    "name": "Robohub",
+    "kind": "rss",
+    "url": "https://robohub.org/feed/",
+    "enabled": 1
+  },
+  {
+    "id": "the_robot_report",
+    "name": "The Robot Report",
+    "kind": "rss",
+    "url": "https://www.therobotreport.com/feed/",
+    "enabled": 1
+  },
+  {
+    "id": "hnrss_frontpage",
+    "name": "Hacker News Front Page",
+    "kind": "rss",
+    "url": "https://hnrss.org/frontpage",
+    "enabled": 1
+  },
+  {
+    "id": "geeknews",
+    "name": "GeekNews",
+    "kind": "rss",
+    "url": "https://news.hada.io/rss/news",
+    "enabled": 1
+  },
+  {
     "id": "hackernews",
     "name": "Hacker News",
     "kind": "hn",
@@ -103,61 +271,5 @@
     "kind": "arxiv",
     "url": "cs.LG",
     "enabled": 0
-  },
-  {
-    "id": "reddit_localllama",
-    "name": "r/LocalLLaMA",
-    "kind": "reddit",
-    "url": "r/LocalLLaMA",
-    "enabled": 1
-  },
-  {
-    "id": "reddit_machinelearning",
-    "name": "r/MachineLearning",
-    "kind": "reddit",
-    "url": "r/MachineLearning",
-    "enabled": 1
-  },
-  {
-    "id": "reddit_openai",
-    "name": "r/OpenAI",
-    "kind": "reddit",
-    "url": "r/OpenAI",
-    "enabled": 1
-  },
-  {
-    "id": "reddit_claudeai",
-    "name": "r/ClaudeAI",
-    "kind": "reddit",
-    "url": "r/ClaudeAI",
-    "enabled": 1
-  },
-  {
-    "id": "reddit_deeplearning",
-    "name": "r/deeplearning",
-    "kind": "reddit",
-    "url": "r/deeplearning",
-    "enabled": 1
-  },
-  {
-    "id": "reddit_mlops",
-    "name": "r/MLOps",
-    "kind": "reddit",
-    "url": "r/MLOps",
-    "enabled": 1
-  },
-  {
-    "id": "reddit_llmdevs",
-    "name": "r/LLMDevs",
-    "kind": "reddit",
-    "url": "r/LLMDevs",
-    "enabled": 1
-  },
-  {
-    "id": "reddit_artificial",
-    "name": "r/artificial",
-    "kind": "reddit",
-    "url": "r/artificial",
-    "enabled": 1
   }
 ]
