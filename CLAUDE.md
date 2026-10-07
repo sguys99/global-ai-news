@@ -39,6 +39,7 @@
 │   │   ├── layout.tsx
 │   │   ├── page.tsx              # 피드(홈, /) — SSG(빌드타임) + 클라 필터 (전환 후)
 │   │   ├── globals.css           # Tailwind v4 + DESIGN.md 디자인 토큰
+│   │   ├── icon.svg              # 파비콘 원본(이니셜 "D.") — favicon.ico·apple-icon.png 는 여기서 래스터화
 │   │   ├── article/[id]/page.tsx # 상세(/article/[id]) — SSG generateStaticParams (전환 후)
 │   │   ├── search/page.tsx       # 검색(/search) — 정적 셸 + 클라이언트 검색 (전환 후)
 │   │   ├── edition/[date]/page.tsx # 호 고정 링크(/edition/YYYY-MM-DD) — 그날 마감 시점 지면 SSG
