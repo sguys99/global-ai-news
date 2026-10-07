@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { categoryLabel, categorySlug, formatLongDate, kstDateKey } from "@/lib/labels";
-import { SITE_TAGLINE, editionPath } from "@/lib/site";
+import { ShareButton } from "@/components/ShareButton";
+import { SITE_NAME, SITE_TAGLINE, editionPath, editionShareUrl } from "@/lib/site";
 
 /**
  * 홈 마스트헤드 (DESIGN.md §5 masthead). 발행일·호수·에디션 통계 폴리오 + 대형 세리프 제호 +
  * 이중 잉크 괘선 + 섹션 내비(앵커). 홈(`/`)의 필터 없는 편집 지면에서만 렌더한다.
  * `id="masthead"` 는 헤더 워드마크가 스크롤 위치를 감지하는 기준점이다(HeaderWordmark).
  * 발행일은 그 호의 고정 링크(`/edition/[date]/`)다 — 날짜가 지나도 같은 지면을 다시 열 수 있다.
+ * "공유"도 홈 주소가 아니라 이 고정 링크를 내보낸다(카카오톡이 홈 URL의 지난 호 미리보기를 재사용).
  */
 export function Masthead({
   issueNo,
@@ -41,6 +43,13 @@ export function Masthead({
           기사 {total}건 · 매체 {sourceCount}곳
         </span>
         <span className="ml-auto hidden md:inline">매일 06:00 KST 발행</span>
+        {publishedAt && (
+          <ShareButton
+            url={editionShareUrl(kstDateKey(publishedAt))}
+            title={`${SITE_NAME} ${formatLongDate(publishedAt)}${issueNo > 0 ? ` 제${issueNo}호` : ""}`}
+            className="ml-auto md:ml-0"
+          />
+        )}
       </div>
 
       <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between md:gap-8">

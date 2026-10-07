@@ -5,8 +5,11 @@
  * - og:image 는 JPG/PNG, 비율 1:1·2:1·4:3 만 그대로 쓴다(그 밖은 자동 크롭) → 2:1.
  * - og:url 이 요청 URL과 다르면 og:url 쪽 메타를 다시 읽는다 → 각 페이지 자신의 경로를 정확히
  *   넣는다(다른 페이지를 가리키면 스크랩이 한 단계 늘어 실패 지점이 생긴다).
- * - 같은 URL은 "약 1시간 이상" 캐시된다. 홈은 매일 내용이 바뀌므로 썸네일을 호 날짜 파일로
- *   두고 같은 날 재발행에 대비해 버전 쿼리까지 붙여 이전 호 미리보기가 재사용되지 않게 한다.
+ * - 스크랩 결과(제목·설명·이미지 URL)는 **페이지 URL 단위**로 "약 1시간 이상"(상한 비공개) 캐시되고,
+ *   카카오톡 앱도 따로 캐시한다. 서버에서 무효화할 수단이 없어(초기화는 공유 디버거 수동뿐) 주소가
+ *   고정인 홈(`/`)은 다음 날에도 지난 호 미리보기가 뜬다 — 썸네일 파일명·버전 쿼리는 HTML을 다시
+ *   읽을 때만 효과가 있다. 그래서 공유는 날짜마다 새 주소인 호 고정 링크로 한다(editionShareUrl·
+ *   ShareButton). 같은 날짜에 호가 또 나오면 그 날짜 링크도 앞선 호로 캐시될 수 있다(1일 1호 전제).
  * - 스크랩은 페이지 HTML 전체를 받으므로 목록 페이지는 가볍게 유지한다(db.ts toListCards).
  */
 import type { Metadata } from "next";
@@ -28,6 +31,9 @@ export const OG_IMAGE_SIZE = { width: 1200, height: 600 } as const;
 
 /** 호 고정 링크 경로(basePath 제외, trailingSlash 와 맞춘 끝 슬래시). */
 export const editionPath = (date: string) => `/edition/${date}/`;
+
+/** 공유용 호 고정 링크 절대 URL. 홈 주소 대신 이것을 퍼뜨려 카카오톡 캐시를 피한다(위 설명). */
+export const editionShareUrl = (date: string) => `${SITE_URL}${editionPath(date)}`;
 
 /*
  * 공유 이미지 경로(basePath 제외). 정적 export 가 `out/og/**.png` 로 내보내며,
@@ -105,7 +111,7 @@ const headline = (a: { titleKo: string; titleOriginal: string }) => a.titleKo ||
 
 /**
  * 홈 공유 문구·이미지 버전. 제목 = 1면 리드 헤드라인, 설명 = 발행일·호수 + 서브 헤드라인.
- * 버전은 호수·리드가 바뀔 때마다 달라져 카카오톡이 새 썸네일을 받아 가게 한다.
+ * 버전은 호수·리드가 바뀔 때마다 달라져, 페이지가 다시 스크랩될 때 이전 썸네일 캐시를 피한다.
  */
 export function editionShare(
   edition: Pick<Edition, "lead" | "seconds">,

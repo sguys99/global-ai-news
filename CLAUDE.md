@@ -56,6 +56,7 @@
 │   │           └── collect/route.ts   # workflow_dispatch 트리거
 │   ├── components/
 │   │   ├── Masthead.tsx          # 홈 마스트헤드(발행일·호수·세리프 제호·섹션 내비)
+│   │   ├── ShareButton.tsx       # 호 공유(모바일 공유 시트·데스크톱 링크 복사) — 홈 대신 호 고정 링크를 공유
 │   │   ├── Edition.tsx           # 1면(리드·서브·지금 화제)·분야 섹션 밴드
 │   │   ├── Story.tsx             # 스토리 변형 4종(Lead/Secondary/SectionItem/Entry)
 │   │   ├── StoryIndex.tsx        # 전체 기사 색인(30건씩 더 보기)
