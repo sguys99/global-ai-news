@@ -80,7 +80,37 @@ export function feedToRawItems(feed: Feed, source: SourceConfig, now = Date.now(
   return items;
 }
 
-/** RSS 피드 한 개를 수집해 RawItem 배열로 반환한다. */
+/** 요청 헤더·타임아웃은 rss-parser parseURL 기본값과 같게 둔다(피드 서버가 보는 요청 불변). */
+const FEED_HEADERS = { "User-Agent": "rss-parser", Accept: "application/rss+xml" };
+const FEED_TIMEOUT_MS = 60_000;
+
+/** Content-Type 의 charset 으로 본문을 디코딩한다(미지정·미지원이면 UTF-8). */
+function decodeBody(buf: ArrayBuffer, contentType: string | null): string {
+  const charset = contentType?.match(/charset=["']?([\w-]+)/i)?.[1];
+  try {
+    return new TextDecoder(charset ?? "utf-8").decode(buf);
+  } catch {
+    return new TextDecoder("utf-8").decode(buf);
+  }
+}
+
+/**
+ * RSS 피드 한 개를 수집해 RawItem 배열로 반환한다.
+ *
+ * 다운로드는 parser.parseURL 대신 fetch 로 한다. parseURL(node:http)은 4xx 응답 본문을
+ * 읽지 않고 reject 해, Node 19+ 기본 keep-alive 소켓이 열린 채 남아 프로세스가 끝나지
+ * 않는다(2026-10-07 수집 잡이 Substack 403 이후 70분 멈춰 타임아웃 → 결과 미커밋).
+ * fetch(undici)는 유휴 소켓이 이벤트 루프를 붙잡지 않으며, 실패 응답도 본문을 정리한다.
+ */
 export async function fetchRss(source: SourceConfig): Promise<RawItem[]> {
-  return feedToRawItems(await parser.parseURL(source.url), source);
+  const res = await fetch(source.url, {
+    headers: FEED_HEADERS,
+    signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    await res.body?.cancel();
+    throw new Error(`Status code ${res.status}`);
+  }
+  const xml = decodeBody(await res.arrayBuffer(), res.headers.get("content-type"));
+  return feedToRawItems(await parser.parseString(xml), source);
 }

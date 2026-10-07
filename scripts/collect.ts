@@ -429,4 +429,7 @@ async function main(): Promise<void> {
   if (stats.status === "failed") process.exit(1);
 }
 
-main();
+// 작업이 끝나면(DB 는 finally 에서 이미 닫힘) 명시적으로 종료한다. 수집 어댑터·SDK 가 남긴
+// 열린 소켓·타이머가 이벤트 루프를 붙잡으면 잡이 timeout-minutes 에 걸려 취소되고,
+// 커밋 스텝이 건너뛰어져 그날 결과가 통째로 버려진다(2026-10-07 사고).
+main().then(() => process.exit());
