@@ -79,9 +79,36 @@ npm run dev                      # http://localhost:3000
 
 워크플로: [.github/workflows/collect.yml](.github/workflows/collect.yml)
 
-- 트리거: `schedule` `0 21 * * *`(21:00 UTC = 06:00 KST) + `workflow_dispatch`(관리자 콘솔 "재수집" 버튼/수동).
-- 동작: `npm ci` → `npm run collect` → `data/app.db` 변경분만 커밋(`[skip ci]`) 후 push.
+- 트리거: 외부 크론의 `workflow_dispatch`(06:00 KST 정시 발행, 아래 "발행 트리거") + 백업 `schedule` `47 21 * * *`(21:47 UTC = 06:47 KST) + `workflow_dispatch`(관리자 콘솔 "재수집" 버튼/수동).
+- 백업 `schedule` 실행은 최근 12시간 안에 성공한 수집이 있으면 `guard` 잡에서 건너뜁니다(하루 2회 수집 시 LLM 비용 2배·호수 2씩 증가 방지). `workflow_dispatch` 는 항상 수집합니다.
+- 동작: `npm ci` → `npm run collect` → `data/app.db` 변경분만 `deploy/github-pages` 에 커밋·push → `deploy.yml` 을 dispatch 해 GitHub Pages 배포.
 - `concurrency: collect` 로 실행을 직렬화해 `app.db` 동시 쓰기/푸시 경쟁을 막습니다.
+
+### 발행 트리거(외부 크론)
+
+GitHub `schedule` 은 정시 실행을 보장하지 않습니다. 이 저장소에서는 2026-08 말부터 예정보다 2~8시간 늦게 시작해, 06:00 발행이 08~14시로 밀렸습니다. cron 을 앞당겨도 시작 시각은 그대로였습니다. 그래서 06:00 정시 발행은 외부 크론이 GitHub API 로 `workflow_dispatch` 를 호출해 맡고(수 초 안에 시작), `schedule` 은 외부 크론이 실패한 날의 백업으로만 둡니다.
+
+1. **토큰 발급** — GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token
+   - Repository access: **Only select repositories** → 이 저장소 하나
+   - Repository permissions: **Actions: Read and write** 만 부여(Metadata: Read-only 는 자동 포함). 워크플로 실행만 다룰 수 있고 코드·시크릿에는 접근하지 못합니다.
+   - 만료일을 정하고, 만료 전에 새 토큰으로 바꿔 넣습니다(만료되면 백업 `schedule` 만 돌아 발행이 늦어집니다).
+2. **외부 크론 등록** — [cron-job.org](https://cron-job.org)(무료) → Create cronjob
+   - URL: `https://api.github.com/repos/<owner>/<repo>/actions/workflows/collect.yml/dispatches`
+   - Schedule: 매일 06:00, Time zone **Asia/Seoul**
+   - Advanced → Request method **POST**, Request body `{"ref":"deploy/github-pages"}`
+   - Headers: `Authorization: Bearer <토큰>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, `Content-Type: application/json`
+   - 성공 응답은 `204 No Content` 입니다. 실패 알림(Notifications)을 켜 두면 토큰 만료를 바로 알 수 있습니다.
+3. **확인** — 다음 날 06:00 직후 Actions 의 `collect` 실행이 `workflow_dispatch` 이벤트로 떠 있고, 06:47 이후의 `schedule` 실행은 `guard` 에서 `skip — already published` 로 끝났는지 봅니다.
+
+> 바로 시험하려면 cron-job.org 의 "Test run" 이나 아래 `curl` 을 씁니다. **실제 수집이 한 번 돌아** LLM 비용(약 $0.03)이 들고 호수가 1 오릅니다.
+>
+> ```bash
+> curl -X POST https://api.github.com/repos/<owner>/<repo>/actions/workflows/collect.yml/dispatches \
+>   -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+>   -H "X-GitHub-Api-Version: 2022-11-28" -d '{"ref":"deploy/github-pages"}'
+> ```
+>
+> Cloudflare Workers 의 Cron Trigger(무료)로 같은 요청을 보내도 됩니다.
 
 **Repository → Settings → Secrets and variables → Actions** 에서 등록합니다.
 

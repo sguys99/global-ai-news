@@ -6,13 +6,20 @@ name: collect
 #   (빌트인 GITHUB_TOKEN 의 push 이벤트는 다른 워크플로를 트리거하지 못하므로 —
 #    재귀 방지 정책 — push 트리거에 기대지 않고 직접 dispatch 한다. dispatch 는 예외로 동작.)
 # 관리자 콘솔(src/lib/github.ts)이 정확히 이 파일명("collect.yml")으로 dispatch 한다.
+#
+# 06:00 KST 발행 트리거:
+#   - 주: 외부 크론(cron-job.org 등)이 06:00 KST 에 이 워크플로를 workflow_dispatch 한다
+#     (설정: README "발행 트리거(외부 크론)"). GitHub schedule 은 2026-08 말부터 예정보다
+#     2~8시간 늦게 시작해 아침 발행을 맞추지 못한다 — cron 을 앞당겨도 시작 시각이 그대로였다
+#     (04:17 예정 → 08:04~08:44 시작). workflow_dispatch 는 수 초 안에 시작한다.
+#   - 백업: 아래 schedule. 외부 트리거가 실패한 날에만 수집하고, 이미 발행된 날은 guard 잡이 건너뛴다.
 
 on:
   schedule:
-    # 정시(:00)는 GitHub 스케줄러 혼잡으로 수 시간씩 밀린다(실측 2.5~4.7h 지연).
-    # 정시를 피하고 앞당겨, 지연돼도 오전 중에는 갱신되도록 한다.
-    - cron: "17 19 * * *" # 19:17 UTC = 04:17 KST 매일 1회
-  workflow_dispatch: {} # 관리자 콘솔 "재수집" + 수동 실행
+    # 백업 트리거. schedule 은 늦어질 뿐 일찍 시작하지 않으므로 외부 트리거(06:00) 뒤에 두어
+    # 순서가 뒤집히지 않게 한다. 정시(:00)는 스케줄러 혼잡이 더 심해 피한다.
+    - cron: "47 21 * * *" # 21:47 UTC = 06:47 KST 매일 1회
+  workflow_dispatch: {} # 외부 크론(정시 발행) + 관리자 콘솔 "재수집" + 수동 실행
 
 # 동시에 두 실행이 app.db 를 쓰지 않도록 직렬화(취소하지 않고 대기).
 concurrency:
@@ -24,7 +31,53 @@ permissions:
   actions: write # deploy.yml 을 workflow_dispatch 로 트리거
 
 jobs:
+  # 백업 schedule 실행이 이미 발행된 호를 다시 만들지 않게 막는다. 하루 2회 수집되면 LLM 비용이
+  # 2배가 되고 호수(성공 실행 수, src/lib/db.ts)가 하루에 2씩 오른다.
+  # workflow_dispatch(외부 크론·관리자 "재수집"·수동)는 항상 수집한다.
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'schedule'
+        with:
+          ref: deploy/github-pages
+          sparse-checkout: data/app.db
+          sparse-checkout-cone-mode: false
+
+      - name: Skip schedule run if already published
+        id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          CRON: ${{ github.event.schedule }}
+          WINDOW_HOURS: "12" # 외부 트리거(06:00) 뒤 schedule 이 최대 ~8h 밀려도 이 안에 든다
+        run: |
+          # 트리거를 남긴다(schedule 이면 cron 식) — 지연·누락 진단용.
+          echo "trigger: ${EVENT} ${CRON}"
+          if [ "${EVENT}" != "schedule" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python3 - <<'PY'
+          import os, sqlite3
+          db = sqlite3.connect("file:data/app.db?mode=ro", uri=True)
+          last, hours = db.execute(
+              "SELECT MAX(started_at), (julianday('now') - julianday(MAX(started_at))) * 24"
+              " FROM collection_runs WHERE status != 'failed'"
+          ).fetchone()
+          skip = hours is not None and hours < float(os.environ["WINDOW_HOURS"])
+          print(f"last run: {last} ({hours:.1f}h ago)" if hours is not None else "last run: none")
+          print("skip — already published" if skip else "collect")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"skip={'true' if skip else 'false'}\n")
+          PY
+
   collect:
+    needs: guard
+    # guard 가 실패해도(skip 출력 없음) 수집은 돈다 — 백업이 하루를 건너뛰는 것보다 낫다.
+    if: ${{ !cancelled() && needs.guard.outputs.skip != 'true' }}
     runs-on: ubuntu-latest
     # LLM 은 Message Batches API(50% 할인)로 보낸다. 선별·가공 두 배치가 각각 최대
     # BATCH_TIMEOUT_MIN(기본 25분)까지 기다린 뒤 일반 호출로 대체되므로 넉넉히 둔다.

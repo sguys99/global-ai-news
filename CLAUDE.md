@@ -27,7 +27,7 @@
 - **Linter/Formatter**: ESLint (next flat config), Prettier (+ prettier-plugin-tailwindcss)
 - **Test**: Vitest + React Testing Library (jsdom)
 - **Runtime**: Node.js 20+ (빌드/스크립트 기준; 빌드·CI(`deploy.yml`)는 Node 22 고정)
-- **인프라(전환 후 목표 — 클린 컷오버)**: GitHub Actions cron(일 1회, `0 21 * * *` UTC = 06:00 KST) → `data/app.db` git 커밋 → `deploy.yml`이 정적 export(`npm run build`, `output:'export'` 기본값) → GitHub Pages 배포
+- **인프라(전환 후 목표 — 클린 컷오버)**: 외부 크론(cron-job.org)이 06:00 KST 에 `collect.yml` 을 `workflow_dispatch`(GitHub `schedule` 은 2~8h 지연돼 06:47 KST 백업 전용 — 이미 발행된 날은 `guard` 잡이 건너뜀, README "발행 트리거") → `data/app.db` git 커밋 → `deploy.yml`이 정적 export(`npm run build`, `output:'export'` 기본값) → GitHub Pages 배포
   - _현재 코드는 아직 `output:'standalone'` + Vercel ISR 재배포 전제이며, 전환 시 standalone/Vercel 전제는 제거됩니다(되돌릴 땐 git revert)._
 
 ## 디렉토리 구조
