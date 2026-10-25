@@ -44,8 +44,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 정적 export. prebuild(scripts/export-search-index.ts)가 build 직전 자동 실행되어
-      # 최신 data/app.db로 public/search-index.json을 생성한다 → next build가 out/ 산출.
+      # 정적 export. prebuild(scripts/export-search-index.ts · export-latest.ts)가 build 직전 자동 실행되어
+      # 최신 data/app.db로 public/search-index.json·latest.json을 생성한다 → next build가 out/ 산출.
       - name: Build static export
         run: npm run build
 

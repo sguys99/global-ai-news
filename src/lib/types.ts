@@ -87,3 +87,17 @@ export interface RelatedCoverage {
  * ArticleCard 와 구조 호환 → ArticleCard 컴포넌트·filterAndSortFeed 를 캐스팅 없이 재사용.
  */
 export type SearchIndexEntry = Omit<ArticleCard, "contentRaw">;
+
+/**
+ * 최근 수집분 피드(public/latest.json) 한 항목 — 외부 소비용(자랑터 AI 큐레이터 「한입뉴스」).
+ * 검색 인덱스 항목에 수집 시각을 더한다. 게시 시각(publishedAt)은 GitHub Trending 처럼 오래된 값일 수 있다.
+ */
+export type LatestFeedEntry = SearchIndexEntry & { collectedAt: string };
+
+/** public/latest.json 전체. `version` 은 모양이 바뀔 때만 올린다(소비자가 검사한다). */
+export interface LatestFeed {
+  version: 1;
+  generatedAt: string; // ISO8601 UTC
+  windowDays: number;
+  items: LatestFeedEntry[];
+}

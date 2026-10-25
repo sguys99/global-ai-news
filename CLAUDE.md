@@ -84,6 +84,7 @@
 ├── scripts/                      # 배치 파이프라인 (tsx 실행)
 │   ├── collect.ts                # 수집→전처리→LLM→SQLite 오케스트레이터
 │   ├── export-search-index.ts    # 검색 인덱스 JSON 생성 (예정)
+│   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터)
 │   ├── kpi.ts                    # KPI CLI (npm run kpi)
 │   └── lib/
 │       ├── schema.ts             # CATEGORIES enum, 선별·가공 출력 스키마(zod/v4)

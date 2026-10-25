@@ -1,7 +1,7 @@
 import Database, { type Database as DatabaseType } from "better-sqlite3";
 import { kstDateKey } from "@/lib/labels";
 import { DB_PATH } from "@/lib/paths";
-import type { ArticleCard, RelatedCoverage, RunRow } from "@/lib/types";
+import type { ArticleCard, LatestFeedEntry, RelatedCoverage, RunRow } from "@/lib/types";
 
 /**
  * 읽기 전용 SQLite 커넥션 싱글톤.
@@ -32,6 +32,7 @@ interface ArticleRow {
   importance: number | null;
   related_json: string | null;
   tags: string | null; // GROUP_CONCAT 결과 (',' 구분), 태그 없으면 null
+  collected_at: string; // 수집 시각(ISO8601 UTC) — 렌더 DTO 에는 싣지 않는다(latest.json 전용)
 }
 
 /** related_json → 관련 보도 목록. 손상된 값은 빈 목록으로 본다. */
@@ -68,6 +69,7 @@ const ARTICLE_SELECT = `
   SELECT a.id, a.source_id, s.name AS source_name, a.url,
          a.title_original, a.content_raw, a.published_at, a.trending_score,
          a.title_ko, a.summary_ko, a.category, a.importance, a.related_json,
+         strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at) AS collected_at,
          (SELECT GROUP_CONCAT(t.name)
             FROM article_tags at
             JOIN tags t ON t.id = at.tag_id
@@ -388,6 +390,26 @@ export function getArticlesUntil(cutoff: string, conn: DatabaseType = getDb()): 
     )
     .all(cutoff) as ArticleRow[];
   return rows.map(toArticleCard);
+}
+
+/**
+ * 최근 수집분(public/latest.json): since(UTC ISO) 이후 **수집된** 공개 기사, 중요도 순.
+ * 게시 시각이 아니라 수집 시각으로 자른다 — GitHub Trending 처럼 게시 시각이 오래된 항목도 그날 수집분이다.
+ */
+export function getArticlesCollectedSince(
+  since: string,
+  conn: DatabaseType = getDb(),
+): LatestFeedEntry[] {
+  const rows = conn
+    .prepare(
+      `${ARTICLE_SELECT} WHERE ${PUBLISHED} AND julianday(a.created_at) >= julianday(?)
+        ORDER BY ${orderByFor("importance")}`,
+    )
+    .all(since) as ArticleRow[];
+  return rows.map((row) => {
+    const { contentRaw: _contentRaw, ...entry } = toArticleCard(row);
+    return { ...entry, collectedAt: row.collected_at };
+  });
 }
 
 /** 공개 기사 중 최신 게시 시각(기사 썸네일 생성 기간의 기준). 기사가 없으면 null. */
