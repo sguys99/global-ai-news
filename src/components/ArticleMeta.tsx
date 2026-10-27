@@ -6,6 +6,7 @@
  * - TrendBar: 0–100 고정 스케일 수평 바
  * - TagChips: pill 태그 칩
  */
+import { RelativeTime } from "@/components/RelativeTime";
 import { categoryLabel, formatDate, shortSourceName } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { ArticleCard } from "@/lib/types";
@@ -64,6 +65,7 @@ export function Byline({
   fullSource = false,
   compact = false,
   showDate = true,
+  timeBase,
   className,
 }: {
   article: Pick<ArticleCard, "source" | "publishedAt" | "importance" | "trendingScore" | "related">;
@@ -72,8 +74,18 @@ export function Byline({
   compact?: boolean;
   /** 날짜를 별도 칼럼에 이미 보여 주는 목록(StoryEntry)에서는 끈다. */
   showDate?: boolean;
+  /**
+   * 지정하면 날짜를 상대 시각(RelativeTime)으로 그린다 — 값은 정적 렌더 기준 시각(호 발행 ISO).
+   * 홈 1면·섹션 전용. 상세·지난 호·검색은 생략해 절대 날짜를 유지한다(지난 호에서 "3시간 전"→"10.24"로 깜빡이지 않도록).
+   */
+  timeBase?: string;
   className?: string;
 }) {
+  const when = timeBase ? (
+    <RelativeTime iso={article.publishedAt} base={timeBase} />
+  ) : (
+    <span className="tabular-nums">{formatDate(article.publishedAt)}</span>
+  );
   if (compact) {
     return (
       <div
@@ -88,7 +100,7 @@ export function Byline({
         </span>
         <Dot className="md:hidden" />
         <span className="flex items-center gap-2.5">
-          <span className="tabular-nums">{formatDate(article.publishedAt)}</span>
+          {when}
           {article.importance > 0 && <ImportanceMeter value={article.importance} />}
         </span>
       </div>
@@ -108,7 +120,7 @@ export function Byline({
       {showDate && (
         <>
           <Dot />
-          <span className="tabular-nums">{formatDate(article.publishedAt)}</span>
+          {when}
         </>
       )}
       {article.importance > 0 && (

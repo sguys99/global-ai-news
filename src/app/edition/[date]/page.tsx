@@ -58,8 +58,8 @@ export default async function EditionPage({ params }: Props) {
       <Masthead
         issueNo={ref.issueNo}
         publishedAt={ref.publishedAt}
-        total={edition.issue.length}
-        sourceCount={new Set(edition.issue.map((a) => a.source.id)).size}
+        issueCount={edition.issue.length}
+        issueSourceCount={new Set(edition.issue.map((a) => a.source.id)).size}
         categories={edition.sections.map((s) => s.category)}
         indexLabel="이 호의 기사"
       />

@@ -14,16 +14,17 @@ import { SITE_NAME, SITE_TAGLINE, editionPath, editionShareUrl } from "@/lib/sit
 export function Masthead({
   issueNo,
   publishedAt,
-  total,
-  sourceCount,
+  issueCount,
+  issueSourceCount,
   categories,
   indexLabel = "전체 기사",
   delayNoticeIssueDate,
 }: {
   issueNo: number;
   publishedAt: string | null;
-  total: number;
-  sourceCount: number;
+  /** 이번 호 기사 수 / 이번 호에 실린 서로 다른 매체 수 (누적 아님 — 누적은 전체 기사 색인 머리에). */
+  issueCount: number;
+  issueSourceCount: number;
   categories: string[];
   /** 섹션 내비 마지막 항목(#all) 라벨. 호 고정 링크 지면은 "이 호의 기사". */
   indexLabel?: string;
@@ -43,8 +44,9 @@ export function Masthead({
           </Link>
         )}
         {issueNo > 0 && <span>제 {issueNo}호</span>}
-        <span>
-          기사 {total}건 · 매체 {sourceCount}곳
+        {/* "오늘"이 아니라 "이번 호" — 발행이 지연되면 최신 호가 어제 것이라 "오늘"은 거짓이 된다. */}
+        <span className="tabular-nums">
+          이번 호 {issueCount}건 · 매체 {issueSourceCount}곳
         </span>
         <span className="ml-auto hidden md:inline">매일 06:00 KST 발행</span>
         {publishedAt && (

@@ -90,8 +90,8 @@ describe("Masthead 공유", () => {
       <Masthead
         issueNo={113}
         publishedAt="2026-10-07T22:29:49.427Z"
-        total={30}
-        sourceCount={12}
+        issueCount={30}
+        issueSourceCount={12}
         categories={[]}
       />,
     );
@@ -102,7 +102,15 @@ describe("Masthead 공유", () => {
   });
 
   it("발행 정보가 없으면(수집 전) 공유 버튼을 그리지 않는다", () => {
-    render(<Masthead issueNo={0} publishedAt={null} total={0} sourceCount={0} categories={[]} />);
+    render(
+      <Masthead
+        issueNo={0}
+        publishedAt={null}
+        issueCount={0}
+        issueSourceCount={0}
+        categories={[]}
+      />,
+    );
     expect(screen.queryByRole("button", { name: /공유/ })).toBeNull();
   });
 });

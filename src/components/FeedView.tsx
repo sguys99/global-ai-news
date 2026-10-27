@@ -87,7 +87,10 @@ export function FeedView({
   }
 
   const issueIdSet = new Set(issueIds);
-  const edition = buildEdition(articles.filter((a) => issueIdSet.has(a.id)));
+  const issueArticles = articles.filter((a) => issueIdSet.has(a.id));
+  const edition = buildEdition(issueArticles);
+  // 1면·섹션 바이라인 상대 시각의 정적 렌더 기준 = 호 발행 시각(마운트 후엔 실제 시각으로 갱신).
+  const timeBase = editionInfo.publishedAt ?? undefined;
   // 발행 지연 안내는 서버 렌더 시점이 아니라 브라우저의 현재 시각으로 판단한다(Masthead → IssueDelayNotice).
   const issueDate = editionInfo.publishedAt ? kstDateKey(editionInfo.publishedAt) : undefined;
 
@@ -96,20 +99,21 @@ export function FeedView({
       <Masthead
         issueNo={editionInfo.issueNo}
         publishedAt={editionInfo.publishedAt}
-        total={articles.length}
-        sourceCount={sources.length}
+        issueCount={issueArticles.length}
+        issueSourceCount={new Set(issueArticles.map((a) => a.source.id)).size}
         categories={edition.sections.map((s) => s.category)}
         delayNoticeIssueDate={issueDate}
       />
       <main className="mx-auto flex max-w-[1240px] flex-col gap-14 px-4 pb-16 md:gap-16 md:px-8">
-        <FrontPage edition={edition} />
-        <SectionBands sections={edition.sections} />
+        <FrontPage edition={edition} timeBase={timeBase} />
+        <SectionBands sections={edition.sections} timeBase={timeBase} />
         <AllStories
           visible={visible}
           sources={sources}
           tags={tags}
           options={options}
           heading="전체 기사"
+          cumulative={{ articles: visible.length, sources: sources.length }}
         />
       </main>
     </>
@@ -123,19 +127,26 @@ function AllStories({
   tags,
   options,
   heading,
+  cumulative,
 }: {
   visible: ArticleCard[];
   sources: { id: string; name: string }[];
   tags: string[];
   options: FeedOptions;
   heading: string | null;
+  /** 필터 없는 홈에서만 — 누적 기사·매체 수를 색인 머리에 둔다(마스트헤드는 호 기준 통계). */
+  cumulative?: { articles: number; sources: number };
 }) {
   return (
     <section id="all" aria-label={heading ?? "필터 결과 목록"} className="scroll-mt-20">
       {heading && (
-        <div className="border-rule mb-5 flex items-baseline gap-3 border-t-2 pt-3">
+        <div className="border-rule mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t-2 pt-3">
           <h2 className="text-display-md font-serif font-extrabold">{heading}</h2>
-          <span className="text-meta text-muted-foreground tabular-nums">{visible.length}건</span>
+          <span className="text-meta text-muted-foreground tabular-nums">
+            {cumulative
+              ? `누적 ${cumulative.articles}건 · 매체 ${cumulative.sources}곳`
+              : `${visible.length}건`}
+          </span>
         </div>
       )}
 

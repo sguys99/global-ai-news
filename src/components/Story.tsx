@@ -18,7 +18,7 @@ const hrefOf = (a: ArticleCard) => `/article/${a.id}`;
 const focus =
   "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background";
 
-export function StoryLead({ article }: { article: ArticleCard }) {
+export function StoryLead({ article, timeBase }: { article: ArticleCard; timeBase?: string }) {
   return (
     <Link href={hrefOf(article)} className={cn("story-link flex flex-col gap-4", focus)}>
       <CategoryKicker category={article.category} />
@@ -26,12 +26,12 @@ export function StoryLead({ article }: { article: ArticleCard }) {
       {article.summaryKo && (
         <p className="text-dek text-foreground-soft max-w-[40em]">{article.summaryKo}</p>
       )}
-      <Byline article={article} showTrend />
+      <Byline article={article} showTrend timeBase={timeBase} />
     </Link>
   );
 }
 
-export function StorySecondary({ article }: { article: ArticleCard }) {
+export function StorySecondary({ article, timeBase }: { article: ArticleCard; timeBase?: string }) {
   return (
     <Link href={hrefOf(article)} className={cn("story-link flex h-full flex-col gap-2.5", focus)}>
       <CategoryKicker category={article.category} />
@@ -39,7 +39,7 @@ export function StorySecondary({ article }: { article: ArticleCard }) {
       {article.summaryKo && (
         <p className="text-caption text-muted-foreground line-clamp-3">{article.summaryKo}</p>
       )}
-      <Byline article={article} compact className="mt-auto pt-1" />
+      <Byline article={article} compact timeBase={timeBase} className="mt-auto pt-1" />
     </Link>
   );
 }
@@ -47,9 +47,12 @@ export function StorySecondary({ article }: { article: ArticleCard }) {
 export function StorySectionItem({
   article,
   featured = false,
+  timeBase,
 }: {
   article: ArticleCard;
   featured?: boolean;
+  /** 홈 전용 — 바이라인을 상대 시각으로(Byline timeBase 참조). */
+  timeBase?: string;
 }) {
   return (
     <Link href={hrefOf(article)} className={cn("story-link flex h-full flex-col gap-2", focus)}>
@@ -73,7 +76,7 @@ export function StorySectionItem({
           {article.summaryKo}
         </p>
       )}
-      <Byline article={article} compact={!featured} className="mt-auto pt-1" />
+      <Byline article={article} compact={!featured} timeBase={timeBase} className="mt-auto pt-1" />
     </Link>
   );
 }

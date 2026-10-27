@@ -12,7 +12,7 @@ import { categoryLabel, categorySlug, shortSourceName } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { ArticleCard } from "@/lib/types";
 
-export function FrontPage({ edition }: { edition: Edition }) {
+export function FrontPage({ edition, timeBase }: { edition: Edition; timeBase?: string }) {
   const { lead, seconds, trending } = edition;
   if (!lead) return null;
 
@@ -24,7 +24,7 @@ export function FrontPage({ edition }: { edition: Edition }) {
     >
       <div className="min-w-0">
         <div className="animate-rise border-border border-b pb-7 [animation-delay:80ms]">
-          <StoryLead article={lead} />
+          <StoryLead article={lead} timeBase={timeBase} />
         </div>
         {seconds.length > 0 && (
           <div className="animate-rise grid grid-cols-1 [animation-delay:160ms] md:grid-cols-3">
@@ -33,7 +33,7 @@ export function FrontPage({ edition }: { edition: Edition }) {
                 key={a.id}
                 className="border-border border-b py-5 md:border-b-0 md:border-l md:px-5 md:pt-6 md:pb-2 md:first:border-l-0 md:first:pl-0 md:last:pr-0"
               >
-                <StorySecondary article={a} />
+                <StorySecondary article={a} timeBase={timeBase} />
               </div>
             ))}
           </div>
@@ -98,7 +98,7 @@ export function TrendingList({
   );
 }
 
-function SectionBand({ section }: { section: EditionSection }) {
+function SectionBand({ section, timeBase }: { section: EditionSection; timeBase?: string }) {
   const slug = categorySlug(section.category);
   const headingId = `section-${slug}-heading`;
   return (
@@ -125,7 +125,7 @@ function SectionBand({ section }: { section: EditionSection }) {
               "lg:last:pr-0 lg:[&:nth-child(n+2)]:border-l lg:[&:nth-child(n+2)]:pl-5",
             )}
           >
-            <StorySectionItem article={a} featured={i === 0} />
+            <StorySectionItem article={a} featured={i === 0} timeBase={timeBase} />
           </div>
         ))}
       </div>
@@ -133,11 +133,17 @@ function SectionBand({ section }: { section: EditionSection }) {
   );
 }
 
-export function SectionBands({ sections }: { sections: EditionSection[] }) {
+export function SectionBands({
+  sections,
+  timeBase,
+}: {
+  sections: EditionSection[];
+  timeBase?: string;
+}) {
   return (
     <div className="flex flex-col gap-12 md:gap-14">
       {sections.map((s) => (
-        <SectionBand key={s.category} section={s} />
+        <SectionBand key={s.category} section={s} timeBase={timeBase} />
       ))}
     </div>
   );
