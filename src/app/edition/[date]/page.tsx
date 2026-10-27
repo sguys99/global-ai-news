@@ -5,14 +5,14 @@ import { FrontPage, SectionBands } from "@/components/Edition";
 import { EditionPager } from "@/components/EditionPager";
 import { Masthead } from "@/components/Masthead";
 import { StoryIndex } from "@/components/StoryIndex";
-import { getArticlesUntil, getEditionRefs, toListCards } from "@/lib/db";
+import { getIssueArticles, getEditionRefs, toListCards } from "@/lib/db";
 import { buildEdition } from "@/lib/edition";
 import { formatLongDate } from "@/lib/labels";
 import { SITE_NAME, editionMetadata, editionPath } from "@/lib/site";
 
 /**
  * 호 고정 링크(`/edition/YYYY-MM-DD/`). 홈은 매일 새 호로 바뀌므로, 공유한 날의 지면을
- * 그대로 다시 열 수 있게 KST 날짜마다 그날 마감 시점 기사로 지면을 재구성해 사전 생성한다.
+ * 그대로 다시 열 수 있게 KST 날짜마다 그날 수집된 기사로 지면을 구성해 사전 생성한다.
  */
 export function generateStaticParams() {
   return getEditionRefs().map((ref) => ({ date: ref.date }));
@@ -32,7 +32,7 @@ function loadEdition(date: string) {
     ref,
     prev: refs[i - 1] ?? null,
     next: refs[i + 1] ?? null,
-    edition: buildEdition(getArticlesUntil(ref.cutoff)),
+    edition: buildEdition(getIssueArticles(ref.date)),
   };
 }
 

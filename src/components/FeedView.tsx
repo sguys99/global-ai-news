@@ -7,7 +7,7 @@ import { FilterSheet } from "@/components/mobile/FilterSheet";
 import type { EditionInfo, FeedOptions } from "@/lib/db";
 import { buildEdition } from "@/lib/edition";
 import { filterAndSortFeed, hasActiveFilter } from "@/lib/feedFilter";
-import { categoryLabel, shortSourceName } from "@/lib/labels";
+import { categoryLabel, kstDateKey, shortSourceName } from "@/lib/labels";
 import type { ArticleCard } from "@/lib/types";
 
 /**
@@ -24,12 +24,16 @@ import type { ArticleCard } from "@/lib/types";
  */
 export function FeedView({
   articles,
+  issueIds,
   sources,
   tags,
   options,
   editionInfo,
 }: {
+  /** 누적 기사 전체 — 전체 기사 색인·필터 결과용. */
   articles: ArticleCard[];
+  /** 이번 호(그날 수집분) 기사 id — 1면·섹션 밴드는 이 기사로만 구성한다. */
+  issueIds: number[];
   sources: { id: string; name: string }[];
   tags: string[];
   options: FeedOptions;
@@ -82,7 +86,10 @@ export function FeedView({
     );
   }
 
-  const edition = buildEdition(articles);
+  const issueIdSet = new Set(issueIds);
+  const edition = buildEdition(articles.filter((a) => issueIdSet.has(a.id)));
+  // 발행 지연 안내는 서버 렌더 시점이 아니라 브라우저의 현재 시각으로 판단한다(Masthead → IssueDelayNotice).
+  const issueDate = editionInfo.publishedAt ? kstDateKey(editionInfo.publishedAt) : undefined;
 
   return (
     <>
@@ -92,6 +99,7 @@ export function FeedView({
         total={articles.length}
         sourceCount={sources.length}
         categories={edition.sections.map((s) => s.category)}
+        delayNoticeIssueDate={issueDate}
       />
       <main className="mx-auto flex max-w-[1240px] flex-col gap-14 px-4 pb-16 md:gap-16 md:px-8">
         <FrontPage edition={edition} />

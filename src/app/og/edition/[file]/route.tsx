@@ -1,4 +1,4 @@
-import { getArticlesUntil, getEditionRefs } from "@/lib/db";
+import { getIssueArticles, getEditionRefs } from "@/lib/db";
 import { buildEdition } from "@/lib/edition";
 import { editionImage } from "@/lib/ogImage";
 
@@ -19,5 +19,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
   const { file } = await params;
   const ref = getEditionRefs().find((r) => fileOf(r.date) === file);
   if (!ref) return new Response(null, { status: 404 });
-  return editionImage(buildEdition(getArticlesUntil(ref.cutoff)), ref);
+  return editionImage(buildEdition(getIssueArticles(ref.date)), ref);
 }

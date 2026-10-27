@@ -334,19 +334,8 @@ export interface EditionInfo {
   publishedAt: string | null;
 }
 
-export function getEditionInfo(conn: DatabaseType = getDb()): EditionInfo {
-  const row = conn
-    .prepare(
-      `SELECT COUNT(*) AS n, MAX(started_at) AS last
-         FROM collection_runs
-        WHERE status != 'failed'`,
-    )
-    .get() as { n: number; last: string | null };
-  return { issueNo: row.n, publishedAt: row.last };
-}
-
 /**
- * 호 고정 링크(`/edition/[date]`) 단위. getEditionInfo 와 같은 기준(실패 아닌 수집 실행 1회 = 1호)으로
+ * 호 고정 링크(`/edition/[date]`) 단위. 실패 아닌 수집 실행 1회 = 1호로
  * KST 날짜마다 그날 마지막 호를 그 날짜의 지면으로 삼는다.
  */
 export interface EditionRef extends EditionInfo {

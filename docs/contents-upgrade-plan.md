@@ -78,10 +78,14 @@
 
 ### 1-2. 편집 로직
 
-- [ ] `src/lib/edition.ts`: `currentIssue()`의 "48시간 `published_at` 창 + 4건 미만이면 전체로 폴백"을 없앤다. `buildEdition`이 **호 기사 배열**을 직접 받도록 바꾼다.
-- [ ] `src/components/FeedView.tsx` 및 `src/app/page.tsx`: 1면과 섹션에는 오늘 호 기사만 넘긴다. 하단 "전체 기사" 색인은 지금처럼 전체를 유지한다.
-- [ ] `src/app/edition/[date]/page.tsx`와 `src/app/og/edition/[file]/route.tsx`: `getArticlesUntil(cutoff)`을 `getIssueArticles(date)`로 바꿔 지난 호도 그날 수집분만 보이게 한다.
-- [ ] **발행 지연 폴백:** 오늘(KST) 호가 아직 없으면(06:00 회차 실패나 지연) 최신 호를 그대로 보여 준다. 마스트헤드에는 "최신 호 · 10월 24일 발행" 안내 줄을 띄운다.
+- [x] `src/lib/edition.ts`: `currentIssue()`의 "48시간 `published_at` 창 + 4건 미만이면 전체로 폴백"을 없앤다. `buildEdition`이 **호 기사 배열**을 직접 받도록 바꾼다.
+  - ✅ 2026-10-27 `currentIssue()`·`EDITION_WINDOW_MS`·폴백을 삭제했다. 시그니처는 `buildEdition(issueArticles, limits)`이고, 섹션 `count`도 호 안 개수다("섹션 전체 보기"는 누적 피드로 이어진다).
+- [x] `src/components/FeedView.tsx` 및 `src/app/page.tsx`: 1면과 섹션에는 오늘 호 기사만 넘긴다. 하단 "전체 기사" 색인은 지금처럼 전체를 유지한다.
+  - ✅ 2026-10-27 홈 호는 `getHomeIssue()`가 고른다. 최신 호부터 거슬러 올라가며 공개 기사가 1건 이상인 첫 호를 쓰므로, 0건으로 끝난 회차가 1면을 비우지 않는다. 다른 호 기사는 섞지 않는다. 카드를 두 번 싣지 않도록 `issueIds`만 넘기고 `FeedView`가 누적 목록에서 골라 쓴다. 공유 메타도 이 호의 리드를 쓰며, 호출처가 없어진 `getEditionInfo()`는 삭제했다.
+- [x] `src/app/edition/[date]/page.tsx`와 `src/app/og/edition/[file]/route.tsx`: `getArticlesUntil(cutoff)`을 `getIssueArticles(date)`로 바꿔 지난 호도 그날 수집분만 보이게 한다.
+  - ✅ 2026-10-27 두 곳 모두 `getIssueArticles(ref.date)`로 바꿨다. `getArticlesUntil`과 `EditionRef.cutoff`는 `kpi baseline`이 옛 1면 방식을 재현하는 데 쓰므로 남겼다.
+- [x] **발행 지연 폴백:** 오늘(KST) 호가 아직 없으면(06:00 회차 실패나 지연) 최신 호를 그대로 보여 준다. 마스트헤드에는 "최신 호 · 10월 24일 발행" 안내 줄을 띄운다.
+  - ✅ 2026-10-27 `IssueDelayNotice`(클라이언트 컴포넌트)를 추가했다. 정적 페이지는 빌드 뒤에도 오래 서빙되므로, 빌드 시점이 아니라 브라우저의 현재 KST 시각으로 판단한다. 서버 렌더에서는 아무것도 그리지 않는다. 표시 조건은 호 날짜가 오늘보다 이전이면서, 08:00 KST 이후이거나(정상 발행 시간대 전에는 띄우지 않는다) 이틀 이상 지난 경우다. 문구는 "**최신 호** 10월 26일(월) 발행 — 오늘 호는 아직 발행 전입니다"이고, 이틀 이상이면 "…발행 이후 새 호가 아직 나오지 않았습니다"다. 폴리오 줄 아래 가는 괘선 사이에 한 줄로 놓고, 강조색은 "최신 호" 라벨에만 쓴다.
 
 ### 1-3. 표기
 
@@ -93,7 +97,8 @@
 
 ### 1-4. 테스트
 
-- [ ] `src/__tests__/edition.test.ts`: 48시간 창과 폴백 케이스를 삭제하고, 호 배열을 입력으로 쓰는 케이스로 바꾼다.
+- [x] `src/__tests__/edition.test.ts`: 48시간 창과 폴백 케이스를 삭제하고, 호 배열을 입력으로 쓰는 케이스로 바꾼다.
+  - ✅ 2026-10-27 섹션 count가 호 안 개수인지, 입력에만 의존하는지를 추가로 검증한다. 발행 지연 판정(`issueDelayDays`의 07:59/08:00 경계, 이틀 이상, 미래·잘못된 입력)은 `labels.test.ts`에서, `IssueDelayNotice.test.tsx`는 서버 렌더가 비어 있는지와 08:00 경과 시 표시되는지를 검증한다.
 - [x] `src/__tests__/editionRefs.test.ts`: `getIssueArticles`의 KST 경계(UTC 14:59와 15:00)를 검증한다.
   - ✅ 2026-10-27 KST 경계(14:59:59 / 15:00:00 UTC, 3일 연속), 미게재·다른 날 제외, 중요도 정렬, 게시일이 오래됐어도 그날 수집분이면 포함, `getLatestEditionRef`(호 없음·실패 회차 무시)를 검증한다.
 - [x] `src/__tests__/labels.test.ts`: `formatRelativeKst`를 검증한다.

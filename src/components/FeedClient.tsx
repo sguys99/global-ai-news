@@ -17,11 +17,13 @@ import type { ArticleCard as ArticleCardType } from "@/lib/types";
  */
 export function FeedClient({
   articles,
+  issueIds,
   sources,
   tags,
   editionInfo,
 }: {
   articles: ArticleCardType[];
+  issueIds: number[];
   sources: { id: string; name: string }[];
   tags: string[];
   editionInfo: EditionInfo;
@@ -36,6 +38,7 @@ export function FeedClient({
   return (
     <FeedView
       articles={articles}
+      issueIds={issueIds}
       sources={sources}
       tags={tags}
       options={options}

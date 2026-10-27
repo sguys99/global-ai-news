@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { categoryLabel, categorySlug, formatLongDate, kstDateKey } from "@/lib/labels";
+import { IssueDelayNotice } from "@/components/IssueDelayNotice";
 import { ShareButton } from "@/components/ShareButton";
 import { SITE_NAME, SITE_TAGLINE, editionPath, editionShareUrl } from "@/lib/site";
 
@@ -17,6 +18,7 @@ export function Masthead({
   sourceCount,
   categories,
   indexLabel = "전체 기사",
+  delayNoticeIssueDate,
 }: {
   issueNo: number;
   publishedAt: string | null;
@@ -25,6 +27,8 @@ export function Masthead({
   categories: string[];
   /** 섹션 내비 마지막 항목(#all) 라벨. 호 고정 링크 지면은 "이 호의 기사". */
   indexLabel?: string;
+  /** 지정하면 그 호 날짜(KST)가 오늘보다 낡았을 때 발행 지연 안내 줄을 띄운다(홈 전용). */
+  delayNoticeIssueDate?: string;
 }) {
   return (
     <header id="masthead" className="mx-auto max-w-[1240px] px-4 pt-5 md:px-8 md:pt-7">
@@ -51,6 +55,7 @@ export function Masthead({
           />
         )}
       </div>
+      {delayNoticeIssueDate && <IssueDelayNotice issueDate={delayNoticeIssueDate} />}
 
       <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between md:gap-8">
         <h1 className="text-nameplate animate-rise font-serif font-extrabold whitespace-nowrap">

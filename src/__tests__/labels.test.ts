@@ -4,11 +4,14 @@ import {
   categorySlug,
   formatDate,
   formatDateTime,
+  formatIssueDelayNotice,
   formatLongDate,
   formatMonthDay,
   formatRelativeKst,
   formatShortDate,
+  issueDelayDays,
   kstDateKey,
+  kstDayDiff,
   shortSourceName,
 } from "@/lib/labels";
 
@@ -110,5 +113,47 @@ describe("labels — 상대 시각 (KST 고정)", () => {
     expect(formatDateTime("2026-10-25T15:05:00Z")).toBe("2026.10.26 00:05");
     expect(formatDateTime("2026-10-26T03:30:00Z")).toBe("2026.10.26 12:30");
     expect(formatDateTime("not-a-date")).toBe("");
+  });
+});
+
+describe("발행 지연 판정 — KST 기준", () => {
+  // 호 날짜 2026-10-25(일). KST 10/26 07:59 = 10/25 22:59Z
+  it("호 날짜가 오늘이면 안내 없음", () => {
+    expect(issueDelayDays("2026-10-27", "2026-10-27T03:00:00Z")).toBe(0);
+    expect(issueDelayDays("2026-10-27", "2026-10-27T14:59:00Z")).toBe(0); // 23:59 KST
+  });
+
+  it("어제 호는 08:00 KST 전에는 안내하지 않는다", () => {
+    expect(issueDelayDays("2026-10-26", "2026-10-26T22:59:00Z")).toBe(0); // 10/27 07:59 KST
+  });
+
+  it("어제 호는 08:00 KST 부터 안내한다", () => {
+    expect(issueDelayDays("2026-10-26", "2026-10-26T23:00:00Z")).toBe(1); // 10/27 08:00 KST
+    expect(issueDelayDays("2026-10-26", "2026-10-27T10:00:00Z")).toBe(1);
+  });
+
+  it("이틀 이상 지난 호는 시각과 무관하게 안내한다", () => {
+    expect(issueDelayDays("2026-10-25", "2026-10-26T15:00:00Z")).toBe(2); // 10/27 00:00 KST
+    expect(issueDelayDays("2026-10-20", "2026-10-26T21:00:00Z")).toBe(7);
+  });
+
+  it("미래 호·잘못된 입력은 0", () => {
+    expect(issueDelayDays("2026-10-28", "2026-10-27T03:00:00Z")).toBe(0);
+    expect(issueDelayDays("2026-10-26", "nope")).toBe(0);
+    expect(issueDelayDays("bad", "2026-10-27T03:00:00Z")).toBe(0);
+  });
+
+  it("kstDayDiff — 달력 일수 차", () => {
+    expect(kstDayDiff("2026-10-25", "2026-10-27")).toBe(2);
+    expect(kstDayDiff("2026-12-31", "2027-01-01")).toBe(1);
+  });
+
+  it("안내 문구", () => {
+    expect(formatIssueDelayNotice("2026-10-26", 1)).toBe(
+      "10월 26일(월) 발행 — 오늘 호는 아직 발행 전입니다",
+    );
+    expect(formatIssueDelayNotice("2026-10-25", 2)).toBe(
+      "10월 25일(일) 발행 이후 새 호가 아직 나오지 않았습니다",
+    );
   });
 });

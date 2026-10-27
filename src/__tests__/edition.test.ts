@@ -40,7 +40,7 @@ describe("buildEdition", () => {
     expect(e.trending.map((x) => x.trendingScore)).toEqual([70, 50, 30]);
   });
 
-  it("섹션은 카테고리 정의 순서, 1면 기사 제외, 빈 섹션 생략, count 는 1면 포함 전체", () => {
+  it("섹션은 카테고리 정의 순서, 1면 기사 제외, 빈 섹션 생략", () => {
     const lead = card({ category: "Agents", importance: 5 });
     const s1 = card({ category: "Dev Tools", importance: 5 });
     const s2 = card({ category: "Dev Tools", importance: 5 });
@@ -50,34 +50,30 @@ describe("buildEdition", () => {
 
     expect(e.sections.map((s) => s.category)).toEqual(["Language Models", "Agents"]);
     const agents = e.sections.find((s) => s.category === "Agents")!;
-    expect(agents.count).toBe(2);
     expect(agents.items.map((x) => x.id)).toEqual([ag.id]);
   });
 
-  it("지면은 최신 게시 시각 기준 48시간 이내 기사만 — 과거 고중요도 기사는 리드가 되지 못한다", () => {
-    const old = card({ importance: 5, trendingScore: 90, publishedAt: "2026-07-01T00:00:00Z" });
-    const fresh = [1, 2, 3, 4].map((h) =>
-      card({ importance: 3, trendingScore: 10, publishedAt: `2026-10-06T0${h}:00:00Z` }),
-    );
-    const e = buildEdition([old, ...fresh], limits);
-    expect(e.lead?.id).not.toBe(old.id);
-    expect([e.lead, ...e.seconds].map((x) => x?.id)).not.toContain(old.id);
-    expect(e.trending.map((x) => x.id)).not.toContain(old.id);
-    // 섹션 개수는 기간 제한 없는 전체 기준
-    expect(e.sections.find((s) => s.category === "Agents")?.count).toBe(5);
-    // 이번 호 기사 목록 = 기간 안 기사, 편집 순
-    expect(e.issue.map((x) => x.id)).not.toContain(old.id);
-    expect(e.issue).toHaveLength(fresh.length);
+  it("섹션 count 는 입력(그 호) 안의 개수, 1면 기사 포함", () => {
+    const xs = [
+      card({ category: "Agents", importance: 5 }),
+      card({ category: "Agents", importance: 4 }),
+      card({ category: "Agents", importance: 3 }),
+    ];
+    const e = buildEdition(xs, { seconds: 1, trending: 3, sectionItems: 4 });
+    const agents = e.sections.find((s) => s.category === "Agents")!;
+    expect(agents.count).toBe(3);
+    expect(agents.items).toHaveLength(1);
   });
 
-  it("이번 호 기사가 1면을 못 채우면 전체 기사로 대체", () => {
+  it("입력 기사만으로 구성 — 게시 시각이 오래돼도 기간 필터·대체 없이 그대로 쓴다", () => {
     const old = card({ importance: 5, publishedAt: "2026-07-01T00:00:00Z" });
     const fresh = card({ importance: 3, publishedAt: "2026-10-06T00:00:00Z" });
     const e = buildEdition([fresh, old], limits);
     expect(e.lead?.id).toBe(old.id);
+    expect(e.issue.map((x) => x.id)).toEqual([old.id, fresh.id]);
   });
 
-  it("기사가 없으면 빈 지면", () => {
+  it("기사가 없으면 리드 없음", () => {
     expect(buildEdition([])).toEqual({
       lead: null,
       seconds: [],

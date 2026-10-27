@@ -96,7 +96,7 @@ export function formatDate(iso: string): string {
 }
 
 /** 'YYYY-MM-DD' KST (호 고정 링크 `/edition/[date]` 경로 키). */
-export function kstDateKey(iso: string): string {
+export function kstDateKey(iso: string | number | Date): string {
   const p = kstParts(iso);
   return p ? `${p.y}-${pad(p.m)}-${pad(p.d)}` : "";
 }
@@ -145,4 +145,35 @@ export function formatRelativeKst(iso: string, now: string | number | Date): str
   const dayGap = (Date.UTC(q.y, q.m - 1, q.d) - Date.UTC(p.y, p.m - 1, p.d)) / DAY;
   if (dayGap === 1) return `어제 ${pad(p.hh)}:${pad(p.mm)}`;
   return p.y === q.y ? `${p.m}.${p.d}` : `${p.y}.${p.m}.${p.d}`;
+}
+
+/** 발행 지연 안내를 띄우기 시작하는 KST 시각(시). 06:00 cron + 배치(~30분) + 배포 + 06:47 백업을 넘긴 뒤. */
+export const PUBLISH_GRACE_HOUR_KST = 8;
+
+/** KST 달력 날짜 'YYYY-MM-DD' 두 개의 일수 차(b - a). 잘못된 입력이면 NaN. */
+export function kstDayDiff(a: string, b: string): number {
+  const ta = Date.parse(`${a}T00:00:00Z`);
+  const tb = Date.parse(`${b}T00:00:00Z`);
+  return (tb - ta) / DAY;
+}
+
+/**
+ * 홈 최신 호가 "오늘 호"보다 낡아 안내가 필요한지(KST 기준).
+ * 호 날짜가 오늘보다 이전이고, (08:00 KST 이후이거나 어제보다 오래된 호)일 때만 true —
+ * 정상 발행 시간대(06:00 cron → 배포) 전에는 재촉하지 않는다. 반환값 = 오늘과의 일수 차(0 = 안내 없음).
+ */
+export function issueDelayDays(issueDate: string, now: string | number | Date): number {
+  const p = kstParts(now);
+  if (!p) return 0;
+  const gap = kstDayDiff(issueDate, `${p.y}-${pad(p.m)}-${pad(p.d)}`);
+  if (!(gap >= 1)) return 0;
+  return gap >= 2 || p.hh >= PUBLISH_GRACE_HOUR_KST ? gap : 0;
+}
+
+/** 발행 지연 안내 문구. gap 은 issueDelayDays 결과(≥1). */
+export function formatIssueDelayNotice(issueDate: string, gap: number): string {
+  const day = formatMonthDay(`${issueDate}T12:00:00+09:00`);
+  return gap >= 2
+    ? `${day} 발행 이후 새 호가 아직 나오지 않았습니다`
+    : `${day} 발행 — 오늘 호는 아직 발행 전입니다`;
 }
