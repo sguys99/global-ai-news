@@ -220,10 +220,13 @@ function persist(
         @published_at, @engagement_json, @trending_score,
         @title_ko, @summary_ko, @category, @importance, @related_json)`,
   );
+  // 재심사 행을 이번 회차가 게재하면 created_at 도 지금으로 옮긴다. 호 경계는 created_at(= 게재한 회차)이라,
+  // 옛 수집 시각을 두면 오늘 고른 기사가 지난 호로 소급돼 오늘 1면에 오르지 못한다.
   const updateArticle = db.prepare(
     `UPDATE articles
         SET title_ko = @title_ko, summary_ko = @summary_ko, category = @category,
-            importance = @importance, related_json = @related_json
+            importance = @importance, related_json = @related_json,
+            created_at = datetime('now')
       WHERE id = @id`,
   );
   const markSeen = db.prepare("INSERT OR IGNORE INTO seen_items (dedup_key) VALUES (?)");

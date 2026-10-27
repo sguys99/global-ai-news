@@ -359,6 +359,15 @@ export interface EditionRef extends EditionInfo {
 
 const DAY_MS = 24 * 3600 * 1000;
 
+/** KST 날짜 'YYYY-MM-DD' → 그날의 [00:00 KST, 다음 날 00:00 KST) 경계(UTC ISO). */
+function kstDayBounds(dateKey: string): { start: string; end: string } {
+  const start = Date.parse(`${dateKey}T00:00:00+09:00`);
+  return {
+    start: new Date(start).toISOString(),
+    end: new Date(start + DAY_MS).toISOString(),
+  };
+}
+
 /** 호 목록(오래된 순). 첫 공개 기사가 들어오기 전 날짜(빈 지면)는 뺀다. */
 export function getEditionRefs(conn: DatabaseType = getDb()): EditionRef[] {
   const runs = conn
@@ -375,10 +384,31 @@ export function getEditionRefs(conn: DatabaseType = getDb()): EditionRef[] {
   const byDate = new Map<string, EditionRef>();
   runs.forEach((run, i) => {
     const date = kstDateKey(run.started_at);
-    const cutoff = new Date(Date.parse(`${date}T00:00:00+09:00`) + DAY_MS).toISOString();
+    const cutoff = kstDayBounds(date).end;
     byDate.set(date, { date, issueNo: i + 1, publishedAt: run.started_at, cutoff });
   });
   return [...byDate.values()].filter((e) => Date.parse(e.cutoff) > Date.parse(first));
+}
+
+/** 홈 1면의 "최신 호" = 호 목록의 마지막 값(실패 회차는 getEditionRefs 에서 이미 빠진다). 호가 없으면 null. */
+export function getLatestEditionRef(conn: DatabaseType = getDb()): EditionRef | null {
+  return getEditionRefs(conn).at(-1) ?? null;
+}
+
+/**
+ * 호 기사: dateKey(KST 'YYYY-MM-DD') 하루 [00:00 KST, 다음 날 00:00 KST) 안에 **수집된** 공개 기사,
+ * 중요도 순(동점 시 화제·최신 게시순). 게시 시각(published_at)이 아니라 수집 시각(created_at)으로 자른다.
+ */
+export function getIssueArticles(dateKey: string, conn: DatabaseType = getDb()): ArticleCard[] {
+  const { start, end } = kstDayBounds(dateKey);
+  const rows = conn
+    .prepare(
+      `${ARTICLE_SELECT} WHERE ${PUBLISHED}
+          AND julianday(a.created_at) >= julianday(?) AND julianday(a.created_at) < julianday(?)
+        ORDER BY a.importance DESC, a.trending_score DESC, a.published_at DESC`,
+    )
+    .all(start, end) as ArticleRow[];
+  return rows.map(toArticleCard);
 }
 
 /** 호 재구성용: cutoff(UTC ISO) 전에 수집된 공개 기사(getFeed 기본 정렬). */

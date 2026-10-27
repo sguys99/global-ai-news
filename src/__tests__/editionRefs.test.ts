@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import Database, { type Database as DatabaseType } from "better-sqlite3";
 import { beforeEach, describe, expect, it } from "vitest";
-import { getArticlesUntil, getEditionRefs, getLatestPublishedAt, toListCards } from "@/lib/db";
+import {
+  getArticlesUntil,
+  getEditionRefs,
+  getIssueArticles,
+  getLatestEditionRef,
+  getLatestPublishedAt,
+  toListCards,
+} from "@/lib/db";
 
 const SCHEMA_PATH = path.join(process.cwd(), "scripts/lib/schema.sql");
 
@@ -11,12 +18,12 @@ let db: DatabaseType;
 let seq = 0;
 
 /** 기사 1건 시드. created_at 은 SQLite datetime('now') 형식(UTC, 'YYYY-MM-DD HH:MM:SS'). */
-function article(createdAt: string, publishedAt: string, published = true) {
+function article(createdAt: string, publishedAt: string, published = true, importance = 3) {
   seq += 1;
   db.prepare(
     `INSERT INTO articles (dedup_key, source_id, url, title_original, published_at,
                            title_ko, summary_ko, category, importance, created_at)
-     VALUES (?, 'hn', ?, ?, ?, ?, ?, 'Agents', 3, ?)`,
+     VALUES (?, 'hn', ?, ?, ?, ?, ?, 'Agents', ?, ?)`,
   ).run(
     `k${seq}`,
     `https://x/${seq}`,
@@ -24,6 +31,7 @@ function article(createdAt: string, publishedAt: string, published = true) {
     publishedAt,
     `기사${seq}`,
     published ? "요약" : null,
+    importance,
     createdAt,
   );
 }
@@ -73,6 +81,53 @@ describe("getEditionRefs — KST 날짜별 마지막 호", () => {
     article("2026-10-03 21:00:30", "2026-10-03T20:00:00Z");
     run("2026-10-03T21:00:00Z");
     expect(getEditionRefs(db).map((r) => r.date)).toEqual(["2026-10-04"]);
+  });
+});
+
+describe("getIssueArticles — KST 하루 수집분", () => {
+  it("UTC 14:59:59 는 같은 KST 날, 15:00:00 은 다음 날 호", () => {
+    article("2026-10-04 14:59:59", "2026-10-04T10:00:00Z"); // 10/04 23:59:59 KST
+    article("2026-10-04 15:00:00", "2026-10-04T11:00:00Z"); // 10/05 00:00:00 KST
+    article("2026-10-05 14:59:59", "2026-10-05T12:00:00Z"); // 10/05 23:59:59 KST
+    article("2026-10-05 15:00:00", "2026-10-05T13:00:00Z"); // 10/06 00:00:00 KST
+    expect(getIssueArticles("2026-10-04", db).map((a) => a.titleKo)).toEqual(["기사1"]);
+    expect(getIssueArticles("2026-10-05", db).map((a) => a.titleKo)).toEqual(["기사3", "기사2"]);
+    expect(getIssueArticles("2026-10-06", db).map((a) => a.titleKo)).toEqual(["기사4"]);
+  });
+
+  it("미공개 기사와 다른 날 수집분은 빼고, 중요도 내림차순", () => {
+    article("2026-10-04 21:00:30", "2026-10-04T20:00:00Z", true, 2);
+    article("2026-10-04 21:00:30", "2026-10-01T20:00:00Z", true, 5); // 게시는 오래돼도 그날 수집분
+    article("2026-10-04 21:00:30", "2026-10-04T20:00:00Z", false, 5);
+    article("2026-10-03 21:00:30", "2026-10-04T20:00:00Z", true, 5); // 전날 호
+    article("2026-10-04 21:00:30", "2026-10-04T19:00:00Z", true, 4);
+    expect(getIssueArticles("2026-10-05", db).map((a) => a.titleKo)).toEqual([
+      "기사2",
+      "기사5",
+      "기사1",
+    ]);
+    expect(getIssueArticles("2026-10-07", db)).toEqual([]);
+  });
+});
+
+describe("getLatestEditionRef — 홈 최신 호", () => {
+  it("호가 없으면 null", () => {
+    expect(getLatestEditionRef(db)).toBeNull();
+    run("2026-10-04T21:00:00Z"); // 실행만 있고 공개 기사 없음
+    expect(getLatestEditionRef(db)).toBeNull();
+  });
+
+  it("마지막 호를 돌려주고, 실패 회차는 무시", () => {
+    article("2026-10-04 21:00:30", "2026-10-04T20:00:00Z");
+    run("2026-10-04T21:00:00Z"); // 10/05 06:00 KST → 1호
+    run("2026-10-05T21:00:00Z"); // 10/06 06:00 KST → 2호
+    run("2026-10-06T21:00:00Z", "failed"); // 10/07 실패 — 최신 호 아님
+    expect(getLatestEditionRef(db)).toEqual({
+      date: "2026-10-06",
+      issueNo: 2,
+      publishedAt: "2026-10-05T21:00:00Z",
+      cutoff: "2026-10-06T15:00:00.000Z",
+    });
   });
 });
 

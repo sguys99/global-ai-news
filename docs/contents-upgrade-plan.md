@@ -69,8 +69,12 @@
 
 ### 1-1. 호 단위 조회
 
-- [ ] `src/lib/db.ts`: `getIssueArticles(dateKey)`를 추가한다. 조건은 `created_at`이 `[dateKey 00:00 KST, +1일)` 안에 있고 게재된 기사이며, 중요도 순으로 정렬한다. `getEditionRefs()`의 cutoff 계산과 미커밋 `getArticlesCollectedSince`를 재사용한다.
-- [ ] 최신 호 날짜는 `getEditionRefs()`의 마지막 값으로 정한다. 실패 회차는 제외된다.
+- [x] `src/lib/db.ts`: `getIssueArticles(dateKey)`를 추가한다. 조건은 `created_at`이 `[dateKey 00:00 KST, +1일)` 안에 있고 게재된 기사이며, 중요도 순으로 정렬한다. `getEditionRefs()`의 cutoff 계산과 미커밋 `getArticlesCollectedSince`를 재사용한다.
+  - ✅ 2026-10-27 `getIssueArticles(dateKey)` 추가. KST 하루 경계는 `kstDayBounds(dateKey)` 한 곳에서 계산하고 `getEditionRefs()`의 `cutoff`도 이 함수를 쓴다. 정렬은 중요도 → 화제 → 최신 게시 순이다.
+- [x] 최신 호 날짜는 `getEditionRefs()`의 마지막 값으로 정한다. 실패 회차는 제외된다.
+  - ✅ 2026-10-27 `getLatestEditionRef()` = `getEditionRefs().at(-1)`.
+- [x] **(추가) 재가공 기사의 호 귀속:** 가공에 실패한 기사는 이후 회차에서 다시 심사하는데, 이때 `UPDATE`만 하고 `created_at`은 처음 수집한 날로 남는다. 그러면 오늘 회차가 고른 기사가 지난 호로 소급돼 오늘 1면에 오르지 못한다.
+  - ✅ 2026-10-27 `scripts/collect.ts`의 `updateArticle`이 `created_at = datetime('now')`도 갱신한다. 재심사 창(`published_at` 7일)과 `latest.json`(`created_at` 기준)은 영향이 없다. `persist()`가 export되지 않아 단위 테스트는 없다.
 
 ### 1-2. 편집 로직
 
@@ -88,7 +92,8 @@
 ### 1-4. 테스트
 
 - [ ] `src/__tests__/edition.test.ts`: 48시간 창과 폴백 케이스를 삭제하고, 호 배열을 입력으로 쓰는 케이스로 바꾼다.
-- [ ] `src/__tests__/editionRefs.test.ts`: `getIssueArticles`의 KST 경계(UTC 14:59와 15:00)를 검증한다.
+- [x] `src/__tests__/editionRefs.test.ts`: `getIssueArticles`의 KST 경계(UTC 14:59와 15:00)를 검증한다.
+  - ✅ 2026-10-27 KST 경계(14:59:59 / 15:00:00 UTC, 3일 연속), 미게재·다른 날 제외, 중요도 정렬, 게시일이 오래됐어도 그날 수집분이면 포함, `getLatestEditionRef`(호 없음·실패 회차 무시)를 검증한다.
 - [ ] `src/__tests__/labels.test.ts`: `formatRelativeKst`를 검증한다.
 
 **Acceptance:** 오늘 빌드한 홈 1면의 모든 기사는 `created_at`의 KST 날짜가 오늘이다. 지난 호 페이지도 그날 수집분만 보여 준다.
