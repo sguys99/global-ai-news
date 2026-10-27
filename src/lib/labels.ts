@@ -53,8 +53,10 @@ export function shortSourceName(name: string): string {
 const TZ = "Asia/Seoul";
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-/** ISO → KST 기준 { y, m, d, w } 분해. 잘못된 입력이면 null. */
-function kstParts(iso: string): { y: number; m: number; d: number; w: number } | null {
+/** ISO → KST 기준 { y, m, d, w, hh, mm } 분해. 잘못된 입력이면 null. */
+function kstParts(
+  iso: string | number | Date,
+): { y: number; m: number; d: number; w: number; hh: number; mm: number } | null {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -63,10 +65,20 @@ function kstParts(iso: string): { y: number; m: number; d: number; w: number } |
     month: "numeric",
     day: "numeric",
     weekday: "short",
+    hour: "numeric",
+    minute: "numeric",
+    hourCycle: "h23",
   }).formatToParts(date);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   const w = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
-  return { y: Number(get("year")), m: Number(get("month")), d: Number(get("day")), w };
+  return {
+    y: Number(get("year")),
+    m: Number(get("month")),
+    d: Number(get("day")),
+    w,
+    hh: Number(get("hour")) % 24,
+    mm: Number(get("minute")),
+  };
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -99,4 +111,38 @@ export function formatMonthDay(iso: string): string {
 export function formatLongDate(iso: string): string {
   const p = kstParts(iso);
   return p ? `${p.y}년 ${p.m}월 ${p.d}일 ${WEEKDAYS[p.w]}요일` : "";
+}
+
+/** 'YYYY.MM.DD HH:mm' KST (상대 시각의 툴팁·절대 일시). */
+export function formatDateTime(iso: string): string {
+  const p = kstParts(iso);
+  return p ? `${p.y}.${pad(p.m)}.${pad(p.d)} ${pad(p.hh)}:${pad(p.mm)}` : "";
+}
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+/**
+ * `now` 기준 상대 시각 (KST 고정, 바이라인용).
+ * 1분 미만(시계 오차로 미래인 경우 포함) '방금' → 'N분 전' → 24시간 미만 'N시간 전'
+ * → KST 달력상 전날이면 '어제 HH:mm' → 같은 해 'M.D' / 다른 해 'YYYY.M.D'.
+ * 정적 빌드에서 값이 고정되도록 `now`는 호출자가 넘긴다(호 발행 시각 등).
+ */
+export function formatRelativeKst(iso: string, now: string | number | Date): string {
+  const t = new Date(iso).getTime();
+  const n = new Date(now).getTime();
+  if (Number.isNaN(t) || Number.isNaN(n)) return "";
+
+  const diff = n - t;
+  if (diff < MINUTE) return "방금";
+  if (diff < HOUR) return `${Math.floor(diff / MINUTE)}분 전`;
+  if (diff < DAY) return `${Math.floor(diff / HOUR)}시간 전`;
+
+  const p = kstParts(t)!;
+  const q = kstParts(n)!;
+  // '어제'는 UTC가 아니라 KST 달력 날짜 차이로 판정한다.
+  const dayGap = (Date.UTC(q.y, q.m - 1, q.d) - Date.UTC(p.y, p.m - 1, p.d)) / DAY;
+  if (dayGap === 1) return `어제 ${pad(p.hh)}:${pad(p.mm)}`;
+  return p.y === q.y ? `${p.m}.${p.d}` : `${p.y}.${p.m}.${p.d}`;
 }
