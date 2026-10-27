@@ -36,9 +36,10 @@ function article(createdAt: string, publishedAt: string, published = true, impor
   );
 }
 
-function run(startedAt: string, status = "success") {
-  db.prepare("INSERT INTO collection_runs (started_at, status) VALUES (?, ?)").run(
+function run(startedAt: string, status = "success", finishedAt: string | null = null) {
+  db.prepare("INSERT INTO collection_runs (started_at, finished_at, status) VALUES (?, ?, ?)").run(
     startedAt,
+    finishedAt,
     status,
   );
 }
@@ -55,6 +56,7 @@ beforeEach(() => {
 describe("getEditionRefs — KST 날짜별 마지막 호", () => {
   it("실패 제외 실행 순번이 호수, 같은 KST 날짜는 마지막 실행, 마감은 다음 날 00:00 KST", () => {
     article("2026-10-04 21:00:30", "2026-10-04T20:00:00Z");
+    article("2026-10-05 21:00:30", "2026-10-05T20:00:00Z");
     run("2026-10-04T21:00:00Z"); // 10/05 06:00 KST → 1호
     run("2026-10-05T03:00:00Z", "failed"); // 호수에서 제외
     run("2026-10-05T13:00:00Z"); // 10/05 22:00 KST → 2호(같은 날 마지막)
@@ -75,12 +77,54 @@ describe("getEditionRefs — KST 날짜별 마지막 호", () => {
     ]);
   });
 
-  it("첫 공개 기사보다 이른 날(빈 지면)은 빼고, 공개 기사가 없으면 빈 목록", () => {
+  it("공개 기사가 없으면 빈 목록", () => {
     run("2026-10-01T21:00:00Z");
+    article("2026-10-01 21:00:30", "2026-10-01T20:00:00Z", false); // 미공개
     expect(getEditionRefs(db)).toEqual([]);
-    article("2026-10-03 21:00:30", "2026-10-03T20:00:00Z");
-    run("2026-10-03T21:00:00Z");
-    expect(getEditionRefs(db).map((r) => r.date)).toEqual(["2026-10-04"]);
+  });
+
+  it("실행만 있고 공개 기사가 0건인 날은 빠지되 호수 순번은 그대로", () => {
+    run("2026-10-01T21:00:00Z"); // 10/02 → 1호, 기사 없음
+    run("2026-10-02T21:00:00Z"); // 10/03 → 2호, 기사 있음
+    run("2026-10-03T21:00:00Z"); // 10/04 → 3호, 기사 없음
+    run("2026-10-04T21:00:00Z"); // 10/05 → 4호, 기사 있음
+    run("2026-10-05T21:00:00Z"); // 10/06 → 5호, 기사 없음(최신)
+    article("2026-10-02 21:00:30", "2026-10-02T20:00:00Z");
+    article("2026-10-04 21:00:30", "2026-10-04T20:00:00Z");
+    expect(getEditionRefs(db).map((r) => [r.date, r.issueNo])).toEqual([
+      ["2026-10-03", 2],
+      ["2026-10-05", 4],
+    ]);
+    expect(getLatestEditionRef(db)?.issueNo).toBe(4);
+  });
+
+  it("자정을 넘겨 저장한 실행은 기사가 들어온 다음 날 호가 된다", () => {
+    run("2026-10-05T14:50:00Z", "success", "2026-10-05T15:10:00Z"); // 23:50 시작 → 10/06 00:10 KST 종료
+    article("2026-10-05 15:10:00", "2026-10-05T14:00:00Z"); // 10/06 00:10 KST 저장
+    expect(getEditionRefs(db)).toEqual([
+      {
+        date: "2026-10-06",
+        issueNo: 1,
+        publishedAt: "2026-10-05T15:10:00Z",
+        cutoff: "2026-10-06T15:00:00.000Z",
+      },
+    ]);
+    expect(getIssueArticles("2026-10-06", db)).toHaveLength(1);
+  });
+
+  it("같은 KST 날의 여러 실행은 1개 호: 기사는 모두 포함, 호수는 마지막 실행", () => {
+    run("2026-10-04T21:00:00Z", "success", "2026-10-04T21:20:00Z"); // 10/05 06:00 → 1호
+    run("2026-10-05T03:00:00Z", "success", "2026-10-05T03:10:00Z"); // 10/05 12:00 → 2호
+    article("2026-10-04 21:10:00", "2026-10-04T20:00:00Z");
+    article("2026-10-05 03:05:00", "2026-10-05T02:00:00Z");
+    const refs = getEditionRefs(db);
+    expect(refs).toHaveLength(1);
+    expect(refs[0]).toMatchObject({
+      date: "2026-10-05",
+      issueNo: 2,
+      publishedAt: "2026-10-05T03:10:00Z",
+    });
+    expect(getIssueArticles("2026-10-05", db)).toHaveLength(2);
   });
 });
 
@@ -119,6 +163,7 @@ describe("getLatestEditionRef — 홈 최신 호", () => {
 
   it("마지막 호를 돌려주고, 실패 회차는 무시", () => {
     article("2026-10-04 21:00:30", "2026-10-04T20:00:00Z");
+    article("2026-10-05 21:00:30", "2026-10-05T20:00:00Z");
     run("2026-10-04T21:00:00Z"); // 10/05 06:00 KST → 1호
     run("2026-10-05T21:00:00Z"); // 10/06 06:00 KST → 2호
     run("2026-10-06T21:00:00Z", "failed"); // 10/07 실패 — 최신 호 아님

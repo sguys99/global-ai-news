@@ -112,7 +112,7 @@ function SectionBand({ section, timeBase }: { section: EditionSection; timeBase?
           href={`/?category=${encodeURIComponent(section.category)}`}
           className="text-meta text-brand focus-visible:ring-ring ml-auto font-semibold outline-none hover:underline focus-visible:ring-2"
         >
-          섹션 전체 보기 →
+          이 분야 전체 기사 →
         </Link>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 md:gap-y-6 lg:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))]">

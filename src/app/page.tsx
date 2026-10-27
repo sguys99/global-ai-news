@@ -4,34 +4,22 @@ import { FeedClient } from "@/components/FeedClient";
 import { FeedView } from "@/components/FeedView";
 import {
   getActiveTags,
-  getEditionRefs,
   getFeed,
+  getLatestEditionRef,
   getIssueArticles,
   getSourcesWithCounts,
   toListCards,
 } from "@/lib/db";
-import type { EditionRef } from "@/lib/db";
 import { buildEdition } from "@/lib/edition";
+import { issueDelayDays } from "@/lib/labels";
 import { editionMetadata } from "@/lib/site";
-import type { ArticleCard } from "@/lib/types";
-
-/**
- * 홈의 "이번 호": 기사가 있는 가장 최근 호. 공개 기사 0건으로 발행된 회차가 1면을 비우지 않도록
- * 최신 호부터 거슬러 올라가며 고른다. 다른 호의 기사는 섞지 않는다.
- */
-function getHomeIssue(): { ref: EditionRef; articles: ArticleCard[] } | null {
-  for (const ref of getEditionRefs().reverse()) {
-    const articles = getIssueArticles(ref.date);
-    if (articles.length > 0) return { ref, articles };
-  }
-  return null;
-}
 
 /** 홈 공유 미리보기 = 이번 호 1면(리드 헤드라인 제목·썸네일). */
 export function generateMetadata(): Metadata {
-  const issue = getHomeIssue();
-  if (!issue) return {};
-  return editionMetadata(buildEdition(issue.articles), issue.ref, "/");
+  // 호 목록에는 기사가 있는 호만 있으므로 최신 호는 항상 비어 있지 않다(호가 없으면 null).
+  const ref = getLatestEditionRef();
+  if (!ref) return {};
+  return editionMetadata(buildEdition(getIssueArticles(ref.date)), ref, "/");
 }
 
 export default function Home() {
@@ -41,13 +29,12 @@ export default function Home() {
   const articles = toListCards(getFeed());
   const sources = getSourcesWithCounts();
   const tags = getActiveTags(8);
-  const issue = getHomeIssue();
-  const editionInfo = {
-    issueNo: issue?.ref.issueNo ?? 0,
-    publishedAt: issue?.ref.publishedAt ?? null,
-  };
-  const issueIds = issue?.articles.map((a) => a.id) ?? [];
-  const props = { articles, issueIds, sources, tags, editionInfo };
+  const ref = getLatestEditionRef();
+  const editionInfo = { issueNo: ref?.issueNo ?? 0, publishedAt: ref?.publishedAt ?? null };
+  const issueIds = ref ? getIssueArticles(ref.date).map((a) => a.id) : [];
+  // 발행 지연 안내의 초기 상태 = 빌드 시점 판단. 빌드 자체가 낡았으면 정적 HTML 에 안내가 이미 들어간다.
+  const initialDelayGap = ref ? issueDelayDays(ref.date, Date.now()) : 0;
+  const props = { articles, issueIds, sources, tags, editionInfo, initialDelayGap };
 
   /*
    * useSearchParams는 정적 export에서 Suspense 경계가 필수이고, 해당 하위 트리는

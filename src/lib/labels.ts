@@ -177,3 +177,10 @@ export function formatIssueDelayNotice(issueDate: string, gap: number): string {
     ? `${day} 발행 이후 새 호가 아직 나오지 않았습니다`
     : `${day} 발행 — 오늘 호는 아직 발행 전입니다`;
 }
+
+/** 좁은 화면용 짧은 안내 문구("10.25(일) 발행 · 새 호 준비 중") — 라벨과 한 줄에 들어가게 한다. */
+export function formatIssueDelayShort(issueDate: string, gap: number): string {
+  const p = kstParts(`${issueDate}T12:00:00+09:00`);
+  if (!p) return "";
+  return `${p.m}.${p.d}(${WEEKDAYS[p.w]}) 발행 · ${gap >= 2 ? "새 호 지연 중" : "새 호 준비 중"}`;
+}

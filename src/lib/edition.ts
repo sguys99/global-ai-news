@@ -35,12 +35,13 @@ export interface EditionLimits {
 
 export const EDITION_LIMITS: EditionLimits = { seconds: 3, trending: 10, sectionItems: 4 };
 
-/** 중요도 → 트렌딩 → 최신 순 비교자(편집 판단 정렬). */
+/** 중요도 → 트렌딩 → 최신 → id 순 비교자(편집 판단 정렬). id 로 입력 순서와 무관하게 리드를 고정한다. */
 function byEditorial(a: ArticleCard, b: ArticleCard): number {
   return (
     b.importance - a.importance ||
     b.trendingScore - a.trendingScore ||
-    b.publishedAt.localeCompare(a.publishedAt)
+    b.publishedAt.localeCompare(a.publishedAt) ||
+    a.id - b.id
   );
 }
 
@@ -55,7 +56,12 @@ export function buildEdition(
 
   const trending = issueArticles
     .filter((a) => a.trendingScore > 0)
-    .sort((a, b) => b.trendingScore - a.trendingScore || b.publishedAt.localeCompare(a.publishedAt))
+    .sort(
+      (a, b) =>
+        b.trendingScore - a.trendingScore ||
+        b.publishedAt.localeCompare(a.publishedAt) ||
+        a.id - b.id,
+    )
     .slice(0, limits.trending);
 
   const sections = Object.keys(CATEGORY_LABELS)

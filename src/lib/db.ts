@@ -357,29 +357,42 @@ function kstDayBounds(dateKey: string): { start: string; end: string } {
   };
 }
 
-/** 호 목록(오래된 순). 첫 공개 기사가 들어오기 전 날짜(빈 지면)는 뺀다. */
+/**
+ * 호 목록(오래된 순). 공개 기사가 1건 이상 있는 KST 날짜만 담는다 — 가공 없이 수집만 한 날의
+ * 빈 호는 지면·OG·이전/다음 이동에서 숨긴다. 호수는 숨긴 호까지 센 전체 실행 순번을 그대로 쓴다(번호 건너뜀 허용).
+ *
+ * 호 날짜·발행 시각은 실행이 기사를 저장한 시각(finished_at, 없으면 started_at)으로 정한다.
+ * 23:50 KST 에 시작해 00:10 에 저장을 마친 수동 실행도 기사 created_at 과 같은 날로 묶이게 하기 위해서다.
+ */
 export function getEditionRefs(conn: DatabaseType = getDb()): EditionRef[] {
   const runs = conn
-    .prepare(`SELECT started_at FROM collection_runs WHERE status != 'failed' ORDER BY started_at`)
-    .all() as { started_at: string }[];
-  const { first } = conn
     .prepare(
-      `SELECT strftime('%Y-%m-%dT%H:%M:%SZ', MIN(a.created_at)) AS first
-         FROM articles a WHERE ${PUBLISHED}`,
+      `SELECT COALESCE(finished_at, started_at) AS saved_at FROM collection_runs
+        WHERE status != 'failed' ORDER BY started_at`,
     )
-    .get() as { first: string | null };
-  if (!first) return [];
+    .all() as { saved_at: string }[];
+  const withArticles = new Set(
+    (
+      conn
+        .prepare(
+          `SELECT date(a.created_at, '+9 hours') AS d FROM articles a
+            WHERE ${PUBLISHED} GROUP BY d`,
+        )
+        .all() as { d: string }[]
+    ).map((r) => r.d),
+  );
 
   const byDate = new Map<string, EditionRef>();
   runs.forEach((run, i) => {
-    const date = kstDateKey(run.started_at);
+    const date = kstDateKey(run.saved_at);
+    if (!withArticles.has(date)) return;
     const cutoff = kstDayBounds(date).end;
-    byDate.set(date, { date, issueNo: i + 1, publishedAt: run.started_at, cutoff });
+    byDate.set(date, { date, issueNo: i + 1, publishedAt: run.saved_at, cutoff });
   });
-  return [...byDate.values()].filter((e) => Date.parse(e.cutoff) > Date.parse(first));
+  return [...byDate.values()];
 }
 
-/** 홈 1면의 "최신 호" = 호 목록의 마지막 값(실패 회차는 getEditionRefs 에서 이미 빠진다). 호가 없으면 null. */
+/** 홈 1면의 "최신 호" = 호 목록의 마지막 값(기사가 있는 호만 목록에 있다). 호가 없으면 null. */
 export function getLatestEditionRef(conn: DatabaseType = getDb()): EditionRef | null {
   return getEditionRefs(conn).at(-1) ?? null;
 }

@@ -29,6 +29,7 @@ export function FeedView({
   tags,
   options,
   editionInfo,
+  initialDelayGap,
 }: {
   /** 누적 기사 전체 — 전체 기사 색인·필터 결과용. */
   articles: ArticleCard[];
@@ -38,6 +39,8 @@ export function FeedView({
   tags: string[];
   options: FeedOptions;
   editionInfo: EditionInfo;
+  /** 빌드 시점(서버 page)이 계산한 발행 지연 일수. 정적 HTML 의 안내 줄 초기 상태. */
+  initialDelayGap?: number;
 }) {
   const visible = filterAndSortFeed(articles, options);
   const filtered = hasActiveFilter(options);
@@ -91,7 +94,7 @@ export function FeedView({
   const edition = buildEdition(issueArticles);
   // 1면·섹션 바이라인 상대 시각의 정적 렌더 기준 = 호 발행 시각(마운트 후엔 실제 시각으로 갱신).
   const timeBase = editionInfo.publishedAt ?? undefined;
-  // 발행 지연 안내는 서버 렌더 시점이 아니라 브라우저의 현재 시각으로 판단한다(Masthead → IssueDelayNotice).
+  // 발행 지연 안내: 초기값은 빌드 시점 계산(initialDelayGap), 마운트 후엔 브라우저 현재 시각으로 갱신(Masthead → IssueDelayNotice).
   const issueDate = editionInfo.publishedAt ? kstDateKey(editionInfo.publishedAt) : undefined;
 
   return (
@@ -103,6 +106,7 @@ export function FeedView({
         issueSourceCount={new Set(issueArticles.map((a) => a.source.id)).size}
         categories={edition.sections.map((s) => s.category)}
         delayNoticeIssueDate={issueDate}
+        delayNoticeInitialGap={initialDelayGap}
       />
       <main className="mx-auto flex max-w-[1240px] flex-col gap-14 px-4 pb-16 md:gap-16 md:px-8">
         <FrontPage edition={edition} timeBase={timeBase} />

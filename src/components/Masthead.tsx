@@ -19,6 +19,7 @@ export function Masthead({
   categories,
   indexLabel = "전체 기사",
   delayNoticeIssueDate,
+  delayNoticeInitialGap,
 }: {
   issueNo: number;
   publishedAt: string | null;
@@ -30,6 +31,8 @@ export function Masthead({
   indexLabel?: string;
   /** 지정하면 그 호 날짜(KST)가 오늘보다 낡았을 때 발행 지연 안내 줄을 띄운다(홈 전용). */
   delayNoticeIssueDate?: string;
+  /** 빌드 시점에 계산한 지연 일수 — 정적 HTML 에 안내를 미리 담아 레이아웃 밀림을 막는다. */
+  delayNoticeInitialGap?: number;
 }) {
   return (
     <header id="masthead" className="mx-auto max-w-[1240px] px-4 pt-5 md:px-8 md:pt-7">
@@ -57,7 +60,9 @@ export function Masthead({
           />
         )}
       </div>
-      {delayNoticeIssueDate && <IssueDelayNotice issueDate={delayNoticeIssueDate} />}
+      {delayNoticeIssueDate && (
+        <IssueDelayNotice issueDate={delayNoticeIssueDate} initialGap={delayNoticeInitialGap} />
+      )}
 
       <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between md:gap-8">
         <h1 className="text-nameplate animate-rise font-serif font-extrabold whitespace-nowrap">

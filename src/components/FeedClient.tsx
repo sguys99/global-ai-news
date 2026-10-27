@@ -21,12 +21,14 @@ export function FeedClient({
   sources,
   tags,
   editionInfo,
+  initialDelayGap,
 }: {
   articles: ArticleCardType[];
   issueIds: number[];
   sources: { id: string; name: string }[];
   tags: string[];
   editionInfo: EditionInfo;
+  initialDelayGap?: number;
 }) {
   const searchParams = useSearchParams();
   // 피드는 검색어를 쓰지 않으므로 q 는 버린다.
@@ -43,6 +45,7 @@ export function FeedClient({
       tags={tags}
       options={options}
       editionInfo={editionInfo}
+      initialDelayGap={initialDelayGap}
     />
   );
 }

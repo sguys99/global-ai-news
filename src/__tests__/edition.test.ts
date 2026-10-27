@@ -34,6 +34,19 @@ describe("buildEdition", () => {
     expect(e.seconds.map((x) => x.id)).toEqual([a.id, c.id]);
   });
 
+  it("완전 동점이면 id 순으로 고정 — 입력 순서와 무관", () => {
+    const a = card({ importance: 4, trendingScore: 10 });
+    const b = card({ importance: 4, trendingScore: 10 });
+    const c = card({ importance: 4, trendingScore: 10 });
+    const one = buildEdition([c, a, b], limits);
+    const two = buildEdition([b, c, a], limits);
+    expect(one.lead?.id).toBe(a.id);
+    expect(two.lead?.id).toBe(a.id);
+    expect(one.seconds.map((x) => x.id)).toEqual([b.id, c.id]);
+    expect(two.seconds.map((x) => x.id)).toEqual([b.id, c.id]);
+    expect(one.trending.map((x) => x.id)).toEqual(two.trending.map((x) => x.id));
+  });
+
   it("트렌딩은 점수 > 0 만, 점수 내림차순 상위 N", () => {
     const xs = [10, 0, 70, 30, 50].map((t) => card({ trendingScore: t }));
     const e = buildEdition(xs, limits);
