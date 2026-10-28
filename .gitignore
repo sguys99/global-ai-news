@@ -59,3 +59,7 @@ Thumbs.db
 # WAL/SHM은 실행 중에만 생기는 임시 파일이므로 무시.
 /data/app.db-wal
 /data/app.db-shm
+
+# 분야 재분류(scripts/reclassify.ts): --apply 직전 백업과 LLM 결과 캐시(로컬 전용).
+/data/app.db.bak-*
+/data/reclassify-cache.json

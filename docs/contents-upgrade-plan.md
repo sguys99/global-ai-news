@@ -33,7 +33,7 @@
 
 - [x] **Phase 0** — 기준선 측정·작업 준비 (2026-10-27 완료)
 - [x] **Phase 1** — 1면 "오늘 호 전용" 전환 (빠른 개선, 데이터 변경 없음) (2026-10-28 완료)
-- [ ] **Phase 2** — 카테고리 6분야 + 형식(format) 데이터 모델·마이그레이션
+- [x] **Phase 2** — 카테고리 6분야 + 형식(format) 데이터 모델·마이그레이션 (2026-10-29 완료)
 - [ ] **Phase 3** — 수집 소스 확장 (HF 모델·GitHub·논문·Physical AI)
 - [ ] **Phase 4** — LLM 선별·가공 프롬프트 개편
 - [ ] **Phase 5** — 1면 10건 편집 로직 (리드·서브·브리핑·레이더·화제)
@@ -166,7 +166,7 @@
 
 ### 2-3. 기존 데이터 마이그레이션
 
-- [ ] `scripts/reclassify.ts`(신규)와 `npm run db:reclassify`를 만든다.
+- [x] `scripts/reclassify.ts`(신규)와 `npm run db:reclassify`를 만든다.
   1. `data/app.db`를 백업(`data/app.db.bak-YYYYMMDD`)한 뒤 진행한다. 백업 파일은 git에서 제외한다.
   2. 기존 값을 규칙으로 먼저 바꿔 둔다. 이 값은 폴백으로 쓴다.
      - `Language Models` → `llm`
@@ -176,7 +176,26 @@
      - `산업·정책` → `industry`
   3. **LLM으로 전체를 재분류한다**(약 1,000건, 제목·요약만 넣고 10건씩 Batches로 처리). 예상 비용은 1회 약 $0.2이고, `--dry-run`으로 바뀌는 분포만 출력해 볼 수 있다.
   4. 분류가 바뀐 건수와 Physical AI로 옮겨진 건수를 보고한 뒤 FTS를 재색인한다(`db:reindex`).
-- [ ] 마이그레이션 결과 DB를 커밋한다. 이 커밋은 일일 수집 커밋과 겹치지 않도록 06:00 회차 이후에 한다.
+  - ✅ 2026-10-29 사용법: `npm run db:reclassify -- [--dry-run | --apply] [--only-legacy] [--limit N] [--rules-only] [--chunk N] [--max-cost USD]`. **기본은 dry-run**이고 `--apply`를 줘야 쓴다. 공개 기사만 대상으로 한다.
+    - 분류 입력은 `id | 매체 | 제목 | 요약 | 태그`이고, 현재 분류값은 답을 끌어당기지 않도록 넣지 않는다. 시스템 프롬프트는 가공과 같은 `configs/prompts/categories.md`를 쓴다. 20건씩 묶은 요청 전체를 Batch 1개로 보낸다.
+    - **(추가) 이중 과금 방지 캐시:** LLM 판정은 `data/reclassify-cache.json`(git 제외)에 기사 id와 입력·프롬프트 해시로 저장한다. dry-run에서 한 번 비용을 내면 `--apply`는 캐시만 쓴다. 요약이나 `categories.md`가 바뀌면 해당 기사만 다시 묻는다.
+    - 호출 전에 비용을 추정해 상한(기본 $0.5)을 넘으면 보내지 않는다. 누락·중복·잘못된 판정은 규칙 매핑으로 되돌린다. 적용은 백업(`data/app.db.bak-YYYYMMDD`, 같은 날 재실행 시 `-2`, git 제외) 뒤 한 트랜잭션으로 UPDATE와 FTS 재색인을 함께 한다.
+    - **배포 브랜치 병합 시:** 일일 수집이 쌓은 구 값 행만 `--only-legacy --apply`로 다시 분류한다(Phase 0 병합 방침). 그 사이 수집분은 이미 새 키로 나오므로 대상은 병합 전 수집분뿐이다.
+  - ✅ 2026-10-29 **실행 결과 (997건):** LLM 977건과 샘플 캐시 20건, 버린 판정 0건, 호출 49회, 토큰 226,146/9,614, **비용 $0.137**(샘플 포함 $0.140). 규칙 매핑과 다른 분류가 **305건**이고 **Physical AI로 87건**이 옮겨졌다.
+
+    | 분야 | 이전 (구 값) | 이후 |
+    |---|---|---|
+    | llm | Language Models 145 | 116 |
+    | agent | Agents 136 | 199 |
+    | physical | — | **87** |
+    | oss | Dev Tools 187 + MLOps 38 | 149 |
+    | research | 연구·논문 99 | 131 |
+    | industry | 산업·정책 392 | 315 |
+
+    - 전이: 산업·정책 → physical 49건이 가장 크다(휴머노이드 협력, 피지컬 AI 정책·예산, 로봇 투자). 다음은 Dev Tools → agent 42건(코딩 에이전트·MCP 도구)이고, Agents → physical 14건, 연구·논문 → physical 8건이다.
+    - Acceptance 확인: Eka Robotics 2건(#968, #1087)이 `physical`이다. `category` 값은 6개 키뿐이고 `integrity_check`는 ok다.
+- [x] 마이그레이션 결과 DB를 커밋한다. 이 커밋은 일일 수집 커밋과 겹치지 않도록 06:00 회차 이후에 한다.
+  - ✅ 2026-10-29 07:28 KST에 적용했다. 같은 커밋에 `npm run db:init`의 결과도 들어 있다: `sources.format` 컬럼 추가, 5개 소스의 형식 갱신, `arxiv_cs_ai`·`arxiv_cs_lg` 등록, `reddit_*` 8개 삭제. 형식별 누적 기사 수는 뉴스 843, 오픈소스 99, 논문 55다. 일일 수집 커밋은 `deploy/github-pages`에 쌓이므로 이 브랜치와 겹치지 않는다.
 
 ### 2-4. 소비처 일괄 갱신
 
@@ -191,6 +210,15 @@
   - ✅ 2026-10-29 구 값 6종 모두 매핑한다(Dev Tools·MLOps → `oss`). 미정의 값은 그대로 통과한다.
 
 **Acceptance:** `npm run typecheck && npm test`가 통과한다. DB의 `category` 값이 6개 키뿐이다. 과거 로보틱스 기사(예: Eka Robotics)가 `physical`로 분류돼 있다.
+
+- [x] **통합 검증 (2026-10-29)**
+  - 게이트: vitest 41파일·314건 통과(Node 24, `reclassify` 21건·`syncSources` 4건 포함). typecheck 통과. lint는 오류 0건이고, 경고 1건(`_contentRaw`)은 이전부터 있던 것이다. 정적 빌드(`npm run build`, prebuild의 `initDb --existing` 포함)가 성공했다.
+  - 인수 조건: DB `category`는 6개 키뿐이다(llm 116, agent 199, physical 87, oss 149, research 131, industry 315). Eka Robotics 2건은 `physical`이다. 빌드한 홈에 6개 섹션 앵커(`#section-physical` 포함)가 모두 있고, 화면 텍스트에 구 분야명이 남지 않았다(원문 제목 안의 단어만 남는다).
+- 참고 (후속 Phase):
+  - **외부 소비자 공지:** `public/latest.json`의 `category`가 구 값("Language Models")에서 새 키("llm")로 바뀌었다. `categoryLabel`과 `format`은 새로 추가했다. 배포 전에 자랑터 「한입뉴스」 쪽에 알린다.
+  - **Phase 3:** `hf_models` kind와 `model` 형식은 준비만 했다. 어댑터와 소스 등록은 3-1에서 한다. 형식별 누적 기사에 `model`은 아직 0건이다.
+  - **Phase 4:** 가공 프롬프트는 분류 체계만 `categories.md`로 교체했다. 형식별 요약 가이드와 few-shot 확장은 4-2에서 한다. 재분류 결과에서 경계가 애매했던 사례(보안 기능 → industry, 클라우드 계약 → oss 등)는 4-2 few-shot을 만들 때 참고한다.
+  - **Phase 6:** `FORMAT_BADGES`(REPO·MODEL·PAPER)와 `categoryCode()`(LLM·AGT·PHY·OSS·RES·BIZ)는 labels.ts에 준비돼 있다. 배지 UI는 6-2에서 만든다.
 
 ---
 
