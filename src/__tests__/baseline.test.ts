@@ -89,7 +89,7 @@ describe("findDuplicatePairs — 인접 호 같은 사건 후보(휴리스틱)",
     sourceId: "s",
     issueDate,
     format: "news",
-    category: "Agents",
+    category: "agent",
     titleKo,
     titleOriginal,
     summaryKo: "",
@@ -178,7 +178,7 @@ describe("computeBaseline — 실제 스키마 in-memory DB", () => {
           o.trending ?? 0,
           `기사${seq}`,
           o.summary === undefined ? "요약" : o.summary,
-          o.category ?? "Agents",
+          o.category ?? "agent",
           o.importance,
           o.createdAt,
         ).lastInsertRowid,
@@ -276,22 +276,23 @@ describe("computeBaseline — 실제 스키마 in-memory DB", () => {
     });
   });
 
-  it("최신 호 기준 14일 창: 형식·분야·Physical AI·비용·후보 형식 합계", () => {
+  it("최신 호 기준 14일 창: 형식·분야·Physical AI·비용·후보 형식 합계 (구 분야 값은 새 키로 센다)", () => {
     const r = computeBaseline(db, 14, SOURCES);
     expect([r.from, r.to]).toEqual(["2026-10-12", "2026-10-25"]);
     expect(r.issues.map((i) => i.date)).toEqual(["2026-10-24", "2026-10-25"]);
     expect(r.totals.published).toBe(7);
     expect(r.totals.formats).toEqual({ news: 5, oss: 1, model: 0, paper: 1 });
+    // 시드는 구 값(산업·정책·Language Models·Dev Tools·연구·논문)과 새 키(agent)가 섞여 있다.
     expect(r.totals.categories).toEqual({
-      "산업·정책": 1,
-      "Language Models": 2,
-      "Dev Tools": 1,
-      "연구·논문": 1,
-      Agents: 2,
+      industry: 1,
+      llm: 2,
+      oss: 1,
+      research: 1,
+      agent: 2,
     });
     // 제목 "로봇"(#1) + 태그 humanoid(#5). robots.txt(#7)·미공개 Robot 은 제외.
     expect(r.totals.physicalAi).toBe(2);
-    expect(r.totals.physicalAiByCategory).toEqual({ "산업·정책": 1, "연구·논문": 1 });
+    expect(r.totals.physicalAiByCategory).toEqual({ industry: 1, research: 1 });
     expect(r.totals.cost.runs).toBe(2);
     expect(r.totals.cost.total).toBeCloseTo(0.05, 10);
     expect(r.totals.cost.avg).toBeCloseTo(0.025, 10);

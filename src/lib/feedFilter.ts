@@ -7,6 +7,7 @@
  * 1:1 이전한 것이다(동점 보조 키까지 동일). 서버/클라 동작 일치는 단위 테스트로 고정한다.
  */
 import type { FeedOptions, SearchOptions } from "@/lib/db";
+import { normalizeCategory } from "@/lib/labels";
 import type { ArticleCard } from "@/lib/types";
 
 /** ISO8601 문자열 내림차순 비교(사전식 비교 = 시간 내림차순과 호환). */
@@ -46,12 +47,15 @@ export function filterAndSortFeed(articles: ArticleCard[], opts: FeedOptions = {
   return filtered.sort(comparatorFor(opts.sort));
 }
 
-/** URL 쿼리(`?q=&category=&source=&tag=&sort=`) → 옵션. 피드·검색 클라이언트 셸이 공유한다. */
+/**
+ * URL 쿼리(`?q=&category=&source=&tag=&sort=`) → 옵션. 피드·검색 클라이언트 셸이 공유한다.
+ * 분야 개편 전 공유 링크(`?category=Language%20Models` 등)는 새 키로 바꿔 받는다. 미정의 값은 그대로 둔다.
+ */
 export function parseFeedOptions(params: { get(name: string): string | null }): SearchOptions {
   const sort = params.get("sort");
   return {
     q: params.get("q") || undefined,
-    category: params.get("category") || undefined,
+    category: normalizeCategory(params.get("category") ?? "") || undefined,
     source: params.get("source") || undefined,
     tag: params.get("tag") || undefined,
     sort: sort === "latest" || sort === "importance" ? sort : undefined,

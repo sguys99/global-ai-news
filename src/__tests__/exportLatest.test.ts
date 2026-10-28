@@ -35,7 +35,7 @@ function seed(): DatabaseType {
     0,
     "에이",
     "요약",
-    "Dev Tools",
+    "oss",
     2,
     "2026-10-24 21:10:00",
   );
@@ -50,7 +50,7 @@ function seed(): DatabaseType {
     0,
     "비",
     "요약2",
-    "Agents",
+    "agent",
     5,
     "2026-10-23 21:05:00",
   );
@@ -65,7 +65,7 @@ function seed(): DatabaseType {
     0,
     "씨",
     "요약3",
-    "Agents",
+    "agent",
     5,
     "2026-10-20 21:00:00",
   );
@@ -108,6 +108,13 @@ describe("buildLatestFeed", () => {
       publishedAt: "2025-01-01T00:00:00Z",
       collectedAt: "2026-10-24T21:10:00Z",
     });
+  });
+
+  it("분야 키와 함께 표시명(categoryLabel)을 싣는다 — 구 값 행도 새 키·표시명으로", () => {
+    db.prepare("UPDATE articles SET category = 'MLOps' WHERE id = 1").run();
+    const [first, second] = buildLatestFeed(NOW, db).items;
+    expect(first).toMatchObject({ id: 2, category: "agent", categoryLabel: "에이전트" });
+    expect(second).toMatchObject({ id: 1, category: "oss", categoryLabel: "오픈소스·도구" });
   });
 
   it("봉투에 버전·생성 시각·창을 싣고 본문은 내보내지 않는다", () => {

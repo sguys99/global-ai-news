@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildEnrichRequests,
@@ -6,9 +8,10 @@ import {
   enrichFormat,
   estimateEnrichTokens,
   resolveEnrichments,
+  readCategoryGuide,
   type EnrichInput,
 } from "../../scripts/lib/enrich";
-import { articleEnrichmentSchema } from "../../scripts/lib/schema";
+import { articleEnrichmentSchema, CATEGORIES } from "../../scripts/lib/schema";
 
 const input = (id: number): EnrichInput => ({
   id,
@@ -25,7 +28,7 @@ const input = (id: number): EnrichInput => ({
 const enrichment = {
   title_ko: "샘플 제목",
   summary_ko: "요약입니다.",
-  category: "Agents" as const,
+  category: "agent" as const,
   tags: ["agent", "llm"],
 };
 
@@ -97,11 +100,33 @@ describe("스키마 검증", () => {
 
   it("category enum 외 값·태그 0개/6개는 실패", () => {
     expect(articleEnrichmentSchema.safeParse({ ...enrichment, category: "X" }).success).toBe(false);
+    // 분야 개편 전 구 값은 더 이상 출력 enum 이 아니다
+    expect(articleEnrichmentSchema.safeParse({ ...enrichment, category: "Agents" }).success).toBe(
+      false,
+    );
     expect(articleEnrichmentSchema.safeParse({ ...enrichment, tags: [] }).success).toBe(false);
     expect(
       articleEnrichmentSchema.safeParse({ ...enrichment, tags: ["a", "b", "c", "d", "e", "f"] })
         .success,
     ).toBe(false);
     expect(articleEnrichmentSchema.safeParse(enrichment).success).toBe(true);
+  });
+});
+
+describe("분야 정의 프롬프트", () => {
+  it("시스템 프롬프트에 분야 정의(categories.md)가 치환돼 6개 키가 모두 실린다", () => {
+    const [chunk] = buildEnrichRequests([input(1)], "m");
+    const system = chunk.request.params.system as string;
+    expect(system).not.toContain("{{CATEGORIES}}");
+    expect(system).toContain(readCategoryGuide());
+    for (const key of CATEGORIES) expect(readCategoryGuide()).toContain(`**${key}**`);
+  });
+
+  it("few-shot 예시 출력은 가공 스키마(새 분야 키)를 통과한다", () => {
+    const fewshot = JSON.parse(
+      readFileSync(path.join(process.cwd(), "configs/prompts/enrich.fewshot.json"), "utf-8"),
+    ) as { output: unknown }[];
+    for (const ex of fewshot)
+      expect(articleEnrichmentSchema.safeParse(ex.output).success).toBe(true);
   });
 });

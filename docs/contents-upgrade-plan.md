@@ -140,8 +140,11 @@
 | `research` | 연구·논문 | RES | 논문·연구 성과·벤치마크·기술 리포트 | 로봇 논문은 `physical` |
 | `industry` | 산업·정책 | BIZ | 투자·인수·규제·정책·시장·기업 전략·칩·데이터센터 | 위 5개에 해당하지 않는 비즈니스 소식 |
 
-- [ ] `scripts/lib/schema.ts`: `CATEGORIES`를 위 6개 키로 바꾼다(`z.enum`도 함께 바뀐다).
-- [ ] `src/lib/labels.ts`: `CATEGORY_LABELS`(표시명·순서), `CATEGORY_SLUGS`(키를 그대로 쓰면 삭제할 수 있다), 코드(LLM/AGT/PHY/OSS/RES/BIZ)를 넣는다.
+- [x] `scripts/lib/schema.ts`: `CATEGORIES`를 위 6개 키로 바꾼다(`z.enum`도 함께 바뀐다).
+  - ✅ 2026-10-29 `CATEGORIES`·`Category`·`LEGACY_CATEGORY_MAP`의 정의는 `src/lib/labels.ts`에 두고 `schema.ts`는 재수출만 한다. `src`는 `scripts/`를 import하지 않지만 `scripts/`는 `../src/lib/*`를 이미 쓰므로, 양쪽이 닿는 곳은 labels 한 곳뿐이다.
+- [x] `src/lib/labels.ts`: `CATEGORY_LABELS`(표시명·순서), `CATEGORY_SLUGS`(키를 그대로 쓰면 삭제할 수 있다), 코드(LLM/AGT/PHY/OSS/RES/BIZ)를 넣는다.
+  - ✅ 2026-10-29 `CATEGORY_SLUGS`는 삭제했다(키 = 슬러그, 미정의는 `etc`). `CATEGORY_CODES`·`categoryCode()`를 추가했다. 헬퍼 `normalizeCategory`·`categoryAliases`·`isCategory`도 추가했다. `categoryLabel`·`categoryCode`는 구 값도 받아 새 분야명으로 보여 준다.
+- [x] **(추가) 분류 정의 단일 출처:** 분야 정의·경계 규칙을 `configs/prompts/categories.md`로 분리했다. `enrich.system.md`의 `{{CATEGORIES}}` 자리에 `enrich.ts`(`readCategoryGuide()`)가 채운다. 2-3 재분류 스크립트도 같은 파일을 쓴다. enum이 지금 바뀌므로 Phase 4 전에도 수집이 새 키로 분류되도록, few-shot 3건의 값과 `triage.system.md`의 분야 나열도 함께 고쳤다. 프롬프트 전면 개편은 Phase 4에서 한다.
 
 ### 2-2. 형식(format)
 
@@ -170,10 +173,15 @@
 
 ### 2-4. 소비처 일괄 갱신
 
-- [ ] 카테고리 리터럴을 쓰는 곳을 갱신한다.
+- [x] 카테고리 리터럴을 쓰는 곳을 갱신한다.
   - 컴포넌트·라이브러리: `FilterBar.tsx`, `Masthead.tsx`, `Edition.tsx`, `ArticleMeta.tsx`, `FeedView.tsx`, `ogImage.tsx`, `article/[id]/page.tsx`, `mobile/FilterSheet.tsx`, `SearchClient.tsx`
   - 테스트 8개: `edition`, `labels`, `feedFilter`, `getFeed`, `search`, `exportSearchIndex`, `enrich`, `site`
-- [ ] 예전 URL `?category=Language%20Models`는 `parseFeedOptions`에서 새 키로 매핑해 받아 준다. 공유된 링크가 깨지지 않게 하려는 것이다.
+  - ✅ 2026-10-29 2-1과 함께 커밋했다(2-1만 커밋하면 typecheck가 깨진다). `FilterBar`·`edition.ts`는 `CATEGORIES`로 칩·섹션을 만든다. `ArticleMeta`·`FeedView`·`SearchClient`·`FilterSheet`·상세·OG는 이미 `categoryLabel`을 거쳐 수정이 필요 없었다. 테스트는 위 8개에 `baseline`·`exportLatest`·`FeedView`·`editionRefs`·`FilterSheet`까지 13개를 갱신했다(39파일·285건 통과).
+  - **(추가) 읽기 시 변환:** `toArticleCard`가 구 값을 새 키로 바꾸고, 분야 필터는 `IN (키, 구 값…)`으로 조회한다. 마이그레이션 전 DB나 배포 브랜치에서 병합해 들어온 구 값 행도 그대로 렌더된다. 마이그레이션 뒤에는 비용이 없으므로 남긴다. `kpi baseline`도 구 값을 새 키로 세어 기준선과 비교할 수 있다.
+  - **(디자인)** "Physical AI"·"오픈소스·도구"는 이전보다 길다. 필터 칩과 마스트헤드 내비게이션은 `whitespace-nowrap`으로 칩 안에서 줄바꿈되지 않게 했다. 섹션 머리는 `flex-wrap`으로 바꿔, 좁은 화면에서는 "이 분야 전체 기사 →"가 다음 줄로 내려간다. OG 기본 썸네일은 새 6분야가 한 줄(약 710px)에 들어간다.
+  - **(추가) `public/latest.json`(외부 소비, 사용자 결정):** `category`는 새 키를 담고 `categoryLabel`(표시명)을 추가했다. 필드 추가뿐이라 `version: 1`을 유지한다. 소비자(자랑터 「한입뉴스」)에는 `category` 값의 의미가 바뀐 것을 알려야 한다.
+- [x] 예전 URL `?category=Language%20Models`는 `parseFeedOptions`에서 새 키로 매핑해 받아 준다. 공유된 링크가 깨지지 않게 하려는 것이다.
+  - ✅ 2026-10-29 구 값 6종 모두 매핑한다(Dev Tools·MLOps → `oss`). 미정의 값은 그대로 통과한다.
 
 **Acceptance:** `npm run typecheck && npm test`가 통과한다. DB의 `category` 값이 6개 키뿐이다. 과거 로보틱스 기사(예: Eka Robotics)가 `physical`로 분류돼 있다.
 

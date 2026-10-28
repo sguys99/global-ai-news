@@ -30,11 +30,25 @@ interface FewShotExample {
   output: ArticleEnrichment;
 }
 
+/** 시스템 프롬프트에서 분야 정의(categories.md)가 들어갈 자리. */
+const CATEGORIES_PLACEHOLDER = "{{CATEGORIES}}";
+
+/**
+ * 분야 정의 블록(6개 키·포함 범위·경계 규칙). 가공과 재분류(scripts/reclassify.ts)가 같은 기준으로
+ * 분류하도록 configs/prompts/categories.md 한 파일에서 읽는다.
+ */
+export function readCategoryGuide(): string {
+  return readFileSync(path.join(PROMPTS_DIR, "categories.md"), "utf-8").trim();
+}
+
 /** 프롬프트 파일은 모듈 로드 시 1회만 읽는다. */
 const SYSTEM_PROMPT = buildSystemPrompt();
 
 function buildSystemPrompt(): string {
-  const system = readFileSync(path.join(PROMPTS_DIR, "enrich.system.md"), "utf-8");
+  const system = readFileSync(path.join(PROMPTS_DIR, "enrich.system.md"), "utf-8").replace(
+    CATEGORIES_PLACEHOLDER,
+    readCategoryGuide(),
+  );
   const fewshot = JSON.parse(
     readFileSync(path.join(PROMPTS_DIR, "enrich.fewshot.json"), "utf-8"),
   ) as FewShotExample[];

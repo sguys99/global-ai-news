@@ -9,10 +9,11 @@
  * - sections:     카테고리별 중요도 순 상위 N(리드·서브에 실린 기사 제외), 빈 섹션 생략. count 는 그 호 안의 개수
  * - issue:        그 호 기사 전체(편집 순) — 호 고정 링크 지면의 "이 호의 기사" 목록
  */
-import { CATEGORY_LABELS } from "@/lib/labels";
+import { CATEGORIES } from "@/lib/labels";
 import type { ArticleCard } from "@/lib/types";
 
 export interface EditionSection {
+  /** 분야 키(CATEGORIES 순서). */
   category: string;
   /** 이 호 안의 해당 카테고리 기사 수(리드 포함). */
   count: number;
@@ -64,17 +65,15 @@ export function buildEdition(
     )
     .slice(0, limits.trending);
 
-  const sections = Object.keys(CATEGORY_LABELS)
-    .map((category) => {
-      const inCategory = editorial.filter((a) => a.category === category);
-      return {
-        category,
-        // "섹션 전체 보기"는 누적 분야 피드로 이어지지만, 개수는 이 호 기준.
-        count: inCategory.length,
-        items: inCategory.filter((a) => !onFront.has(a.id)).slice(0, limits.sectionItems),
-      };
-    })
-    .filter((s) => s.items.length > 0);
+  const sections = CATEGORIES.map((category) => {
+    const inCategory = editorial.filter((a) => a.category === category);
+    return {
+      category,
+      // "섹션 전체 보기"는 누적 분야 피드로 이어지지만, 개수는 이 호 기준.
+      count: inCategory.length,
+      items: inCategory.filter((a) => !onFront.has(a.id)).slice(0, limits.sectionItems),
+    };
+  }).filter((s) => s.items.length > 0);
 
   return { lead, seconds, trending, sections, issue: editorial };
 }

@@ -77,8 +77,8 @@ describe("filterAndSortFeed — 필터", () => {
   });
 
   it("category 필터 (getFeed.test 와 동일 의미)", () => {
-    const withCat = [{ ...A, category: "Agents" }, { ...B, category: "Dev Tools" }, C];
-    expect(titles(filterAndSortFeed(withCat, { category: "Agents" }))).toEqual(["A"]);
+    const withCat = [{ ...A, category: "agent" }, { ...B, category: "oss" }, C];
+    expect(titles(filterAndSortFeed(withCat, { category: "agent" }))).toEqual(["A"]);
   });
 
   it("입력 배열을 변형하지 않는다", () => {
@@ -90,14 +90,31 @@ describe("filterAndSortFeed — 필터", () => {
 
 describe("parseFeedOptions / hasActiveFilter", () => {
   it("URL 쿼리를 옵션으로 파싱하고 알 수 없는 sort 는 버린다", () => {
-    const params = new URLSearchParams("q=agent&category=Agents&source=hn&tag=llm&sort=weird");
+    const params = new URLSearchParams("q=agent&category=agent&source=hn&tag=llm&sort=weird");
     expect(parseFeedOptions(params)).toEqual({
       q: "agent",
-      category: "Agents",
+      category: "agent",
       source: "hn",
       tag: "llm",
       sort: undefined,
     });
+  });
+
+  it.each([
+    ["Language%20Models", "llm"],
+    ["Language+Models", "llm"],
+    ["Agents", "agent"],
+    ["Dev%20Tools", "oss"],
+    ["MLOps", "oss"],
+    ["%EC%97%B0%EA%B5%AC%C2%B7%EB%85%BC%EB%AC%B8", "research"],
+    ["%EC%82%B0%EC%97%85%C2%B7%EC%A0%95%EC%B1%85", "industry"],
+  ])("분야 개편 전 공유 링크 category=%s 는 새 키 %s 로 받는다", (raw, key) => {
+    expect(parseFeedOptions(new URLSearchParams(`category=${raw}`)).category).toBe(key);
+  });
+
+  it("새 분야 키와 미정의 분야 값은 그대로 둔다", () => {
+    expect(parseFeedOptions(new URLSearchParams("category=physical")).category).toBe("physical");
+    expect(parseFeedOptions(new URLSearchParams("category=Robotics")).category).toBe("Robotics");
   });
 
   it("빈 값은 undefined 로 정규화한다", () => {
@@ -109,7 +126,7 @@ describe("parseFeedOptions / hasActiveFilter", () => {
 
   it("분야·매체·태그만 필터로 본다(정렬·검색어 제외)", () => {
     expect(hasActiveFilter({ sort: "latest" })).toBe(false);
-    expect(hasActiveFilter({ category: "Agents" })).toBe(true);
+    expect(hasActiveFilter({ category: "agent" })).toBe(true);
     expect(hasActiveFilter({ tag: "llm" })).toBe(true);
   });
 });

@@ -13,7 +13,7 @@ function card(id: number): ArticleCard {
     titleKo: `기사${id}`,
     summaryKo: "요약",
     titleOriginal: `T${id}`,
-    category: "Agents",
+    category: "agent",
     tags: [],
     trendingScore: 0,
     importance: 3,

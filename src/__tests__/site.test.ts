@@ -21,7 +21,7 @@ function card(p: Partial<ArticleCard>): ArticleCard {
     titleKo: `기사${seq}`,
     summaryKo: "",
     titleOriginal: `T${seq}`,
-    category: "Agents",
+    category: "agent",
     tags: [],
     trendingScore: 0,
     importance: 3,

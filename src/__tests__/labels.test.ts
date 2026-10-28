@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  CATEGORIES,
+  categoryAliases,
+  categoryCode,
   categoryLabel,
   categorySlug,
+  LEGACY_CATEGORY_MAP,
+  normalizeCategory,
   formatDate,
   formatDateTime,
   formatIssueDelayNotice,
@@ -33,11 +38,54 @@ describe("labels — 날짜는 KST 고정", () => {
 });
 
 describe("labels — 카테고리·소스", () => {
-  it("카테고리 표시명·슬러그, 미정의 값은 원문/etc", () => {
-    expect(categoryLabel("Language Models")).toBe("언어 모델");
+  it("분야 6개 키의 순서(= 섹션 순서)", () => {
+    expect(CATEGORIES).toEqual(["llm", "agent", "physical", "oss", "research", "industry"]);
+  });
+
+  it.each([
+    ["llm", "LLM", "LLM"],
+    ["agent", "에이전트", "AGT"],
+    ["physical", "Physical AI", "PHY"],
+    ["oss", "오픈소스·도구", "OSS"],
+    ["research", "연구·논문", "RES"],
+    ["industry", "산업·정책", "BIZ"],
+  ])("분야 키 %s → 표시명 %s · 코드 %s · 슬러그 = 키", (key, label, code) => {
+    expect(categoryLabel(key)).toBe(label);
+    expect(categoryCode(key)).toBe(code);
+    expect(categorySlug(key)).toBe(key);
+  });
+
+  it.each([
+    ["Language Models", "llm", "LLM", "LLM"],
+    ["Agents", "agent", "에이전트", "AGT"],
+    ["Dev Tools", "oss", "오픈소스·도구", "OSS"],
+    ["MLOps", "oss", "오픈소스·도구", "OSS"],
+    ["연구·논문", "research", "연구·논문", "RES"],
+    ["산업·정책", "industry", "산업·정책", "BIZ"],
+  ])("구 값 %s → 키 %s 로 해석(표시명 %s · 코드 %s)", (legacy, key, label, code) => {
+    expect(LEGACY_CATEGORY_MAP[legacy]).toBe(key);
+    expect(normalizeCategory(legacy)).toBe(key);
+    expect(categoryLabel(legacy)).toBe(label);
+    expect(categoryCode(legacy)).toBe(code);
+    expect(categorySlug(legacy)).toBe(key);
+  });
+
+  it("미정의 값은 원문/빈 코드/etc, 빈 값은 빈 문자열", () => {
+    expect(normalizeCategory("Unknown")).toBe("Unknown");
     expect(categoryLabel("Unknown")).toBe("Unknown");
-    expect(categorySlug("연구·논문")).toBe("research");
+    expect(categoryCode("Unknown")).toBe("");
     expect(categorySlug("Unknown")).toBe("etc");
+    expect(categoryLabel("")).toBe("");
+    expect(categoryCode("")).toBe("");
+    // 프로토타입 키는 분야로 오인하지 않는다
+    expect(categoryLabel("toString")).toBe("toString");
+  });
+
+  it("분야 별칭 = 키 + 그 키로 흡수된 구 값", () => {
+    expect(categoryAliases("oss")).toEqual(["oss", "Dev Tools", "MLOps"]);
+    expect(categoryAliases("MLOps")).toEqual(["oss", "Dev Tools", "MLOps"]);
+    expect(categoryAliases("physical")).toEqual(["physical"]);
+    expect(categoryAliases("Unknown")).toEqual(["Unknown"]);
   });
 
   it("소스 축약명", () => {

@@ -41,7 +41,7 @@ function seed(): DatabaseType {
     90,
     "에이",
     "요약",
-    "Agents",
+    "agent",
     2,
   );
   ins.run(
@@ -53,7 +53,7 @@ function seed(): DatabaseType {
     50,
     "비",
     "요약",
-    "Dev Tools",
+    "oss",
     5,
   );
   ins.run(
@@ -65,7 +65,7 @@ function seed(): DatabaseType {
     70,
     "씨",
     "요약",
-    "MLOps",
+    "research",
     3,
   );
 
@@ -112,11 +112,25 @@ describe("getFeed", () => {
   });
 
   it("category 필터", () => {
-    expect(getFeed({ category: "MLOps" }, db).map((a) => a.titleOriginal)).toEqual(["C"]);
+    expect(getFeed({ category: "research" }, db).map((a) => a.titleOriginal)).toEqual(["C"]);
   });
 
   it("category + source 동시 필터 (불일치면 0건)", () => {
-    expect(getFeed({ category: "Dev Tools", source: "hackernews" }, db)).toEqual([]);
+    expect(getFeed({ category: "oss", source: "hackernews" }, db)).toEqual([]);
+  });
+
+  it("마이그레이션 전 구 분야 값 행도 새 키로 읽고 같은 분야로 조회한다", () => {
+    db.prepare(
+      `INSERT INTO articles
+         (dedup_key, source_id, url, title_original, published_at,
+          trending_score, title_ko, summary_ko, category, importance)
+       VALUES ('k4','hackernews','https://d','D','2026-01-04T00:00:00Z',10,'디','요약','MLOps',1)`,
+    ).run();
+    const oss = getFeed({ category: "oss" }, db);
+    expect(oss.map((a) => a.titleOriginal)).toEqual(["B", "D"]);
+    expect(oss.every((a) => a.category === "oss")).toBe(true);
+    // 구 값으로 물어도 같은 분야
+    expect(getFeed({ category: "Dev Tools" }, db).map((a) => a.titleOriginal)).toEqual(["B", "D"]);
   });
 });
 

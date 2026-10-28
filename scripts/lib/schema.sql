@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS articles (
   -- LLM 가공 결과
   title_ko        TEXT,
   summary_ko      TEXT,
-  category        TEXT,                    -- CATEGORIES enum
+  category        TEXT,                    -- 분야 키(llm|agent|physical|oss|research|industry, src/lib/labels.ts)
   importance      INTEGER,                 -- 1~5 (LLM 선별 단계의 상대 평가)
   -- 같은 사건을 다룬 다른 매체 기사(선별 단계에서 묶음). '[{"source":..,"url":..,"title":..}]'
   related_json    TEXT,

@@ -23,7 +23,7 @@ function article(createdAt: string, publishedAt: string, published = true, impor
   db.prepare(
     `INSERT INTO articles (dedup_key, source_id, url, title_original, published_at,
                            title_ko, summary_ko, category, importance, created_at)
-     VALUES (?, 'hn', ?, ?, ?, ?, ?, 'Agents', ?, ?)`,
+     VALUES (?, 'hn', ?, ?, ?, ?, ?, 'agent', ?, ?)`,
   ).run(
     `k${seq}`,
     `https://x/${seq}`,

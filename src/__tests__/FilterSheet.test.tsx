@@ -7,7 +7,7 @@ const sources = [
   { id: "techcrunch", name: "TechCrunch AI" },
   { id: "github", name: "GitHub (topic:llm)" },
 ];
-const tags = ["LLM", "오픈소스"];
+const tags = ["rag", "오픈소스"];
 
 function renderSheet(current: SearchOptions = {}) {
   return render(<FilterSheet current={current} sources={sources} tags={tags} basePath="/search" />);
@@ -30,9 +30,13 @@ describe("FilterSheet", () => {
     fireEvent.click(screen.getByRole("button", { name: /필터/ }));
 
     expect(screen.getByRole("dialog", { name: "필터" })).toBeInTheDocument();
-    // FilterBar 재사용: 소스 축약 라벨 + 태그 링크가 보인다
+    // FilterBar 재사용: 분야 칩 + 소스 축약 라벨 + 태그 링크가 보인다
+    expect(screen.getByRole("link", { name: "Physical AI" })).toHaveAttribute(
+      "href",
+      "/search?category=physical",
+    );
     expect(screen.getByRole("link", { name: "TechCrunch" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "LLM" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "rag" })).toBeInTheDocument();
   });
 
   it("'결과 보기'를 누르면 시트가 닫힌다", () => {

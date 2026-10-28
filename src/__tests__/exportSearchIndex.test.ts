@@ -33,7 +33,7 @@ function seed(): DatabaseType {
     90,
     "에이",
     "요약",
-    "Agents",
+    "agent",
     4,
   );
   ins.run(
@@ -46,7 +46,7 @@ function seed(): DatabaseType {
     50,
     "비",
     "요약2",
-    "Dev Tools",
+    "oss",
     2,
   );
 
@@ -74,7 +74,7 @@ describe("buildSearchIndex", () => {
       titleKo: "에이",
       summaryKo: "요약",
       titleOriginal: "A",
-      category: "Agents",
+      category: "agent",
       tags: ["llm", "agent"],
       trendingScore: 90,
       importance: 4,

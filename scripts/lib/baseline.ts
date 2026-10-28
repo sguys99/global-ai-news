@@ -13,7 +13,7 @@
 import type { Database as DatabaseType } from "better-sqlite3";
 import { getArticlesUntil, getEditionRefs } from "../../src/lib/db";
 import { buildEdition } from "../../src/lib/edition";
-import { kstDateKey } from "../../src/lib/labels";
+import { kstDateKey, normalizeCategory } from "../../src/lib/labels";
 
 export type Format = "news" | "oss" | "model" | "paper";
 export const FORMATS: Format[] = ["news", "oss", "model", "paper"];
@@ -157,7 +157,8 @@ export function loadPublishedArticles(conn: DatabaseType): BaselineArticle[] {
       sourceId: r.source_id,
       issueDate: kstDateKey(r.collected_at),
       format: provisionalFormat(r.source_id, r.kind),
-      category: r.category ?? "",
+      // 분야 개편 전 구 값도 새 키로 센다 — 마이그레이션 전후 DB 어느 쪽이든 같은 분류로 비교한다.
+      category: normalizeCategory(r.category ?? ""),
       titleKo: r.title_ko ?? "",
       titleOriginal: r.title_original,
       summaryKo: r.summary_ko ?? "",

@@ -1,5 +1,5 @@
 import Database, { type Database as DatabaseType } from "better-sqlite3";
-import { kstDateKey } from "@/lib/labels";
+import { categoryAliases, categoryLabel, kstDateKey, normalizeCategory } from "@/lib/labels";
 import { DB_PATH } from "@/lib/paths";
 import type { ArticleCard, LatestFeedEntry, RelatedCoverage, RunRow } from "@/lib/types";
 
@@ -46,7 +46,10 @@ function parseRelated(json: string | null): RelatedCoverage[] {
   }
 }
 
-/** DB 행 → 렌더 DTO. LLM 미가공(null) 필드는 빈 값으로 채운다. */
+/**
+ * DB 행 → 렌더 DTO. LLM 미가공(null) 필드는 빈 값으로 채운다.
+ * 분야는 새 키로 정규화한다 — 마이그레이션 전 구 값 행도 섹션·필터에 같은 분야로 잡힌다.
+ */
 function toArticleCard(row: ArticleRow): ArticleCard {
   return {
     id: row.id,
@@ -56,7 +59,7 @@ function toArticleCard(row: ArticleRow): ArticleCard {
     summaryKo: row.summary_ko ?? "",
     titleOriginal: row.title_original,
     contentRaw: row.content_raw ?? undefined,
-    category: row.category ?? "",
+    category: normalizeCategory(row.category ?? ""),
     tags: row.tags ? row.tags.split(",") : [],
     trendingScore: row.trending_score,
     importance: row.importance ?? 0,
@@ -88,7 +91,7 @@ const PUBLISHED = "a.summary_ko IS NOT NULL";
 export interface FeedOptions {
   tag?: string;
   source?: string;
-  /** 카테고리 데이터 값(예: "Agents"). 홈 섹션의 "전체 보기" 링크가 사용한다. */
+  /** 분야 키(예: "agent"). 홈 섹션의 "전체 보기" 링크가 사용한다. */
   category?: string;
   sort?: "latest" | "importance";
 }
@@ -119,8 +122,10 @@ function buildFilters(opts: FeedOptions): {
     params.push(opts.tag);
   }
   if (opts.category) {
-    clauses.push("a.category = ?");
-    params.push(opts.category);
+    // 키와 구 저장값을 함께 매칭(마이그레이션 전 행 호환).
+    const values = categoryAliases(opts.category);
+    clauses.push(`a.category IN (${values.map(() => "?").join(", ")})`);
+    params.push(...values);
   }
   return { clauses, params };
 }
@@ -440,7 +445,11 @@ export function getArticlesCollectedSince(
     .all(since) as ArticleRow[];
   return rows.map((row) => {
     const { contentRaw: _contentRaw, ...entry } = toArticleCard(row);
-    return { ...entry, collectedAt: row.collected_at };
+    return {
+      ...entry,
+      categoryLabel: categoryLabel(entry.category),
+      collectedAt: row.collected_at,
+    };
   });
 }
 

@@ -1,20 +1,12 @@
 // SDK 의 zodOutputFormat 헬퍼가 zod v4 스키마를 받는다(zod 3.25+ 의 "zod/v4" 서브패스).
 import { z } from "zod/v4";
+import { CATEGORIES } from "../../src/lib/labels";
 
 /**
- * 기사 카테고리 (6종, 고정). PRD §5.
- * articles.category 및 LLM 가공 출력 enum 으로 사용.
+ * 기사 분야(카테고리) 6종 키. articles.category 및 LLM 가공 출력 enum 으로 사용.
+ * 키·순서·표시명·구 값 호환 맵의 단일 출처는 src/lib/labels.ts — 웹 레이어와 공유하려고 거기 두고 여기서 다시 내보낸다.
  */
-export const CATEGORIES = [
-  "Language Models",
-  "Agents",
-  "Dev Tools",
-  "MLOps",
-  "연구·논문",
-  "산업·정책",
-] as const;
-
-export type Category = (typeof CATEGORIES)[number];
+export { CATEGORIES, LEGACY_CATEGORY_MAP, type Category } from "../../src/lib/labels";
 
 /**
  * 기사 1건의 한국어 가공 결과. 중요도는 선별 단계(triage)가 그날 후보 전체를 비교해

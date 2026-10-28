@@ -94,7 +94,7 @@ export function Masthead({
             key={item.href}
             href={item.href}
             className={
-              "text-caption focus-visible:ring-ring flex-none px-2.5 py-3 font-medium outline-none first:pl-0 focus-visible:ring-2 " +
+              "text-caption focus-visible:ring-ring flex-none px-2.5 py-3 font-medium whitespace-nowrap outline-none first:pl-0 focus-visible:ring-2 " +
               (i === 0
                 ? "text-foreground decoration-brand underline decoration-2 underline-offset-[14px]"
                 : "text-foreground-soft hover:text-foreground")

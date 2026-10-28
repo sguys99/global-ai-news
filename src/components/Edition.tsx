@@ -103,14 +103,15 @@ function SectionBand({ section, timeBase }: { section: EditionSection; timeBase?
   const headingId = `section-${slug}-heading`;
   return (
     <section id={`section-${slug}`} aria-labelledby={headingId} className="scroll-mt-20">
-      <div className="border-rule mb-5 flex items-baseline gap-3 border-t-2 pt-3">
-        <h2 id={headingId} className="text-display-md font-serif font-extrabold">
+      {/* 긴 분야명("오픈소스·도구")이 좁은 화면에서 링크와 겹치지 않게 — 링크가 다음 줄로 내려간다. */}
+      <div className="border-rule mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t-2 pt-3">
+        <h2 id={headingId} className="text-display-md font-serif font-extrabold whitespace-nowrap">
           {categoryLabel(section.category)}
         </h2>
         <span className="text-meta text-muted-foreground tabular-nums">{section.count}건</span>
         <Link
           href={`/?category=${encodeURIComponent(section.category)}`}
-          className="text-meta text-brand focus-visible:ring-ring ml-auto font-semibold outline-none hover:underline focus-visible:ring-2"
+          className="text-meta text-brand focus-visible:ring-ring ml-auto font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-2"
         >
           이 분야 전체 기사 →
         </Link>

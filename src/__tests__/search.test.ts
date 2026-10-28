@@ -38,7 +38,7 @@ function seed(): DatabaseType {
     90,
     "에이전트 프레임워크 출시",
     "새로운 LLM 에이전트",
-    "Agents",
+    "agent",
     4,
   );
   ins.run(
@@ -51,7 +51,7 @@ function seed(): DatabaseType {
     70,
     "데이터베이스 최적화",
     "쿼리 성능 개선",
-    "Dev Tools",
+    "oss",
     3,
   );
   ins.run(

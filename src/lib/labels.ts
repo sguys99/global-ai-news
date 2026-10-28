@@ -1,36 +1,82 @@
 /**
  * 표시용 라벨·날짜 포맷 단일 출처 (DESIGN.md §4).
- * 데이터 값(카테고리 enum·소스명)은 불변이고, 화면 표기만 여기서 변환한다.
+ * 데이터 값(분야 키·소스명)은 불변이고, 화면 표기만 여기서 변환한다.
  * 날짜는 빌드(UTC)·브라우저(사용자 TZ) 간 하이드레이션 불일치를 막기 위해 KST로 고정한다.
  */
 
-/** 카테고리 데이터 값 → 한글 표시명. 표기 순서 = 섹션 순서. */
-export const CATEGORY_LABELS: Record<string, string> = {
-  "Language Models": "언어 모델",
-  Agents: "에이전트",
-  "Dev Tools": "개발 도구",
-  MLOps: "MLOps",
-  "연구·논문": "연구·논문",
-  "산업·정책": "산업·정책",
+/**
+ * 분야(카테고리) 저장 키 — articles.category 와 LLM 가공 출력 enum(scripts/lib/schema.ts)의 단일 출처.
+ * 순서 = 섹션·내비·필터 칩 순서. 키는 URL-safe 라 `?category=physical`·`#section-physical`에 그대로 쓴다.
+ */
+export const CATEGORIES = ["llm", "agent", "physical", "oss", "research", "industry"] as const;
+
+export type Category = (typeof CATEGORIES)[number];
+
+/** 분야 키 → 한글 표시명. */
+export const CATEGORY_LABELS: Record<Category, string> = {
+  llm: "LLM",
+  agent: "에이전트",
+  physical: "Physical AI",
+  oss: "오픈소스·도구",
+  research: "연구·논문",
+  industry: "산업·정책",
 };
 
-/** 카테고리 → 섹션 앵커 슬러그(`#section-<slug>`). */
-const CATEGORY_SLUGS: Record<string, string> = {
+/** 분야 키 → 3자 코드(좁은 키커·배지용). */
+export const CATEGORY_CODES: Record<Category, string> = {
+  llm: "LLM",
+  agent: "AGT",
+  physical: "PHY",
+  oss: "OSS",
+  research: "RES",
+  industry: "BIZ",
+};
+
+/**
+ * 구 저장값(분야 개편 전 6종) → 새 키. 마이그레이션(scripts/reclassify.ts)의 규칙 폴백이자,
+ * 아직 변환 전인 행·예전 공유 URL(`?category=Language%20Models`)을 받아 주는 호환 맵이다.
+ * Dev Tools·MLOps 는 오픈소스·도구로 흡수한다. Physical AI 는 신설이라 구 값이 없다.
+ */
+export const LEGACY_CATEGORY_MAP: Readonly<Record<string, Category>> = {
   "Language Models": "llm",
-  Agents: "agents",
-  "Dev Tools": "devtools",
-  MLOps: "mlops",
+  Agents: "agent",
+  "Dev Tools": "oss",
+  MLOps: "oss",
   "연구·논문": "research",
   "산업·정책": "industry",
 };
 
-export function categorySlug(category: string): string {
-  return CATEGORY_SLUGS[category] ?? "etc";
+export function isCategory(value: string): value is Category {
+  return Object.hasOwn(CATEGORY_LABELS, value);
 }
 
-/** 카테고리 표시명. 미정의 값은 원문, 빈 값은 빈 문자열. */
+/** 저장값 → 새 키. 구 값은 매핑하고, 이미 키이거나 미정의 값은 그대로 둔다. */
+export function normalizeCategory(value: string): string {
+  return Object.hasOwn(LEGACY_CATEGORY_MAP, value) ? LEGACY_CATEGORY_MAP[value] : value;
+}
+
+/** 분야 키에 해당하는 저장값 전체(키 + 구 값). 변환 전 행도 같은 분야로 조회하기 위한 SQL 바인딩용. */
+export function categoryAliases(category: string): string[] {
+  const key = normalizeCategory(category);
+  return [key, ...Object.keys(LEGACY_CATEGORY_MAP).filter((v) => LEGACY_CATEGORY_MAP[v] === key)];
+}
+
+/** 카테고리 → 섹션 앵커 슬러그(`#section-<slug>`). 키가 곧 슬러그, 미정의 값은 "etc". */
+export function categorySlug(category: string): string {
+  const key = normalizeCategory(category);
+  return isCategory(key) ? key : "etc";
+}
+
+/** 카테고리 표시명. 구 값은 새 분야명으로, 미정의 값은 원문, 빈 값은 빈 문자열. */
 export function categoryLabel(category: string): string {
-  return CATEGORY_LABELS[category] ?? category;
+  const key = normalizeCategory(category);
+  return isCategory(key) ? CATEGORY_LABELS[key] : category;
+}
+
+/** 카테고리 3자 코드(LLM/AGT/PHY/OSS/RES/BIZ). 미정의·빈 값은 빈 문자열. */
+export function categoryCode(category: string): string {
+  const key = normalizeCategory(category);
+  return isCategory(key) ? CATEGORY_CODES[key] : "";
 }
 
 /** 칩·메타에서 쓰는 소스명 축약 맵 (상세 등 공간이 넉넉한 곳은 원래 이름 유지). */

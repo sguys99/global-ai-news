@@ -64,7 +64,7 @@ export interface ArticleCard {
   summaryKo: string;
   titleOriginal: string;
   contentRaw?: string; // 원문 발췌 (상세 페이지에서 사용)
-  category: string; // CATEGORIES 중 하나
+  category: string; // 분야 키(CATEGORIES 중 하나, src/lib/labels.ts)
   tags: string[];
   trendingScore: number; // 0~100
   importance: number; // 1~5
@@ -90,9 +90,10 @@ export type SearchIndexEntry = Omit<ArticleCard, "contentRaw">;
 
 /**
  * 최근 수집분 피드(public/latest.json) 한 항목 — 외부 소비용(자랑터 AI 큐레이터 「한입뉴스」).
- * 검색 인덱스 항목에 수집 시각을 더한다. 게시 시각(publishedAt)은 GitHub Trending 처럼 오래된 값일 수 있다.
+ * 검색 인덱스 항목에 분야 표시명과 수집 시각을 더한다. 게시 시각(publishedAt)은 GitHub Trending 처럼 오래된 값일 수 있다.
+ * `category` 는 분야 키(예: "physical"), `categoryLabel` 은 그 표시명(예: "Physical AI") — 소비자가 표시명 맵을 따로 두지 않게 한다.
  */
-export type LatestFeedEntry = SearchIndexEntry & { collectedAt: string };
+export type LatestFeedEntry = SearchIndexEntry & { categoryLabel: string; collectedAt: string };
 
 /** public/latest.json 전체. `version` 은 모양이 바뀔 때만 올린다(소비자가 검사한다). */
 export interface LatestFeed {

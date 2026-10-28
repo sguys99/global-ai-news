@@ -6,7 +6,7 @@
  */
 import Link from "next/link";
 import type { SearchOptions } from "@/lib/db";
-import { CATEGORY_LABELS, shortSourceName } from "@/lib/labels";
+import { CATEGORIES, CATEGORY_LABELS, shortSourceName } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 /** 기본 정렬(sort 미지정)은 트렌딩 점수순 — feedFilter/db 의 기본 정렬과 동일. */
@@ -54,7 +54,7 @@ function Chip({
       href={href}
       aria-current={active ? "true" : undefined}
       className={cn(
-        "rounded-pill text-meta inline-flex min-h-11 items-center border px-3.5 transition-colors md:min-h-8",
+        "rounded-pill text-meta inline-flex min-h-11 items-center border px-3.5 whitespace-nowrap transition-colors md:min-h-8",
         active
           ? "border-foreground bg-foreground text-background font-semibold"
           : "border-border text-foreground-soft hover:border-foreground hover:text-foreground",
@@ -115,7 +115,7 @@ export function FilterBar({
       </div>
 
       <Row label="분야">
-        {Object.keys(CATEGORY_LABELS).map((c) => {
+        {CATEGORIES.map((c) => {
           const active = current.category === c;
           return (
             <Chip key={c} href={href({ category: active ? undefined : c })} active={active}>

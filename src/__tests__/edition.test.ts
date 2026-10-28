@@ -12,7 +12,7 @@ function card(p: Partial<ArticleCard>): ArticleCard {
     titleKo: `기사${seq}`,
     summaryKo: "",
     titleOriginal: `T${seq}`,
-    category: "Agents",
+    category: "agent",
     tags: [],
     trendingScore: 0,
     importance: 3,
@@ -54,26 +54,43 @@ describe("buildEdition", () => {
   });
 
   it("섹션은 카테고리 정의 순서, 1면 기사 제외, 빈 섹션 생략", () => {
-    const lead = card({ category: "Agents", importance: 5 });
-    const s1 = card({ category: "Dev Tools", importance: 5 });
-    const s2 = card({ category: "Dev Tools", importance: 5 });
-    const ag = card({ category: "Agents", importance: 2 });
-    const lm = card({ category: "Language Models", importance: 1 });
+    const lead = card({ category: "agent", importance: 5 });
+    const s1 = card({ category: "oss", importance: 5 });
+    const s2 = card({ category: "oss", importance: 5 });
+    const ag = card({ category: "agent", importance: 2 });
+    const lm = card({ category: "llm", importance: 1 });
     const e = buildEdition([ag, s1, lm, lead, s2], limits);
 
-    expect(e.sections.map((s) => s.category)).toEqual(["Language Models", "Agents"]);
-    const agents = e.sections.find((s) => s.category === "Agents")!;
+    expect(e.sections.map((s) => s.category)).toEqual(["llm", "agent"]);
+    const agents = e.sections.find((s) => s.category === "agent")!;
     expect(agents.items.map((x) => x.id)).toEqual([ag.id]);
+  });
+
+  it("섹션 순서 = LLM·에이전트·Physical AI·오픈소스·도구·연구·논문·산업·정책", () => {
+    const order = ["industry", "research", "oss", "physical", "agent", "llm"];
+    // 리드 1건(+서브 0건)을 따로 두고, 분야마다 1건씩 섹션에 남긴다.
+    const xs = [card({ category: "industry", importance: 5 })].concat(
+      order.map((category) => card({ category, importance: 1 })),
+    );
+    const e = buildEdition(xs, { seconds: 0, trending: 0, sectionItems: 4 });
+    expect(e.sections.map((s) => s.category)).toEqual([
+      "llm",
+      "agent",
+      "physical",
+      "oss",
+      "research",
+      "industry",
+    ]);
   });
 
   it("섹션 count 는 입력(그 호) 안의 개수, 1면 기사 포함", () => {
     const xs = [
-      card({ category: "Agents", importance: 5 }),
-      card({ category: "Agents", importance: 4 }),
-      card({ category: "Agents", importance: 3 }),
+      card({ category: "agent", importance: 5 }),
+      card({ category: "agent", importance: 4 }),
+      card({ category: "agent", importance: 3 }),
     ];
     const e = buildEdition(xs, { seconds: 1, trending: 3, sectionItems: 4 });
-    const agents = e.sections.find((s) => s.category === "Agents")!;
+    const agents = e.sections.find((s) => s.category === "agent")!;
     expect(agents.count).toBe(3);
     expect(agents.items).toHaveLength(1);
   });
