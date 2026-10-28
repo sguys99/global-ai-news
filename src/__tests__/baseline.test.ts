@@ -16,7 +16,7 @@ import {
 
 const SCHEMA_PATH = path.join(process.cwd(), "scripts/lib/schema.sql");
 
-describe("provisionalFormat — 소스 → 형식 임시 매핑(계획서 §2-2)", () => {
+describe("provisionalFormat — sources.format 없는 예전 DB 의 폴백(계획서 §2-2 규칙)", () => {
   it("GitHub → oss, HF 모델 → model, 논문 소스 → paper, 나머지 → news", () => {
     expect(provisionalFormat("github_llm", "github")).toBe("oss");
     expect(provisionalFormat("github_trending", "rss")).toBe("oss");
@@ -151,6 +151,8 @@ describe("computeBaseline — 실제 스키마 in-memory DB", () => {
     { id: "dead_src", name: "Dead", kind: "rss", enabled: 1 },
     { id: "off_src", name: "Off", kind: "rss", enabled: 0 },
   ];
+  /** sources.format(configs/sources.json 의 format). 생략 = news. */
+  const FORMAT: Record<string, string> = { github_llm: "oss", hf_daily_papers: "paper" };
 
   function article(o: {
     source: string;
@@ -203,8 +205,12 @@ describe("computeBaseline — 실제 스키마 in-memory DB", () => {
     seq = 0;
     db = new Database(":memory:");
     db.exec(readFileSync(SCHEMA_PATH, "utf-8"));
-    const ins = db.prepare("INSERT INTO sources (id, name, kind, url, enabled) VALUES (?,?,?,?,?)");
-    for (const s of SOURCES) ins.run(s.id, s.name, s.kind, `https://${s.id}`, s.enabled);
+    const ins = db.prepare(
+      "INSERT INTO sources (id, name, kind, url, enabled, format) VALUES (?,?,?,?,?,?)",
+    );
+    for (const s of SOURCES) {
+      ins.run(s.id, s.name, s.kind, `https://${s.id}`, s.enabled, FORMAT[s.id] ?? "news");
+    }
 
     // 10/24 KST 호 (06:00 KST = 전날 21:00 UTC)
     run(
@@ -331,6 +337,21 @@ describe("computeBaseline — 실제 스키마 in-memory DB", () => {
     expect(r.zeroYield.map((s) => [s.id, s.failures, s.lastError])).toEqual([
       ["dead_src", 1, "Status code 403"],
     ]);
+  });
+
+  it("형식은 sources.format 을 따르고(소급), 컬럼이 없는 예전 DB 는 소스 규칙으로 판정한다", () => {
+    // DB 값이 규칙보다 우선 — aitimes 를 model 로 바꾸면 지난 호 기사·후보·소스 수확이 모두 따라간다.
+    db.prepare("UPDATE sources SET format = 'model' WHERE id = 'aitimes'").run();
+    const r = computeBaseline(db, 14, SOURCES);
+    expect(r.totals.formats).toEqual({ news: 0, oss: 1, model: 5, paper: 1 });
+    expect(r.totals.candidatesByFormat).toEqual({ news: 0, oss: 5, model: 3, paper: 2 });
+    expect(r.sources.find((s) => s.id === "aitimes")?.format).toBe("model");
+
+    // Phase 2 이전 DB(컬럼 없음) → provisionalFormat 폴백. 같은 결과(뉴스 5·오픈소스 1·논문 1)로 기준선과 비교된다.
+    db.exec("ALTER TABLE sources DROP COLUMN format");
+    const legacy = computeBaseline(db, 14, SOURCES);
+    expect(legacy.totals.formats).toEqual({ news: 5, oss: 1, model: 0, paper: 1 });
+    expect(legacy.totals.candidatesByFormat).toEqual({ news: 3, oss: 5, model: 0, paper: 2 });
   });
 
   it("호가 없으면 빈 리포트", () => {

@@ -13,6 +13,7 @@ function card(p: Partial<ArticleCard> & Pick<ArticleCard, "id" | "titleOriginal"
     titleKo: "",
     summaryKo: "",
     category: "",
+    format: "news",
     tags: [],
     trendingScore: 0,
     importance: 0,

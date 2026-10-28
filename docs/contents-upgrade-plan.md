@@ -148,14 +148,21 @@
 
 ### 2-2. 형식(format)
 
-- [ ] `configs/sources.json`: 각 소스에 `format`을 넣는다.
+- [x] `configs/sources.json`: 각 소스에 `format`을 넣는다.
   - `github_llm`, `github_trending`과 신규 GitHub 소스는 `oss`
   - 신규 HF 모델 소스는 `model`
   - `hf_daily_papers`, `arxiv_*`, `takara_tldr`은 `paper`
   - 나머지는 생략해 `news`로 둔다.
-- [ ] `scripts/lib/schema.sql` 및 `scripts/lib/initDb.ts`의 `ensureSchema`: `sources.format TEXT NOT NULL DEFAULT 'news'` 컬럼을 추가하고, collect 시작 시 sources.json에서 동기화한다.
-- [ ] `src/lib/types.ts`: `ArticleCard.format`과 `SourceConfig.format`을 추가한다. `src/lib/db.ts`의 `ARTICLE_SELECT`에 `s.format`을 추가한다.
-- [ ] `src/lib/sources.ts`: `SOURCE_KINDS`에서 빠져 있던 `arxiv`와 신규 `hf_models`를 추가하고, 로컬 admin에서 `format`을 검증한다.
+  - ✅ 2026-10-29 7개 소스에 넣었다(oss 2, paper 5). HF 모델 소스는 Phase 3-1에서 추가한다. `FORMATS`·`Format`·`FORMAT_LABELS`(뉴스·오픈소스·모델·논문)·`FORMAT_BADGES`(REPO·MODEL·PAPER, 뉴스는 없음)·`toFormat`은 분야와 같은 단일 출처인 `src/lib/labels.ts`에 둔다.
+- [x] `scripts/lib/schema.sql` 및 `scripts/lib/initDb.ts`의 `ensureSchema`: `sources.format TEXT NOT NULL DEFAULT 'news'` 컬럼을 추가하고, collect 시작 시 sources.json에서 동기화한다.
+  - ✅ 2026-10-29 동기화는 `scripts/lib/syncSources.ts`로 분리했다. 이전에는 collect가 활성 소스만 upsert해서 비활성 소스의 행이 갱신되지 않았다. 이제 sources.json의 **전체** 소스를 동기화하고, 바뀐 행만 한 트랜잭션으로 쓴다. collect 시작(`ensureSchema` 직후)과 `npm run db:init`이 호출한다.
+  - **제거된 소스(기준선 참고 항목):** sources.json에서 빠진 행은 참조하는 기사가 없으면 삭제하고, 있으면 `enabled=0`으로 남긴다(JOIN 보존). `reddit_*` 8개는 기사가 0건이라 삭제된다.
+  - **(추가) 빌드 안전장치:** `prebuild`가 `initDb.ts --existing`(DB가 없으면 실패)을 먼저 실행해, 컬럼이 없는 DB(예: 배포 브랜치에서 병합해 온 DB)로 빌드해도 깨지지 않는다. `configs/**` 변경으로 배포될 때도 형식 변경이 다음 수집을 기다리지 않고 반영된다. 읽기 전용 쿼리도 컬럼이 없으면 `news`로 읽는다(`hasSourceFormat`), 그래서 `kpi`·`dev`도 옛 DB에서 동작한다.
+- [x] `src/lib/types.ts`: `ArticleCard.format`과 `SourceConfig.format`을 추가한다. `src/lib/db.ts`의 `ARTICLE_SELECT`에 `s.format`을 추가한다.
+  - ✅ 2026-10-29 `toArticleCard`가 `toFormat`으로 매핑한다(미정의·NULL → `news`). 검색 인덱스와 `latest.json`에도 `format`이 실린다(필드 추가, `version: 1` 유지).
+- [x] `src/lib/sources.ts`: `SOURCE_KINDS`에서 빠져 있던 `arxiv`와 신규 `hf_models`를 추가하고, 로컬 admin에서 `format`을 검증한다.
+  - ✅ 2026-10-29 `format: z.enum(FORMATS).optional()`로 검증한다. admin `SourceManager`에 형식 선택(뉴스를 고르면 키를 생략)과 목록의 형식 열을 추가했다. `hf_models`는 어댑터가 없어 Phase 3 전까지 수집에서 건너뛴다.
+  - **(추가) `kpi baseline`:** `provisionalFormat` 대신 `sources.format`을 쓰고, 컬럼이 없는 DB에서만 임시 판정으로 되돌아간다.
 
 ### 2-3. 기존 데이터 마이그레이션
 

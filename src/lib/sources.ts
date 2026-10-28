@@ -10,6 +10,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { FORMATS } from "@/lib/labels";
 import { CONFIGS_DIR } from "@/lib/paths";
 import type { SourceConfig, SourceKind } from "@/lib/types";
 import { commitFile, hasGithubConfig } from "@/lib/github";
@@ -19,7 +20,16 @@ const SOURCES_PATH = path.join(CONFIGS_DIR, SOURCES_REL);
 /** GitHub 커밋 시 repo 루트 기준 경로. */
 const SOURCES_REPO_PATH = "configs/sources.json";
 
-const SOURCE_KINDS: SourceKind[] = ["rss", "web", "hn", "github", "hf", "reddit"];
+const SOURCE_KINDS: SourceKind[] = [
+  "rss",
+  "web",
+  "hn",
+  "github",
+  "hf",
+  "hf_models",
+  "reddit",
+  "arxiv",
+];
 
 /** 소스 1건 검증 스키마. url 은 kind 에 따라 다르게 검증한다(reddit 은 r/... 형식). */
 export const sourceSchema = z
@@ -33,6 +43,7 @@ export const sourceSchema = z
     url: z.string().min(1),
     enabled: z.union([z.literal(0), z.literal(1)]),
     maxItems: z.number().int().positive().optional(),
+    format: z.enum(FORMATS).optional(),
   })
   .superRefine((s, ctx) => {
     if (s.kind === "reddit") {

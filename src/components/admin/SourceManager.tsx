@@ -8,10 +8,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FORMAT_LABELS, FORMATS, type Format } from "@/lib/labels";
 import type { SourceConfig, SourceKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const KINDS: SourceKind[] = ["rss", "web", "hn", "github", "hf", "reddit"];
+const KINDS: SourceKind[] = ["rss", "web", "hn", "github", "hf", "hf_models", "reddit", "arxiv"];
 
 const EMPTY: SourceConfig = { id: "", name: "", kind: "rss", url: "", enabled: 1 };
 
@@ -131,6 +132,24 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
           </select>
         </div>
         <div className="flex flex-col gap-1">
+          <label className="text-caption text-muted-foreground">format</label>
+          <select
+            value={form.format ?? "news"}
+            onChange={(e) => {
+              // news 는 기본값이라 sources.json 에 적지 않는다(생략 = news).
+              const format = e.target.value as Format;
+              setForm({ ...form, format: format === "news" ? undefined : format });
+            }}
+            className="border-input text-body h-11 rounded-lg border bg-transparent px-3 md:h-9"
+          >
+            {FORMATS.map((f) => (
+              <option key={f} value={f}>
+                {f} ({FORMAT_LABELS[f]})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
           <label className="text-caption text-muted-foreground">
             url {form.kind === "reddit" && "(r/Subreddit 형식)"}
           </label>
@@ -178,6 +197,7 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
               <th>id</th>
               <th>name</th>
               <th>kind</th>
+              <th>format</th>
               <th>url</th>
               <th>상태</th>
               <th className="text-right">작업</th>
@@ -202,6 +222,7 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
                     </span>
                   )}
                 </td>
+                <td>{s.format ?? "news"}</td>
                 <td className="text-muted-foreground max-w-[14rem] truncate" title={s.url}>
                   {s.url}
                 </td>

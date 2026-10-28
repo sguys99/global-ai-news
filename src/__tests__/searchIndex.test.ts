@@ -12,6 +12,7 @@ function entry(p: Partial<SearchIndexEntry> & Pick<SearchIndexEntry, "id">): Sea
     summaryKo: "",
     titleOriginal: "",
     category: "",
+    format: "news",
     tags: [],
     trendingScore: 0,
     importance: 0,

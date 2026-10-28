@@ -75,6 +75,7 @@ describe("buildSearchIndex", () => {
       summaryKo: "요약",
       titleOriginal: "A",
       category: "agent",
+      format: "news",
       tags: ["llm", "agent"],
       trendingScore: 90,
       importance: 4,

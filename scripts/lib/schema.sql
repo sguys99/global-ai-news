@@ -3,13 +3,14 @@
 
 PRAGMA foreign_keys = ON;
 
--- 소스 정의 (Admin이 configs/sources.json 으로 관리, 수집 시 동기화)
+-- 소스 정의 (Admin이 configs/sources.json 으로 관리, 수집·db:init 시 동기화 — scripts/lib/syncSources.ts)
 CREATE TABLE IF NOT EXISTS sources (
   id          TEXT PRIMARY KEY,            -- 'techcrunch_ai', 'hn', 'reddit_localllama'
   name        TEXT NOT NULL,               -- 표시명
-  kind        TEXT NOT NULL,               -- 'rss' | 'web' | 'hn' | 'github' | 'hf' | 'reddit'
+  kind        TEXT NOT NULL,               -- 'rss' | 'web' | 'hn' | 'github' | 'hf' | 'hf_models' | 'reddit' | 'arxiv'
   url         TEXT NOT NULL,
-  enabled     INTEGER NOT NULL DEFAULT 1   -- 'web'은 MVP에서 0 (수집 Post-MVP)
+  enabled     INTEGER NOT NULL DEFAULT 1,  -- 'web'은 MVP에서 0 (수집 Post-MVP)
+  format      TEXT NOT NULL DEFAULT 'news' -- 'news' | 'oss' | 'model' | 'paper' (src/lib/labels.ts FORMATS)
 );
 
 -- 기사 (수집 원본 + LLM 가공 결과 통합)

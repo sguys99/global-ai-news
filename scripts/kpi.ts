@@ -13,15 +13,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { getDb, getKpiSummary } from "../src/lib/db";
+import { FORMAT_LABELS, FORMATS, type Format } from "../src/lib/labels";
 import { CONFIGS_DIR } from "../src/lib/paths";
-import {
-  computeBaseline,
-  FORMAT_LABELS,
-  FORMATS,
-  type BaselineSource,
-  type Format,
-  type Ratio,
-} from "./lib/baseline";
+import { computeBaseline, type BaselineSource, type Ratio } from "./lib/baseline";
 
 const [, , first, second] = process.argv;
 const isBaseline = first === "baseline";
@@ -118,7 +112,9 @@ function baseline(): void {
   const n = r.issues.length;
 
   console.log(`\n# 개편 기준선 — 최근 ${r.days}일 (${r.from} ~ ${r.to} KST, 호 ${n}개)\n`);
-  console.log("형식은 소스 기준 임시 판정(scripts/lib/baseline.ts provisionalFormat).\n");
+  console.log(
+    "형식은 소스 속성(sources.format, configs/sources.json). 컬럼이 없는 예전 DB 는 소스 id/kind 규칙으로 판정.\n",
+  );
 
   console.log("## 요약\n");
   console.log(

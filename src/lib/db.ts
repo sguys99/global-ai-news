@@ -1,5 +1,11 @@
 import Database, { type Database as DatabaseType } from "better-sqlite3";
-import { categoryAliases, categoryLabel, kstDateKey, normalizeCategory } from "@/lib/labels";
+import {
+  categoryAliases,
+  categoryLabel,
+  kstDateKey,
+  normalizeCategory,
+  toFormat,
+} from "@/lib/labels";
 import { DB_PATH } from "@/lib/paths";
 import type { ArticleCard, LatestFeedEntry, RelatedCoverage, RunRow } from "@/lib/types";
 
@@ -21,6 +27,7 @@ interface ArticleRow {
   id: number;
   source_id: string;
   source_name: string;
+  source_format: string | null; // sources.format — 미정의 값은 news 로 본다
   url: string;
   title_original: string;
   content_raw: string | null;
@@ -49,6 +56,7 @@ function parseRelated(json: string | null): RelatedCoverage[] {
 /**
  * DB 행 → 렌더 DTO. LLM 미가공(null) 필드는 빈 값으로 채운다.
  * 분야는 새 키로 정규화한다 — 마이그레이션 전 구 값 행도 섹션·필터에 같은 분야로 잡힌다.
+ * 형식은 소스 속성(sources.format)이라 지난 기사에도 그대로 소급된다.
  */
 function toArticleCard(row: ArticleRow): ArticleCard {
   return {
@@ -60,6 +68,7 @@ function toArticleCard(row: ArticleRow): ArticleCard {
     titleOriginal: row.title_original,
     contentRaw: row.content_raw ?? undefined,
     category: normalizeCategory(row.category ?? ""),
+    format: toFormat(row.source_format),
     tags: row.tags ? row.tags.split(",") : [],
     trendingScore: row.trending_score,
     importance: row.importance ?? 0,
@@ -68,8 +77,20 @@ function toArticleCard(row: ArticleRow): ArticleCard {
   };
 }
 
-const ARTICLE_SELECT = `
-  SELECT a.id, a.source_id, s.name AS source_name, a.url,
+/**
+ * sources.format 컬럼 유무. 컬럼은 ensureSchema(수집·db:init·prebuild)가 추가하지만, 웹은 DB 를 읽기 전용으로
+ * 열어 직접 추가할 수 없다 — 그 전의 DB(마이그레이션 전 배포 브랜치 등)에서도 조회가 깨지지 않게 확인한다.
+ */
+export function hasSourceFormat(conn: DatabaseType): boolean {
+  const cols = conn.prepare("PRAGMA table_info(sources)").all() as { name: string }[];
+  return cols.some((c) => c.name === "format");
+}
+
+/** 기사 조회 공통 SELECT. format 컬럼이 없으면 NULL(→ news)로 읽는다. */
+function articleSelect(conn: DatabaseType): string {
+  const format = hasSourceFormat(conn) ? "s.format" : "NULL";
+  return `
+  SELECT a.id, a.source_id, s.name AS source_name, ${format} AS source_format, a.url,
          a.title_original, a.content_raw, a.published_at, a.trending_score,
          a.title_ko, a.summary_ko, a.category, a.importance, a.related_json,
          strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at) AS collected_at,
@@ -80,6 +101,7 @@ const ARTICLE_SELECT = `
   FROM articles a
   JOIN sources s ON s.id = a.source_id
 `;
+}
 
 /**
  * 공개 조건: LLM 가공을 마친 기사만 노출한다. 가공 실패 행은 다음 수집에서 재시도되기 전까지
@@ -148,7 +170,7 @@ export function getFeed(opts: FeedOptions = {}, conn: DatabaseType = getDb()): A
   const { clauses, params } = buildFilters(opts);
   const whereSql = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
   const rows = conn
-    .prepare(`${ARTICLE_SELECT} ${whereSql} ORDER BY ${orderByFor(opts.sort)}`)
+    .prepare(`${articleSelect(conn)} ${whereSql} ORDER BY ${orderByFor(opts.sort)}`)
     .all(...params) as ArticleRow[];
   return rows.map(toArticleCard);
 }
@@ -195,7 +217,7 @@ export function searchArticles(opts: SearchOptions, conn: DatabaseType = getDb()
     if (match) {
       const rows = conn
         .prepare(
-          `${ARTICLE_SELECT}
+          `${articleSelect(conn)}
             WHERE (a.id IN (SELECT rowid FROM articles_fts WHERE articles_fts MATCH ?)
                    OR EXISTS (SELECT 1 FROM article_tags at
                                 JOIN tags t ON t.id = at.tag_id
@@ -213,7 +235,7 @@ export function searchArticles(opts: SearchOptions, conn: DatabaseType = getDb()
   // 2) LIKE 폴백: 한국어/원문/태그 부분일치
   const rows = conn
     .prepare(
-      `${ARTICLE_SELECT}
+      `${articleSelect(conn)}
         WHERE (a.title_ko LIKE ? OR a.summary_ko LIKE ?
                OR a.title_original LIKE ? OR a.content_raw LIKE ?
                OR EXISTS (SELECT 1 FROM article_tags at
@@ -410,7 +432,7 @@ export function getIssueArticles(dateKey: string, conn: DatabaseType = getDb()):
   const { start, end } = kstDayBounds(dateKey);
   const rows = conn
     .prepare(
-      `${ARTICLE_SELECT} WHERE ${PUBLISHED}
+      `${articleSelect(conn)} WHERE ${PUBLISHED}
           AND julianday(a.created_at) >= julianday(?) AND julianday(a.created_at) < julianday(?)
         ORDER BY a.importance DESC, a.trending_score DESC, a.published_at DESC`,
     )
@@ -422,7 +444,7 @@ export function getIssueArticles(dateKey: string, conn: DatabaseType = getDb()):
 export function getArticlesUntil(cutoff: string, conn: DatabaseType = getDb()): ArticleCard[] {
   const rows = conn
     .prepare(
-      `${ARTICLE_SELECT} WHERE ${PUBLISHED} AND julianday(a.created_at) < julianday(?)
+      `${articleSelect(conn)} WHERE ${PUBLISHED} AND julianday(a.created_at) < julianday(?)
         ORDER BY ${orderByFor(undefined)}`,
     )
     .all(cutoff) as ArticleRow[];
@@ -439,7 +461,7 @@ export function getArticlesCollectedSince(
 ): LatestFeedEntry[] {
   const rows = conn
     .prepare(
-      `${ARTICLE_SELECT} WHERE ${PUBLISHED} AND julianday(a.created_at) >= julianday(?)
+      `${articleSelect(conn)} WHERE ${PUBLISHED} AND julianday(a.created_at) >= julianday(?)
         ORDER BY ${orderByFor("importance")}`,
     )
     .all(since) as ArticleRow[];
@@ -465,7 +487,8 @@ export function getLatestPublishedAt(conn: DatabaseType = getDb()): string | nul
 
 /** 단건 상세 조회. 없으면 null. */
 export function getArticle(id: number): ArticleCard | null {
-  const row = getDb().prepare(`${ARTICLE_SELECT} WHERE a.id = ? AND ${PUBLISHED}`).get(id) as
+  const conn = getDb();
+  const row = conn.prepare(`${articleSelect(conn)} WHERE a.id = ? AND ${PUBLISHED}`).get(id) as
     | ArticleRow
     | undefined;
   return row ? toArticleCard(row) : null;

@@ -79,6 +79,39 @@ export function categoryCode(category: string): string {
   return isCategory(key) ? CATEGORY_CODES[key] : "";
 }
 
+/**
+ * 형식(format) 키 — 소스 속성(configs/sources.json `format`, 생략 시 news)이자 sources.format 컬럼 값.
+ * 분야와 달리 LLM 이 정하지 않고 소스가 정하므로, JOIN 으로 지난 기사에도 소급 적용된다.
+ */
+export const FORMATS = ["news", "oss", "model", "paper"] as const;
+
+export type Format = (typeof FORMATS)[number];
+
+/** 형식 키 → 한글 표시명. */
+export const FORMAT_LABELS: Record<Format, string> = {
+  news: "뉴스",
+  oss: "오픈소스",
+  model: "모델",
+  paper: "논문",
+};
+
+/** 형식 키 → 카드 배지 문구. 뉴스는 배지를 달지 않는다(빈 문자열). */
+export const FORMAT_BADGES: Record<Format, string> = {
+  news: "",
+  oss: "REPO",
+  model: "MODEL",
+  paper: "PAPER",
+};
+
+export function isFormat(value: unknown): value is Format {
+  return typeof value === "string" && Object.hasOwn(FORMAT_LABELS, value);
+}
+
+/** 저장값 → 형식 키. 미정의·빈 값(컬럼 추가 전 행 등)은 news. */
+export function toFormat(value: unknown): Format {
+  return isFormat(value) ? value : "news";
+}
+
 /** 칩·메타에서 쓰는 소스명 축약 맵 (상세 등 공간이 넉넉한 곳은 원래 이름 유지). */
 const SOURCE_SHORT_LABELS: Record<string, string> = {
   "TechCrunch AI": "TechCrunch",

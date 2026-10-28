@@ -12,11 +12,12 @@ const NOW = new Date("2026-10-25T00:00:00Z");
 function seed(): DatabaseType {
   const db = new Database(":memory:");
   db.exec(readFileSync(SCHEMA_PATH, "utf-8"));
-  db.prepare("INSERT INTO sources (id, name, kind, url, enabled) VALUES (?,?,?,?,1)").run(
+  db.prepare("INSERT INTO sources (id, name, kind, url, enabled, format) VALUES (?,?,?,?,1,?)").run(
     "github_trending",
     "GitHub Trending",
     "rss",
     "https://trending",
+    "oss",
   );
   const ins = db.prepare(
     `INSERT INTO articles
@@ -98,13 +99,14 @@ describe("buildLatestFeed", () => {
     expect(feed.items.map((e) => e.id)).toEqual([2, 1]);
   });
 
-  it("중요도 순으로 정렬하고 수집 시각을 ISO 로 싣는다", () => {
+  it("중요도 순으로 정렬하고 수집 시각·형식(소스 속성)을 싣는다", () => {
     const [first, second] = buildLatestFeed(NOW, db).items;
     expect(first).toMatchObject({ id: 2, importance: 5, collectedAt: "2026-10-23T21:05:00Z" });
     expect(second).toMatchObject({
       id: 1,
       url: "https://github.com/a/a",
       source: { id: "github_trending", name: "GitHub Trending" },
+      format: "oss",
       publishedAt: "2025-01-01T00:00:00Z",
       collectedAt: "2026-10-24T21:10:00Z",
     });

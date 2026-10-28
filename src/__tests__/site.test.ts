@@ -22,6 +22,7 @@ function card(p: Partial<ArticleCard>): ArticleCard {
     summaryKo: "",
     titleOriginal: `T${seq}`,
     category: "agent",
+    format: "news",
     tags: [],
     trendingScore: 0,
     importance: 3,

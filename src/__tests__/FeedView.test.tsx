@@ -14,6 +14,7 @@ function card(id: number): ArticleCard {
     summaryKo: "요약",
     titleOriginal: `T${id}`,
     category: "agent",
+    format: "news",
     tags: [],
     trendingScore: 0,
     importance: 3,

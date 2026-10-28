@@ -132,6 +132,21 @@ describe("getFeed", () => {
     // 구 값으로 물어도 같은 분야
     expect(getFeed({ category: "Dev Tools" }, db).map((a) => a.titleOriginal)).toEqual(["B", "D"]);
   });
+
+  it("형식은 소스 속성(sources.format)을 JOIN 으로 읽는다 — 바꾸면 지난 기사에도 소급, 미정의 값은 news", () => {
+    expect(getFeed({}, db).every((a) => a.format === "news")).toBe(true); // 컬럼 기본값
+    db.prepare("UPDATE sources SET format = 'paper' WHERE id = 'hackernews'").run();
+    db.prepare("UPDATE sources SET format = 'blog' WHERE id = 'techcrunch_ai'").run();
+    const bySource = Object.fromEntries(getFeed({}, db).map((a) => [a.source.id, a.format]));
+    expect(bySource).toEqual({ hackernews: "paper", techcrunch_ai: "news" });
+  });
+
+  it("format 컬럼이 없는 예전 DB(읽기 전용이라 추가 불가)도 조회가 깨지지 않고 news 로 읽는다", () => {
+    db.exec("ALTER TABLE sources DROP COLUMN format");
+    const feed = getFeed({}, db);
+    expect(feed).toHaveLength(3);
+    expect(feed.every((a) => a.format === "news")).toBe(true);
+  });
 });
 
 describe("getSourcesWithCounts / getActiveTags", () => {

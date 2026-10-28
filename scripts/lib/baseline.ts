@@ -6,27 +6,24 @@
  * articles.created_at(UTC)의 KST 날짜, 공개 기사(summary_ko IS NOT NULL)만 센다.
  * 순수 집계 모듈 — 커넥션을 받아 조회만 하고 쓰지 않는다(개편 후 Phase 7에서 같은 측정을 반복).
  *
- * - 형식 비율: format 컬럼은 Phase 2에서 생기므로 지금은 소스 id/kind로 임시 판정(provisionalFormat)
+ * - 형식 비율: sources.format(JOIN). 컬럼이 없는 예전 DB 는 소스 id/kind 규칙(provisionalFormat)으로 판정
  * - 1면 오늘 호 비율: /edition/[date] 과 똑같이 getEditionRefs → getArticlesUntil(cutoff) → buildEdition
  * - 이틀 연속 중복 후보: 인접 호 기사 쌍의 제목 토큰 Jaccard·공유 URL — 휴리스틱(확정 아님)
  */
 import type { Database as DatabaseType } from "better-sqlite3";
-import { getArticlesUntil, getEditionRefs } from "../../src/lib/db";
+import { getArticlesUntil, getEditionRefs, hasSourceFormat } from "../../src/lib/db";
 import { buildEdition } from "../../src/lib/edition";
-import { kstDateKey, normalizeCategory } from "../../src/lib/labels";
-
-export type Format = "news" | "oss" | "model" | "paper";
-export const FORMATS: Format[] = ["news", "oss", "model", "paper"];
-export const FORMAT_LABELS: Record<Format, string> = {
-  news: "뉴스",
-  oss: "오픈소스",
-  model: "모델",
-  paper: "논문",
-};
+import {
+  FORMATS,
+  kstDateKey,
+  normalizeCategory,
+  toFormat,
+  type Format,
+} from "../../src/lib/labels";
 
 /**
- * 소스 → 형식 임시 매핑(계획서 §2-2와 같은 규칙). Phase 2에서 sources.format 컬럼이 생기면
- * 이 함수 대신 그 값을 쓴다 — 기준선과 비교할 때 규칙이 같아야 하므로 여기 한 곳에만 둔다.
+ * 소스 → 형식 임시 매핑(계획서 §2-2와 같은 규칙). sources.format 컬럼(Phase 2)이 없는 예전 DB 와
+ * DB 에 행이 없는 소스(notes 에만 남은 옛 소스)의 폴백 — configs/sources.json 의 format 과 같은 결과를 낸다.
  * - GitHub(`github_*`, kind=github) → oss
  * - HF 모델(`hf_models*`, kind=hf_models) → model  (기준선 시점엔 소스가 없어 0건)
  * - HF Daily Papers·arXiv·Takara → paper  (`hf_blog`는 블로그라 news)
@@ -134,8 +131,24 @@ function relatedUrls(json: string | null): string[] {
   }
 }
 
+/** 소스 id → 형식. DB 의 sources.format 을 쓰고, 컬럼이 없거나 행이 없으면 provisionalFormat. */
+export function sourceFormatResolver(
+  conn: DatabaseType,
+): (id: string, kind?: string | null) => Format {
+  const known = new Map<string, Format>();
+  if (hasSourceFormat(conn)) {
+    const rows = conn.prepare("SELECT id, format FROM sources").all() as {
+      id: string;
+      format: string | null;
+    }[];
+    for (const r of rows) known.set(r.id, toFormat(r.format));
+  }
+  return (id, kind) => known.get(id) ?? provisionalFormat(id, kind);
+}
+
 /** 전체 공개 기사(호 날짜 부착). 창 필터는 호출자가 한다 — 1면 재구성이 창 밖 기사도 보기 때문. */
 export function loadPublishedArticles(conn: DatabaseType): BaselineArticle[] {
+  const formatOf = sourceFormatResolver(conn);
   const rows = conn
     .prepare(
       `SELECT a.id, a.source_id, s.kind, a.url, a.title_original, a.title_ko, a.summary_ko,
@@ -156,7 +169,7 @@ export function loadPublishedArticles(conn: DatabaseType): BaselineArticle[] {
       id: r.id,
       sourceId: r.source_id,
       issueDate: kstDateKey(r.collected_at),
-      format: provisionalFormat(r.source_id, r.kind),
+      format: formatOf(r.source_id, r.kind),
       // 분야 개편 전 구 값도 새 키로 센다 — 마이그레이션 전후 DB 어느 쪽이든 같은 분류로 비교한다.
       category: normalizeCategory(r.category ?? ""),
       titleKo: r.title_ko ?? "",
@@ -461,6 +474,7 @@ export function computeBaseline(
   sources: BaselineSource[] = [],
 ): BaselineReport {
   const refs = getEditionRefs(conn);
+  const formatOf = sourceFormatResolver(conn);
   const to = refs.at(-1)?.date ?? "";
   const from = to ? shiftDate(to, -(days - 1)) : "";
   const inWindow = (d: string) => !!to && d >= from && d <= to;
@@ -491,7 +505,7 @@ export function computeBaseline(
       const candidatesByFormat = emptyFormats();
       for (const [id, note] of Object.entries(notes.sources)) {
         const kind = sources.find((s) => s.id === id)?.kind;
-        candidatesByFormat[provisionalFormat(id, kind)] += capped(note);
+        candidatesByFormat[formatOf(id, kind)] += capped(note);
       }
       return {
         id: r.id,
@@ -596,7 +610,7 @@ export function computeBaseline(
       return {
         id: s.id,
         name: s.name,
-        format: provisionalFormat(s.id, s.kind),
+        format: formatOf(s.id, s.kind),
         published: articles.filter((a) => a.sourceId === s.id).length,
         candidates,
         failures,

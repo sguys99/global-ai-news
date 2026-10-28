@@ -1,18 +1,22 @@
 /**
- * data/app.db 를 생성하고 schema.sql 의 테이블을 만든다.
+ * data/app.db 를 생성하고 schema.sql 의 테이블을 만든 뒤 sources 를 configs/sources.json 과 맞춘다.
  * 실행: npm run db:init  (= tsx scripts/lib/initDb.ts)
+ *       기존 DB 에 다시 실행하면 신규 컬럼 추가 + 소스 동기화만 한다(멱등).
+ *       `--existing`: DB 파일이 없으면 만들지 않고 실패한다(prebuild — 빈 DB 로 배포되는 것을 막는다).
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Database, { type Database as DatabaseType } from "better-sqlite3";
 import { DB_PATH } from "../../src/lib/paths";
+import { describeSync, loadSourcesConfig, syncSources } from "./syncSources";
 
 const SCHEMA_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "schema.sql");
 
 /** 기존 DB 에 나중에 추가된 컬럼. CREATE TABLE IF NOT EXISTS 는 기존 테이블을 바꾸지 않는다. */
 const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "articles", column: "related_json", ddl: "related_json TEXT" },
+  { table: "sources", column: "format", ddl: "format TEXT NOT NULL DEFAULT 'news'" },
 ];
 
 /**
@@ -27,10 +31,11 @@ export function ensureSchema(db: DatabaseType): void {
   }
 }
 
-export function initDb(dbPath: string = DB_PATH): void {
-  const db = new Database(dbPath);
+export function initDb(dbPath: string = DB_PATH, opts: { mustExist?: boolean } = {}): void {
+  const db = new Database(dbPath, { fileMustExist: opts.mustExist ?? false });
   try {
     ensureSchema(db);
+    const sync = syncSources(db, loadSourcesConfig());
     const tables = db
       .prepare(
         "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -39,6 +44,7 @@ export function initDb(dbPath: string = DB_PATH): void {
     console.log(`Initialized DB at ${dbPath}`);
     console.log(`Tables/views (${tables.length}):`);
     for (const t of tables) console.log(`  - ${t.name}`);
+    console.log(`Sources sync: ${describeSync(sync)}`);
   } finally {
     db.close();
   }
@@ -46,5 +52,5 @@ export function initDb(dbPath: string = DB_PATH): void {
 
 // tsx로 직접 실행될 때만 동작
 if (import.meta.url === `file://${process.argv[1]}`) {
-  initDb();
+  initDb(DB_PATH, { mustExist: process.argv.includes("--existing") });
 }

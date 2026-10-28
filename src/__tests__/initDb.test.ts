@@ -23,4 +23,18 @@ describe("ensureSchema", () => {
     expect(columns(db, "articles")).toContain("related_json");
     expect(columns(db, "seen_items")).toEqual(["dedup_key", "seen_at"]);
   });
+
+  it("format 이 없던 기존 sources 에 컬럼을 추가하고 기존 행은 news 로 채운다(멱등)", () => {
+    const db = new Database(":memory:");
+    db.exec(`CREATE TABLE sources (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1)`);
+    db.prepare("INSERT INTO sources VALUES ('hackernews','Hacker News','hn','https://hn',1)").run();
+
+    ensureSchema(db);
+    ensureSchema(db);
+
+    expect(columns(db, "sources")).toContain("format");
+    expect(db.prepare("SELECT format FROM sources").pluck().get()).toBe("news");
+  });
 });

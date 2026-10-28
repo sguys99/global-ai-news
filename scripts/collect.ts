@@ -11,10 +11,8 @@
  * LLM 호출은 기본적으로 Message Batches API(50% 할인)로 보낸다(lib/llm.ts).
  * 소스별 try/catch 로 부분 실패를 격리한다(한 소스 실패가 전체를 막지 않음).
  */
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import Database, { type Database as DatabaseType } from "better-sqlite3";
-import { CONFIGS_DIR, DB_PATH } from "../src/lib/paths";
+import { DB_PATH } from "../src/lib/paths";
 import type { RawItem } from "../src/lib/types";
 import { fetchGithub, fetchHf, fetchHn } from "./lib/collect/api";
 import { fetchArxiv } from "./lib/collect/arxiv";
@@ -33,6 +31,7 @@ import { envFlag, envNonNegativeInt, envNonNegativeNumber, envString } from "./l
 import { ensureSchema } from "./lib/initDb";
 import { LlmRunner, parseStructured } from "./lib/llm";
 import type { ArticleEnrichment } from "./lib/schema";
+import { describeSync, loadSourcesConfig, syncSources } from "./lib/syncSources";
 import { saveTags } from "./lib/tags";
 import {
   buildTriagePool,
@@ -66,7 +65,10 @@ const BACKFILL_DAYS = 7;
 /** seen_items 보존 기간. RSS 수집 기간 창(7일)보다 넉넉하게 둔다. */
 const SEEN_RETENTION_DAYS = 30;
 
-/** kind → 수집 어댑터. WEB 은 등록만 하고 수집하지 않는다(Post-MVP). */
+/**
+ * kind → 수집 어댑터. 여기 없는 kind(web — Post-MVP, hf_models — Phase 3 예정)는
+ * sources 테이블에는 동기화되지만 수집에서는 건너뛴다.
+ */
 const ADAPTERS: Record<string, (s: SourceConfig) => Promise<RawItem[]>> = {
   rss: fetchRss,
   hn: fetchHn,
@@ -75,11 +77,6 @@ const ADAPTERS: Record<string, (s: SourceConfig) => Promise<RawItem[]>> = {
   reddit: fetchReddit,
   arxiv: fetchArxiv,
 };
-
-function loadSources(): SourceConfig[] {
-  const file = path.join(CONFIGS_DIR, "sources.json");
-  return JSON.parse(readFileSync(file, "utf-8")) as SourceConfig[];
-}
 
 const daysAgoIso = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
 
@@ -97,13 +94,6 @@ async function collectCandidates(
   sources: SourceConfig[],
   stats: RunStats,
 ): Promise<Candidate[]> {
-  const upsertSource = db.prepare(
-    `INSERT INTO sources (id, name, kind, url, enabled)
-     VALUES (@id, @name, @kind, @url, @enabled)
-     ON CONFLICT(id) DO UPDATE SET
-       name = excluded.name, kind = excluded.kind,
-       url = excluded.url, enabled = excluded.enabled`,
-  );
   // 지면에 실린 기사도, 선별에서 떨어진 기사도 다시 심사하지 않는다.
   const known = db.prepare(
     `SELECT 1 FROM articles WHERE dedup_key = @key
@@ -114,8 +104,6 @@ async function collectCandidates(
   const candidates: Candidate[] = [];
 
   for (const source of sources) {
-    const { id, name, kind, url, enabled } = source;
-    upsertSource.run({ id, name, kind, url, enabled });
     try {
       const items = await ADAPTERS[source.kind](source);
       stats.itemsCollected += items.length;
@@ -316,6 +304,9 @@ async function main(): Promise<void> {
 
   try {
     ensureSchema(db);
+    // 소스 행(형식 포함)은 실행 시작에 sources.json 전체와 한 번에 맞춘다 — 비활성·삭제 소스도 반영된다.
+    const sourcesConfig = loadSourcesConfig();
+    console.log(`[collect] sources sync: ${describeSync(syncSources(db, sourcesConfig))}`);
 
     if (MAX_PICKS_PER_RUN === 0) {
       stats.notes.push("MAX_PICKS_PER_RUN=0 — 수집·선별·가공 생략");
@@ -327,7 +318,7 @@ async function main(): Promise<void> {
       throw new Error("ANTHROPIC_API_KEY 미설정 — LLM 가공 불가로 수집을 중단합니다");
     }
 
-    const sources = loadSources().filter((s) => s.enabled === 1 && s.kind in ADAPTERS);
+    const sources = sourcesConfig.filter((s) => s.enabled === 1 && Object.hasOwn(ADAPTERS, s.kind));
     const candidates = [...(await collectCandidates(db, sources, stats)), ...loadBackfill(db)];
 
     const pool = buildTriagePool(candidates, TRIAGE_POOL_SIZE);

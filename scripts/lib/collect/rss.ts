@@ -3,6 +3,7 @@
  * rss-parser 로 피드를 파싱해 RawItem[] 으로 정규화한다.
  */
 import Parser from "rss-parser";
+import type { Format } from "../../../src/lib/labels";
 import type { RawItem } from "../../../src/lib/types";
 
 /** sources.json 의 소스 한 건 (Phase 1: rss 만 사용). */
@@ -14,6 +15,8 @@ export interface SourceConfig {
   enabled: number;
   /** 1회 신규 후보 상한(화제 점수 → 최신 순). 기사가 많은 소스가 선별 풀을 독식하지 않게 한다. 미지정 시 무제한. */
   maxItems?: number;
+  /** 형식(news|oss|model|paper). 미지정 시 news — sources.format 으로 동기화된다(lib/syncSources.ts). */
+  format?: Format;
 }
 
 /** content_raw 길이 상한 (LLM 입력 비용 가드와 별개로 저장 용량 제한). */
