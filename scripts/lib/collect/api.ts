@@ -260,13 +260,17 @@ interface HfDailyPaper {
 }
 
 /**
- * HuggingFace Daily Papers: 최신 논문 20건.
+ * HuggingFace Daily Papers: 최신 논문 100건(평일 약 2일치 목록).
+ * 응답은 upvote 순이 아니라 데일리 목록 날짜(submittedOnDailyAt) 최신순이라, 20건이면
+ * 아직 투표가 쌓이는 당일 목록 일부만 보고 다음 날엔 창 밖으로 밀려난다. 100건이면
+ * 한 논문이 두 회차에 걸쳐 보이므로, 첫날 임계 미달(키 미기록)이던 논문도 다음 회차에 통과할 수 있다.
  * upvotes 는 reddit ups 와 동일 신호로 트렌딩에 반영하고,
  * configs/paper-filter.json 의 hf.minUpvotes 미만 논문은 "유명한 것만" 필터로 제외한다.
+ * 회차당 게재 후보 수는 sources.json 의 maxItems(upvote 상위)로 묶는다.
  */
 export async function fetchHf(source: SourceConfig): Promise<RawItem[]> {
   const { hf } = loadPaperFilter();
-  const res = await fetch("https://huggingface.co/api/daily_papers?limit=20");
+  const res = await fetch("https://huggingface.co/api/daily_papers?limit=100");
   if (!res.ok) throw new Error(`HuggingFace HTTP ${res.status}`);
   const data = (await res.json()) as HfDailyPaper[];
 

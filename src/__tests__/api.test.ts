@@ -303,6 +303,19 @@ describe("fetchHf", () => {
     mockFetch([{ publishedAt: "2026-01-01T00:00:00Z", paper: { title: "x" } }]);
     expect(await fetchHf(src("hf"))).toHaveLength(0);
   });
+
+  it("약 2일치 목록(limit=100)을 받아 hf.minUpvotes 미만은 버린다", async () => {
+    mockFetch([
+      { publishedAt: "2026-01-01T00:00:00Z", paper: { id: "2401.00001", title: "a", upvotes: 10 } },
+      { publishedAt: "2026-01-01T00:00:00Z", paper: { id: "2401.00002", title: "b", upvotes: 9 } },
+    ]);
+    const items = await fetchHf(src("hf"));
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      "https://huggingface.co/api/daily_papers?limit=100",
+    );
+    // configs/paper-filter.json 의 hf.minUpvotes(10) 기준
+    expect(items.map((i) => i.url)).toEqual(["https://huggingface.co/papers/2401.00001"]);
+  });
 });
 
 describe("fetchHfModels", () => {

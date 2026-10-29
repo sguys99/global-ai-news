@@ -284,7 +284,8 @@
     "kind": "hf",
     "format": "paper",
     "url": "https://huggingface.co/api/daily_papers",
-    "enabled": 1
+    "enabled": 1,
+    "maxItems": 15
   },
   {
     "id": "hf_models",
@@ -319,5 +320,15 @@
     "format": "paper",
     "url": "cs.LG",
     "enabled": 0
+  },
+  {
+    "id": "arxiv_cs_ro",
+    "name": "arXiv cs.RO (Robotics)",
+    "kind": "arxiv",
+    "format": "paper",
+    "topic": "physical",
+    "url": "cs.RO",
+    "enabled": 1,
+    "maxItems": 10
   }
 ]
