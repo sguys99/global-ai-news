@@ -69,6 +69,7 @@
     "id": "techcrunch_robotics",
     "name": "TechCrunch Robotics",
     "kind": "rss",
+    "topic": "physical",
     "url": "https://techcrunch.com/category/robotics/feed/",
     "enabled": 1
   },
@@ -76,6 +77,7 @@
     "id": "science_robotics",
     "name": "Science Robotics",
     "kind": "rss",
+    "topic": "physical",
     "url": "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=scirobotics",
     "enabled": 1
   },
@@ -83,20 +85,23 @@
     "id": "industrial_ai",
     "name": "Industrial AI",
     "kind": "rss",
+    "topic": "physical",
     "url": "https://fabiobottacci.substack.com/feed",
-    "enabled": 1
+    "enabled": 0
   },
   {
     "id": "it_can_think",
     "name": "It Can Think!",
     "kind": "rss",
+    "topic": "physical",
     "url": "https://itcanthink.substack.com/feed",
-    "enabled": 1
+    "enabled": 0
   },
   {
     "id": "cmu_ri",
     "name": "CMU Robotics Institute",
     "kind": "rss",
+    "topic": "physical",
     "url": "https://www.ri.cmu.edu/feed/",
     "enabled": 1
   },
@@ -104,6 +109,7 @@
     "id": "nvidia_dev_robotics",
     "name": "NVIDIA Technical Blog (Robotics)",
     "kind": "rss",
+    "topic": "physical",
     "url": "https://developer.nvidia.com/blog/category/robotics/feed/",
     "enabled": 1
   },
@@ -111,6 +117,7 @@
     "id": "gnews_humanoid",
     "name": "Google News: humanoid robot",
     "kind": "rss",
+    "topic": "physical",
     "url": "https://news.google.com/rss/search?q=%22humanoid+robot%22+when:1d&hl=en-US&gl=US&ceid=US:en",
     "enabled": 1,
     "maxItems": 8
@@ -119,6 +126,7 @@
     "id": "gnews_vla",
     "name": "Google News: VLA",
     "kind": "rss",
+    "topic": "physical",
     "url": "https://news.google.com/rss/search?q=%22vision-language-action%22+OR+%22VLA+model%22&hl=en-US&gl=US&ceid=US:en",
     "enabled": 1,
     "maxItems": 8
@@ -127,9 +135,46 @@
     "id": "gnews_physical_ai",
     "name": "Google News: physical/embodied AI",
     "kind": "rss",
-    "url": "https://news.google.com/rss/search?q=%22physical+AI%22+OR+%22embodied+AI%22&hl=en-US&gl=US&ceid=US:en",
+    "topic": "physical",
+    "url": "https://news.google.com/rss/search?q=(%22physical+AI%22+OR+%22embodied+AI%22)+when%3A2d+-webinar+-stock+-stocks+-shares+-ETF+-%22index+fund%22+-%22market+size%22+-CAGR+-award+-summit&hl=en-US&gl=US&ceid=US:en",
     "enabled": 1,
-    "maxItems": 8
+    "maxItems": 12
+  },
+  {
+    "id": "ieee_spectrum_robotics",
+    "name": "IEEE Spectrum Robotics",
+    "kind": "rss",
+    "topic": "physical",
+    "url": "https://spectrum.ieee.org/feeds/topic/robotics.rss",
+    "enabled": 1,
+    "maxItems": 4
+  },
+  {
+    "id": "robotics_automation_news",
+    "name": "Robotics & Automation News",
+    "kind": "rss",
+    "topic": "physical",
+    "url": "https://roboticsandautomationnews.com/feed/",
+    "enabled": 1,
+    "maxItems": 4
+  },
+  {
+    "id": "av_international",
+    "name": "Autonomous Vehicle International",
+    "kind": "rss",
+    "topic": "physical",
+    "url": "https://www.autonomousvehicleinternational.com/feed",
+    "enabled": 1,
+    "maxItems": 4
+  },
+  {
+    "id": "irobotnews",
+    "name": "로봇신문",
+    "kind": "rss",
+    "topic": "physical",
+    "url": "https://www.irobotnews.com/rss/S1N1.xml",
+    "enabled": 1,
+    "maxItems": 6
   },
   {
     "id": "takara_tldr",
@@ -217,6 +262,7 @@
     "id": "robohub",
     "name": "Robohub",
     "kind": "rss",
+    "topic": "physical",
     "url": "https://robohub.org/feed/",
     "enabled": 1
   },
@@ -224,6 +270,7 @@
     "id": "the_robot_report",
     "name": "The Robot Report",
     "kind": "rss",
+    "topic": "physical",
     "url": "https://www.therobotreport.com/feed/",
     "enabled": 1
   },

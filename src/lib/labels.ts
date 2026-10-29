@@ -122,6 +122,8 @@ const SOURCE_SHORT_LABELS: Record<string, string> = {
   "HuggingFace 트렌딩 모델": "HuggingFace",
   "MIT Technology Review": "MIT Tech Review",
   "NVIDIA Technical Blog (Robotics)": "NVIDIA Dev",
+  "IEEE Spectrum Robotics": "IEEE Spectrum",
+  "Autonomous Vehicle International": "AV International",
   "Google News: humanoid robot": "Google News",
   "Google News: VLA": "Google News",
   "Google News: physical/embodied AI": "Google News",

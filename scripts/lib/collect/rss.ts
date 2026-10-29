@@ -3,7 +3,7 @@
  * rss-parser 로 피드를 파싱해 RawItem[] 으로 정규화한다.
  */
 import Parser from "rss-parser";
-import type { Format } from "../../../src/lib/labels";
+import type { Category, Format } from "../../../src/lib/labels";
 import type { RawItem } from "../../../src/lib/types";
 
 /** sources.json 의 소스 한 건 (Phase 1: rss 만 사용). */
@@ -19,6 +19,11 @@ export interface SourceConfig {
   format?: Format;
   /** 키워드 사전 필터 목록 이름(configs/keyword-filters.json). 지정하면 키워드가 없는 항목을 수집 직후 버린다(collect.ts). */
   keywordFilter?: string;
+  /**
+   * 주력 분야 힌트(CATEGORIES 키, 현재 "physical" 만 사용). 선별 풀이 이 분야 후보를 따로 확보할 때 쓴다(Phase 3-5).
+   * 설정 전용 — sources 테이블에 동기화하지 않는다. 기사 분야는 여전히 LLM 가공이 정한다.
+   */
+  topic?: Category;
 }
 
 /** content_raw 길이 상한 (LLM 입력 비용 가드와 별개로 저장 용량 제한). */

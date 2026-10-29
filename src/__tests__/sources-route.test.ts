@@ -114,6 +114,27 @@ describe("POST (추가)", () => {
     expect(res.status).toBe(400);
   });
 
+  it("arxiv 는 카테고리명 url(cs.RO)을 받고, 카테고리가 없으면 400", async () => {
+    const arxiv: SourceConfig = {
+      id: "arxiv_new",
+      name: "arXiv",
+      kind: "arxiv",
+      url: "cs.RO",
+      enabled: 1,
+    };
+    expect((await POST(reqJson("POST", arxiv))).status).toBe(200);
+    const bad: SourceConfig = { ...arxiv, id: "arxiv_bad", url: "robotics" };
+    expect((await POST(reqJson("POST", bad))).status).toBe(400);
+  });
+
+  it("keywordFilter 는 저장 시 유지된다", async () => {
+    const next: SourceConfig = { ...rss, id: "kw_src", keywordFilter: "ai" };
+    expect((await POST(reqJson("POST", next))).status).toBe(200);
+    const calls = writeFile.mock.calls as unknown as [string, string][];
+    const written = JSON.parse(calls.at(-1)![1]) as SourceConfig[];
+    expect(written.find((s) => s.id === "kw_src")?.keywordFilter).toBe("ai");
+  });
+
   it("GitHub 설정이 있으면 commitFile 로 커밋", async () => {
     hasGithubConfig.mockReturnValue(true);
     const next: SourceConfig = { ...rss, id: "new_src" };
@@ -137,6 +158,54 @@ describe("PUT (수정/토글)", () => {
   it("존재하지 않는 id 는 404", async () => {
     const res = await PUT(reqJson("PUT", { ...rss, id: "ghost" }));
     expect(res.status).toBe(404);
+  });
+});
+
+describe("topic (주력 분야 힌트)", () => {
+  const robot: SourceConfig = {
+    id: "robot_news",
+    name: "Robot News",
+    kind: "rss",
+    topic: "physical",
+    url: "https://robot.example.com/feed",
+    enabled: 1,
+    maxItems: 4,
+  };
+
+  /** 마지막 writeFile 로 저장된 sources.json 내용. */
+  function written(): SourceConfig[] {
+    const calls = writeFile.mock.calls as unknown as [string, string][];
+    return JSON.parse(calls.at(-1)![1]) as SourceConfig[];
+  }
+
+  it("POST 는 topic 을 지우지 않고 파일에 저장", async () => {
+    const res = await POST(reqJson("POST", robot));
+    expect(res.status).toBe(200);
+    expect(written().find((s) => s.id === "robot_news")?.topic).toBe("physical");
+  });
+
+  it("CATEGORIES 에 없는 topic 은 400", async () => {
+    const res = await POST(reqJson("POST", { ...robot, topic: "robotics" }));
+    expect(res.status).toBe(400);
+    expect(writeFile).not.toHaveBeenCalled();
+  });
+
+  it("관리 화면 토글(전체 객체 PUT)은 topic 을 유지", async () => {
+    currentSources = [rss, robot];
+    const res = await PUT(reqJson("PUT", { ...robot, enabled: 0 }));
+    expect(res.status).toBe(200);
+    const saved = written().find((s) => s.id === "robot_news");
+    expect(saved).toMatchObject({ enabled: 0, topic: "physical", maxItems: 4 });
+  });
+
+  it("topic 이 빠진 PUT 도 기존 topic 을 유지", async () => {
+    currentSources = [rss, robot];
+    const withoutTopic: SourceConfig = { ...robot, name: "Robot News 2" };
+    delete withoutTopic.topic;
+    const res = await PUT(reqJson("PUT", withoutTopic));
+    expect(res.status).toBe(200);
+    const saved = written().find((s) => s.id === "robot_news");
+    expect(saved).toMatchObject({ name: "Robot News 2", topic: "physical" });
   });
 });
 

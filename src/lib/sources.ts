@@ -10,7 +10,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { FORMATS } from "@/lib/labels";
+import { CATEGORIES, FORMATS } from "@/lib/labels";
 import { CONFIGS_DIR } from "@/lib/paths";
 import type { SourceConfig, SourceKind } from "@/lib/types";
 import { commitFile, hasGithubConfig } from "@/lib/github";
@@ -31,7 +31,7 @@ const SOURCE_KINDS: SourceKind[] = [
   "arxiv",
 ];
 
-/** 소스 1건 검증 스키마. url 은 kind 에 따라 다르게 검증한다(reddit 은 r/... 형식). */
+/** 소스 1건 검증 스키마. url 은 kind 에 따라 다르게 검증한다(reddit 은 r/... 형식, arxiv 는 카테고리명 또는 URL). */
 export const sourceSchema = z
   .object({
     id: z
@@ -44,6 +44,10 @@ export const sourceSchema = z
     enabled: z.union([z.literal(0), z.literal(1)]),
     maxItems: z.number().int().positive().optional(),
     format: z.enum(FORMATS).optional(),
+    // 주력 분야 힌트(설정 전용). 스키마에 없으면 zod 가 키를 지워 저장 시 사라지므로 반드시 선언한다.
+    topic: z.enum(CATEGORIES).optional(),
+    // 키워드 사전 필터 목록 이름(configs/keyword-filters.json). topic 과 같은 이유로 선언한다.
+    keywordFilter: z.string().min(1).optional(),
   })
   .superRefine((s, ctx) => {
     if (s.kind === "reddit") {
@@ -52,6 +56,15 @@ export const sourceSchema = z
           code: z.ZodIssueCode.custom,
           path: ["url"],
           message: "reddit 소스의 url 은 r/SubredditName 형식이어야 합니다.",
+        });
+      }
+    } else if (s.kind === "arxiv") {
+      // 수집 어댑터(parseCategory)와 같은 기준: "cs.RO" 또는 카테고리가 든 전체 URL.
+      if (!/[a-z-]+\.[A-Z]{2}/.test(s.url)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["url"],
+          message: "arxiv 소스의 url 은 cs.RO 같은 카테고리명이어야 합니다.",
         });
       }
     } else if (!/^https?:\/\/.+/.test(s.url)) {

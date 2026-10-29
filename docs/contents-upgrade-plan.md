@@ -266,9 +266,27 @@
 
 ### 3-4. Physical AI
 
-- [ ] 실패하는 소스를 정비한다. `industrial_ai`, `it_can_think`(403)는 대체 URL을 찾거나 비활성화하고, `cmu_ri`(0건 지속)도 점검한다.
-- [ ] 신규 후보를 검증한 뒤 추가한다. IEEE Spectrum Robotics, 자율주행 전문 매체, 국내 로봇 매체(로봇신문 등)가 대상이고, RSS가 살아 있는지 확인한 소스만 넣는다.
-- [ ] `gnews_physical_ai`의 `maxItems`를 8에서 12로 늘리고, 쿼리를 다듬어 "physical AI" 마케팅성 기사를 줄인다.
+- [x] 실패하는 소스를 정비한다. `industrial_ai`, `it_can_think`(403)는 대체 URL을 찾거나 비활성화하고, `cmu_ri`(0건 지속)도 점검한다.
+  - ✅ 2026-10-29 `industrial_ai`와 `it_can_think`는 `enabled: 0`으로 끄고 항목은 남겼다(기사 JOIN 유지). 로컬에서는 UA와 상관없이 200이 나오므로, 403은 Substack이 Actions 러너 IP를 막아서 생기는 것으로 본다. `industrial_ai`는 7월 이후 새 글이 없고 `it_can_think`는 월 2회 정도라, 우회할 이득이 작다.
+  - `cmu_ri`는 피드가 살아 있다(최근 글 10-15). 주 1회 꼴로 올라와 7일 창에 0건인 날이 많을 뿐이라 그대로 둔다. `science_robotics`·`nvidia_dev_robotics`·`gnews_humanoid`·`gnews_vla`도 수집은 정상이다. 게재가 적은 원인은 선별(Phase 4)에 있다.
+- [x] 신규 후보를 검증한 뒤 추가한다. IEEE Spectrum Robotics, 자율주행 전문 매체, 국내 로봇 매체(로봇신문 등)가 대상이고, RSS가 살아 있는지 확인한 소스만 넣는다.
+  - ✅ 2026-10-29 `fetchRss`로 파싱과 최근 7일 항목을 확인한 소스 4개를 추가했다. 회차당 최대 18건이다.
+
+    | id | 매체 | 상한 | 최근 7일 |
+    |---|---|---|---|
+    | `ieee_spectrum_robotics` | IEEE Spectrum Robotics | 4 | 1 |
+    | `robotics_automation_news` | Robotics & Automation News(투자·휴머노이드·도입 사례) | 4 | 15 |
+    | `av_international` | Autonomous Vehicle International(자율주행·ADAS) | 4 | 7 |
+    | `irobotnews` | 로봇신문 "로봇" 섹션(`S1N1.xml`) | 6 | 20 |
+
+  - 로봇신문은 전체 기사 피드 대신 섹션 피드를 쓴다. 전체 피드에는 로봇주 시세 기사와 오피니언이 섞여 있다. Humanoids Daily와 Robotics 24/7은 파싱에 실패해 뺐다. Electrek 자율주행은 2020년 이후 갱신이 없고, The Robot Report AV 카테고리는 403이었다.
+  - 첫 회차 notes에서 확인할 것: AV International과 R&A News는 WordPress 사이트라 Substack처럼 러너 IP를 막을 수 있다.
+- [x] `gnews_physical_ai`의 `maxItems`를 8에서 12로 늘리고, 쿼리를 다듬어 "physical AI" 마케팅성 기사를 줄인다.
+  - ✅ 2026-10-29 상한을 12로 올리고, 쿼리에 `when:2d`와 키워드 제외(`-webinar -stock -stocks -shares -ETF -"index fund" -"market size" -CAGR -award -summit`)를 넣었다. 기존 쿼리 상위에는 TradingView·BigGo Finance·Business Wire 같은 증권·보도자료 배급 기사가 많았는데, 새 쿼리(최근 37건)는 투자 유치, 도입 사례, 기업 협력 기사가 대부분이다. `when:2d`는 회차가 실패했을 때 하루 여유를 준다. `-site:` 제외는 결과를 LinkedIn·X·채용 공고로 바꿔 놓아 쓰지 않는다.
+- [x] **(추가) 소스 필드 `topic`:** 소스의 주력 분야를 나타내는 힌트로, `CATEGORIES` 키를 쓰고 지금은 `physical`만 쓴다. 로보틱스·Physical AI 소스 15개와 `arxiv_cs_ro`, `github_robotics`에 붙였다. 3-5에서 선별 풀 할당에 쓴다. 설정 전용이라 DB 컬럼은 없고, 기사 분야는 여전히 LLM 가공이 정한다.
+  - 로컬 admin 스키마(`sourceSchema`)에 `topic`과 3-2의 `keywordFilter`를 선언했다. zod가 선언되지 않은 키를 지우므로, 선언하지 않으면 저장할 때 두 필드가 사라진다.
+  - **(기존 버그 수정)** arXiv 소스는 `url`에 카테고리명(`cs.CL`)을 쓰는데 http(s) 규칙에 걸려, admin에서 편집하거나 토글하면 400이 났다. 이제 arxiv는 수집 어댑터와 같은 카테고리 규칙으로 검증한다.
+  - `sourcesConfig.test.ts`가 `configs/sources.json`의 모든 항목이 스키마를 통과하고, 검증 뒤에도 필드가 지워지지 않는지 확인한다(vitest 43파일·360건 통과).
 
 ### 3-5. 선별 풀
 

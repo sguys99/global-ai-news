@@ -3,7 +3,7 @@
  * - RawItem: 수집 어댑터 출력(원본). collect.ts 가 소비.
  * - ArticleCard: 피드/검색/상세에서 쓰는 렌더 DTO.
  */
-import type { Format } from "@/lib/labels";
+import type { Category, Format } from "@/lib/labels";
 
 /** 소스 종류. configs/sources.json 의 kind 와 동일. */
 export type SourceKind = "rss" | "web" | "hn" | "github" | "hf" | "hf_models" | "reddit" | "arxiv";
@@ -20,6 +20,8 @@ export interface SourceConfig {
   enabled: number; // 1=활성, 0=비활성
   maxItems?: number; // 1회 신규 후보 상한(scripts/collect.ts)
   format?: Format; // 형식 — 생략 시 news (sources.format 으로 동기화, src/lib/labels.ts FORMATS)
+  topic?: Category; // 주력 분야 힌트(현재 physical 만) — 선별 풀 할당용. 설정 전용(DB 컬럼 없음)
+  keywordFilter?: string; // 키워드 사전 필터 목록 이름(configs/keyword-filters.json) — 설정 전용
 }
 
 /** collection_runs 한 행(배치 실행 이력). 대시보드에서 사용. */
