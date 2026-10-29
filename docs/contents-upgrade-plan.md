@@ -298,7 +298,7 @@
   - ✅ 2026-10-29 `형식별 후보→풀→게재: 뉴스 a→b→c, 오픈소스 …, 모델 …, 논문 …`과 `Physical AI 후보→풀→게재: a→b→c`를 남긴다. 게재는 이번 회차에 가공까지 마친 선정 기사다. `finally`에서 기록하므로 선별이 실패한 회차도 후보·풀 수가 남는다. 여기서 Physical AI는 소스 `topic` 기준이라, 기준선의 키워드 기준 Physical AI 게재 수와는 다른 지표다(Phase 7에서 구분). `kpi baseline`의 notes 파싱은 영향이 없음을 테스트로 고정했다.
 - [x] **(추가) `npm run collect -- --dry-run`:** 수집 → dedup → 선별 풀까지만 실행하고, 소스별 notes·풀 구성·풀 앞 40줄(선별 줄 형식)을 출력한다. LLM 호출과 API 키가 필요 없고, DB는 readonly로 열어 `ensureSchema`·`syncSources`·저장·`collection_runs` 기록을 모두 건너뛴다. 실제 수집은 비용이 들고, 커밋된 `data/app.db`를 바꿔 배포 브랜치의 일일 수집 커밋과 충돌한다. 그래서 소스·풀 변경은 이 모드로 검증한다.
 
-**Acceptance:** 로컬에서 `npm run collect`를 실행하면 notes에서 `oss`, `model`, `paper` 후보가 각각 1건 이상 확인된다.
+**Acceptance:** 로컬에서 `npm run collect -- --dry-run`(수집 → 선별 풀까지, LLM·DB 쓰기 없음)을 실행하면 notes에서 `oss`, `model`, `paper` 후보가 각각 1건 이상 확인된다. 처음 문구는 `npm run collect`였다. 2026-10-30 사용자 결정으로 dry-run으로 바꿨고, 실제 실행은 4-3과 Phase 7에서 한다.
 
 - [x] **통합 검증 (2026-10-29)**
   - 게이트: vitest 43파일·371건 통과(Node 24). typecheck 통과. lint는 오류 0건이고, 경고 1건(`_contentRaw`)은 이전부터 있던 것이다.
