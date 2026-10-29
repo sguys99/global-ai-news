@@ -2,7 +2,7 @@
  * 수집 배치 오케스트레이터. PRD §3.2 / WORK-PLAN Phase 1~3.
  * 실행: npm run collect  (= tsx scripts/collect.ts)
  *
- * ① 다중 어댑터 수집(RSS/HN/GitHub/HF/arXiv) → 소스별 상한·dedup·trendingScore
+ * ① 다중 어댑터 수집(RSS/HN/GitHub/HF 논문·모델/arXiv) → 소스별 상한·dedup·trendingScore
  * ② 선별 풀: 신규 후보 + 최근 가공 실패분을 소스별 라운드로빈으로 TRIAGE_POOL_SIZE 건
  * ③ LLM 선별 1회: 최대 MAX_PICKS_PER_RUN 건 선정·같은 사건 묶기·중요도 상대 평가
  * ④ LLM 가공: 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그 (비용 가드 적용)
@@ -14,7 +14,7 @@
 import Database, { type Database as DatabaseType } from "better-sqlite3";
 import { DB_PATH } from "../src/lib/paths";
 import type { RawItem } from "../src/lib/types";
-import { fetchGithub, fetchHf, fetchHn } from "./lib/collect/api";
+import { fetchGithub, fetchHf, fetchHfModels, fetchHn } from "./lib/collect/api";
 import { fetchArxiv } from "./lib/collect/arxiv";
 import { fetchReddit } from "./lib/collect/reddit";
 import { fetchRss, type SourceConfig } from "./lib/collect/rss";
@@ -66,7 +66,7 @@ const BACKFILL_DAYS = 7;
 const SEEN_RETENTION_DAYS = 30;
 
 /**
- * kind → 수집 어댑터. 여기 없는 kind(web — Post-MVP, hf_models — Phase 3 예정)는
+ * kind → 수집 어댑터. 여기 없는 kind(web — Post-MVP)는
  * sources 테이블에는 동기화되지만 수집에서는 건너뛴다.
  */
 const ADAPTERS: Record<string, (s: SourceConfig) => Promise<RawItem[]>> = {
@@ -74,6 +74,7 @@ const ADAPTERS: Record<string, (s: SourceConfig) => Promise<RawItem[]>> = {
   hn: fetchHn,
   github: fetchGithub,
   hf: fetchHf,
+  hf_models: fetchHfModels,
   reddit: fetchReddit,
   arxiv: fetchArxiv,
 };

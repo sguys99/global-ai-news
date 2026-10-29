@@ -5,7 +5,7 @@
  */
 import type { Format } from "@/lib/labels";
 
-/** 소스 종류. configs/sources.json 의 kind 와 동일. hf_models 는 어댑터가 Phase 3 에서 생긴다(그 전엔 수집 생략). */
+/** 소스 종류. configs/sources.json 의 kind 와 동일. */
 export type SourceKind = "rss" | "web" | "hn" | "github" | "hf" | "hf_models" | "reddit" | "arxiv";
 
 /**
@@ -45,6 +45,12 @@ export interface Engagement {
   stars?: number; // GitHub
   citations?: number; // arXiv (Semantic Scholar 총 인용수)
   influential?: number; // arXiv (Semantic Scholar 영향력 인용수)
+  likes?: number; // HF 모델 (좋아요 누적)
+  downloads?: number; // HF 모델 (최근 30일 다운로드)
+  hf_trending?: number; // HF 모델 자체 trendingScore — 우리 trending_score(0~100)와 다른 지표
+  // ↓ 순위 신호가 아닌 표시용 메타(HF 모델, Phase 6 메타 줄). 수집 시점에만 얻을 수 있어 함께 저장한다.
+  pipeline_tag?: string; // 태스크(예: text-generation)
+  params?: number; // 파라미터 수(safetensors/gguf total)
 }
 
 /** 수집 원본 한 건 (LLM 가공 전). */

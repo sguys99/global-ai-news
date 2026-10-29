@@ -229,11 +229,16 @@
 
 ### 3-1. HuggingFace 모델 (신규)
 
-- [ ] `scripts/lib/collect/api.ts`에 `hf_models` 어댑터를 추가한다.
+- [x] `scripts/lib/collect/api.ts`에 `hf_models` 어댑터를 추가한다.
   - 엔드포인트: `https://huggingface.co/api/models?sort=trendingScore&limit=30`
   - 수집 항목: `likes`, `downloads`, `trendingScore`, `pipeline_tag`
   - 필터: 생성 30일 이내 또는 최근 7일 안에 처음 본 모델. 이미 본 모델은 dedup으로 걸러진다.
-- [ ] `trendingScore()`에 HF 모델 신호(likes)를 반영한다.
+  - ✅ 2026-10-29 `fetchHfModels`를 추가했다. `source.url`(목록 API)에 `expand[]`로 필드를 붙여 회차당 1회만 호출하고, 생성 30일 이내 모델만 남긴다. `publishedAt`은 `createdAt`만 쓴다(`lastModified`는 커밋마다 바뀌어 오래된 모델이 새것처럼 보인다). 실측에서 트렌딩 30건 중 25건이 통과했다.
+  - 목록 API에 설명 필드가 없다(`cardData`·`full=true`도 마찬가지). 그래서 `contentRaw`는 "태스크 · 라이브러리 · 파라미터 · 라이선스 · base: 원본(관계)" 한 줄로 만든다. base 표기는 Phase 4 선별이 같은 모델의 재배포(GGUF·파인튜닝)를 묶는 단서가 된다. 파생 모델 필터는 두지 않았다. HF의 관계 데이터가 일관되지 않고, NVIDIA 공식 배포에도 `quantized`가 붙기 때문이다.
+  - `Engagement`에 순위 신호 `likes`·`downloads`·`hf_trending`(HF 자체 점수, 우리 `trending_score`와 구분)과 표시용 메타 `pipeline_tag`·`params`를 추가했다. 표시용 메타는 Phase 6 레이더 메타 줄에 쓰며, 수집 시점에만 얻을 수 있어 지금부터 저장한다. 파라미터 표기 헬퍼 `formatParams()`(`763B`, `1.7B`)도 함께 넣었다.
+  - 소스 `hf_models`(이름 "HuggingFace 트렌딩 모델", 형식 `model`, `maxItems` 6)를 등록했다. 첫 회차 뒤로는 하루 3~6건이 새로 트렌딩에 들어오므로 상한에 거의 걸리지 않고, 양자화·파인튜닝 사본이 공유 풀을 차지하는 것도 막는다.
+- [x] `trendingScore()`에 HF 모델 신호(likes)를 반영한다.
+  - ✅ 2026-10-29 likes를 가중 0.4, 상한 2000으로 더한다. 상한은 실측값(생성 30일 이내 모델의 likes 145~3,659)에서 정했다. `downloads`는 양자화 재배포가 부풀리고 `hf_trending`은 HF 자체 순위라 중복 신호여서 점수에 쓰지 않는다. 기존 소스 점수가 변경 전과 같은지 테스트로 고정했다(vitest 41파일·325건 통과).
 
 ### 3-2. GitHub
 

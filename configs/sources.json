@@ -267,6 +267,15 @@
     "enabled": 1
   },
   {
+    "id": "hf_models",
+    "name": "HuggingFace 트렌딩 모델",
+    "kind": "hf_models",
+    "format": "model",
+    "url": "https://huggingface.co/api/models?sort=trendingScore&limit=30",
+    "enabled": 1,
+    "maxItems": 6
+  },
+  {
     "id": "arxiv_cs_cl",
     "name": "arXiv cs.CL (NLP)",
     "kind": "arxiv",

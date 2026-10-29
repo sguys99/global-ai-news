@@ -117,6 +117,7 @@ const SOURCE_SHORT_LABELS: Record<string, string> = {
   "TechCrunch AI": "TechCrunch",
   "GitHub (topic:llm)": "GitHub",
   "HuggingFace Daily Papers": "HuggingFace",
+  "HuggingFace 트렌딩 모델": "HuggingFace",
   "MIT Technology Review": "MIT Tech Review",
   "NVIDIA Technical Blog (Robotics)": "NVIDIA Dev",
   "Google News: humanoid robot": "Google News",

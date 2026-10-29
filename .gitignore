@@ -63,3 +63,6 @@ Thumbs.db
 # 분야 재분류(scripts/reclassify.ts): --apply 직전 백업과 LLM 결과 캐시(로컬 전용).
 /data/app.db.bak-*
 /data/reclassify-cache.json
+
+# Claude Code 에이전트 워크트리
+.claude/worktrees/

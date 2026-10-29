@@ -37,4 +37,36 @@ describe("trendingScore", () => {
     const old = trendingScore(base({ engagement: eng, publishedAt: hoursAgo(100) }));
     expect(fresh).toBeGreaterThan(old);
   });
+
+  it("HF 모델 likes 가 클수록 점수가 높다(상한 2000 에서 신호 만점)", () => {
+    const low = trendingScore(base({ engagement: { likes: 150 } }));
+    const high = trendingScore(base({ engagement: { likes: 1500 } }));
+    expect(high).toBeGreaterThan(low);
+    expect(trendingScore(base({ engagement: { likes: 2000 } }))).toBe(40);
+    expect(trendingScore(base({ engagement: { likes: 99999 } }))).toBe(40);
+  });
+
+  it("downloads·hf_trending·표시 메타는 점수에 쓰지 않는다", () => {
+    const likesOnly = trendingScore(base({ engagement: { likes: 500 } }));
+    const withExtras = trendingScore(
+      base({
+        engagement: {
+          likes: 500,
+          downloads: 3_000_000,
+          hf_trending: 900,
+          pipeline_tag: "text-generation",
+          params: 8e9,
+        },
+      }),
+    );
+    expect(withExtras).toBe(likesOnly);
+  });
+
+  it("likes 신호 추가는 기존 소스 점수를 바꾸지 않는다", () => {
+    // likes 항 도입 전 공식으로 계산한 고정값 — 다른 소스는 likes 가 없어 0 이 더해진다.
+    expect(trendingScore(base({ engagement: { points: 120, num_comments: 30 } }))).toBe(50);
+    expect(trendingScore(base({ engagement: { stars: 999 } }))).toBe(27);
+    expect(trendingScore(base({ engagement: { ups: 12 } }))).toBe(19);
+    expect(trendingScore(base({ engagement: { citations: 50, influential: 3 } }))).toBe(24);
+  });
 });
