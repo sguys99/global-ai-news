@@ -96,6 +96,7 @@
 │       ├── llm.ts                # Claude 호출 계층 (Batches API + 일반 호출 대체, usage 비용 누적)
 │       ├── triage.ts             # LLM 선별: 후보 풀 → 최대 N건 선정·같은 사건 묶기·중요도
 │       ├── enrich.ts             # LLM 가공: 선정 기사 10건씩 묶음 → 한국어 제목·요약·분류·태그
+│       ├── repeatCheck.ts        # LLM 재보도 검사: 가공 제목 ↔ 최근 호 게재 제목 대조, 새 전개 없는 재보도 제외(실패 시 전부 게재)
 │       ├── cost.ts               # 토큰→비용 산출 (Haiku 단가, Batches 50% 할인)
 │       ├── tags.ts               # tags/article_tags upsert
 │       └── collect/
@@ -107,6 +108,7 @@
 │   └── prompts/
 │       ├── triage.system.md      # 선별 시스템 프롬프트 (선정 기준·묶기·중요도)
 │       ├── enrich.system.md      # 가공 시스템 프롬프트
+│       ├── repeat.system.md      # 재보도 검사 시스템 프롬프트
 │       └── enrich.fewshot.json   # 가공 few-shot 예시
 ├── .github/workflows/
 │   ├── collect.yml               # cron 일 1회 + workflow_dispatch
@@ -229,10 +231,11 @@ SQLite 7개 테이블 (DDL: `scripts/lib/schema.sql`, 상세: PRD §5):
 
 ## LLM 가공
 
-LLM 호출은 채팅 엔드포인트가 아니라 **배치 파이프라인** 안에서만 일어나며, 2단계로 나뉩니다.
+LLM 호출은 채팅 엔드포인트가 아니라 **배치 파이프라인** 안에서만 일어나며, 3단계로 나뉩니다.
 
 1. **선별**(`scripts/lib/triage.ts`) — 후보 풀(최대 180건)을 `번호 | 형식 | 매체 | 날짜 | 화제 | 제목 | 발췌` 한 줄씩 1회 호출로 보내, 최대 35건 선정·같은 사건 묶기(`duplicates`)·중요도(같은 형식 후보끼리 상대 평가)를 받는다. 유저 메시지에 오늘 할당(`PICK_QUOTAS` 비뉴스 8·형식별 1·Physical AI 3을 풀 구성에 맞춰 줄인 값)과 최근 3개 호 게재 제목("이미 보도함")을 함께 넣고, 할당 미달은 `notes`에 `할당 미달: …`로 남긴다.
 2. **가공**(`scripts/lib/enrich.ts`) — 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그를 받는다.
+3. **재보도 검사**(`scripts/lib/repeatCheck.ts`) — 가공된 `title_ko`+요약 첫 문장을 최근 3개 호 게재 제목과 1회 호출로 대조해, 새 전개 없는 재보도(`repeats`)를 게재에서 뺀다(묶음 포함 → `seen_items`, 재심사 행은 삭제). 후속 보도(`followups`)는 유지. 호출·검증 실패 시 전부 게재(fail-open).
 
 - 호출 계층: `scripts/lib/llm.ts` — Message Batches API로 제출, `BATCH_TIMEOUT_MIN` 초과·개별 실패 시 일반 호출로 1회 재시도. 출력은 구조화 출력(`output_config.format`)으로 받고 zod 로 검증한다.
 - 프롬프트: `configs/prompts/triage.system.md`(선별), `enrich.system.md` + `enrich.fewshot.json`(가공) + 가변 유저 메시지 (PRD §7)

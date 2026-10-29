@@ -13,6 +13,8 @@
  * ③ LLM 선별 1회: 최대 MAX_PICKS_PER_RUN 건 선정·같은 사건 묶기·중요도 상대 평가(형식 안에서)
  *    — 오늘 할당(비뉴스·Physical AI)과 최근 3개 호 게재 제목("이미 보도함")을 함께 넣고, 할당 미달은 notes 에 경고
  * ④ LLM 가공: 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그 (비용 가드 적용)
+ * ④-2 LLM 재보도 검사 1회: 가공된 한국어 제목·요약 첫 문장을 이미 보도함과 대조해 새 전개 없는 재보도를 게재에서 뺀다
+ *    (실패하면 전부 게재). 할당 미달·초과·논문 분야 쏠림 경고는 이 뒤의 최종 게재분으로 센다
  * ⑤ SQLite 저장: 선정 → articles, 미선정 → seen_items(키만) + collection_runs 기록
  *
  * LLM 호출은 기본적으로 Message Batches API(50% 할인)로 보낸다(lib/llm.ts).
@@ -51,7 +53,14 @@ import {
   type EvalSnapshot,
 } from "./lib/evalRun";
 import { ensureSchema } from "./lib/initDb";
-import { LlmRunner, parseStructured, type LlmRequest } from "./lib/llm";
+import { LlmRunner, parseStructured, type LlmRequest, type LlmUsage } from "./lib/llm";
+import {
+  attachReportedSummaries,
+  dropRepeats,
+  runRepeatCheck,
+  toRepeatInputs,
+  type RepeatCheckOutcome,
+} from "./lib/repeatCheck";
 import type { ArticleEnrichment } from "./lib/schema";
 import { describeSync, loadSourcesConfig, syncSources } from "./lib/syncSources";
 import { saveTags } from "./lib/tags";
@@ -61,6 +70,7 @@ import {
   buildTriageRequest,
   estimateTriageTokens,
   loadReportedHeadlines,
+  paperSpreadNote,
   pickTargets,
   poolMixNotes,
   quotaOverflowNote,
@@ -71,6 +81,7 @@ import {
   triageLine,
   type Candidate,
   type Pick,
+  type ReportedHeadline,
 } from "./lib/triage";
 import { trendingScore } from "./lib/trending";
 
@@ -378,13 +389,31 @@ function printPoolPreview(pool: Candidate[], triageReq: LlmRequest): void {
   pool.slice(0, DRY_RUN_PREVIEW_LINES).forEach((c, i) => console.log(`  ${triageLine(c, i)}`));
 }
 
-/** no-save: 게재(선정) 목록과 형식·분야 분포. Physical AI 는 가공 분야 기준(소스 topic 기준은 notes). */
+/**
+ * no-save: 게재(재보도 검사 뒤 선정) 목록과 형식·분야 분포, 재보도로 뺀 선정과 짝지은 이미 보도함 제목.
+ * Physical AI 는 가공 분야 기준(소스 topic 기준은 notes).
+ */
 function printNoSaveResult(
   pool: Candidate[],
   picks: Pick[],
   enriched: Map<number, ArticleEnrichment>,
+  repeat: { outcome: RepeatCheckOutcome; dropped: Pick[]; all: Map<number, ArticleEnrichment> },
+  reported: ReportedHeadline[],
 ): void {
-  console.log(`[collect] no-save 선정 ${picks.length}건 (중요도 | 형식 | 분야 | 매체 | 제목):`);
+  if (repeat.dropped.length > 0) {
+    const pairOf = new Map(repeat.outcome.repeats.map((m) => [m.id, m.reported]));
+    console.log(
+      `[collect] no-save 재보도 제외 ${repeat.dropped.length}건 (오늘 제목 ≈ 이미 보도함):`,
+    );
+    for (const p of repeat.dropped) {
+      const r = reported[(pairOf.get(p.index) ?? 0) - 1];
+      console.log(
+        `  #${p.index} ${repeat.all.get(p.index)?.title_ko ?? pool[p.index].item.title}` +
+          `\n    ≈ R${pairOf.get(p.index)} ${r ? `${r.issueDate.slice(5)} ${r.title}` : "?"}`,
+      );
+    }
+  }
+  console.log(`[collect] no-save 게재 ${picks.length}건 (중요도 | 형식 | 분야 | 매체 | 제목):`);
   for (const p of picks) {
     const c = pool[p.index];
     const e = enriched.get(p.index);
@@ -410,8 +439,10 @@ async function main(): Promise<void> {
   let mix: Parameters<typeof poolMixNotes> | null = null;
   /** no-save 스냅숏. 풀을 만든 뒤 채우고 finally 에서 쓴다(선별이 실패해도 풀은 남는다). */
   let snapshot: EvalSnapshot | null = null;
-  /** 선별 단계까지의 누적 usage(가공 몫 = 전체 − 이것). */
+  /** 선별 단계까지의 누적 usage(가공 몫 = 가공 끝 − 이것). */
   let triageUsage = emptyUsage();
+  /** 가공 단계까지의 누적 usage(재보도 검사 몫 = 전체 − 이것). 가공 전에 끝났으면 null. */
+  let enrichUsage: LlmUsage | null = null;
 
   try {
     // 소스 행(형식 포함)은 실행 시작에 sources.json 전체와 한 번에 맞춘다 — 비활성·삭제 소스도 반영된다.
@@ -466,7 +497,8 @@ async function main(): Promise<void> {
         triage: null,
         picks: [],
         enrichments: {},
-        usage: { triage: emptyUsage(), enrich: emptyUsage() },
+        repeatCheck: null,
+        usage: { triage: emptyUsage(), enrich: emptyUsage(), repeat: emptyUsage() },
         notes: stats.notes,
       };
     }
@@ -529,24 +561,60 @@ async function main(): Promise<void> {
       stats.status = "partial";
       stats.notes.push(`가공 실패·보류 ${unfinished}건(다음 실행에서 재심사)`);
     }
-    // 할당 미달·초과 경고(강제로 채우거나 덜어 내지 않는다). Physical AI 는 가공된 기사의 분야로 센다 — 소스 topic 은
-    // 일반 매체의 로봇 기사를 놓친다. 가공되지 않은 선정만 소스 topic 으로 대신한다.
-    const mixPicked = picks.map((p) => ({
+    enrichUsage = { ...llm.usage };
+
+    // ── ④-2 재보도 검사 ── 선별의 already_reported 를 빠져나온 재보도를 한국어끼리 다시 대조한다. 실패하면 전부 게재.
+    // 뺀 선정(과 그 묶음)은 persist 에 넘기지 않아 미선정 후보처럼 seen_items 로 간다(재심사 행은 지운다 — dropRepeats).
+    const repeat = await runRepeatCheck(
+      llm,
+      toRepeatInputs(picks, (i) => enriched.get(i)),
+      attachReportedSummaries(db, reported),
+      MODEL,
+      { remainingUsd: MAX_COST_USD_PER_RUN - llm.usage.costUsd, batch: USE_BATCH },
+    );
+    if (repeat.note) stats.notes.push(repeat.note);
+    if (snapshot) {
+      const { status, repeats, followups, note } = repeat;
+      snapshot.repeatCheck = { status, repeats, followups, note };
+    }
+    const published = dropRepeats(
+      picks,
+      enriched,
+      repeat.repeats.map((m) => m.id),
+    );
+
+    // 할당 미달·초과·논문 분야 쏠림 경고(강제로 채우거나 덜어 내지 않는다) — 재보도를 뺀 최종 게재분으로 센다.
+    // Physical AI 는 가공된 기사의 분야로 센다 — 소스 topic 은 일반 매체의 로봇 기사를 놓친다. 가공되지 않은 선정만
+    // 소스 topic 으로 대신한다.
+    const mixPicked = published.picks.map((p) => ({
       format: pool[p.index].format,
-      physical: (enriched.get(p.index)?.category ?? pool[p.index].topic) === "physical",
+      physical: (published.enriched.get(p.index)?.category ?? pool[p.index].topic) === "physical",
     }));
     const targets = pickTargets(pool, MAX_PICKS_PER_RUN);
     for (const note of [
       quotaShortfallNote(mixPicked, targets),
       quotaOverflowNote(mixPicked, targets),
+      paperSpreadNote(
+        published.picks.map((p) => ({
+          format: pool[p.index].format,
+          category: published.enriched.get(p.index)?.category,
+        })),
+      ),
     ]) {
       if (note) stats.notes.push(note);
     }
 
-    if (NO_SAVE) printNoSaveResult(pool, picks, enriched);
-    else persist(db, pool, overflow, picks, enriched, stats);
-    // 게재 = 이번 회차에 가공까지 마친 선정 기사(재심사 행 포함).
-    mix = [candidates, pool, [...enriched.keys()].map((i) => pool[i])];
+    if (NO_SAVE) {
+      printNoSaveResult(
+        pool,
+        published.picks,
+        published.enriched,
+        { outcome: repeat, dropped: published.dropped, all: enriched },
+        reported,
+      );
+    } else persist(db, pool, overflow, published.picks, published.enriched, stats);
+    // 게재 = 이번 회차에 가공까지 마치고 재보도가 아닌 선정 기사(재심사 행 포함).
+    mix = [candidates, pool, [...published.enriched.keys()].map((i) => pool[i])];
 
     // 선정이 있었는데 한 건도 가공되지 않았다면(키 오류·크레딧 소진 등) 파이프라인 고장이다.
     if (picks.length > 0 && enriched.size === 0) {
@@ -566,14 +634,23 @@ async function main(): Promise<void> {
     if (READ_ONLY) {
       // 실행 기록도 남기지 않는다 — notes 를 그대로 출력만 한다.
       for (const note of stats.notes) console.log(`[collect] note: ${note}`);
+      // 단계별 몫: 선별 = 선별 끝까지, 가공 = 가공 끝 − 선별, 재보도 = 전체 − 가공 끝.
+      const enrichEnd = enrichUsage ?? llm.usage;
+      const stages = {
+        triage: triageUsage,
+        enrich: usageSince(enrichEnd, triageUsage),
+        repeat: usageSince(llm.usage, enrichEnd),
+      };
       if (NO_SAVE) {
-        const enrichUsage = usageSince(llm.usage, triageUsage);
-        console.log(`[collect] no-save ${describeUsage("선별", triageUsage, MODEL, USE_BATCH)}`);
-        console.log(`[collect] no-save ${describeUsage("가공", enrichUsage, MODEL, USE_BATCH)}`);
+        console.log(`[collect] no-save ${describeUsage("선별", stages.triage, MODEL, USE_BATCH)}`);
+        console.log(`[collect] no-save ${describeUsage("가공", stages.enrich, MODEL, USE_BATCH)}`);
+        console.log(
+          `[collect] no-save ${describeUsage("재보도", stages.repeat, MODEL, USE_BATCH)}`,
+        );
         console.log(`[collect] no-save ${describeUsage("합계", llm.usage, MODEL, USE_BATCH)}`);
       }
       if (snapshot) {
-        snapshot.usage = { triage: triageUsage, enrich: usageSince(llm.usage, triageUsage) };
+        snapshot.usage = stages;
         const file = snapshotPath(startedAt);
         writeSnapshot(file, snapshot);
         console.log(`[collect] no-save 스냅숏: ${file}`);

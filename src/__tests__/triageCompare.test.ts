@@ -16,6 +16,7 @@ import {
   parseCompareArgs,
   pickOverlap,
   quotaWarnings,
+  repeatRecall,
   reportedHits,
   titleTokens,
 } from "../../scripts/triage-compare";
@@ -229,10 +230,36 @@ describe("parseCompareArgs", () => {
     expect(() => parseCompareArgs(["a.json", "--max-cost", "0"])).toThrow(/0 보다 큰/);
   });
 
+  it("--repeat-check <파일> · --known (--current 와 함께 못 씀)", () => {
+    expect(
+      parseCompareArgs(["a.json", "--repeat-check", "a.current.json", "--known", "130,48"]),
+    ).toMatchObject({
+      repeatCheck: path.resolve("a.current.json"),
+      known: [130, 48],
+      current: false,
+    });
+    expect(parseCompareArgs(["a.json"]).repeatCheck).toBeUndefined();
+    expect(() => parseCompareArgs(["a.json", "--repeat-check"])).toThrow(/결과 파일/);
+    expect(() => parseCompareArgs(["a.json", "--current", "--repeat-check", "b.json"])).toThrow(
+      /함께 쓸 수 없습니다/,
+    );
+  });
+
   it("스냅숏이 없거나 둘 이상, 모르는 옵션은 오류", () => {
     expect(() => parseCompareArgs([])).toThrow(/사용법/);
     expect(() => parseCompareArgs(["a.json", "b.json"])).toThrow(/하나만/);
     expect(() => parseCompareArgs(["a.json", "--max"])).toThrow(/알 수 없는 옵션/);
     expect(() => parseCompareArgs(["a.json", "--rev"])).toThrow(/커밋이 필요/);
+  });
+});
+
+describe("repeatRecall", () => {
+  it("맞힌 known·놓친 known·known 밖에서 걸린 번호(오탐 후보)", () => {
+    expect(repeatRecall([130, 48, 7], [130, 48, 110, 62])).toEqual({
+      hit: [130, 48],
+      missed: [110, 62],
+      extra: [7],
+    });
+    expect(repeatRecall([], [])).toEqual({ hit: [], missed: [], extra: [] });
   });
 });

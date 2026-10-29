@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
+  articleFields,
   buildEnrichRequests,
   CHUNK_SIZE,
   enrichFormat,
@@ -8,6 +9,7 @@ import {
   resolveEnrichments,
   readCategoryGuide,
   readFewShot,
+  splitTopics,
   type EnrichInput,
 } from "../../scripts/lib/enrich";
 import { approxTokens, outputFormatTokens } from "../../scripts/lib/cost";
@@ -158,11 +160,11 @@ describe("분야 정의 프롬프트", () => {
     );
   });
 
-  it("리포 가이드: topics 만 보고 기능·연동을 단정하지 않는다", () => {
+  it("리포 가이드: [토픽]만 보고 기능·연동을 단정하지 않는다", () => {
     const [chunk] = buildEnrichRequests([input(1)], "m");
-    expect(chunk.request.params.system as string).toContain(
-      'topics만 보고 "~를 활용한다·지원한다"고 쓰지 않는다',
-    );
+    const system = chunk.request.params.system as string;
+    expect(system).toContain('[토픽]만 보고 "~를 활용한다·지원한다"고 쓰지 않는다');
+    expect(system).toContain("[토픽]은 분야·태그를 고르는 단서일 뿐 기능·연동의 근거가 아니다");
   });
 
   it("시스템 프롬프트에 형식과 분야의 관계·형식별 요약 가이드가 실린다", () => {
@@ -202,5 +204,59 @@ describe("few-shot 예시", () => {
       expect(system).toContain(
         `### 예시 ${i + 1}\n입력:\n[형식] ${FORMAT_LABELS[ex.input.format]}\n[출처] ${ex.input.source}\n`,
       );
+  });
+});
+
+describe("GitHub 토픽 분리 ([토픽] 줄)", () => {
+  const TOPIC_NOTE = "(분류·태그용 키워드 — 기능·지원 근거 아님)";
+
+  it("splitTopics: 끝의 `· topics: a, b` 만 떼어 낸다", () => {
+    expect(splitTopics("A video engine, made for agents. · topics: agents, mcp, wgpu")).toEqual({
+      body: "A video engine, made for agents.",
+      topics: "agents, mcp, wgpu",
+    });
+    // 설명 없이 토픽만(githubSummary 는 구분자 없이 "topics: …" 로 시작한다).
+    expect(splitTopics("topics: llm, rag")).toEqual({ body: "", topics: "llm, rag" });
+    // 토픽 없음·설명 안의 문구·슬러그가 아닌 꼬리는 그대로.
+    expect(splitTopics("Plain description")).toEqual({ body: "Plain description", topics: null });
+    expect(splitTopics("We discuss topics: Safety and Alignment")).toEqual({
+      body: "We discuss topics: Safety and Alignment",
+      topics: null,
+    });
+  });
+
+  it("articleFields: 토픽이 있으면 [제목] 다음 [토픽] 줄, [본문]은 설명만", () => {
+    expect(
+      articleFields("oss", "GitHub Trending", "a/b", "Video engine. · topics: agents, mcp"),
+    ).toBe(
+      `[형식] 오픈소스\n[출처] GitHub Trending\n[제목] a/b\n[토픽] agents, mcp ${TOPIC_NOTE}\n[본문]\nVideo engine.`,
+    );
+    expect(articleFields("oss", "S", "a/b", "topics: llm")).toBe(
+      `[형식] 오픈소스\n[출처] S\n[제목] a/b\n[토픽] llm ${TOPIC_NOTE}\n[본문]\n(본문 없음)`,
+    );
+  });
+
+  it("articleFields: 토픽이 없으면 [토픽] 줄이 없다(뉴스·논문 등)", () => {
+    expect(articleFields("news", "S", "T", "Body")).toBe(
+      "[형식] 뉴스\n[출처] S\n[제목] T\n[본문]\nBody",
+    );
+  });
+
+  it("가공 요청과 few-shot 리포 예시 모두 [토픽] 줄로 실린다", () => {
+    const repo: EnrichInput = {
+      ...input(7, "oss"),
+      item: { ...input(7).item, contentRaw: "Desc here · topics: ai-agents, mcp" },
+    };
+    const [chunk] = buildEnrichRequests([repo], "m");
+    const user = chunk.request.params.messages[0].content as string;
+    expect(user).toContain(`[토픽] ai-agents, mcp ${TOPIC_NOTE}\n[본문]\nDesc here`);
+    expect(user).not.toContain("topics:");
+
+    const system = chunk.request.params.system as string;
+    const ossExample = readFewShot().find((ex) => ex.input.format === "oss")!;
+    const { body, topics } = splitTopics(ossExample.input.content);
+    expect(topics).not.toBeNull();
+    expect(system).toContain(`[토픽] ${topics} ${TOPIC_NOTE}\n[본문]\n${body}`);
+    expect(system).not.toContain("· topics:");
   });
 });

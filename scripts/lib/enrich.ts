@@ -26,6 +26,13 @@ const EST_OUTPUT_TOKENS_PER_ARTICLE = 250;
 
 export const enrichFormat = zodOutputFormat(enrichBatchSchema);
 
+/**
+ * 본문 끝의 GitHub 토픽(`설명 · topics: a, b, c` — collect/api.ts githubSummary). 토픽은 소문자·숫자·하이픈 슬러그를
+ * 쉼표로 이은 것이라 그 모양일 때만 떼어 낸다(설명 안의 "topics:" 같은 문구는 건드리지 않는다).
+ */
+const TRAILING_TOPICS =
+  /(?:^|\s*·\s*)topics:\s*([a-z0-9][a-z0-9-]*(?:,\s*[a-z0-9][a-z0-9-]*)*)\s*$/;
+
 export interface FewShotExample {
   input: { format: Format; source: string; title: string; content: string };
   output: ArticleEnrichment;
@@ -72,12 +79,31 @@ export function readFewShot(): FewShotExample[] {
   ) as FewShotExample[];
 }
 
+/** 본문 → 설명과 토픽. 토픽이 없으면 topics 는 null. */
+export function splitTopics(content: string): { body: string; topics: string | null } {
+  const m = TRAILING_TOPICS.exec(content);
+  if (!m) return { body: content, topics: null };
+  return { body: content.slice(0, m.index).trim(), topics: m[1].split(/,\s*/).join(", ") };
+}
+
 /**
  * 기사 1건의 입력 필드. 실제 입력과 few-shot 이 같은 모양이어야 하므로 한 곳에서 만든다.
  * [형식]은 형식별 요약 가이드를 고르는 단서다 — 분야(category)는 형식이 아니라 주제로 정한다.
+ * 저장소 토픽은 [본문]에서 떼어 [토픽] 줄로 둔다. 본문에 섞여 있으면 모델이 토픽(mcp·computer-use 등)을 기능·연동의
+ * 근거로 읽어 "~를 지원한다"고 지어냈다(4-3 검증) — 따로 두고 분류·태그용이라고 못 박는다.
  */
-function articleFields(format: Format, source: string, title: string, content: string): string {
-  return `[형식] ${FORMAT_LABELS[format]}\n[출처] ${source}\n[제목] ${title}\n[본문]\n${content}`;
+export function articleFields(
+  format: Format,
+  source: string,
+  title: string,
+  content: string,
+): string {
+  const { body, topics } = splitTopics(content);
+  const topicLine = topics ? `\n[토픽] ${topics} (분류·태그용 키워드 — 기능·지원 근거 아님)` : "";
+  return (
+    `[형식] ${FORMAT_LABELS[format]}\n[출처] ${source}\n[제목] ${title}${topicLine}\n` +
+    `[본문]\n${body || "(본문 없음)"}`
+  );
 }
 
 /** 가공할 기사 1건. id 는 요청 안에서 결과를 매칭하는 번호(후보 풀 번호). */

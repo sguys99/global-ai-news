@@ -9,7 +9,13 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { Database as DatabaseType } from "better-sqlite3";
-import { FORMAT_LABELS, FORMATS, type Category, type Format } from "../../src/lib/labels";
+import {
+  CATEGORY_LABELS,
+  FORMAT_LABELS,
+  FORMATS,
+  type Category,
+  type Format,
+} from "../../src/lib/labels";
 import { PROMPTS_DIR } from "../../src/lib/paths";
 import type { RawItem } from "../../src/lib/types";
 import { approxTokens, outputFormatTokens } from "./cost";
@@ -293,6 +299,8 @@ export interface ReportedHeadline {
   issueDate: string;
   /** 게재 제목(title_ko). */
   title: string;
+  /** 게재 요약 첫 문장 — 재보도 검사만 쓴다(attachReportedSummaries). 선별은 토큰을 아끼려고 제목만 싣는다. */
+  summary?: string;
 }
 
 /** "이미 보도함"에 넣을 최근 호 수(호당 약 30건 → 약 90줄). */
@@ -496,5 +504,30 @@ export function quotaOverflowNote(picked: PickedMix[], targets: PickTargets): st
   const physical = picked.filter((p) => p.physical).length;
   return physical > targets.physicalMax
     ? `할당 초과: Physical AI ${physical}/${targets.physicalMax}`
+    : null;
+}
+
+/** 논문 분야 쏠림 검사용 선정 1건 — category 는 가공 분야(미가공이면 없음). */
+export interface PickedCategory {
+  format: Format;
+  category?: Category;
+}
+
+/** 쏠림 경고를 내는 논문 최소 건수 — 이보다 적으면 한 분야가 절반을 넘는 것이 자연스럽다. */
+const PAPER_SPREAD_MIN = 4;
+
+/**
+ * 논문 분야 쏠림 경고(notes 용). 가공된 논문 선정이 PAPER_SPREAD_MIN 건 이상이고 한 분야가 그 절반을 넘으면 남긴다.
+ * 선별 "출력 전 확인"의 "논문: 한 분야가 절반을 넘지 않는다"를 코드로 확인한다(4-3 검증: 논문 10건 중 로봇 8건).
+ * 강제로 덜어 내지 않는다. 예: `논문 분야 쏠림: Physical AI 5/8`
+ */
+export function paperSpreadNote(picked: PickedCategory[]): string | null {
+  const papers = picked.filter((p) => p.format === "paper" && p.category !== undefined);
+  if (papers.length < PAPER_SPREAD_MIN) return null;
+  const counts = new Map<Category, number>();
+  for (const p of papers) counts.set(p.category!, (counts.get(p.category!) ?? 0) + 1);
+  const [top, n] = [...counts].sort((a, b) => b[1] - a[1])[0];
+  return n * 2 > papers.length
+    ? `논문 분야 쏠림: ${CATEGORY_LABELS[top]} ${n}/${papers.length}`
     : null;
 }

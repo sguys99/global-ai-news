@@ -50,3 +50,29 @@ export const triageSchema = z.object({
 });
 
 export type Triage = z.infer<typeof triageSchema>;
+
+/**
+ * 재보도 검사의 짝 1건: 오늘 기사 번호(id), 이미 보도함 번호(reported — R 없이 정수), 두 기사의 공통 사건(event).
+ * event 는 판정 근거를 한 구절로 적게 해 주제만 비슷한 기사를 짝짓지 않게 한다(4-3 검증: 없을 때 오탐 3/6). 코드는 출력·기록에만 쓴다.
+ */
+const repeatPairSchema = z.object({
+  id: z.number().int(),
+  reported: z.number().int(),
+  event: z.string().describe("두 기사가 함께 다루는 사건: 주체 + 대상·행위, 20자 안팎"),
+});
+
+/**
+ * 재보도 검사(repeatCheck.ts) 출력. 가공을 마친 오늘 기사를 최근 호 게재 제목과 한국어끼리 대조한다.
+ * repeats = 같은 사건이고 새 전개가 없음(게재 제외), followups = 같은 사건이지만 새 사실이 있는 후속 보도(그대로 게재).
+ * followups 는 "같은 사건이면 다 빼라"로 기울지 않게 판정을 둘로 가르는 자리다 — 코드는 세기만 한다.
+ */
+export const repeatCheckSchema = z.object({
+  repeats: z
+    .array(repeatPairSchema)
+    .describe("이미 보도함과 같은 사건이고 새 전개가 없는 기사. 없으면 빈 배열."),
+  followups: z
+    .array(repeatPairSchema)
+    .describe("이미 보도함과 같은 사건이지만 새 사실이 있는 후속 보도. 없으면 빈 배열."),
+});
+
+export type RepeatCheck = z.infer<typeof repeatCheckSchema>;

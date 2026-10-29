@@ -19,6 +19,7 @@ import {
 import { EVAL_DIR } from "../../src/lib/paths";
 import { estimateCost } from "./cost";
 import type { LlmUsage } from "./llm";
+import type { RepeatMatch } from "./repeatCheck";
 import type { ArticleEnrichment } from "./schema";
 import type { Candidate, Pick, ReportedHeadline, TriageOutput } from "./triage";
 
@@ -88,9 +89,17 @@ export interface EvalSnapshot {
   /** 선별 원출력(resolvePicks 이전). 선별 실패면 null. already_reported 가 생기기 전 스냅숏에는 그 필드가 없다. */
   triage: TriageOutput | null;
   picks: Pick[];
-  /** 풀 번호 → 가공 결과. */
+  /** 풀 번호 → 가공 결과. picks·enrichments 는 재보도 검사 전 값이다(게재 = 여기서 repeatCheck.repeats 를 뺀 것). */
   enrichments: Record<number, ArticleEnrichment>;
-  usage: { triage: LlmUsage; enrich: LlmUsage };
+  /** 재보도 검사 결과(검사를 건너뛰었거나 이 단계가 생기기 전 스냅숏이면 없음). */
+  repeatCheck?: {
+    status: "skipped" | "ok" | "failed";
+    repeats: RepeatMatch[];
+    followups: RepeatMatch[];
+    note: string | null;
+  } | null;
+  /** repeat 는 재보도 검사가 생기기 전 스냅숏에 없다. */
+  usage: { triage: LlmUsage; enrich: LlmUsage; repeat?: LlmUsage };
   notes: string[];
 }
 

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
-import type { Format } from "../../src/lib/labels";
+import type { Category, Format } from "../../src/lib/labels";
 import { parseRunNotes } from "../../scripts/lib/baseline";
 import {
   alreadyReportedIds,
@@ -13,6 +13,7 @@ import {
   defaultPoolQuotas,
   estimateTriageTokens,
   loadReportedHeadlines,
+  paperSpreadNote,
   PICK_QUOTAS,
   pickTargets,
   poolMixNotes,
@@ -22,6 +23,7 @@ import {
   triageFormat,
   triageLine,
   type Candidate,
+  type PickedCategory,
   type PickedMix,
 } from "../../scripts/lib/triage";
 
@@ -637,5 +639,43 @@ describe("이미 보도함 제외 (already_reported)", () => {
     expect(alreadyReportedNote({ already_reported: [2], picks: [] }, 10)).toBe(
       "이미 보도함 제외 1건",
     );
+  });
+});
+
+describe("paperSpreadNote", () => {
+  const papers = (cats: (Category | undefined)[]): PickedCategory[] =>
+    cats.map((category) => ({ format: "paper", category }));
+
+  it("가공된 논문 4건 이상에서 한 분야가 절반을 넘을 때만 `논문 분야 쏠림: 분야 n/전체`", () => {
+    expect(
+      paperSpreadNote([
+        ...papers([
+          "physical",
+          "physical",
+          "physical",
+          "physical",
+          "physical",
+          "research",
+          "llm",
+          "agent",
+        ]),
+        { format: "news", category: "physical" },
+      ]),
+    ).toBe("논문 분야 쏠림: Physical AI 5/8");
+    // 딱 절반은 넘지 않은 것.
+    expect(paperSpreadNote(papers(["physical", "physical", "research", "llm"]))).toBeNull();
+    // 3건뿐이면 검사하지 않는다.
+    expect(paperSpreadNote(papers(["physical", "physical", "physical"]))).toBeNull();
+    // 미가공 논문은 세지 않는다(분모에서도 뺀다).
+    expect(
+      paperSpreadNote(
+        papers(["research", "research", "research", "physical", undefined, undefined]),
+      ),
+    ).toBe("논문 분야 쏠림: 연구·논문 3/4");
+  });
+
+  it("notes 에 섞여도 kpi baseline 파싱에 영향이 없다", () => {
+    const note = paperSpreadNote(papers(["physical", "physical", "physical", "llm"]))!;
+    expect(parseRunNotes(`선정 30건; ${note}`).picks).toBe(30);
   });
 });

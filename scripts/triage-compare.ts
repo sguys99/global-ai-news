@@ -2,6 +2,7 @@
  * 개편 전후 선별 비교 (계획 Phase 4-3). DB 를 열지 않는다.
  * 실행: npm run triage:compare -- data/eval/run-<시각>.json [--rev 096de4e]
  *       npm run triage:compare -- data/eval/run-<시각>.json --current [--known 60,130] [--max-cost 0.12]
+ *       npm run triage:compare -- data/eval/run-<시각>.json --repeat-check <run.json|run.current.json> [--known 130,48]
  *
  * `npm run collect -- --no-save` 가 남긴 스냅숏의 **같은 선별 풀**로 개편 전 선별을 일반 호출 1회로 다시 돌리고,
  * 스냅숏의 개편 후 선별·가공 결과와 나란히 비교한다.
@@ -17,11 +18,17 @@
  * 선별(프롬프트·요청 빌더, 스냅숏의 이미 보도함·최대 선정 수)과 가공을 같은 풀로 일반 호출해 3열로 비교한다:
  * 개편 전 / 개편 후 v1(스냅숏) / 보강 후(이번 실행). `--known` 은 눈으로 확인한 "이미 보도함 재선정" 풀 번호로,
  * 각 열이 그 번호를 대표로 다시 골랐는지 센다. 결과는 `<스냅숏>.current.json`.
+ *
+ * `--repeat-check <파일>`: 재보도 검사(④-2)만 일반 호출 1회로 돌린다. 대상은 그 파일(스냅숏 또는 `.current.json`)의
+ * 선정·가공 결과, 대조할 이미 보도함은 스냅숏의 것이다. `--known` 과 비교해 맞힌·놓친 재보도와, 눈으로 확인할
+ * 오탐 후보(known 밖에서 걸린 기사 — 오늘 제목과 짝지은 이미 보도함 제목을 나란히)를 출력한다. 결과는 `<파일>.repeat.json`.
+ * `--db <path>` 를 주면 그 DB(readonly)에서 이미 보도함 요약을 읽어 collect 와 같은 입력(제목 — 요약 첫 문장)으로 돌린다.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import Database from "better-sqlite3";
 import { z } from "zod/v4";
 import { CATEGORIES, CATEGORY_LABELS, FORMAT_LABELS } from "../src/lib/labels";
 import { estimateCost } from "./lib/cost";
@@ -47,11 +54,13 @@ import {
   type PickSummary,
 } from "./lib/evalRun";
 import { LlmRunner, parseStructured, type LlmRequest, type LlmUsage } from "./lib/llm";
+import { attachReportedSummaries, runRepeatCheck, toRepeatInputs } from "./lib/repeatCheck";
 import type { ArticleEnrichment } from "./lib/schema";
 import {
   alreadyReportedIds,
   buildTriageRequest,
   estimateTriageTokens,
+  paperSpreadNote,
   pickTargets,
   quotaOverflowNote,
   quotaShortfallNote,
@@ -66,7 +75,7 @@ import {
 export const DEFAULT_REV = "096de4e";
 /** 개편 전 MAX_PICKS_PER_RUN 기본값. */
 export const LEGACY_MAX_PICKS = 30;
-/** `--current` 실행(선별 1회 + 가공 4회, 일반 호출)의 비용 상한 기본값(USD). */
+/** `--current` 실행(선별 1회 + 가공 4회, 일반 호출)·`--repeat-check`(1회)의 비용 상한 기본값(USD). */
 export const DEFAULT_MAX_COST = 0.12;
 
 /**
@@ -239,8 +248,26 @@ export function quotaWarnings(pool: Candidate[], rows: PickRow[], maxPicks: numb
     physical: (r.category ?? r.topic) === "physical",
   }));
   const targets = pickTargets(pool, maxPicks);
-  const notes = [quotaShortfallNote(mix, targets), quotaOverflowNote(mix, targets)].filter(Boolean);
+  const notes = [
+    quotaShortfallNote(mix, targets),
+    quotaOverflowNote(mix, targets),
+    paperSpreadNote(rows),
+  ].filter(Boolean);
   return notes.length > 0 ? notes.join(" / ") : "-";
+}
+
+/** 재보도 검사 결과 vs 눈으로 확인한 재보도(known): 맞힌 것·놓친 것·known 밖에서 걸린 것(오탐 후보). */
+export function repeatRecall(
+  flagged: number[],
+  known: number[],
+): { hit: number[]; missed: number[]; extra: number[] } {
+  const f = new Set(flagged);
+  const k = new Set(known);
+  return {
+    hit: known.filter((i) => f.has(i)),
+    missed: known.filter((i) => !f.has(i)),
+    extra: flagged.filter((i) => !k.has(i)),
+  };
 }
 
 /** 알려진 이미 보도함 재선정 번호 중 대표(id)로 다시 고른 번호. */
@@ -323,8 +350,12 @@ export interface CompareArgs {
   current: boolean;
   /** 눈으로 확인한 이미 보도함 재선정 풀 번호(`--current` 집계용). */
   known: number[];
-  /** `--current` 비용 상한(USD, 일반 호출 기준 추정). */
+  /** `--current`·`--repeat-check` 비용 상한(USD, 일반 호출 기준 추정). */
   maxCost: number;
+  /** 재보도 검사만 돌릴 선정·가공 결과 파일(스냅숏 또는 `.current.json`). */
+  repeatCheck?: string;
+  /** `--repeat-check` 전용: 이미 보도함 요약을 읽을 DB(readonly). 스냅숏의 이미 보도함에는 요약이 없다. */
+  db?: string;
 }
 
 export function parseCompareArgs(argv: string[]): CompareArgs {
@@ -333,6 +364,8 @@ export function parseCompareArgs(argv: string[]): CompareArgs {
   let current = false;
   let known: number[] = [];
   let maxCost = DEFAULT_MAX_COST;
+  let repeatCheck: string | undefined;
+  let db: string | undefined;
   const value = (i: number, what: string) => {
     const v = argv[i];
     if (v === undefined || v.startsWith("--")) throw new Error(`${argv[i - 1]} 에 ${what}`);
@@ -344,6 +377,10 @@ export function parseCompareArgs(argv: string[]): CompareArgs {
       rev = value(++i, "커밋이 필요합니다");
     } else if (flag === "--current") {
       current = true;
+    } else if (flag === "--db") {
+      db = path.resolve(value(++i, "DB 경로가 필요합니다"));
+    } else if (flag === "--repeat-check") {
+      repeatCheck = path.resolve(value(++i, "선정·가공 결과 파일이 필요합니다"));
     } else if (flag === "--known") {
       known = value(++i, "풀 번호 목록이 필요합니다(예: 60,130)")
         .split(",")
@@ -364,9 +401,19 @@ export function parseCompareArgs(argv: string[]): CompareArgs {
   }
   if (!snapshot)
     throw new Error(
-      "사용법: npm run triage:compare -- <snapshot.json> [--rev <commit>] [--current [--known 1,2] [--max-cost 0.12]]",
+      "사용법: npm run triage:compare -- <snapshot.json> [--rev <commit>] [--current | --repeat-check <run.json> [--db <app.db>]] [--known 1,2] [--max-cost 0.12]",
     );
-  return { snapshot, rev, current, known, maxCost };
+  if (current && repeatCheck) throw new Error("--current 와 --repeat-check 는 함께 쓸 수 없습니다");
+  if (db && !repeatCheck) throw new Error("--db 는 --repeat-check 에서만 씁니다");
+  return {
+    snapshot,
+    rev,
+    current,
+    known,
+    maxCost,
+    ...(repeatCheck ? { repeatCheck } : {}),
+    ...(db ? { db } : {}),
+  };
 }
 
 const compareFile = (snapshot: string, rev: string) =>
@@ -580,10 +627,82 @@ async function runCurrent(args: CompareArgs, snap: EvalSnapshot, model: string):
   console.log(`\n[compare] 결과: ${out}`);
 }
 
+/** `--repeat-check`: 기존 회차의 선정·가공 결과에 재보도 검사만 돌려 known 과 비교한다. */
+async function runRepeatEval(
+  args: CompareArgs,
+  file: string,
+  snap: EvalSnapshot,
+  model: string,
+): Promise<void> {
+  const source = JSON.parse(readFileSync(file, "utf-8")) as {
+    picks: Pick[];
+    enrichments: Record<number, ArticleEnrichment>;
+  };
+  const enrichmentOf = (i: number) => source.enrichments[i] as ArticleEnrichment | undefined;
+  const inputs = toRepeatInputs(source.picks, enrichmentOf);
+  let reported = snap.reported;
+  if (args.db) {
+    const db = new Database(args.db, { readonly: true, fileMustExist: true });
+    reported = attachReportedSummaries(db, reported);
+    db.close();
+  }
+  const withSummary = reported.filter((r) => r.summary).length;
+  console.log(
+    `[compare] 재보도 검사: 가공된 선정 ${inputs.length}건 × 이미 보도함 ${reported.length}건` +
+      `(요약 ${withSummary}건) · ${model} 일반 호출`,
+  );
+  const llm = new LlmRunner({ useBatch: false, batchTimeoutMs: 0 });
+  const outcome = await runRepeatCheck(llm, inputs, reported, model, {
+    remainingUsd: args.maxCost,
+    batch: false,
+  });
+  if (outcome.status !== "ok") throw new Error(outcome.note ?? "재보도 검사를 건너뛰었습니다");
+
+  const titleOf = (i: number) => enrichmentOf(i)?.title_ko ?? snap.pool[i]?.item.title ?? "?";
+  const headline = (r: number) => {
+    const h = reported[r - 1];
+    return h ? `R${r} ${h.issueDate.slice(5)} ${h.title}` : `R${r} ?`;
+  };
+  const rc = repeatRecall(
+    outcome.repeats.map((m) => m.id),
+    args.known,
+  );
+  const known = new Set(args.known);
+  console.log(`\n## 재보도 판정 ${outcome.repeats.length}건 (오늘 제목 ≈ 이미 보도함)`);
+  for (const m of outcome.repeats) {
+    const mark = args.known.length === 0 ? "" : known.has(m.id) ? " [known]" : " [오탐 후보]";
+    console.log(
+      `  #${m.id}${mark} ${titleOf(m.id)}\n    ≈ ${headline(m.reported)}  [${m.event ?? ""}]`,
+    );
+  }
+  console.log(`\n## 후속 보도 판정 ${outcome.followups.length}건 (그대로 게재)`);
+  for (const m of outcome.followups) {
+    console.log(`  #${m.id} ${titleOf(m.id)}\n    ≈ ${headline(m.reported)}  [${m.event ?? ""}]`);
+  }
+  if (args.known.length > 0) {
+    console.log(
+      `\n재현율: ${rc.hit.length}/${args.known.length}` +
+        (rc.missed.length > 0
+          ? ` — 놓침 ${rc.missed.map((i) => `#${i} ${titleOf(i)}`).join(" / ")}`
+          : ""),
+    );
+    console.log(`known 밖에서 걸린 기사(오탐 후보, 눈으로 확인): ${rc.extra.length}건`);
+  }
+  console.log(`\n${describeUsage("재보도 검사", llm.usage, model, false)}`);
+
+  const out = `${file.replace(/\.json$/, "")}.repeat.json`;
+  writeFileSync(
+    out,
+    `${JSON.stringify({ createdAt: new Date().toISOString(), known: args.known, ...outcome, recall: rc, usage: llm.usage }, null, 2)}\n`,
+  );
+  console.log(`\n[compare] 결과: ${out}`);
+}
+
 async function main(): Promise<void> {
   const args = parseCompareArgs(process.argv.slice(2));
   const snap = readSnapshot(args.snapshot);
   const model = envString("LLM_MODEL", snap.model);
+  if (args.repeatCheck) return runRepeatEval(args, args.repeatCheck, snap, model);
   if (args.current) return runCurrent(args, snap, model);
   const pool = snap.pool;
   const system = execFileSync("git", ["show", `${args.rev}:configs/prompts/triage.system.md`], {
