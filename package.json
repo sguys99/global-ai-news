@@ -19,6 +19,7 @@
     "db:reindex": "tsx scripts/lib/reindexFts.ts",
     "db:reclassify": "tsx --env-file-if-exists=.env.local scripts/reclassify.ts",
     "collect": "tsx --env-file-if-exists=.env.local scripts/collect.ts",
+    "triage:compare": "tsx --env-file-if-exists=.env.local scripts/triage-compare.ts",
     "kpi": "tsx --env-file-if-exists=.env.local scripts/kpi.ts"
   },
   "dependencies": {

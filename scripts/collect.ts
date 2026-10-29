@@ -3,6 +3,10 @@
  * 실행: npm run collect  (= tsx scripts/collect.ts)
  *       npm run collect -- --dry-run  — ①~② 만 돌려 notes·선별 풀 구성을 출력한다. LLM 호출·API 키·DB 쓰기 없음
  *       (DB 는 readonly 로 열어 기존 기사·seen 키 확인에만 쓴다). 소스·할당 조정을 비용 없이 확인할 때 쓴다.
+ *       npm run collect -- --no-save  — ①~④ 를 실제로 돌리되(LLM 비용 발생) DB 에 쓰지 않는다. dry-run 처럼 readonly 로
+ *       열어 ensureSchema·syncSources·⑤ 저장·collection_runs 를 건너뛰고, 게재 목록·notes·단계별 비용을 출력한다.
+ *       풀·선별·가공 결과는 data/eval/run-<시각>.json 스냅숏으로 남는다(npm run triage:compare 로 개편 전 선별과 비교).
+ *       --db <path>  — dry-run·no-save 전용. 다른 DB 파일(예: 배포 브랜치 DB 사본)을 readonly 로 연다.
  *
  * ① 다중 어댑터 수집(RSS/HN/GitHub/HF 논문·모델/arXiv) → 소스별 상한·dedup·trendingScore
  * ② 선별 풀: 신규 후보 + 최근 가공 실패분을 소스별 라운드로빈으로 TRIAGE_POOL_SIZE 건(비뉴스·Physical AI 최소 할당)
@@ -15,7 +19,7 @@
  * 소스별 try/catch 로 부분 실패를 격리한다(한 소스 실패가 전체를 막지 않음).
  */
 import Database, { type Database as DatabaseType } from "better-sqlite3";
-import { toFormat } from "../src/lib/labels";
+import { CATEGORY_LABELS, FORMAT_LABELS, toFormat } from "../src/lib/labels";
 import { DB_PATH } from "../src/lib/paths";
 import type { RawItem } from "../src/lib/types";
 import { fetchGithub, fetchHf, fetchHfModels, fetchHn } from "./lib/collect/api";
@@ -33,6 +37,19 @@ import {
   type EnrichChunk,
 } from "./lib/enrich";
 import { envFlag, envNonNegativeInt, envNonNegativeNumber, envString } from "./lib/env";
+import {
+  categoryCounts,
+  describeUsage,
+  emptyUsage,
+  formatCounts,
+  parseCollectArgs,
+  pickRows,
+  snapshotPath,
+  summarizePicks,
+  usageSince,
+  writeSnapshot,
+  type EvalSnapshot,
+} from "./lib/evalRun";
 import { ensureSchema } from "./lib/initDb";
 import { LlmRunner, parseStructured, type LlmRequest } from "./lib/llm";
 import type { ArticleEnrichment } from "./lib/schema";
@@ -67,8 +84,13 @@ const MAX_COST_USD_PER_RUN = envNonNegativeNumber("MAX_COST_USD_PER_RUN", 0.1);
 const USE_BATCH = envFlag("LLM_USE_BATCH", true);
 /** 배치 1건 대기 상한(분). 넘으면 취소하고 남은 요청을 일반 호출로 보낸다. */
 const BATCH_TIMEOUT_MIN = envNonNegativeInt("BATCH_TIMEOUT_MIN", 25);
+const ARGS = parseCollectArgs(process.argv.slice(2));
 /** `--dry-run`: 수집·선별 풀까지만(LLM·DB 쓰기 없음). */
-const DRY_RUN = process.argv.includes("--dry-run");
+const DRY_RUN = ARGS.dryRun;
+/** `--no-save`: 선별·가공까지 돌리되 DB 쓰기 없음(결과는 data/eval 스냅숏). */
+const NO_SAVE = ARGS.noSave;
+/** DB 를 readonly 로 여는 모드 — ensureSchema·syncSources·저장·collection_runs 를 모두 건너뛴다. */
+const READ_ONLY = DRY_RUN || NO_SAVE;
 /** dry-run 에서 출력할 선별 풀 앞부분 줄 수. */
 const DRY_RUN_PREVIEW_LINES = 40;
 
@@ -354,22 +376,46 @@ function printPoolPreview(pool: Candidate[], triageReq: LlmRequest): void {
   pool.slice(0, DRY_RUN_PREVIEW_LINES).forEach((c, i) => console.log(`  ${triageLine(c, i)}`));
 }
 
+/** no-save: 게재(선정) 목록과 형식·분야 분포. Physical AI 는 가공 분야 기준(소스 topic 기준은 notes). */
+function printNoSaveResult(
+  pool: Candidate[],
+  picks: Pick[],
+  enriched: Map<number, ArticleEnrichment>,
+): void {
+  console.log(`[collect] no-save 선정 ${picks.length}건 (중요도 | 형식 | 분야 | 매체 | 제목):`);
+  for (const p of picks) {
+    const c = pool[p.index];
+    const e = enriched.get(p.index);
+    console.log(
+      `  ${p.importance} | ${FORMAT_LABELS[c.format]} | ${e ? CATEGORY_LABELS[e.category] : "-"} | ` +
+        `${c.sourceName} | ${e?.title_ko ?? `(미가공) ${c.item.title}`}`,
+    );
+  }
+  const s = summarizePicks(pickRows(pool, picks, enriched));
+  console.log(`[collect] no-save 형식별: ${formatCounts(s)} (비뉴스 ${s.nonNews})`);
+  console.log(`[collect] no-save 분야별(가공): ${categoryCounts(s)}`);
+}
+
 async function main(): Promise<void> {
   const startedAt = new Date().toISOString();
-  // dry-run 은 readonly 로 연다 — 커밋 대상인 data/app.db 를 실수로라도 바꾸지 않는다.
-  const db = new Database(DB_PATH, { readonly: DRY_RUN, fileMustExist: DRY_RUN });
+  // dry-run·no-save 는 readonly 로 연다 — 커밋 대상인 data/app.db 를 실수로라도 바꾸지 않는다.
+  const db = new Database(ARGS.db ?? DB_PATH, { readonly: READ_ONLY, fileMustExist: READ_ONLY });
   db.pragma("foreign_keys = ON");
 
   const llm = new LlmRunner({ useBatch: USE_BATCH, batchTimeoutMs: BATCH_TIMEOUT_MIN * 60_000 });
   const stats: RunStats = { status: "success", itemsCollected: 0, itemsPublished: 0, notes: [] };
   /** 형식별·Physical AI 후보 → 풀 → 게재 notes 재료. 선별 풀을 만든 뒤에 채운다. */
   let mix: Parameters<typeof poolMixNotes> | null = null;
+  /** no-save 스냅숏. 풀을 만든 뒤 채우고 finally 에서 쓴다(선별이 실패해도 풀은 남는다). */
+  let snapshot: EvalSnapshot | null = null;
+  /** 선별 단계까지의 누적 usage(가공 몫 = 전체 − 이것). */
+  let triageUsage = emptyUsage();
 
   try {
     // 소스 행(형식 포함)은 실행 시작에 sources.json 전체와 한 번에 맞춘다 — 비활성·삭제 소스도 반영된다.
-    // dry-run 은 둘 다 건너뛴다(DB 쓰기). 수집·풀은 sources.json 만 보므로 결과는 같다.
+    // dry-run·no-save 는 둘 다 건너뛴다(DB 쓰기). 수집·풀은 sources.json 만 보므로 결과는 같다.
     const sourcesConfig = loadSourcesConfig();
-    if (!DRY_RUN) {
+    if (!READ_ONLY) {
       ensureSchema(db);
       console.log(`[collect] sources sync: ${describeSync(syncSources(db, sourcesConfig))}`);
     }
@@ -404,9 +450,27 @@ async function main(): Promise<void> {
       return;
     }
     mix = [candidates, pool, []];
+    if (NO_SAVE) {
+      snapshot = {
+        createdAt: startedAt,
+        model: MODEL,
+        maxPicks: MAX_PICKS_PER_RUN,
+        poolSize: TRIAGE_POOL_SIZE,
+        useBatch: USE_BATCH,
+        db: db.name,
+        candidates: candidates.length,
+        pool,
+        reported,
+        triage: null,
+        picks: [],
+        enrichments: {},
+        usage: { triage: emptyUsage(), enrich: emptyUsage() },
+        notes: stats.notes,
+      };
+    }
 
     if (pool.length === 0) {
-      persist(db, pool, overflow, [], new Map(), stats);
+      if (!NO_SAVE) persist(db, pool, overflow, [], new Map(), stats);
       return;
     }
 
@@ -418,12 +482,15 @@ async function main(): Promise<void> {
     }
     const triageRes = (await llm.run([triageReq])).get(triageReq.id);
     const triage = parseStructured(triageRes?.message ?? null, triageFormat);
+    triageUsage = { ...llm.usage };
+    if (snapshot) snapshot.triage = triage;
     // 선별 실패 시 아무것도 저장하지 않는다 → 다음 실행에서 같은 후보로 다시 선별.
     if (!triage) throw new Error(`선별 실패: ${triageRes?.error ?? "응답 검증 실패"}`);
 
     const picks = resolvePicks(triage, pool.length, MAX_PICKS_PER_RUN);
     const grouped = picks.reduce((n, p) => n + p.duplicates.length, 0);
     stats.notes.push(`선정 ${picks.length}건(같은 사건으로 묶인 기사 ${grouped}건)`);
+    if (snapshot) snapshot.picks = picks;
     for (const p of picks) {
       const c = pool[p.index];
       console.log(`[collect] pick ${p.importance} | ${c.sourceName} | ${c.item.title}`);
@@ -450,6 +517,7 @@ async function main(): Promise<void> {
       if (!parsed) continue;
       for (const [id, e] of resolveEnrichments(parsed, chunk.ids)) enriched.set(id, e);
     }
+    if (snapshot) snapshot.enrichments = Object.fromEntries(enriched);
 
     const unfinished = picks.length - enriched.size;
     if (unfinished > 0) {
@@ -467,7 +535,8 @@ async function main(): Promise<void> {
     );
     if (shortfall) stats.notes.push(shortfall);
 
-    persist(db, pool, overflow, picks, enriched, stats);
+    if (NO_SAVE) printNoSaveResult(pool, picks, enriched);
+    else persist(db, pool, overflow, picks, enriched, stats);
     // 게재 = 이번 회차에 가공까지 마친 선정 기사(재심사 행 포함).
     mix = [candidates, pool, [...enriched.keys()].map((i) => pool[i])];
 
@@ -486,9 +555,21 @@ async function main(): Promise<void> {
     stats.notes.push(
       `LLM ${USE_BATCH ? "batch" : "direct"} 호출 ${calls}회, $${costUsd.toFixed(4)}`,
     );
-    if (DRY_RUN) {
+    if (READ_ONLY) {
       // 실행 기록도 남기지 않는다 — notes 를 그대로 출력만 한다.
       for (const note of stats.notes) console.log(`[collect] note: ${note}`);
+      if (NO_SAVE) {
+        const enrichUsage = usageSince(llm.usage, triageUsage);
+        console.log(`[collect] no-save ${describeUsage("선별", triageUsage, MODEL, USE_BATCH)}`);
+        console.log(`[collect] no-save ${describeUsage("가공", enrichUsage, MODEL, USE_BATCH)}`);
+        console.log(`[collect] no-save ${describeUsage("합계", llm.usage, MODEL, USE_BATCH)}`);
+      }
+      if (snapshot) {
+        snapshot.usage = { triage: triageUsage, enrich: usageSince(llm.usage, triageUsage) };
+        const file = snapshotPath(startedAt);
+        writeSnapshot(file, snapshot);
+        console.log(`[collect] no-save 스냅숏: ${file}`);
+      }
     } else {
       db.prepare(
         `INSERT INTO collection_runs

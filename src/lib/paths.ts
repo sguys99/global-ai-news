@@ -13,6 +13,8 @@ export const PROMPTS_DIR = path.join(CONFIGS_DIR, "prompts");
 export const RAW_DATA_DIR = path.join(DATA_DIR, "raw");
 export const INTERMEDIATE_DATA_DIR = path.join(DATA_DIR, "intermediate");
 export const PROCESSED_DATA_DIR = path.join(DATA_DIR, "processed");
+// DB 에 쓰지 않는 수집 실행(collect --no-save)의 스냅숏 — 개편 전후 선별 비교용(gitignore, 로컬 전용)
+export const EVAL_DIR = path.join(DATA_DIR, "eval");
 
 // SQLite 데이터베이스 파일 경로 (수집 배치가 생성, 빌드/런타임은 readonly 조회)
 export const DB_PATH = path.join(DATA_DIR, "app.db");
