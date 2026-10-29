@@ -51,6 +51,7 @@ npm install
 cp .env.example .env.local       # 아래 "환경 변수" 참고해 값 입력
 npm run db:init                  # data/app.db 에 6개 테이블 생성
 npm run collect                  # 수집 → 가공 → 저장 배치 1회 (ANTHROPIC_API_KEY 필요)
+npm run collect -- --dry-run     # 수집 → 선별 풀까지만: notes·풀 구성 출력 (LLM·API 키·DB 쓰기 없음)
 npm run dev                      # http://localhost:3000
 ```
 
@@ -167,6 +168,7 @@ PRD §9 목표:
 | `npm run db:init`                       | `data/app.db` 6개 테이블 생성              |
 | `npm run db:reindex`                    | FTS5 인덱스 재색인                         |
 | `npm run collect`                       | 수집→가공→저장 배치 1회                    |
+| `npm run collect -- --dry-run`          | 수집→선별 풀까지만(비용·DB 변경 없음)      |
 | `npm run kpi`                           | 최근 N일 KPI 집계(기본 30)                 |
 | `npm run lint` / `format` / `typecheck` | ESLint / Prettier / 타입체크               |
 | `npm test` / `test:watch`               | Vitest                                     |

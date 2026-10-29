@@ -1,9 +1,11 @@
 /**
  * 수집 배치 오케스트레이터. PRD §3.2 / WORK-PLAN Phase 1~3.
  * 실행: npm run collect  (= tsx scripts/collect.ts)
+ *       npm run collect -- --dry-run  — ①~② 만 돌려 notes·선별 풀 구성을 출력한다. LLM 호출·API 키·DB 쓰기 없음
+ *       (DB 는 readonly 로 열어 기존 기사·seen 키 확인에만 쓴다). 소스·할당 조정을 비용 없이 확인할 때 쓴다.
  *
  * ① 다중 어댑터 수집(RSS/HN/GitHub/HF 논문·모델/arXiv) → 소스별 상한·dedup·trendingScore
- * ② 선별 풀: 신규 후보 + 최근 가공 실패분을 소스별 라운드로빈으로 TRIAGE_POOL_SIZE 건
+ * ② 선별 풀: 신규 후보 + 최근 가공 실패분을 소스별 라운드로빈으로 TRIAGE_POOL_SIZE 건(비뉴스·Physical AI 최소 할당)
  * ③ LLM 선별 1회: 최대 MAX_PICKS_PER_RUN 건 선정·같은 사건 묶기·중요도 상대 평가
  * ④ LLM 가공: 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그 (비용 가드 적용)
  * ⑤ SQLite 저장: 선정 → articles, 미선정 → seen_items(키만) + collection_runs 기록
@@ -12,6 +14,7 @@
  * 소스별 try/catch 로 부분 실패를 격리한다(한 소스 실패가 전체를 막지 않음).
  */
 import Database, { type Database as DatabaseType } from "better-sqlite3";
+import { toFormat } from "../src/lib/labels";
 import { DB_PATH } from "../src/lib/paths";
 import type { RawItem } from "../src/lib/types";
 import { fetchGithub, fetchHf, fetchHfModels, fetchHn } from "./lib/collect/api";
@@ -38,8 +41,10 @@ import {
   buildTriagePool,
   buildTriageRequest,
   estimateTriageTokens,
+  poolMixNotes,
   resolvePicks,
   triageFormat,
+  triageLine,
   type Candidate,
   type Pick,
 } from "./lib/triage";
@@ -57,6 +62,10 @@ const MAX_COST_USD_PER_RUN = envNonNegativeNumber("MAX_COST_USD_PER_RUN", 0.1);
 const USE_BATCH = envFlag("LLM_USE_BATCH", true);
 /** 배치 1건 대기 상한(분). 넘으면 취소하고 남은 요청을 일반 호출로 보낸다. */
 const BATCH_TIMEOUT_MIN = envNonNegativeInt("BATCH_TIMEOUT_MIN", 25);
+/** `--dry-run`: 수집·선별 풀까지만(LLM·DB 쓰기 없음). */
+const DRY_RUN = process.argv.includes("--dry-run");
+/** dry-run 에서 출력할 선별 풀 앞부분 줄 수. */
+const DRY_RUN_PREVIEW_LINES = 40;
 
 /**
  * 가공에 실패한 기사(summary_ko IS NULL)를 다시 선별 후보로 올리는 기간. 이보다 오래된
@@ -120,7 +129,14 @@ async function collectCandidates(
         if (seen.has(key)) continue;
         seen.add(key);
         if (known.get({ key })) continue;
-        fresh.push({ item, key, score: trendingScore(item), sourceName: source.name });
+        fresh.push({
+          item,
+          key,
+          score: trendingScore(item),
+          sourceName: source.name,
+          format: toFormat(source.format),
+          topic: source.topic,
+        });
       }
       // 소스별 신규 상한: 화제 점수 → 최신 순 상위만(넘친 기사는 키를 남기지 않아 다음 실행에 다시 겨룬다).
       fresh.sort(
@@ -143,8 +159,13 @@ async function collectCandidates(
   return candidates;
 }
 
-/** 최근 가공 실패 행 → 재심사 후보. */
-function loadBackfill(db: DatabaseType): Candidate[] {
+/**
+ * 최근 가공 실패 행 → 재심사 후보. 형식·topic 은 sources.json(비활성 포함)에서 찾는다 — topic 은 DB 에 없고,
+ * 형식도 같은 출처를 써야 dry-run(sources 동기화 생략)에서도 신규 후보와 어긋나지 않는다.
+ * sources.json 에서 빠진 소스는 news·topic 없음으로 센다.
+ */
+function loadBackfill(db: DatabaseType, sourcesConfig: SourceConfig[]): Candidate[] {
+  const configById = new Map(sourcesConfig.map((s) => [s.id, s]));
   const rows = db
     .prepare(
       `SELECT a.id, a.dedup_key, a.source_id, s.name AS source_name, a.url, a.title_original,
@@ -174,6 +195,8 @@ function loadBackfill(db: DatabaseType): Candidate[] {
     key: r.dedup_key,
     score: r.trending_score,
     sourceName: r.source_name,
+    format: toFormat(configById.get(r.source_id)?.format),
+    topic: configById.get(r.source_id)?.topic,
     articleId: r.id,
   }));
 }
@@ -303,19 +326,37 @@ function persist(
   })();
 }
 
+/** dry-run: 선별 풀의 소스별 수와 앞부분 줄(선별 입력 형식 그대로)을 출력한다. 형식별·Physical AI 수는 notes 에 있다. */
+function printPoolPreview(pool: Candidate[]): void {
+  const bySource = new Map<string, number>();
+  for (const c of pool) bySource.set(c.item.sourceId, (bySource.get(c.item.sourceId) ?? 0) + 1);
+  const sources = [...bySource].map(([id, n]) => `${id} ${n}`).join(", ");
+  console.log(`[collect] dry-run 선별 풀 소스별: ${sources}`);
+  console.log(`[collect] dry-run 선별 풀 앞 ${DRY_RUN_PREVIEW_LINES}줄:`);
+  pool
+    .slice(0, DRY_RUN_PREVIEW_LINES)
+    .forEach((c, i) => console.log(`  [${c.format}] ${triageLine(c, i)}`));
+}
+
 async function main(): Promise<void> {
   const startedAt = new Date().toISOString();
-  const db = new Database(DB_PATH);
+  // dry-run 은 readonly 로 연다 — 커밋 대상인 data/app.db 를 실수로라도 바꾸지 않는다.
+  const db = new Database(DB_PATH, { readonly: DRY_RUN, fileMustExist: DRY_RUN });
   db.pragma("foreign_keys = ON");
 
   const llm = new LlmRunner({ useBatch: USE_BATCH, batchTimeoutMs: BATCH_TIMEOUT_MIN * 60_000 });
   const stats: RunStats = { status: "success", itemsCollected: 0, itemsPublished: 0, notes: [] };
+  /** 형식별·Physical AI 후보 → 풀 → 게재 notes 재료. 선별 풀을 만든 뒤에 채운다. */
+  let mix: Parameters<typeof poolMixNotes> | null = null;
 
   try {
-    ensureSchema(db);
     // 소스 행(형식 포함)은 실행 시작에 sources.json 전체와 한 번에 맞춘다 — 비활성·삭제 소스도 반영된다.
+    // dry-run 은 둘 다 건너뛴다(DB 쓰기). 수집·풀은 sources.json 만 보므로 결과는 같다.
     const sourcesConfig = loadSourcesConfig();
-    console.log(`[collect] sources sync: ${describeSync(syncSources(db, sourcesConfig))}`);
+    if (!DRY_RUN) {
+      ensureSchema(db);
+      console.log(`[collect] sources sync: ${describeSync(syncSources(db, sourcesConfig))}`);
+    }
 
     if (MAX_PICKS_PER_RUN === 0) {
       stats.notes.push("MAX_PICKS_PER_RUN=0 — 수집·선별·가공 생략");
@@ -323,17 +364,26 @@ async function main(): Promise<void> {
     }
     // 키 없이 진행하면 아무것도 가공하지 못한다. 저장 없이 실패 처리해 잡을 빨갛게 만들고,
     // 후보는 다음 실행의 신규로 남긴다.
-    if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+    if (!DRY_RUN && !process.env.ANTHROPIC_API_KEY?.trim()) {
       throw new Error("ANTHROPIC_API_KEY 미설정 — LLM 가공 불가로 수집을 중단합니다");
     }
 
     const sources = sourcesConfig.filter((s) => s.enabled === 1 && Object.hasOwn(ADAPTERS, s.kind));
-    const candidates = [...(await collectCandidates(db, sources, stats)), ...loadBackfill(db)];
+    const candidates = [
+      ...(await collectCandidates(db, sources, stats)),
+      ...loadBackfill(db, sourcesConfig),
+    ];
 
     const pool = buildTriagePool(candidates, TRIAGE_POOL_SIZE);
     const inPool = new Set(pool);
     const overflow = candidates.filter((c) => !inPool.has(c));
     stats.notes.push(`선별 풀: 후보 ${candidates.length}건 중 ${pool.length}건`);
+    if (DRY_RUN) {
+      mix = [candidates, pool];
+      printPoolPreview(pool);
+      return;
+    }
+    mix = [candidates, pool, []];
 
     if (pool.length === 0) {
       persist(db, pool, overflow, [], new Map(), stats);
@@ -388,6 +438,8 @@ async function main(): Promise<void> {
     }
 
     persist(db, pool, overflow, picks, enriched, stats);
+    // 게재 = 이번 회차에 가공까지 마친 선정 기사(재심사 행 포함).
+    mix = [candidates, pool, [...enriched.keys()].map((i) => pool[i])];
 
     // 선정이 있었는데 한 건도 가공되지 않았다면(키 오류·크레딧 소진 등) 파이프라인 고장이다.
     if (picks.length > 0 && enriched.size === 0) {
@@ -399,27 +451,33 @@ async function main(): Promise<void> {
     stats.notes.push((err as Error).message);
     console.error("[collect] fatal:", err);
   } finally {
+    if (mix) stats.notes.push(...poolMixNotes(...mix));
     const { calls, inputTokens, outputTokens, costUsd } = llm.usage;
     stats.notes.push(
       `LLM ${USE_BATCH ? "batch" : "direct"} 호출 ${calls}회, $${costUsd.toFixed(4)}`,
     );
-    db.prepare(
-      `INSERT INTO collection_runs
-         (started_at, finished_at, items_collected, items_new,
-          llm_calls, input_tokens, output_tokens, est_cost_usd, status, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      startedAt,
-      new Date().toISOString(),
-      stats.itemsCollected,
-      stats.itemsPublished,
-      calls,
-      inputTokens,
-      outputTokens,
-      costUsd,
-      stats.status,
-      stats.notes.join("; "),
-    );
+    if (DRY_RUN) {
+      // 실행 기록도 남기지 않는다 — notes 를 그대로 출력만 한다.
+      for (const note of stats.notes) console.log(`[collect] note: ${note}`);
+    } else {
+      db.prepare(
+        `INSERT INTO collection_runs
+           (started_at, finished_at, items_collected, items_new,
+            llm_calls, input_tokens, output_tokens, est_cost_usd, status, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        startedAt,
+        new Date().toISOString(),
+        stats.itemsCollected,
+        stats.itemsPublished,
+        calls,
+        inputTokens,
+        outputTokens,
+        costUsd,
+        stats.status,
+        stats.notes.join("; "),
+      );
+    }
     db.close();
   }
 

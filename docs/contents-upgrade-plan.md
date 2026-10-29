@@ -34,7 +34,7 @@
 - [x] **Phase 0** — 기준선 측정·작업 준비 (2026-10-27 완료)
 - [x] **Phase 1** — 1면 "오늘 호 전용" 전환 (빠른 개선, 데이터 변경 없음) (2026-10-28 완료)
 - [x] **Phase 2** — 카테고리 6분야 + 형식(format) 데이터 모델·마이그레이션 (2026-10-29 완료)
-- [ ] **Phase 3** — 수집 소스 확장 (HF 모델·GitHub·논문·Physical AI)
+- [x] **Phase 3** — 수집 소스 확장 (HF 모델·GitHub·논문·Physical AI) (2026-10-29 완료)
 - [ ] **Phase 4** — LLM 선별·가공 프롬프트 개편
 - [ ] **Phase 5** — 1면 10건 편집 로직 (리드·서브·브리핑·레이더·화제)
 - [ ] **Phase 6** — 디자인 고도화 (시안 → 구현)
@@ -290,10 +290,35 @@
 
 ### 3-5. 선별 풀
 
-- [ ] `scripts/lib/triage.ts`의 `buildTriagePool`: 소스 라운드로빈은 유지하되 **형식별 최소 할당**(풀 180건 중 비뉴스 40건 이상, Physical AI 소스 20건 이상, 후보가 있을 때)을 보장한다.
-- [ ] 회차 `notes`에 형식별 후보 수와 게재 수를 함께 기록한다.
+- [x] `scripts/lib/triage.ts`의 `buildTriagePool`: 소스 라운드로빈은 유지하되 **형식별 최소 할당**(풀 180건 중 비뉴스 40건 이상, Physical AI 소스 20건 이상, 후보가 있을 때)을 보장한다.
+  - ✅ 2026-10-29 최소 할당을 풀 대비 비율로 정했다: 비뉴스 2/9, Physical AI 1/9. 풀 180건이면 40·20건이고 지금 150건이면 33·17건이라, 4-1에서 `TRIAGE_POOL_SIZE`만 바꾸면 된다. 두 할당의 합이 풀의 절반을 넘으면 비율대로 줄여 뉴스 몫을 지킨다.
+  - 채우는 순서는 다음과 같다. ① 비뉴스는 형식(oss → model → paper) 라운드로빈 안에서 다시 소스 라운드로빈으로 채워, 논문만으로 할당이 차지 않게 한다. ② Physical AI는 ①에서 이미 든 physical 후보를 빼고 모자란 만큼만 채운다. `arxiv_cs_ro`와 `github_robotics`는 두 할당에 모두 센다. ③ 나머지는 전체 라운드로빈으로 채운다.
+  - 출력은 전체 라운드로빈 순서라 할당분이 선별 줄 앞쪽에 몰리지 않는다. 할당이 자연히 채워지는 날은 결과가 이전과 같다(테스트로 고정). `Candidate`에 `format`(필수)과 `topic`을 추가했다. 재심사 행의 두 값은 비활성 소스를 포함한 `sources.json` 전체에서 찾고, 설정에서 빠진 소스는 뉴스로 본다.
+- [x] 회차 `notes`에 형식별 후보 수와 게재 수를 함께 기록한다.
+  - ✅ 2026-10-29 `형식별 후보→풀→게재: 뉴스 a→b→c, 오픈소스 …, 모델 …, 논문 …`과 `Physical AI 후보→풀→게재: a→b→c`를 남긴다. 게재는 이번 회차에 가공까지 마친 선정 기사다. `finally`에서 기록하므로 선별이 실패한 회차도 후보·풀 수가 남는다. 여기서 Physical AI는 소스 `topic` 기준이라, 기준선의 키워드 기준 Physical AI 게재 수와는 다른 지표다(Phase 7에서 구분). `kpi baseline`의 notes 파싱은 영향이 없음을 테스트로 고정했다.
+- [x] **(추가) `npm run collect -- --dry-run`:** 수집 → dedup → 선별 풀까지만 실행하고, 소스별 notes·풀 구성·풀 앞 40줄(선별 줄 형식)을 출력한다. LLM 호출과 API 키가 필요 없고, DB는 readonly로 열어 `ensureSchema`·`syncSources`·저장·`collection_runs` 기록을 모두 건너뛴다. 실제 수집은 비용이 들고, 커밋된 `data/app.db`를 바꿔 배포 브랜치의 일일 수집 커밋과 충돌한다. 그래서 소스·풀 변경은 이 모드로 검증한다.
 
 **Acceptance:** 로컬에서 `npm run collect`를 실행하면 notes에서 `oss`, `model`, `paper` 후보가 각각 1건 이상 확인된다.
+
+- [x] **통합 검증 (2026-10-29)**
+  - 게이트: vitest 43파일·371건 통과(Node 24). typecheck 통과. lint는 오류 0건이고, 경고 1건(`_contentRaw`)은 이전부터 있던 것이다.
+  - 인수 조건: `npm run collect -- --dry-run`을 실제 피드로 실행했다(API 키 없이). 실패한 소스는 없었다. 신규 소스(`hf_models`·`arxiv_cs_ro`·`github_*`·로봇 매체 4개)가 모두 수집됐고, `github_trending`은 키워드 필터에서 5건이 빠졌다. `data/app.db`는 실행 전후 sha256이 같았다.
+
+    | 형식 | 후보 | 풀 |
+    |---|---|---|
+    | 뉴스 | 220 | 112 |
+    | 오픈소스 | 15 | 15 |
+    | 모델 | 6 | 6 |
+    | 논문 | 45 | 17 |
+    | (Physical AI 소스) | 64 | 41 |
+
+    후보 286건 중 150건이 풀에 들었다. 비뉴스는 풀에 38건(할당 33)이고 Physical AI는 41건(할당 17)이다. 기준선에서 회차당 비뉴스 후보는 약 36건, 모델은 0건이었는데, `oss`·`model`·`paper`가 모두 1건 이상이다. 로컬 DB가 배포 브랜치보다 뒤처져 있어 "신규" 수는 실제 회차보다 크게 잡힌다.
+- 참고 (후속 Phase):
+  - **Phase 4-1:** 오늘 풀 150건에서는 라운드로빈만으로도 할당을 넘겨, 할당은 아직 하한 역할만 한다. 병목은 여전히 선별 프롬프트다. `Candidate.format`이 준비돼 있으므로 `triageLine`에 형식 열을 넣으면 된다(기존 줄 형식 테스트도 바뀐다). 할당 미달 경고는 `picks.map(p => pool[p.index])`에 `poolMixNotes`와 같은 방식의 집계를 쓰면 된다.
+  - **Phase 4-1 (HF 모델):** 트렌딩 목록에 GGUF·abliterated·Comfy 재포장 같은 파생 모델이 많다. `contentRaw`에 `base: 원본(관계)`가 있으므로, 이미 고른 모델의 재배포는 묶거나 건너뛰도록 지시한다.
+  - **Phase 4-2:** `github_trending`의 `contentRaw`가 RSS의 README 발췌 대신 설명과 토픽뿐이다. 리포 요약 가이드는 짧은 입력을 전제로 쓴다.
+  - **Phase 6:** 레이더 메타 줄에 쓸 값이 `engagement_json`에 쌓이기 시작했다: 리포 `stars`·`stars_today`·`language`, 모델 `likes`·`downloads`·`pipeline_tag`·`params`, 논문 `ups`. 검색 소스의 `publishedAt`은 `pushed_at`이고 `created_at`은 저장하지 않는다. "생성 후 스타" 표기가 필요하면 그때 추가한다.
+  - **운영:** 첫 Actions 회차의 notes에서 `av_international`과 `robotics_automation_news`의 403 여부, `github_*`의 인증(`GITHUB_TOKEN`) 동작을 확인한다.
 
 ---
 

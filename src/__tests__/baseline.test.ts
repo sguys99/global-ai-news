@@ -74,6 +74,19 @@ describe("parseRunNotes — collect.ts notes 파싱", () => {
     expect(n.sources.hf_models).toEqual({ fetched: 25, fresh: 4, cap: null, error: null });
   });
 
+  it("형식별·Physical AI 구성 notes(Phase 3-5)는 소스·풀 파싱을 흐리지 않는다", () => {
+    const n = parseRunNotes(
+      "hf_models: 25건(신규 4); 선별 풀: 후보 263건 중 150건; 선정 30건(같은 사건으로 묶인 기사 5건); " +
+        "형식별 후보→풀→게재: 뉴스 210→104→25, 오픈소스 14→14→2, 모델 6→6→1, 논문 33→26→2; " +
+        "Physical AI 후보→풀→게재: 41→22→3; LLM batch 호출 4회, $0.0272",
+    );
+    expect(Object.keys(n.sources)).toEqual(["hf_models"]);
+    expect(n.poolCandidates).toBe(263);
+    expect(n.poolSize).toBe(150);
+    expect(n.picks).toBe(30);
+    expect(n.grouped).toBe(5);
+  });
+
   it("빈 notes 는 빈 결과", () => {
     expect(parseRunNotes(null)).toEqual({
       sources: {},
