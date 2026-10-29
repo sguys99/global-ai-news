@@ -209,7 +209,8 @@ export interface ParsedNotes {
 
 /**
  * collect.ts 가 남기는 notes 문자열을 파싱한다. 형식:
- * `id: 20건(신규 6); id: 50건(신규 40, 상한 10); id: 실패 Status code 403; 선별 풀: 후보 126건 중 126건; 선정 28건(같은 사건으로 묶인 기사 8건); ...`
+ * `id: 20건(신규 6); id: 50건(신규 40, 상한 10); id: 25건(신규 9, 상한 5, 키워드 제외 12); id: 실패 Status code 403; 선별 풀: 후보 126건 중 126건; 선정 28건(같은 사건으로 묶인 기사 8건); ...`
+ * "키워드 제외"(키워드 사전 필터로 버린 수)는 신규에 포함되지 않으므로 파싱에서 건너뛴다.
  */
 export function parseRunNotes(notes: string | null): ParsedNotes {
   const out: ParsedNotes = {
@@ -222,7 +223,9 @@ export function parseRunNotes(notes: string | null): ParsedNotes {
   if (!notes) return out;
   for (const raw of notes.split(";")) {
     const part = raw.trim();
-    const ok = /^([a-z0-9_]+): (\d+)건\(신규 (\d+)(?:, 상한 (\d+))?\)$/.exec(part);
+    const ok = /^([a-z0-9_]+): (\d+)건\(신규 (\d+)(?:, 상한 (\d+))?(?:, 키워드 제외 \d+)?\)$/.exec(
+      part,
+    );
     if (ok) {
       out.sources[ok[1]] = {
         fetched: Number(ok[2]),

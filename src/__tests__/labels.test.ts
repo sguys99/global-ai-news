@@ -90,6 +90,8 @@ describe("labels — 카테고리·소스", () => {
 
   it("소스 축약명", () => {
     expect(shortSourceName("GitHub (topic:llm)")).toBe("GitHub");
+    expect(shortSourceName("GitHub (topic:ai-agents·mcp)")).toBe("GitHub");
+    expect(shortSourceName("GitHub (topic:robotics·embodied-ai)")).toBe("GitHub");
     expect(shortSourceName("Hacker News")).toBe("Hacker News");
   });
 });

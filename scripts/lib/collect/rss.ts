@@ -17,6 +17,8 @@ export interface SourceConfig {
   maxItems?: number;
   /** 형식(news|oss|model|paper). 미지정 시 news — sources.format 으로 동기화된다(lib/syncSources.ts). */
   format?: Format;
+  /** 키워드 사전 필터 목록 이름(configs/keyword-filters.json). 지정하면 키워드가 없는 항목을 수집 직후 버린다(collect.ts). */
+  keywordFilter?: string;
 }
 
 /** content_raw 길이 상한 (LLM 입력 비용 가드와 별개로 저장 용량 제한). */

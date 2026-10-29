@@ -206,11 +206,12 @@
   {
     "id": "github_trending",
     "name": "GitHub Trending",
-    "kind": "rss",
+    "kind": "github",
     "format": "oss",
-    "url": "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
+    "url": "https://github.com/trending?since=daily",
     "enabled": 1,
-    "maxItems": 10
+    "maxItems": 5,
+    "keywordFilter": "ai"
   },
   {
     "id": "robohub",
@@ -250,13 +251,32 @@
     "enabled": 1
   },
   {
+    "id": "github_robotics",
+    "name": "GitHub (topic:robotics·embodied-ai)",
+    "kind": "github",
+    "format": "oss",
+    "topic": "physical",
+    "url": "https://api.github.com/search/repositories?q=topic:robotics,embodied-ai,humanoid,vla,robot-learning+stars:>=5",
+    "enabled": 1,
+    "maxItems": 3
+  },
+  {
+    "id": "github_agents",
+    "name": "GitHub (topic:ai-agents·mcp)",
+    "kind": "github",
+    "format": "oss",
+    "url": "https://api.github.com/search/repositories?q=topic:ai-agents,mcp+stars:>=10",
+    "enabled": 1,
+    "maxItems": 4
+  },
+  {
     "id": "github_llm",
     "name": "GitHub (topic:llm)",
     "kind": "github",
     "format": "oss",
-    "url": "https://api.github.com/search/repositories",
+    "url": "https://api.github.com/search/repositories?q=topic:llm+stars:>=10",
     "enabled": 1,
-    "maxItems": 10
+    "maxItems": 3
   },
   {
     "id": "hf_daily_papers",

@@ -1,6 +1,6 @@
 /**
  * 집계 API 수집 어댑터. PRD §3.1.
- * Hacker News(Algolia) / GitHub Search / HuggingFace Daily Papers / HuggingFace 트렌딩 모델을
+ * Hacker News(Algolia) / GitHub(Search·Trending) / HuggingFace Daily Papers / HuggingFace 트렌딩 모델을
  * 각각 RawItem[] 으로 정규화한다. 모두 fetchRss 와 동일한
  * (source: SourceConfig) => Promise<RawItem[]> 계약을 따른다.
  *
@@ -66,27 +66,38 @@ export async function fetchHn(_source: SourceConfig): Promise<RawItem[]> {
   return items;
 }
 
-// --- GitHub Search ---------------------------------------------------------
+// --- GitHub (Search API · Trending) ----------------------------------------
+
+/**
+ * kind "github" 는 source.url 로 엔드포인트를 고른다.
+ * - `https://api.github.com/search/repositories?q=...` → 검색(fetchGithubSearch)
+ * - `https://github.com/trending?since=daily` → 트렌딩 페이지(fetchGithubTrending)
+ * 둘 다 같은 모양(stars·language, 트렌딩은 stars_today 추가)의 RawItem 을 낸다.
+ */
+export async function fetchGithub(source: SourceConfig): Promise<RawItem[]> {
+  const url = new URL(source.url);
+  if (url.hostname === "github.com" && url.pathname.startsWith("/trending")) {
+    return fetchGithubTrending(source, url);
+  }
+  return fetchGithubSearch(source, url);
+}
 
 interface GithubRepo {
   html_url?: string;
   full_name?: string;
   description?: string | null;
   stargazers_count?: number;
+  language?: string | null;
+  topics?: string[];
   pushed_at?: string;
   created_at?: string;
 }
 
-/**
- * GitHub Search: 최근 7일 내 생성된 topic:llm 저장소를 stars 내림차순으로.
- * GITHUB_PAT 가 있으면 인증 헤더로 rate limit(30/분)을 확보한다.
- */
-export async function fetchGithub(source: SourceConfig): Promise<RawItem[]> {
-  const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString().slice(0, 10); // YYYY-MM-DD
-  const q = encodeURIComponent(`topic:llm created:>${since}`);
-  const url =
-    `https://api.github.com/search/repositories?q=${q}` + `&sort=stars&order=desc&per_page=30`;
+/** 검색 기간 창: 최근 이 기간 안에 생성된 저장소만. 날짜가 매일 바뀌므로 설정이 아니라 코드가 붙인다. */
+const GITHUB_WINDOW_DAYS = 7;
 
+/** GitHub REST API 공통 헤더. GITHUB_PAT 가 있으면 인증해 rate limit 을 넓힌다(검색 10→30/분, 일반 60→5000/시간). */
+function githubApiHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
     "User-Agent": "daily-ai-brief",
@@ -94,8 +105,36 @@ export async function fetchGithub(source: SourceConfig): Promise<RawItem[]> {
   if (process.env.GITHUB_PAT) {
     headers.Authorization = `Bearer ${process.env.GITHUB_PAT}`;
   }
+  return headers;
+}
 
-  const res = await fetch(url, { headers });
+/**
+ * 설명 + 토픽 한 줄. 예: "An LLM tool · topics: llm, rag, mcp". 토픽은 선별·가공 LLM 과 키워드 필터의 단서가 된다.
+ * 토픽은 GitHub 가 저장소당 20개로 제한하고 알파벳순이라 자르지 않는다(앞쪽만 남기면 뒤쪽 "llm" 등을 놓친다).
+ */
+function githubSummary(description: string | null | undefined, topics: string[] = []): string {
+  const desc = stripHtml(description ?? "");
+  const tags = topics.join(", ");
+  return [desc, tags && `topics: ${tags}`].filter(Boolean).join(" · ").slice(0, MAX_CONTENT_CHARS);
+}
+
+/**
+ * GitHub Search: source.url 의 q(예: `topic:ai-agents,mcp stars:>=10`)에 `created:>{7일 전}` 을 붙여 1회 호출한다.
+ * 토픽 OR 는 `topic:a,b` 쉼표로 쓴다 — 검색 API 의 OR 연산자는 한정자(qualifier)에 쓸 수 없다(422).
+ * sort·order·per_page 는 url 에 없으면 stars 내림차순·30건.
+ */
+async function fetchGithubSearch(source: SourceConfig, url: URL): Promise<RawItem[]> {
+  const q = url.searchParams.get("q")?.trim();
+  if (!q) throw new Error("GitHub 검색 쿼리 없음(sources.json url 에 q= 필요)");
+  const since = new Date(Date.now() - GITHUB_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10); // YYYY-MM-DD
+  url.searchParams.set("q", `${q} created:>${since}`);
+  if (!url.searchParams.has("sort")) {
+    url.searchParams.set("sort", "stars");
+    url.searchParams.set("order", "desc");
+  }
+  if (!url.searchParams.has("per_page")) url.searchParams.set("per_page", "30");
+
+  const res = await fetch(url, { headers: githubApiHeaders() });
   if (!res.ok) throw new Error(`GitHub HTTP ${res.status}`);
   const data = (await res.json()) as { items?: GithubRepo[] };
 
@@ -110,12 +149,102 @@ export async function fetchGithub(source: SourceConfig): Promise<RawItem[]> {
       sourceId: source.id,
       url: link,
       title,
-      contentRaw: stripHtml(repo.description ?? "").slice(0, MAX_CONTENT_CHARS) || undefined,
+      contentRaw: githubSummary(repo.description, repo.topics) || undefined,
       publishedAt,
-      engagement: { stars: repo.stargazers_count ?? 0 },
+      engagement: {
+        stars: repo.stargazers_count ?? 0,
+        ...(repo.language ? { language: repo.language } : {}),
+      },
     });
   }
   return items;
+}
+
+/** 트렌딩 페이지에서 읽은 저장소 한 건. */
+export interface TrendingRepo {
+  fullName: string; // owner/repo
+  description?: string;
+  language?: string;
+  stars?: number;
+  starsToday?: number;
+}
+
+/** "1,234" → 1234. 숫자가 아니면 undefined. */
+function parseCount(s: string | undefined): number | undefined {
+  if (!s) return undefined;
+  const n = Number(s.replace(/,/g, ""));
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/**
+ * github.com/trending HTML → 저장소 목록. 저장소마다 `<article class="Box-row">` 블록 하나다.
+ * 이름(h2 링크)·설명(p)·언어(itemprop=programmingLanguage)·누적 스타(/stargazers 링크)·"N stars today" 를 읽는다.
+ * 이름이 없는 블록은 건너뛴다. 나머지 필드는 없을 수 있다(설명·언어가 빈 저장소).
+ */
+export function parseGithubTrending(html: string): TrendingRepo[] {
+  const repos: TrendingRepo[] = [];
+  for (const block of html.split('<article class="Box-row">').slice(1)) {
+    const fullName = block.match(/<h2[^>]*>\s*<a[^>]*href="\/([^"/]+\/[^"/]+)"/)?.[1];
+    if (!fullName) continue;
+    const description = stripHtml(block.match(/<p class="col-9[^"]*">([\s\S]*?)<\/p>/)?.[1]);
+    repos.push({
+      fullName,
+      description: description || undefined,
+      language: block.match(/itemprop="programmingLanguage">([^<]+)</)?.[1].trim(),
+      stars: parseCount(block.match(/\/stargazers"[^>]*>[\s\S]*?<\/svg>\s*([\d,]+)/)?.[1]),
+      starsToday: parseCount(block.match(/([\d,]+) stars? today/)?.[1]),
+    });
+  }
+  return repos;
+}
+
+/**
+ * 저장소 토픽 조회(REST /repos/{owner}/{repo}). 트렌딩 페이지에는 토픽이 없는데, 설명만으로는
+ * AI 저장소를 놓친다(예: "DeepTutor: Lifelong Personalized Tutoring" — 토픽은 ai-agents·rag).
+ * 실패하면 빈 배열 — 토픽은 보조 정보라 저장소를 버리지 않는다.
+ */
+async function fetchRepoTopics(fullName: string): Promise<string[]> {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${fullName}`, {
+      headers: githubApiHeaders(),
+    });
+    if (!res.ok) {
+      await res.body?.cancel();
+      return [];
+    }
+    const repo = (await res.json()) as GithubRepo;
+    return repo.topics ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * GitHub Trending(일간): github.com/trending 페이지를 1회 읽고, 저장소별 토픽을 REST 로 보탠다(하루 25건 안팎).
+ * RSS 미러(mshibanami)는 README 를 싣지만 스타·언어·오늘 증가분이 없어 화제 지수와 레이더 메타 줄을 채울 수 없다.
+ * 페이지에는 게시 시각이 없으므로 publishedAt 은 수집 시각이다(이미 본 저장소는 dedup 이 거른다).
+ * 저장소 블록을 하나도 못 읽으면 마크업 변경으로 보고 실패시킨다 — 0건으로 조용히 넘어가지 않게.
+ */
+async function fetchGithubTrending(source: SourceConfig, url: URL): Promise<RawItem[]> {
+  const res = await fetch(url, { headers: { "User-Agent": "daily-ai-brief" } });
+  if (!res.ok) throw new Error(`GitHub Trending HTTP ${res.status}`);
+  const repos = parseGithubTrending(await res.text());
+  if (repos.length === 0) throw new Error("GitHub Trending 파싱 0건(마크업 변경 의심)");
+  const topics = await Promise.all(repos.map((r) => fetchRepoTopics(r.fullName)));
+
+  const publishedAt = new Date().toISOString();
+  return repos.map((r, i) => ({
+    sourceId: source.id,
+    url: `https://github.com/${r.fullName}`,
+    title: r.fullName,
+    contentRaw: githubSummary(r.description, topics[i]) || undefined,
+    publishedAt,
+    engagement: {
+      stars: r.stars ?? 0,
+      ...(r.starsToday !== undefined ? { stars_today: r.starsToday } : {}),
+      ...(r.language ? { language: r.language } : {}),
+    },
+  }));
 }
 
 // --- HuggingFace Daily Papers ----------------------------------------------

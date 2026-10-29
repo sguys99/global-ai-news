@@ -6,6 +6,7 @@ import {
   fetchHfModels,
   fetchHn,
   formatParams,
+  parseGithubTrending,
 } from "../../scripts/lib/collect/api";
 import type { SourceConfig } from "../../scripts/lib/collect/rss";
 
@@ -74,8 +75,44 @@ describe("fetchHn", () => {
   });
 });
 
-describe("fetchGithub", () => {
-  it("repo 를 RawItem 으로 정규화하고 stars 를 engagement 에 넣는다", async () => {
+describe("fetchGithub — Search API", () => {
+  const searchSrc = (url: string): SourceConfig => ({ ...src("github"), url });
+  const calledUrl = () => new URL(String(vi.mocked(fetch).mock.calls[0][0]));
+
+  it("source.url 의 q 에 7일 생성 창을 붙이고 sort·order·per_page 기본값을 채운다", async () => {
+    mockFetch({ items: [] });
+    await fetchGithub(
+      searchSrc("https://api.github.com/search/repositories?q=topic:ai-agents,mcp+stars:>=10"),
+    );
+    const url = calledUrl();
+    expect(url.origin + url.pathname).toBe("https://api.github.com/search/repositories");
+    const since = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+    expect(url.searchParams.get("q")).toBe(`topic:ai-agents,mcp stars:>=10 created:>${since}`);
+    expect(url.searchParams.get("sort")).toBe("stars");
+    expect(url.searchParams.get("order")).toBe("desc");
+    expect(url.searchParams.get("per_page")).toBe("30");
+  });
+
+  it("url 에 적은 sort·per_page 는 덮어쓰지 않는다", async () => {
+    mockFetch({ items: [] });
+    await fetchGithub(
+      searchSrc("https://api.github.com/search/repositories?q=topic:llm&sort=updated&per_page=10"),
+    );
+    const url = calledUrl();
+    expect(url.searchParams.get("sort")).toBe("updated");
+    expect(url.searchParams.has("order")).toBe(false);
+    expect(url.searchParams.get("per_page")).toBe("10");
+  });
+
+  it("q 가 없으면 호출 없이 실패한다(쿼리 하드코딩 폴백 없음)", async () => {
+    mockFetch({ items: [] });
+    await expect(
+      fetchGithub(searchSrc("https://api.github.com/search/repositories")),
+    ).rejects.toThrow("GitHub 검색 쿼리 없음");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("repo 를 RawItem 으로 정규화하고 stars·language 를 engagement 에, 토픽을 contentRaw 에 넣는다", async () => {
     mockFetch({
       items: [
         {
@@ -83,17 +120,165 @@ describe("fetchGithub", () => {
           full_name: "x/y",
           description: "An <b>LLM</b> tool",
           stargazers_count: 999,
+          language: "Python",
+          topics: ["llm", "rag"],
+          pushed_at: "2026-01-02T00:00:00Z",
+        },
+        {
+          html_url: "https://github.com/x/bare",
+          full_name: "x/bare",
+          description: null,
+          language: null,
           pushed_at: "2026-01-02T00:00:00Z",
         },
       ],
     });
-    const items = await fetchGithub(src("github"));
-    expect(items[0]).toMatchObject({
+    const [item, bare] = await fetchGithub(
+      searchSrc("https://api.github.com/search/repositories?q=topic:llm"),
+    );
+    expect(item).toMatchObject({
       url: "https://github.com/x/y",
       title: "x/y",
-      contentRaw: "An LLM tool",
-      engagement: { stars: 999 },
+      contentRaw: "An LLM tool · topics: llm, rag",
+      engagement: { stars: 999, language: "Python" },
     });
+    expect(bare.contentRaw).toBeUndefined();
+    expect(bare.engagement).toEqual({ stars: 0 });
+  });
+
+  it("HTTP 오류 시 throw", async () => {
+    mockFetch({}, false, 422);
+    await expect(
+      fetchGithub(searchSrc("https://api.github.com/search/repositories?q=topic:llm")),
+    ).rejects.toThrow("GitHub HTTP 422");
+  });
+});
+
+/** github.com/trending 의 저장소 블록 한 개(실제 마크업에서 속성·SVG 를 줄인 것). */
+const trendingRow = (o: {
+  name: string;
+  desc?: string;
+  lang?: string;
+  stars?: string;
+  today?: string;
+}) => `
+  <article class="Box-row">
+    <h2 class="h3 lh-condensed">
+      <a data-hydro-click="{}" href="/${o.name}" class="Link"><svg class="octicon octicon-repo"><path d="M2"></path></svg>
+        <span class="text-normal">${o.name.split("/")[0]} /</span> ${o.name.split("/")[1]}</a>
+    </h2>
+    ${o.desc !== undefined ? `<p class="col-9 color-fg-muted my-1 tmp-pr-4">\n      ${o.desc}\n    </p>` : ""}
+    <div class="f6 color-fg-muted mt-2">
+      ${o.lang ? `<span class="d-inline-block"><span class="repo-language-color"></span>\n  <span itemprop="programmingLanguage">${o.lang}</span>\n</span>` : ""}
+      <a href="/${o.name}/stargazers" class="Link Link--muted d-inline-block"><svg aria-label="star" class="octicon octicon-star"><path d="M8"></path></svg>
+        ${o.stars ?? "0"}</a>
+      <a href="/${o.name}/forks" class="Link"><svg aria-label="fork"><path d="M5"></path></svg>
+        281</a>
+      ${o.today ? `<span class="d-inline-block float-sm-right"><svg class="octicon octicon-star"><path d="M8"></path></svg>\n        ${o.today} stars today\n</span>` : ""}
+    </div>
+  </article>`;
+
+describe("parseGithubTrending", () => {
+  it("이름·설명·언어·누적 스타·오늘 스타(Δstars)를 읽는다", () => {
+    const html =
+      "<main>" +
+      trendingRow({
+        name: "JetBrains/thinkrail",
+        desc: "Vibe code with pi &amp; friends",
+        lang: "TypeScript",
+        stars: "5,545",
+        today: "1,068",
+      }) +
+      trendingRow({ name: "x/bare" }) +
+      "</main>";
+    expect(parseGithubTrending(html)).toEqual([
+      {
+        fullName: "JetBrains/thinkrail",
+        description: "Vibe code with pi & friends",
+        language: "TypeScript",
+        stars: 5545,
+        starsToday: 1068,
+      },
+      {
+        fullName: "x/bare",
+        description: undefined,
+        language: undefined,
+        stars: 0,
+        starsToday: undefined,
+      },
+    ]);
+  });
+
+  it("저장소 블록이 없으면 빈 배열", () => {
+    expect(parseGithubTrending("<html><body>no trending</body></html>")).toEqual([]);
+  });
+});
+
+describe("fetchGithub — Trending", () => {
+  const trendingSrc: SourceConfig = {
+    ...src("github"),
+    id: "github_trending",
+    url: "https://github.com/trending?since=daily",
+  };
+
+  /** 트렌딩 페이지는 HTML, /repos/{name} 은 토픽 JSON(topics 맵에 없으면 404)을 돌려준다. */
+  function mockTrending(html: string, topics: Record<string, string[]>, status = 200) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        if (url.startsWith("https://github.com/trending")) {
+          return { ok: status === 200, status, text: async () => html };
+        }
+        const name = url.replace("https://api.github.com/repos/", "");
+        const found = Object.hasOwn(topics, name);
+        return {
+          ok: found,
+          status: found ? 200 : 404,
+          json: async () => ({ topics: topics[name] }),
+          body: { cancel: async () => {} },
+        };
+      }),
+    );
+  }
+
+  it("오늘 스타·언어를 engagement 에, 저장소 토픽을 contentRaw 에 싣는다", async () => {
+    mockTrending(
+      trendingRow({
+        name: "HKUDS/DeepTutor",
+        desc: "DeepTutor: Lifelong Personalized Tutoring.",
+        lang: "Python",
+        stars: "48,836",
+        today: "2,371",
+      }),
+      { "HKUDS/DeepTutor": ["ai-agents", "rag"] },
+    );
+    const [item] = await fetchGithub(trendingSrc);
+    expect(item).toMatchObject({
+      sourceId: "github_trending",
+      url: "https://github.com/HKUDS/DeepTutor",
+      title: "HKUDS/DeepTutor",
+      contentRaw: "DeepTutor: Lifelong Personalized Tutoring. · topics: ai-agents, rag",
+      engagement: { stars: 48836, stars_today: 2371, language: "Python" },
+    });
+    expect(Number.isNaN(new Date(item.publishedAt).getTime())).toBe(false);
+  });
+
+  it("토픽 조회가 실패해도 저장소는 남긴다", async () => {
+    mockTrending(trendingRow({ name: "a/b", desc: "An AI tool", stars: "10", today: "3" }), {});
+    const [item] = await fetchGithub(trendingSrc);
+    expect(item.contentRaw).toBe("An AI tool");
+    expect(item.engagement).toEqual({ stars: 10, stars_today: 3 });
+  });
+
+  it("저장소를 하나도 못 읽으면 마크업 변경으로 보고 실패한다", async () => {
+    mockTrending("<html>changed markup</html>", {});
+    await expect(fetchGithub(trendingSrc)).rejects.toThrow("GitHub Trending 파싱 0건");
+  });
+
+  it("HTTP 오류 시 throw", async () => {
+    mockTrending("", {}, 429);
+    await expect(fetchGithub(trendingSrc)).rejects.toThrow("GitHub Trending HTTP 429");
   });
 });
 

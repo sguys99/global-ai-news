@@ -16,6 +16,7 @@ import { DB_PATH } from "../src/lib/paths";
 import type { RawItem } from "../src/lib/types";
 import { fetchGithub, fetchHf, fetchHfModels, fetchHn } from "./lib/collect/api";
 import { fetchArxiv } from "./lib/collect/arxiv";
+import { applyKeywordFilter } from "./lib/collect/keywordFilter";
 import { fetchReddit } from "./lib/collect/reddit";
 import { fetchRss, type SourceConfig } from "./lib/collect/rss";
 import { estimateCost } from "./lib/cost";
@@ -106,8 +107,12 @@ async function collectCandidates(
 
   for (const source of sources) {
     try {
-      const items = await ADAPTERS[source.kind](source);
-      stats.itemsCollected += items.length;
+      const fetched = await ADAPTERS[source.kind](source);
+      stats.itemsCollected += fetched.length;
+      // 키워드 사전 필터: 주제가 섞인 소스(전체 언어 GitHub Trending 등)에서 관련 없는 항목은 dedup 키도 남기지 않고 버린다.
+      const { kept: items, dropped } = source.keywordFilter
+        ? applyKeywordFilter(fetched, source.keywordFilter)
+        : { kept: fetched, dropped: [] };
 
       const fresh: Candidate[] = [];
       for (const item of items) {
@@ -125,7 +130,10 @@ async function collectCandidates(
       candidates.push(...kept);
 
       const capped = kept.length < fresh.length ? `, 상한 ${source.maxItems}` : "";
-      stats.notes.push(`${source.id}: ${items.length}건(신규 ${fresh.length}${capped})`);
+      const filtered = dropped.length > 0 ? `, 키워드 제외 ${dropped.length}` : "";
+      stats.notes.push(
+        `${source.id}: ${fetched.length}건(신규 ${fresh.length}${capped}${filtered})`,
+      );
     } catch (err) {
       stats.status = "partial";
       stats.notes.push(`${source.id}: 실패 ${(err as Error).message}`);

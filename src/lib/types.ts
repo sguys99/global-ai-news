@@ -42,15 +42,17 @@ export interface Engagement {
   points?: number; // HN
   ups?: number; // Reddit
   num_comments?: number; // Reddit/HN
-  stars?: number; // GitHub
+  stars?: number; // GitHub (누적 스타)
+  stars_today?: number; // GitHub Trending (오늘 늘어난 스타 — Δstars, 트렌딩 페이지에만 있다)
   citations?: number; // arXiv (Semantic Scholar 총 인용수)
   influential?: number; // arXiv (Semantic Scholar 영향력 인용수)
   likes?: number; // HF 모델 (좋아요 누적)
   downloads?: number; // HF 모델 (최근 30일 다운로드)
   hf_trending?: number; // HF 모델 자체 trendingScore — 우리 trending_score(0~100)와 다른 지표
-  // ↓ 순위 신호가 아닌 표시용 메타(HF 모델, Phase 6 메타 줄). 수집 시점에만 얻을 수 있어 함께 저장한다.
-  pipeline_tag?: string; // 태스크(예: text-generation)
-  params?: number; // 파라미터 수(safetensors/gguf total)
+  // ↓ 순위 신호가 아닌 표시용 메타(Phase 6 레이더 메타 줄). 수집 시점에만 얻을 수 있어 함께 저장한다.
+  pipeline_tag?: string; // HF 모델 태스크(예: text-generation)
+  params?: number; // HF 모델 파라미터 수(safetensors/gguf total)
+  language?: string; // GitHub 저장소 주 언어(예: Python)
 }
 
 /** 수집 원본 한 건 (LLM 가공 전). */

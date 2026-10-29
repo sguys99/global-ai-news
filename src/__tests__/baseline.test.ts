@@ -66,6 +66,14 @@ describe("parseRunNotes — collect.ts notes 파싱", () => {
     expect(n.grouped).toBe(8);
   });
 
+  it("키워드 사전 필터 제외 수가 붙은 소스도 읽는다", () => {
+    const n = parseRunNotes(
+      "github_trending: 14건(신규 6, 상한 5, 키워드 제외 5); hf_models: 25건(신규 4, 키워드 제외 1)",
+    );
+    expect(n.sources.github_trending).toEqual({ fetched: 14, fresh: 6, cap: 5, error: null });
+    expect(n.sources.hf_models).toEqual({ fetched: 25, fresh: 4, cap: null, error: null });
+  });
+
   it("빈 notes 는 빈 결과", () => {
     expect(parseRunNotes(null)).toEqual({
       sources: {},

@@ -73,7 +73,7 @@ npm run dev                      # http://localhost:3000
 
 ● 필수 · ○ 선택 · – 불필요. 수집은 Actions(와 로컬)에서만 돌므로 Reddit 키는 Vercel 엔 둘 필요가 없습니다.
 
-\* Actions 의 `GITHUB_PAT` 는 GitHub Search 레이트리밋 완화용(선택)입니다. DB 커밋/푸시는 빌트인 `GITHUB_TOKEN` 이 처리하므로, PAT가 없어도 자동화는 잘 돌아갑니다.
+\* Actions 의 `GITHUB_PAT` 는 GitHub API(검색·트렌딩 토픽 조회) 레이트리밋 완화용(선택)입니다. `GH_SEARCH_PAT` 시크릿이 없으면 빌트인 `GITHUB_TOKEN` 으로 인증하고, DB 커밋/푸시도 `GITHUB_TOKEN` 이 처리하므로 PAT가 없어도 자동화는 잘 돌아갑니다.
 
 ## GitHub Actions 설정 (자동화)
 

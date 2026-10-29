@@ -87,9 +87,11 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
       REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
-      # GitHub Search 레이트리밋 완화용(선택). GITHUB_ 접두 시크릿명은 금지되므로
-      # GH_SEARCH_PAT 시크릿을 GITHUB_PAT 환경변수에 매핑한다.
-      GITHUB_PAT: ${{ secrets.GH_SEARCH_PAT }}
+      # GitHub API 인증(검색 소스 3개 + 트렌딩 저장소 토픽 조회 ~25건). 미인증은 검색 10/분·일반 60/시간이
+      # 러너 IP 단위라 공유 러너에서 바닥날 수 있다. 공개 저장소 조회에는 권한이 필요 없어 빌트인
+      # GITHUB_TOKEN(검색 30/분, 일반 1,000/시간)으로 충분하다. GH_SEARCH_PAT 시크릿이 있으면 그것을 쓴다
+      # (GITHUB_ 접두 시크릿명은 금지되므로 GH_SEARCH_PAT 를 GITHUB_PAT 환경변수에 매핑).
+      GITHUB_PAT: ${{ secrets.GH_SEARCH_PAT || secrets.GITHUB_TOKEN }}
       # 아래 vars 는 미설정 시 빈 문자열 → 코드 기본값(scripts/collect.ts)을 쓴다.
       LLM_MODEL: ${{ vars.LLM_MODEL }}
       MAX_PICKS_PER_RUN: ${{ vars.MAX_PICKS_PER_RUN }} # 기본 30

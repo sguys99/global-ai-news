@@ -116,6 +116,8 @@ export function toFormat(value: unknown): Format {
 const SOURCE_SHORT_LABELS: Record<string, string> = {
   "TechCrunch AI": "TechCrunch",
   "GitHub (topic:llm)": "GitHub",
+  "GitHub (topic:ai-agents·mcp)": "GitHub",
+  "GitHub (topic:robotics·embodied-ai)": "GitHub",
   "HuggingFace Daily Papers": "HuggingFace",
   "HuggingFace 트렌딩 모델": "HuggingFace",
   "MIT Technology Review": "MIT Tech Review",

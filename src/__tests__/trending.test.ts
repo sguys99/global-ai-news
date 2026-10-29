@@ -62,8 +62,22 @@ describe("trendingScore", () => {
     expect(withExtras).toBe(likesOnly);
   });
 
-  it("likes 신호 추가는 기존 소스 점수를 바꾸지 않는다", () => {
-    // likes 항 도입 전 공식으로 계산한 고정값 — 다른 소스는 likes 가 없어 0 이 더해진다.
+  it("GitHub Trending 오늘 스타(stars_today)가 클수록 점수가 높다(상한 2000 에서 항 만점)", () => {
+    const low = trendingScore(base({ engagement: { stars: 5000, stars_today: 90 } }));
+    const high = trendingScore(base({ engagement: { stars: 5000, stars_today: 1500 } }));
+    expect(high).toBeGreaterThan(low);
+    expect(trendingScore(base({ engagement: { stars_today: 2000 } }))).toBe(40);
+    expect(trendingScore(base({ engagement: { stars_today: 99999 } }))).toBe(40);
+    // 2026-10-29 실측: 누적 5,550·오늘 +1,068 → 누적 항 0.3 + 증가분 항 0.37
+    expect(trendingScore(base({ engagement: { stars: 5550, stars_today: 1068 } }))).toBe(67);
+  });
+
+  it("표시용 language 는 점수에 쓰지 않는다", () => {
+    expect(trendingScore(base({ engagement: { stars: 999, language: "Python" } }))).toBe(27);
+  });
+
+  it("likes·stars_today 신호 추가는 기존 소스 점수를 바꾸지 않는다", () => {
+    // likes·stars_today 항 도입 전 공식으로 계산한 고정값 — 다른 소스는 두 신호가 없어 0 이 더해진다.
     expect(trendingScore(base({ engagement: { points: 120, num_comments: 30 } }))).toBe(50);
     expect(trendingScore(base({ engagement: { stars: 999 } }))).toBe(27);
     expect(trendingScore(base({ engagement: { ups: 12 } }))).toBe(19);

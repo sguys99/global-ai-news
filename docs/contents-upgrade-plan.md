@@ -242,9 +242,18 @@
 
 ### 3-2. GitHub
 
-- [ ] `github_llm`을 소스 여러 개로 나눈다. 쿼리 예: `topic:llm`, `topic:ai-agents OR topic:mcp`, `topic:robotics OR topic:embodied-ai`. `sources.json`의 `url`에 쿼리를 넣어 하드코딩을 피한다.
-- [ ] `github_trending`(전체 언어)에 AI 키워드 사전 필터를 걸어(설명·토픽 기준) 관련 없는 리포가 선별 풀에 들어오지 않게 한다.
-- [ ] 스타 증가량(Δstars)을 계산할 수 있으면 `engagement_json`에 담는다. 화제 지수 정확도가 올라간다.
+- [x] `github_llm`을 소스 여러 개로 나눈다. 쿼리 예: `topic:llm`, `topic:ai-agents OR topic:mcp`, `topic:robotics OR topic:embodied-ai`. `sources.json`의 `url`에 쿼리를 넣어 하드코딩을 피한다.
+  - ✅ 2026-10-29 검색 소스 3개(`github_robotics`·`github_agents`·`github_llm`)로 나눴다. `github_llm`은 기존 기사가 참조하므로 id를 유지했다. 쿼리는 `url`의 `q=`에 두고, 코드는 `created:>{7일 전}` 창과 정렬 기본값만 붙인다. `q`가 없으면 예외를 던지고 대체 쿼리는 두지 않는다.
+  - 검색 API는 한정자 OR를 받지 않는다(`topic:a OR topic:b`는 422). 그래서 토픽 OR는 `topic:ai-agents,mcp`처럼 쉼표로 쓴다. 쿼리마다 스타 하한(`stars:>=10`, 로보틱스는 `>=5`)을 둬 0★ 저장소를 거른다. 7일 실측 하한 통과 수는 llm 39, agents·mcp 106, robotics 16이다.
+  - 상한은 trending 5, agents 4, llm 3, robotics 3(`topic: physical`)으로 회차당 최대 15건이다. 이전에는 llm 10과 trending 10이었고, 기준선에서 `github_llm`은 후보 112건 중 2건만 실렸다. 배치 dedup이 상한에 잘린 항목의 키도 잡으므로, 토픽이 여럿인 저장소는 파일 순서상 앞선 구체 소스가 가져가도록 llm을 맨 뒤에 뒀다.
+  - **(추가) CI 인증:** `collect.yml`이 참조하던 `GH_SEARCH_PAT` 시크릿이 설정돼 있지 않아 CI 검색이 미인증으로 돌고 있었다. `${{ secrets.GH_SEARCH_PAT || secrets.GITHUB_TOKEN }}`으로 바꿨다. 공개 저장소 조회에는 권한이 필요 없고, 빌트인 토큰으로 한도가 검색 30/분, 일반 1,000/시간으로 오른다.
+- [x] `github_trending`(전체 언어)에 AI 키워드 사전 필터를 걸어(설명·토픽 기준) 관련 없는 리포가 선별 풀에 들어오지 않게 한다.
+  - ✅ 2026-10-29 `github_trending`은 RSS 미러 대신 github.com/trending 페이지를 직접 읽는다(kind `github`, `url`로 분기). RSS에는 스타·언어·오늘 증가분이 없기 때문이다. 저장소 토픽은 REST `/repos/{name}`로 보탠다(하루 14~25회, 실패하면 토픽 없이 진행). 저장소 블록을 하나도 파싱하지 못하면 0건 대신 "마크업 변경 의심" 예외를 던진다.
+  - 소스 필드 `keywordFilter: "ai"`가 `configs/keyword-filters.json`의 목록 이름을 가리킨다. `collect.ts`가 수집 직후 kind와 무관하게 제목·설명·토픽을 검사하고, 키워드가 없는 항목은 dedup 키도 남기지 않고 버린다. 일치는 대소문자 무시·단어 단위라 `ai`가 email·maintain에 걸리지 않는다. 끝의 `*`는 접두어 일치(`agent*`)이고 한중일 키워드는 부분 일치다. 범용어(model·inference·prompt·gpu)는 오탐이 많아 뺐다. 없는 목록 이름은 예외로 처리해 필터가 조용히 꺼지지 않게 했다.
+  - 실측에서 오늘 트렌딩 14건 중 11건이 통과했다. 탈옥 프롬프트 목록, 네트워크 드라이브 다운로더, 독학 에세이가 빠졌다. 토픽 덕분에 설명만으로는 떨어졌을 HKUDS/DeepTutor와 ruvnet/RuView가 살았다. 전체 언어 피드는 유지한다. Python 피드만 쓰면 오늘 AI 저장소 11건 중 7건(TS·Rust·Shell)을 놓친다.
+  - notes에 `, 키워드 제외 N`이 붙는다. `kpi baseline`의 notes 파싱 정규식도 함께 고쳤다.
+- [x] 스타 증가량(Δstars)을 계산할 수 있으면 `engagement_json`에 담는다. 화제 지수 정확도가 올라간다.
+  - ✅ 2026-10-29 트렌딩 페이지의 "N stars today"를 `stars_today`로 저장하고, `trendingScore()`에 가중 0.4·상한 2000으로 더한다(오늘 실측 90~2,371). 트렌딩 기사의 화제 지수가 0에서 50~70으로 올라 "지금 화제" 후보가 된다. 검색 소스는 생성 7일 이내라 누적 스타가 곧 증가분이므로 따로 계산하지 않는다. 레이더 메타 줄에 쓸 `language`도 표시용 메타로 저장한다. 기존 소스 점수는 그대로다(vitest 42파일·350건 통과).
 
 ### 3-3. 논문
 
