@@ -2,12 +2,13 @@
  * LLM 가공(③단계). 선별(triage)을 통과한 기사만 한국어 제목·요약·카테고리·태그를 만든다.
  *
  * 기사 CHUNK_SIZE 건을 한 요청에 묶는다. 기사 1건당 1호출이면 시스템 프롬프트(+few-shot,
- * 약 1.6k토큰)와 출력 스키마를 매번 다시 보내 입력의 대부분이 반복 지시문이 된다
+ * 약 2.7k토큰)와 출력 스키마를 매번 다시 보내 입력의 대부분이 반복 지시문이 된다
  * (Haiku 4.5 는 4,096토큰 미만 프리픽스를 캐시하지 않아 프롬프트 캐싱으로도 못 줄인다).
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { FORMAT_LABELS, type Format } from "../../src/lib/labels";
 import { PROMPTS_DIR } from "../../src/lib/paths";
 import type { RawItem } from "../../src/lib/types";
 import { approxTokens } from "./cost";
@@ -25,8 +26,8 @@ const EST_OUTPUT_TOKENS_PER_ARTICLE = 250;
 
 export const enrichFormat = zodOutputFormat(enrichBatchSchema);
 
-interface FewShotExample {
-  input: { source: string; title: string; content: string };
+export interface FewShotExample {
+  input: { format: Format; source: string; title: string; content: string };
   output: ArticleEnrichment;
 }
 
@@ -49,13 +50,14 @@ function buildSystemPrompt(): string {
     CATEGORIES_PLACEHOLDER,
     readCategoryGuide(),
   );
-  const fewshot = JSON.parse(
-    readFileSync(path.join(PROMPTS_DIR, "enrich.fewshot.json"), "utf-8"),
-  ) as FewShotExample[];
-
-  const examples = fewshot
+  const examples = readFewShot()
     .map((ex, i) => {
-      const input = `[출처] ${ex.input.source}\n[제목] ${ex.input.title}\n[본문]\n${ex.input.content}`;
+      const input = articleFields(
+        ex.input.format,
+        ex.input.source,
+        ex.input.title,
+        ex.input.content,
+      );
       return `### 예시 ${i + 1}\n입력:\n${input}\n출력:\n${JSON.stringify(ex.output)}`;
     })
     .join("\n\n");
@@ -63,16 +65,33 @@ function buildSystemPrompt(): string {
   return `${system}\n\n## 예시 (기사 1건 기준)\n\n${examples}`;
 }
 
+/** few-shot 예시(형식별 요약 가이드의 본보기). 시스템 프롬프트 조립과 테스트가 같이 쓴다. */
+export function readFewShot(): FewShotExample[] {
+  return JSON.parse(
+    readFileSync(path.join(PROMPTS_DIR, "enrich.fewshot.json"), "utf-8"),
+  ) as FewShotExample[];
+}
+
+/**
+ * 기사 1건의 입력 필드. 실제 입력과 few-shot 이 같은 모양이어야 하므로 한 곳에서 만든다.
+ * [형식]은 형식별 요약 가이드를 고르는 단서다 — 분야(category)는 형식이 아니라 주제로 정한다.
+ */
+function articleFields(format: Format, source: string, title: string, content: string): string {
+  return `[형식] ${FORMAT_LABELS[format]}\n[출처] ${source}\n[제목] ${title}\n[본문]\n${content}`;
+}
+
 /** 가공할 기사 1건. id 는 요청 안에서 결과를 매칭하는 번호(후보 풀 번호). */
 export interface EnrichInput {
   id: number;
   item: RawItem;
   sourceName: string;
+  /** 소스 형식(sources.json `format`). 형식별 요약 가이드 선택용. */
+  format: Format;
 }
 
-function articleBlock({ id, item, sourceName }: EnrichInput): string {
+function articleBlock({ id, item, sourceName, format }: EnrichInput): string {
   const content = (item.contentRaw ?? "").slice(0, MAX_INPUT_CHARS);
-  return `### id=${id}\n[출처] ${sourceName}\n[제목] ${item.title}\n[본문]\n${content || "(본문 없음)"}`;
+  return `### id=${id}\n${articleFields(format, sourceName, item.title, content || "(본문 없음)")}`;
 }
 
 /** 가공 요청 1건과 그 요청에 실린 기사 id. */

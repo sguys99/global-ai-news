@@ -1,6 +1,4 @@
 // @vitest-environment node
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildEnrichRequests,
@@ -9,13 +7,16 @@ import {
   estimateEnrichTokens,
   resolveEnrichments,
   readCategoryGuide,
+  readFewShot,
   type EnrichInput,
 } from "../../scripts/lib/enrich";
 import { articleEnrichmentSchema, CATEGORIES } from "../../scripts/lib/schema";
+import { FORMAT_LABELS, FORMATS, type Format } from "../../src/lib/labels";
 
-const input = (id: number): EnrichInput => ({
+const input = (id: number, format: Format = "news"): EnrichInput => ({
   id,
   sourceName: "TechCrunch",
+  format,
   item: {
     sourceId: "techcrunch_ai",
     url: `https://example.com/${id}`,
@@ -49,6 +50,14 @@ describe("buildEnrichRequests", () => {
     expect(user).toContain("### id=120");
     expect(user).toContain("[출처] TechCrunch");
     expect(user).not.toContain("### id=119");
+  });
+
+  it("기사 블록에 [형식] 줄이 id 바로 다음에 실린다(형식별 요약 가이드 선택용)", () => {
+    const [chunk] = buildEnrichRequests([input(1, "oss"), input(2, "model"), input(3)], "m");
+    const user = chunk.request.params.messages[0].content as string;
+    expect(user).toContain("### id=1\n[형식] 오픈소스\n[출처] TechCrunch\n[제목] Title 1");
+    expect(user).toContain("### id=2\n[형식] 모델\n");
+    expect(user).toContain("### id=3\n[형식] 뉴스\n");
   });
 
   it("출력 상한은 기사 수에 비례한다", () => {
@@ -122,11 +131,48 @@ describe("분야 정의 프롬프트", () => {
     for (const key of CATEGORIES) expect(readCategoryGuide()).toContain(`**${key}**`);
   });
 
-  it("few-shot 예시 출력은 가공 스키마(새 분야 키)를 통과한다", () => {
-    const fewshot = JSON.parse(
-      readFileSync(path.join(process.cwd(), "configs/prompts/enrich.fewshot.json"), "utf-8"),
-    ) as { output: unknown }[];
-    for (const ex of fewshot)
+  it("Physical AI 최우선·규칙 우선순위가 분야 정의에 명시된다", () => {
+    const guide = readCategoryGuide();
+    expect(guide).toContain("Physical AI 최우선");
+    expect(guide).toContain("번호가 앞선 규칙이 우선");
+  });
+
+  it("시스템 프롬프트에 형식과 분야의 관계·형식별 요약 가이드가 실린다", () => {
+    const [chunk] = buildEnrichRequests([input(1)], "m");
+    const system = chunk.request.params.system as string;
+    expect(system).toContain("## 형식과 분야");
+    expect(system).toContain("## 형식별 요약 가이드");
+    for (const f of FORMATS) expect(system).toContain(`- **${FORMAT_LABELS[f]}**`);
+  });
+});
+
+describe("few-shot 예시", () => {
+  const fewshot = readFewShot();
+
+  it("6건이고 4개 형식을 모두 다루며, 출력은 가공 스키마(새 분야 키)를 통과한다", () => {
+    expect(fewshot).toHaveLength(6);
+    expect(new Set(fewshot.map((ex) => ex.input.format))).toEqual(new Set(FORMATS));
+    for (const ex of fewshot) {
+      expect(FORMATS).toContain(ex.input.format);
+      expect(CATEGORIES).toContain(ex.output.category);
+      expect(ex.output.title_ko.length).toBeLessThanOrEqual(60);
       expect(articleEnrichmentSchema.safeParse(ex.output).success).toBe(true);
+    }
+  });
+
+  it("Physical AI 뉴스·GitHub 저장소·HF 모델 예시가 있다", () => {
+    const pairs = fewshot.map((ex) => `${ex.input.format}:${ex.output.category}`);
+    expect(pairs).toContain("news:physical");
+    expect(pairs).toContain("oss:oss");
+    expect(pairs).toContain("model:llm");
+  });
+
+  it("예시 입력은 실제 기사 블록과 같은 모양([형식] 줄 포함)으로 시스템 프롬프트에 실린다", () => {
+    const [chunk] = buildEnrichRequests([input(1)], "m");
+    const system = chunk.request.params.system as string;
+    for (const [i, ex] of fewshot.entries())
+      expect(system).toContain(
+        `### 예시 ${i + 1}\n입력:\n[형식] ${FORMAT_LABELS[ex.input.format]}\n[출처] ${ex.input.source}\n`,
+      );
   });
 });
