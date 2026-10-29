@@ -1,6 +1,7 @@
 /**
  * 개편 전후 선별 비교 (계획 Phase 4-3). DB 를 열지 않는다.
  * 실행: npm run triage:compare -- data/eval/run-<시각>.json [--rev 096de4e]
+ *       npm run triage:compare -- data/eval/run-<시각>.json --current [--known 60,130] [--max-cost 0.12]
  *
  * `npm run collect -- --no-save` 가 남긴 스냅숏의 **같은 선별 풀**로 개편 전 선별을 일반 호출 1회로 다시 돌리고,
  * 스냅숏의 개편 후 선별·가공 결과와 나란히 비교한다.
@@ -11,24 +12,49 @@
  * - 개편 전 선별은 가공하지 않으므로 Physical AI 는 소스 topic 으로만 센다.
  * - "이미 보도함" 유사는 LLM 없이 드문 토큰 공유로 어림한 휴리스틱이다(눈으로 확인할 목록을 뽑는 용도).
  * 결과는 스냅숏 옆 `<스냅숏>.compare-<rev>.json` 에도 남긴다.
+ *
+ * `--current`: 4-3 보강 검증. 개편 전 선별은 다시 부르지 않고(위 compare 결과 파일을 읽는다), **지금 작업 트리의**
+ * 선별(프롬프트·요청 빌더, 스냅숏의 이미 보도함·최대 선정 수)과 가공을 같은 풀로 일반 호출해 3열로 비교한다:
+ * 개편 전 / 개편 후 v1(스냅숏) / 보강 후(이번 실행). `--known` 은 눈으로 확인한 "이미 보도함 재선정" 풀 번호로,
+ * 각 열이 그 번호를 대표로 다시 골랐는지 센다. 결과는 `<스냅숏>.current.json`.
  */
 import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { FORMAT_LABELS } from "../src/lib/labels";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { z } from "zod/v4";
+import { CATEGORIES, CATEGORY_LABELS, FORMAT_LABELS } from "../src/lib/labels";
+import { estimateCost } from "./lib/cost";
+import {
+  buildEnrichRequests,
+  enrichFormat,
+  estimateEnrichTokens,
+  resolveEnrichments,
+} from "./lib/enrich";
 import { envString } from "./lib/env";
 import {
   describeUsage,
+  emptyUsage,
   formatCounts,
   importanceCounts,
   categoryCounts,
   pickRows,
   readSnapshot,
   summarizePicks,
+  usageSince,
+  type EvalSnapshot,
+  type PickRow,
   type PickSummary,
 } from "./lib/evalRun";
-import { LlmRunner, parseStructured, type LlmRequest } from "./lib/llm";
+import { LlmRunner, parseStructured, type LlmRequest, type LlmUsage } from "./lib/llm";
+import type { ArticleEnrichment } from "./lib/schema";
 import {
+  alreadyReportedIds,
+  buildTriageRequest,
+  estimateTriageTokens,
+  pickTargets,
+  quotaOverflowNote,
+  quotaShortfallNote,
   resolvePicks,
   triageFormat,
   type Candidate,
@@ -40,6 +66,24 @@ import {
 export const DEFAULT_REV = "096de4e";
 /** 개편 전 MAX_PICKS_PER_RUN 기본값. */
 export const LEGACY_MAX_PICKS = 30;
+/** `--current` 실행(선별 1회 + 가공 4회, 일반 호출)의 비용 상한 기본값(USD). */
+export const DEFAULT_MAX_COST = 0.12;
+
+/**
+ * 개편 전 선별 출력 스키마(already_reported 없음). 옛 프롬프트는 이 필드를 모르므로 지금 triageFormat 을 쓰면
+ * 필수 필드가 비어 검증에 실패하거나, 구조화 출력이 옛 프롬프트에 없던 단계를 끼워 넣어 비교가 흐려진다.
+ */
+export const legacyTriageFormat = zodOutputFormat(
+  z.object({
+    picks: z.array(
+      z.object({
+        id: z.number().int(),
+        importance: z.number().int().min(1).max(5),
+        duplicates: z.array(z.number().int()),
+      }),
+    ),
+  }),
+);
 
 // ── 개편 전 선별 요청 재현 ──────────────────────────────────────────────
 
@@ -85,7 +129,7 @@ export function buildLegacyTriageRequest(
           content: `오늘 후보 ${pool.length}건 중 최대 ${maxPicks}건을 고르세요.\n\n${lines}`,
         },
       ],
-      output_config: { format: triageFormat },
+      output_config: { format: legacyTriageFormat },
     },
   };
 }
@@ -114,29 +158,95 @@ export function pickOverlap(oldPicks: Pick[], newPicks: Pick[]): PickOverlap {
   };
 }
 
-/** 비교 표(마크다운). 개편 전은 가공하지 않아 분야 기준 Physical AI 가 없다. */
+/** 비교 표의 한 열. */
+export interface CompareColumn {
+  label: string;
+  summary: PickSummary;
+  /** 가공했는가 — 아니면 분야 기준 칸을 비운다. */
+  enriched: boolean;
+  /** 이미 보도함 유사(휴리스틱) 수. */
+  hits: number;
+}
+
+/** 표 아래에 덧붙일 행: [항목, 열마다 값]. */
+export type ExtraRow = [string, ...(string | number)[]];
+
+/** N열 비교 표(마크다운). 가공하지 않은 열은 분야 기준 Physical AI 가 `— (미가공)`이다. */
+export function columnsTable(cols: CompareColumn[], extra: ExtraRow[] = []): string {
+  const row = (label: string, values: (string | number)[]) =>
+    `| ${label} | ${values.join(" | ")} |`;
+  const each = (f: (c: CompareColumn) => string | number) => cols.map(f);
+  return [
+    row(
+      "항목",
+      each((c) => c.label),
+    ),
+    `|---|${cols.map(() => "---|").join("")}`,
+    row(
+      "선정",
+      each((c) => c.summary.total),
+    ),
+    ...(["news", "oss", "model", "paper"] as const).map((f) =>
+      row(
+        FORMAT_LABELS[f],
+        each((c) => c.summary.byFormat[f]),
+      ),
+    ),
+    row(
+      "비뉴스 합계",
+      each((c) => c.summary.nonNews),
+    ),
+    row(
+      "Physical AI (소스 topic)",
+      each((c) => c.summary.physicalTopic),
+    ),
+    row(
+      "Physical AI (가공 분야)",
+      each((c) => (c.enriched ? c.summary.physicalCategory : "— (미가공)")),
+    ),
+    row(
+      "중요도 5:4:3:2:1",
+      each((c) => importanceCounts(c.summary)),
+    ),
+    row(
+      "이미 보도함 유사 (휴리스틱)",
+      each((c) => c.hits),
+    ),
+    ...extra.map(([label, ...values]) => row(label, values)),
+  ].join("\n");
+}
+
+/** 개편 전후 2열 비교 표. 개편 전은 가공하지 않아 분야 기준 Physical AI 가 없다. */
 export function compareTable(
   oldS: PickSummary,
   newS: PickSummary,
   hits: { old: number; new: number },
   rev: string,
 ): string {
-  const row = (label: string, a: string | number, b: string | number) =>
-    `| ${label} | ${a} | ${b} |`;
-  const fmt = (s: PickSummary, f: keyof PickSummary["byFormat"]) => s.byFormat[f];
-  return [
-    `| 항목 | 개편 전(${rev}) | 개편 후 |`,
-    "|---|---|---|",
-    row("선정", oldS.total, newS.total),
-    ...(["news", "oss", "model", "paper"] as const).map((f) =>
-      row(FORMAT_LABELS[f], fmt(oldS, f), fmt(newS, f)),
-    ),
-    row("비뉴스 합계", oldS.nonNews, newS.nonNews),
-    row("Physical AI (소스 topic)", oldS.physicalTopic, newS.physicalTopic),
-    row("Physical AI (가공 분야)", "— (미가공)", newS.physicalCategory),
-    row("중요도 5:4:3:2:1", importanceCounts(oldS), importanceCounts(newS)),
-    row("이미 보도함 유사 (휴리스틱)", hits.old, hits.new),
-  ].join("\n");
+  return columnsTable([
+    { label: `개편 전(${rev})`, summary: oldS, enriched: false, hits: hits.old },
+    { label: "개편 후", summary: newS, enriched: true, hits: hits.new },
+  ]);
+}
+
+/**
+ * 할당 미달·초과 경고(collect.ts 와 같은 판정). Physical AI 는 가공 분야, 미가공이면 소스 topic 으로 센다.
+ * 경고가 없으면 `-`.
+ */
+export function quotaWarnings(pool: Candidate[], rows: PickRow[], maxPicks: number): string {
+  const mix = rows.map((r) => ({
+    format: r.format,
+    physical: (r.category ?? r.topic) === "physical",
+  }));
+  const targets = pickTargets(pool, maxPicks);
+  const notes = [quotaShortfallNote(mix, targets), quotaOverflowNote(mix, targets)].filter(Boolean);
+  return notes.length > 0 ? notes.join(" / ") : "-";
+}
+
+/** 알려진 이미 보도함 재선정 번호 중 대표(id)로 다시 고른 번호. */
+export function knownRepeats(picks: Pick[], known: number[]): number[] {
+  const ids = new Set(picks.map((p) => p.index));
+  return known.filter((i) => ids.has(i));
 }
 
 // ── "이미 보도함" 유사 휴리스틱 ─────────────────────────────────────────
@@ -209,17 +319,41 @@ export function reportedHits(titles: string[], reported: ReportedHeadline[]): Re
 export interface CompareArgs {
   snapshot: string;
   rev: string;
+  /** 지금 작업 트리의 선별·가공을 같은 풀로 돌려 3열 비교한다. */
+  current: boolean;
+  /** 눈으로 확인한 이미 보도함 재선정 풀 번호(`--current` 집계용). */
+  known: number[];
+  /** `--current` 비용 상한(USD, 일반 호출 기준 추정). */
+  maxCost: number;
 }
 
 export function parseCompareArgs(argv: string[]): CompareArgs {
   let snapshot: string | undefined;
   let rev = DEFAULT_REV;
+  let current = false;
+  let known: number[] = [];
+  let maxCost = DEFAULT_MAX_COST;
+  const value = (i: number, what: string) => {
+    const v = argv[i];
+    if (v === undefined || v.startsWith("--")) throw new Error(`${argv[i - 1]} 에 ${what}`);
+    return v;
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
     if (flag === "--rev") {
-      const v = argv[++i];
-      if (v === undefined || v.startsWith("--")) throw new Error("--rev 에 커밋이 필요합니다");
-      rev = v;
+      rev = value(++i, "커밋이 필요합니다");
+    } else if (flag === "--current") {
+      current = true;
+    } else if (flag === "--known") {
+      known = value(++i, "풀 번호 목록이 필요합니다(예: 60,130)")
+        .split(",")
+        .map((x) => Number(x.trim()));
+      if (known.some((n) => !Number.isInteger(n) || n < 0)) {
+        throw new Error("--known 은 쉼표로 구분한 0 이상 정수입니다");
+      }
+    } else if (flag === "--max-cost") {
+      maxCost = Number(value(++i, "USD 값이 필요합니다"));
+      if (!(maxCost > 0)) throw new Error("--max-cost 는 0 보다 큰 수입니다");
     } else if (flag.startsWith("--")) {
       throw new Error(`알 수 없는 옵션: ${flag}`);
     } else if (snapshot === undefined) {
@@ -229,14 +363,228 @@ export function parseCompareArgs(argv: string[]): CompareArgs {
     }
   }
   if (!snapshot)
-    throw new Error("사용법: npm run triage:compare -- <snapshot.json> [--rev <commit>]");
-  return { snapshot, rev };
+    throw new Error(
+      "사용법: npm run triage:compare -- <snapshot.json> [--rev <commit>] [--current [--known 1,2] [--max-cost 0.12]]",
+    );
+  return { snapshot, rev, current, known, maxCost };
+}
+
+const compareFile = (snapshot: string, rev: string) =>
+  `${snapshot.replace(/\.json$/, "")}.compare-${rev}.json`;
+
+/** 개편 전 비교 결과 파일(main 이 쓰는 모양). */
+interface LegacyCompareResult {
+  rev: string;
+  maxPicks: number;
+  picks: Pick[];
+  usage: LlmUsage;
+}
+
+/** `비용` 칸: `$실지불 / $배치 환산`. */
+function costCell(usage: LlmUsage, model: string): string {
+  const batch = estimateCost(usage.inputTokens, usage.outputTokens, model, { batch: true });
+  return `$${usage.costUsd.toFixed(4)} / $${batch.toFixed(4)}`;
+}
+
+const sumUsage = (a: LlmUsage, b: LlmUsage): LlmUsage => ({
+  calls: a.calls + b.calls,
+  inputTokens: a.inputTokens + b.inputTokens,
+  outputTokens: a.outputTokens + b.outputTokens,
+  costUsd: a.costUsd + b.costUsd,
+});
+
+/** `--current`: 지금 선별·가공을 같은 풀로 돌려 개편 전 / v1 / 보강 후 3열로 비교한다. */
+async function runCurrent(args: CompareArgs, snap: EvalSnapshot, model: string): Promise<void> {
+  const pool = snap.pool;
+  const legacy = JSON.parse(
+    readFileSync(compareFile(args.snapshot, args.rev), "utf-8"),
+  ) as LegacyCompareResult;
+  const llm = new LlmRunner({ useBatch: false, batchTimeoutMs: 0 });
+  const estCost = (input: number, output: number) => estimateCost(input, output, model);
+
+  // ① 선별 — 스냅숏과 같은 풀·이미 보도함·최대 선정 수, 지금 프롬프트·빌더.
+  const triageReq = buildTriageRequest(pool, snap.maxPicks, model, { reported: snap.reported });
+  const tEst = estimateTriageTokens(triageReq, snap.maxPicks);
+  console.log(
+    `[compare] 보강 후 선별: 풀 ${pool.length}건 · 최대 ${snap.maxPicks}건 · 이미 보도함 ${snap.reported.length}건 · ` +
+      `${model} 일반 호출 · 추정 입력 ${tEst.input}토큰 $${estCost(tEst.input, tEst.output).toFixed(4)}`,
+  );
+  if (estCost(tEst.input, tEst.output) > args.maxCost) {
+    throw new Error(`선별 추정 비용이 상한 $${args.maxCost} 를 넘습니다`);
+  }
+  const triageRes = (await llm.run([triageReq])).get(triageReq.id);
+  const triage = parseStructured(triageRes?.message ?? null, triageFormat);
+  if (!triage) throw new Error(`보강 후 선별 실패: ${triageRes?.error ?? "응답 검증 실패"}`);
+  const triageUsage = { ...llm.usage };
+  console.log(
+    `[compare] 선별 입력 실측 ${triageUsage.inputTokens} vs 추정 ${tEst.input} ` +
+      `(${((tEst.input / triageUsage.inputTokens - 1) * 100).toFixed(1)}%)`,
+  );
+  const picks = resolvePicks(triage, pool.length, snap.maxPicks);
+  const reportedIds = [...alreadyReportedIds(triage, pool.length)];
+
+  // ② 가공 — 지금 가공 프롬프트.
+  const chunks = buildEnrichRequests(
+    picks.map((p) => ({
+      id: p.index,
+      item: pool[p.index].item,
+      sourceName: pool[p.index].sourceName,
+      format: pool[p.index].format,
+    })),
+    model,
+  );
+  const eEst = chunks
+    .map(estimateEnrichTokens)
+    .reduce((a, b) => ({ input: a.input + b.input, output: a.output + b.output }), {
+      input: 0,
+      output: 0,
+    });
+  const spent = triageUsage.costUsd + estCost(eEst.input, eEst.output);
+  if (spent > args.maxCost) {
+    throw new Error(
+      `선별 실지불 + 가공 추정 $${spent.toFixed(4)} 가 상한 $${args.maxCost} 를 넘습니다`,
+    );
+  }
+  const results = await llm.run(chunks.map((c) => c.request));
+  const enriched = new Map<number, ArticleEnrichment>();
+  for (const chunk of chunks) {
+    const parsed = parseStructured(results.get(chunk.request.id)?.message ?? null, enrichFormat);
+    if (!parsed) continue;
+    for (const [id, e] of resolveEnrichments(parsed, chunk.ids)) enriched.set(id, e);
+  }
+  const enrichUsage = usageSince(llm.usage, triageUsage);
+  console.log(
+    `[compare] 가공 입력 실측 ${enrichUsage.inputTokens} vs 추정 ${eEst.input} ` +
+      `(${((eEst.input / enrichUsage.inputTokens - 1) * 100).toFixed(1)}%)`,
+  );
+
+  // ③ 3열 집계.
+  const columns = [
+    {
+      label: `개편 전(${args.rev})`,
+      picks: legacy.picks,
+      maxPicks: legacy.maxPicks,
+      enrich: {} as Record<number, ArticleEnrichment>,
+      usage: { triage: legacy.usage, enrich: emptyUsage() },
+      enriched: false,
+      reported: "—",
+    },
+    {
+      label: "개편 후 v1",
+      picks: snap.picks,
+      maxPicks: snap.maxPicks,
+      enrich: snap.enrichments,
+      usage: snap.usage,
+      enriched: true,
+      reported: snap.triage?.already_reported?.length ?? "—",
+    },
+    {
+      label: "보강 후",
+      picks,
+      maxPicks: snap.maxPicks,
+      enrich: Object.fromEntries(enriched) as Record<number, ArticleEnrichment>,
+      usage: { triage: triageUsage, enrich: enrichUsage },
+      enriched: true,
+      reported: reportedIds.length,
+    },
+  ];
+  const rows = columns.map((c) => pickRows(pool, c.picks, c.enrich));
+  const summaries = rows.map(summarizePicks);
+  const hits = columns.map(
+    (c) =>
+      reportedHits(
+        c.picks.map((p) => pool[p.index].item.title),
+        snap.reported,
+      ).length,
+  );
+  const extra: ExtraRow[] = [
+    ...CATEGORIES.map(
+      (cat): ExtraRow => [
+        `분야: ${CATEGORY_LABELS[cat]}`,
+        ...columns.map((c, i) => (c.enriched ? summaries[i].byCategory[cat] : "—")),
+      ],
+    ),
+    ["할당 경고", ...columns.map((c, i) => quotaWarnings(pool, rows[i], c.maxPicks))],
+    [
+      `이미 보도함 재선정 (확인된 ${args.known.length}건 중)`,
+      ...columns.map((c) => {
+        const again = knownRepeats(c.picks, args.known);
+        return again.length > 0 ? `${again.length} (#${again.join(", #")})` : 0;
+      }),
+    ],
+    ["already_reported 표시", ...columns.map((c) => c.reported)],
+    ["비용 선별 (실지불 / 배치 환산)", ...columns.map((c) => costCell(c.usage.triage, model))],
+    [
+      "비용 가공 (실지불 / 배치 환산)",
+      ...columns.map((c) => (c.enriched ? costCell(c.usage.enrich, model) : "—")),
+    ],
+    [
+      "비용 합계 (실지불 / 배치 환산)",
+      ...columns.map((c) => costCell(sumUsage(c.usage.triage, c.usage.enrich), model)),
+    ],
+  ];
+  const table = columnsTable(
+    columns.map((c, i) => ({
+      label: c.label,
+      summary: summaries[i],
+      enriched: c.enriched,
+      hits: hits[i],
+    })),
+    extra,
+  );
+
+  console.log(`\n## 보강 후 선정 ${picks.length}건 (중요도 | 형식 | 분야 | 매체 | 가공 제목)`);
+  for (const p of picks) {
+    const c = pool[p.index];
+    const e = enriched.get(p.index);
+    console.log(
+      `  #${p.index} ${p.importance} | ${FORMAT_LABELS[c.format]} | ${e ? CATEGORY_LABELS[e.category] : "-"} | ` +
+        `${c.sourceName} | ${e?.title_ko ?? `(미가공) ${c.item.title}`}` +
+        (p.duplicates.length > 0 ? ` (+#${p.duplicates.join(", #")})` : ""),
+    );
+  }
+  console.log(`\n## already_reported ${reportedIds.length}건`);
+  for (const i of reportedIds) console.log(`  #${i} ${pool[i].item.title}`);
+  console.log(`\n## 비교 (같은 풀 ${pool.length}건)\n${table}`);
+  console.log(`\n## 보강 후 비뉴스 요약 (환각 점검)`);
+  for (const p of picks.filter((p) => pool[p.index].format !== "news")) {
+    const c = pool[p.index];
+    const e = enriched.get(p.index);
+    if (!e) continue;
+    console.log(
+      `  #${p.index} [${FORMAT_LABELS[c.format]}·${CATEGORY_LABELS[e.category]}] ${e.title_ko}\n` +
+        `    입력: ${(c.item.contentRaw ?? "").replace(/\s+/g, " ").slice(0, 200)}\n    요약: ${e.summary_ko}`,
+    );
+  }
+
+  const out = `${args.snapshot.replace(/\.json$/, "")}.current.json`;
+  writeFileSync(
+    out,
+    `${JSON.stringify(
+      {
+        createdAt: new Date().toISOString(),
+        rev: args.rev,
+        maxPicks: snap.maxPicks,
+        known: args.known,
+        triage,
+        picks,
+        enrichments: Object.fromEntries(enriched),
+        usage: { triage: triageUsage, enrich: enrichUsage },
+        estimate: { triage: tEst, enrich: eEst },
+        table,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  console.log(`\n[compare] 결과: ${out}`);
 }
 
 async function main(): Promise<void> {
   const args = parseCompareArgs(process.argv.slice(2));
   const snap = readSnapshot(args.snapshot);
   const model = envString("LLM_MODEL", snap.model);
+  if (args.current) return runCurrent(args, snap, model);
   const pool = snap.pool;
   const system = execFileSync("git", ["show", `${args.rev}:configs/prompts/triage.system.md`], {
     encoding: "utf-8",
@@ -249,7 +597,7 @@ async function main(): Promise<void> {
   const llm = new LlmRunner({ useBatch: false, batchTimeoutMs: 0 });
   const req = buildLegacyTriageRequest(pool, LEGACY_MAX_PICKS, model, system);
   const res = (await llm.run([req])).get(req.id);
-  const triage = parseStructured(res?.message ?? null, triageFormat);
+  const triage = parseStructured(res?.message ?? null, legacyTriageFormat);
   if (!triage) throw new Error(`개편 전 선별 실패: ${res?.error ?? "응답 검증 실패"}`);
   const oldPicks = resolvePicks(triage, pool.length, LEGACY_MAX_PICKS);
 
@@ -301,7 +649,7 @@ async function main(): Promise<void> {
   console.log(describeUsage("개편 후 선별(스냅숏)", snap.usage.triage, snap.model, snap.useBatch));
   console.log(describeUsage("개편 후 가공(스냅숏)", snap.usage.enrich, snap.model, snap.useBatch));
 
-  const out = `${args.snapshot.replace(/\.json$/, "")}.compare-${args.rev}.json`;
+  const out = compareFile(args.snapshot, args.rev);
   writeFileSync(
     out,
     `${JSON.stringify({ rev: args.rev, maxPicks: LEGACY_MAX_PICKS, triage, picks: oldPicks, usage: llm.usage }, null, 2)}\n`,

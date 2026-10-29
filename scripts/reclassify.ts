@@ -180,7 +180,7 @@ export function buildRequests(
 
 /**
  * 비용 가드용 추정(USD). 입력은 한글 위주라 1글자 ≈ 1토큰으로 넉넉하게 잡는다
- * (cost.ts 의 approxTokens 는 영문 본문 기준이라 한글 입력을 과소 추정한다).
+ * (cost.ts 의 approxTokens 보다 거칠지만 한글 위주 입력에서 더 넉넉하다).
  */
 export function estimateRequestsCost(
   chunks: ReclassifyChunk[],

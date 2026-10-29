@@ -56,12 +56,14 @@ import type { ArticleEnrichment } from "./lib/schema";
 import { describeSync, loadSourcesConfig, syncSources } from "./lib/syncSources";
 import { saveTags } from "./lib/tags";
 import {
+  alreadyReportedNote,
   buildTriagePool,
   buildTriageRequest,
   estimateTriageTokens,
   loadReportedHeadlines,
   pickTargets,
   poolMixNotes,
+  quotaOverflowNote,
   quotaShortfallNote,
   REPORTED_ISSUES,
   resolvePicks,
@@ -365,7 +367,7 @@ function printPoolPreview(pool: Candidate[], triageReq: LlmRequest): void {
   const t = pickTargets(pool, MAX_PICKS_PER_RUN);
   console.log(
     `[collect] dry-run 오늘 할당: 비뉴스 ${t.nonNews}(오픈소스 ${t.formats.oss}·모델 ${t.formats.model}·` +
-      `논문 ${t.formats.paper}), Physical AI ${t.physical}`,
+      `논문 ${t.formats.paper}), Physical AI ${t.physical}~${t.physicalMax}`,
   );
   const est = estimateTriageTokens(triageReq, MAX_PICKS_PER_RUN);
   const cost = estimateCost(est.input, est.output, MODEL, { batch: USE_BATCH });
@@ -487,9 +489,12 @@ async function main(): Promise<void> {
     // 선별 실패 시 아무것도 저장하지 않는다 → 다음 실행에서 같은 후보로 다시 선별.
     if (!triage) throw new Error(`선별 실패: ${triageRes?.error ?? "응답 검증 실패"}`);
 
+    // 이미 보도함으로 표시된 후보는 resolvePicks 가 선정·묶음에서 빼고, 미선정으로 남아 seen_items 로 간다.
     const picks = resolvePicks(triage, pool.length, MAX_PICKS_PER_RUN);
     const grouped = picks.reduce((n, p) => n + p.duplicates.length, 0);
     stats.notes.push(`선정 ${picks.length}건(같은 사건으로 묶인 기사 ${grouped}건)`);
+    const reportedNote = alreadyReportedNote(triage, pool.length);
+    if (reportedNote) stats.notes.push(reportedNote);
     if (snapshot) snapshot.picks = picks;
     for (const p of picks) {
       const c = pool[p.index];
@@ -524,16 +529,19 @@ async function main(): Promise<void> {
       stats.status = "partial";
       stats.notes.push(`가공 실패·보류 ${unfinished}건(다음 실행에서 재심사)`);
     }
-    // 할당 미달 경고(강제로 채우지 않는다). Physical AI 는 가공된 기사의 분야로 센다 — 소스 topic 은 일반 매체의
-    // 로봇 기사를 놓친다. 가공되지 않은 선정만 소스 topic 으로 대신한다.
-    const shortfall = quotaShortfallNote(
-      picks.map((p) => ({
-        format: pool[p.index].format,
-        physical: (enriched.get(p.index)?.category ?? pool[p.index].topic) === "physical",
-      })),
-      pickTargets(pool, MAX_PICKS_PER_RUN),
-    );
-    if (shortfall) stats.notes.push(shortfall);
+    // 할당 미달·초과 경고(강제로 채우거나 덜어 내지 않는다). Physical AI 는 가공된 기사의 분야로 센다 — 소스 topic 은
+    // 일반 매체의 로봇 기사를 놓친다. 가공되지 않은 선정만 소스 topic 으로 대신한다.
+    const mixPicked = picks.map((p) => ({
+      format: pool[p.index].format,
+      physical: (enriched.get(p.index)?.category ?? pool[p.index].topic) === "physical",
+    }));
+    const targets = pickTargets(pool, MAX_PICKS_PER_RUN);
+    for (const note of [
+      quotaShortfallNote(mixPicked, targets),
+      quotaOverflowNote(mixPicked, targets),
+    ]) {
+      if (note) stats.notes.push(note);
+    }
 
     if (NO_SAVE) printNoSaveResult(pool, picks, enriched);
     else persist(db, pool, overflow, picks, enriched, stats);

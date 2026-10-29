@@ -10,6 +10,7 @@ import {
   readFewShot,
   type EnrichInput,
 } from "../../scripts/lib/enrich";
+import { approxTokens, outputFormatTokens } from "../../scripts/lib/cost";
 import { articleEnrichmentSchema, CATEGORIES } from "../../scripts/lib/schema";
 import { FORMAT_LABELS, FORMATS, type Format } from "../../src/lib/labels";
 
@@ -80,6 +81,16 @@ describe("buildEnrichRequests", () => {
     expect(b.input).toBeLessThan(a.input * 2);
     expect(b.output).toBe(a.output * 10);
   });
+
+  it("입력 추정치에 구조화 출력 스키마 몫이 든다", () => {
+    const [one] = buildEnrichRequests([input(1)], "m");
+    const text =
+      (one.request.params.system as string) +
+      one.request.params.messages.map((m) => m.content).join("");
+    expect(estimateEnrichTokens(one).input).toBe(
+      approxTokens(text) + outputFormatTokens(enrichFormat),
+    );
+  });
 });
 
 describe("resolveEnrichments", () => {
@@ -135,6 +146,23 @@ describe("분야 정의 프롬프트", () => {
     const guide = readCategoryGuide();
     expect(guide).toContain("Physical AI 최우선");
     expect(guide).toContain("번호가 앞선 규칙이 우선");
+  });
+
+  it("agent 는 에이전트 자체가 주제일 때만 — 에이전트가 쓰거나 겨냥한 도구는 agent 가 아니다", () => {
+    const guide = readCategoryGuide();
+    expect(guide).toContain("주제가 **에이전트 자체**일 때만 `agent`");
+    expect(guide).toContain("에이전트가 **쓰는** 도구나 에이전트를 **겨냥한** 도구");
+    const [chunk] = buildEnrichRequests([input(1)], "m");
+    expect(chunk.request.params.system as string).toContain(
+      "에이전트가 쓰거나 에이전트를 겨냥한 도구(보안 스캐너·영상 엔진 등) 저장소와 그 밖의 저장소 → `oss`",
+    );
+  });
+
+  it("리포 가이드: topics 만 보고 기능·연동을 단정하지 않는다", () => {
+    const [chunk] = buildEnrichRequests([input(1)], "m");
+    expect(chunk.request.params.system as string).toContain(
+      'topics만 보고 "~를 활용한다·지원한다"고 쓰지 않는다',
+    );
   });
 
   it("시스템 프롬프트에 형식과 분야의 관계·형식별 요약 가이드가 실린다", () => {

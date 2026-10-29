@@ -29,10 +29,17 @@ export const enrichBatchSchema = z.object({
 export type EnrichBatch = z.infer<typeof enrichBatchSchema>;
 
 /**
- * 선별(triage) 출력. id·duplicates 는 후보 목록의 번호.
+ * 선별(triage) 출력. 모든 번호는 후보 목록의 번호.
+ * already_reported 는 "이미 보도함"과 같은 사건(새 전개 없음)인 후보 — picks 보다 앞에 두어 구조화 출력이
+ * 먼저 채우게 한다(고르기 전에 걸러 내는 단계). 코드(resolvePicks)가 이 번호를 선정·묶음에서 뺀다.
  * picks 는 중요도 내림차순, duplicates 는 같은 사건을 다룬 다른 후보.
  */
 export const triageSchema = z.object({
+  already_reported: z
+    .array(z.number().int())
+    .describe(
+      "이미 보도함과 같은 사건이고 새로운 전개가 없는 후보 번호. 이 번호는 picks·duplicates 에 넣지 않는다.",
+    ),
   picks: z.array(
     z.object({
       id: z.number().int(),

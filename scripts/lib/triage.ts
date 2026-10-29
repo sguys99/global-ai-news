@@ -12,9 +12,9 @@ import type { Database as DatabaseType } from "better-sqlite3";
 import { FORMAT_LABELS, FORMATS, type Category, type Format } from "../../src/lib/labels";
 import { PROMPTS_DIR } from "../../src/lib/paths";
 import type { RawItem } from "../../src/lib/types";
-import { approxTokens } from "./cost";
+import { approxTokens, outputFormatTokens } from "./cost";
 import type { LlmRequest } from "./llm";
-import { triageSchema, type Triage } from "./schema";
+import { triageSchema } from "./schema";
 
 /** 수집·dedup 을 통과한 후보. articleId 가 있으면 가공에 실패해 재시도하는 기존 행이다. */
 export interface Candidate {
@@ -205,13 +205,21 @@ export const PICK_QUOTAS = {
   perFormat: 1,
   /** Physical AI(로봇·물리 세계 주제 — 매체 무관). */
   physical: 3,
+  /**
+   * Physical AI 상한 = ceil(최대 선정 × 이 비율) — 35건이면 9건. 분야 6개를 고르게 나누면 약 6건인데,
+   * Physical AI 는 할당까지 두는 중점 분야라 그 1.5배까지 허용한다. 4-3 검증에서 상한 없이 35건 중
+   * 15건(논문 10건 중 8건이 로봇)이 Physical AI 로 쏠렸다.
+   */
+  physicalMaxShare: 1 / 4,
 } as const;
 
-/** 오늘 풀에 맞춘 할당 목표. 각 값 = min(할당, 풀에 있는 후보 수, 최대 선정 수). */
+/** 오늘 풀에 맞춘 할당 목표. 하한은 min(할당, 풀에 있는 후보 수, 최대 선정 수). */
 export interface PickTargets {
   nonNews: number;
   formats: Record<NonNewsFormat, number>;
   physical: number;
+  /** Physical AI 상한(하한보다 작지 않다). */
+  physicalMax: number;
 }
 
 /**
@@ -226,11 +234,31 @@ export function pickTargets(pool: Candidate[], maxPicks: number): PickTargets {
   const formats = Object.fromEntries(
     NON_NEWS_FORMATS.map((f) => [f, target(PICK_QUOTAS.perFormat, (c) => c.format === f)]),
   ) as Record<NonNewsFormat, number>;
+  const physical = target(PICK_QUOTAS.physical, isPhysical);
   return {
     nonNews: target(PICK_QUOTAS.nonNews, (c) => c.format !== "news"),
     formats,
-    physical: target(PICK_QUOTAS.physical, isPhysical),
+    physical,
+    physicalMax: Math.max(physical, Math.ceil(maxPicks * PICK_QUOTAS.physicalMaxShare)),
   };
+}
+
+/** 할당 줄에 적을 비뉴스 형식별 목표. 예: `오픈소스 1건·모델 1건·논문 1건` (목표 0 인 형식은 뺀다) */
+function formatTargets(targets: PickTargets): string {
+  return NON_NEWS_FORMATS.filter((f) => targets.formats[f] > 0)
+    .map((f) => `${FORMAT_LABELS[f]} ${targets.formats[f]}건`)
+    .join("·");
+}
+
+/**
+ * Physical AI 할당 문구. 예: `3건 이상 9건 이하`. 상한이 풀 크기 이상이면 의미가 없어 뺀다.
+ * 하한·상한 모두 없으면 null.
+ */
+function physicalRange(targets: PickTargets, poolSize: number): string | null {
+  const parts: string[] = [];
+  if (targets.physical > 0) parts.push(`${targets.physical}건 이상`);
+  if (targets.physicalMax < poolSize) parts.push(`${targets.physicalMax}건 이하`);
+  return parts.length > 0 ? parts.join(" ") : null;
 }
 
 /** 유저 메시지의 오늘 풀 구성·할당 블록. 목표가 0 인 항목(후보 없음)은 싣지 않는다. */
@@ -242,20 +270,19 @@ function quotaBlock(pool: Candidate[], targets: PickTargets): string {
 
   const rules: string[] = [];
   if (targets.nonNews > 0) {
-    const each = NON_NEWS_FORMATS.filter((f) => targets.formats[f] > 0)
-      .map((f) => `${FORMAT_LABELS[f]} ${targets.formats[f]}건`)
-      .join("·");
+    const each = formatTargets(targets);
     rules.push(
       `- 비뉴스(오픈소스·모델·논문) ${targets.nonNews}건 이상${each ? `, 그중 ${each} 이상` : ""}`,
     );
   }
-  if (targets.physical > 0) rules.push(`- Physical AI ${targets.physical}건 이상`);
+  const physical = physicalRange(targets, pool.length);
+  if (physical) rules.push(`- Physical AI ${physical}`);
 
   return [
     "## 오늘 후보 구성",
     `형식: ${composition} / Physical AI 전문 매체 ${physicalSources}건(일반 매체의 로봇 기사는 따로 셈하지 않음)`,
     "",
-    "## 오늘 할당 (최소 건수)",
+    "## 오늘 할당",
     rules.length > 0 ? rules.join("\n") : "- 오늘은 할당이 없습니다.",
   ].join("\n");
 }
@@ -299,9 +326,40 @@ function reportedBlock(reported: ReportedHeadline[]): string {
   if (reported.length === 0) return "";
   const lines = reported.map((r) => `${r.issueDate.slice(5)} ${oneLine(r.title, TITLE_CHARS)}`);
   return [
-    `## 이미 보도함 (최근 호 게재 제목 ${reported.length}건 — 같은 사건은 고르지 않음)`,
+    `## 이미 보도함 (최근 호 게재 제목 ${reported.length}건 — 같은 사건인 후보는 already_reported 에 적고 고르지 않음)`,
     ...lines,
   ].join("\n");
+}
+
+/**
+ * 후보 줄 뒤에 붙이는 "출력 전 확인". 긴 후보 목록을 읽고 나면 앞쪽 할당·이미 보도함 지시가 흐려지므로
+ * (4-3 검증: 이미 보도함 5건 재선정, 모델 0/1) 같은 pickTargets 로 몇 줄만 다시 짚는다.
+ */
+function checklistBlock(pool: Candidate[], targets: PickTargets, hasReported: boolean): string {
+  const items: string[] = [];
+  if (hasReported) {
+    items.push(
+      "already_reported: 이미 보도함과 같은 사건(새 전개 없음)인 후보 번호를 모두 적었다. 이 번호는 picks·duplicates 에 없다.",
+    );
+  }
+  if (targets.nonNews > 0) {
+    const each = formatTargets(targets);
+    items.push(
+      `할당: 비뉴스 ${targets.nonNews}건 이상${each ? ` — ${each} 이상(이 형식이 0건이면 안 됨)` : ""}.`,
+    );
+  }
+  const physical = physicalRange(targets, pool.length);
+  if (physical) items.push(`Physical AI(로봇·물리 세계가 주제, 매체 무관) ${physical}.`);
+  if (targets.formats.paper > 0) {
+    items.push("논문: 한 분야(예: 로봇)가 논문 선정의 절반을 넘지 않는다.");
+  }
+  if (targets.formats.model > 0) {
+    items.push(
+      "모델의 HuggingFace 페이지와 그 모델을 다룬 뉴스는 같은 사건이다 — 하나만 id, 나머지는 duplicates.",
+    );
+  }
+  if (items.length === 0) return "";
+  return ["## 출력 전 확인", ...items.map((t, i) => `${i + 1}. ${t}`)].join("\n");
 }
 
 export interface TriageRequestOptions {
@@ -310,7 +368,7 @@ export interface TriageRequestOptions {
 }
 
 /**
- * 선별 요청. 유저 메시지 = 지시 한 줄 → 오늘 풀 구성·할당 → 이미 보도함 → 후보 줄.
+ * 선별 요청. 유저 메시지 = 지시 한 줄 → 오늘 풀 구성·할당 → 이미 보도함 → 후보 줄 → 출력 전 확인.
  * 할당 숫자는 코드(PICK_QUOTAS)에서 오늘 풀에 맞춰 넣으므로 프롬프트와 어긋나지 않는다.
  */
 export function buildTriageRequest(
@@ -320,11 +378,13 @@ export function buildTriageRequest(
   { reported = [] }: TriageRequestOptions = {},
 ): LlmRequest {
   const lines = pool.map(triageLine).join("\n");
+  const targets = pickTargets(pool, maxPicks);
   const blocks = [
     `오늘 후보 ${pool.length}건 중 최대 ${maxPicks}건을 고르세요.`,
-    quotaBlock(pool, pickTargets(pool, maxPicks)),
+    quotaBlock(pool, targets),
     reportedBlock(reported),
     `## 오늘 후보\n${lines}`,
+    checklistBlock(pool, targets, reported.length > 0),
   ].filter(Boolean);
   return {
     id: "triage",
@@ -339,21 +399,40 @@ export function buildTriageRequest(
   };
 }
 
-/** 선별 요청의 비용 가드용 토큰 추정치. */
+/** 선별 요청의 비용 가드용 토큰 추정치(입력에는 구조화 출력 스키마 몫도 든다). */
 export function estimateTriageTokens(req: LlmRequest, maxPicks: number) {
   const user = req.params.messages.map((m) => m.content).join("");
   return {
-    input: approxTokens(SYSTEM_PROMPT + user),
+    input: approxTokens(SYSTEM_PROMPT + user) + outputFormatTokens(triageFormat),
     output: maxPicks * OUTPUT_TOKENS_PER_PICK,
   };
 }
 
 /**
+ * resolvePicks 입력. already_reported 는 선택 — 개편 전 선별(triage-compare 의 옛 스키마)과
+ * 이 필드가 생기기 전 스냅숏도 그대로 받는다.
+ */
+export interface TriageOutput {
+  already_reported?: number[];
+  picks: { id: number; importance: number; duplicates: number[] }[];
+}
+
+/** already_reported 중 풀 범위 안의 번호(중복 제거). */
+export function alreadyReportedIds(triage: TriageOutput, poolSize: number): Set<number> {
+  return new Set(
+    (triage.already_reported ?? []).filter((i) => Number.isInteger(i) && i >= 0 && i < poolSize),
+  );
+}
+
+/**
  * 모델 출력 → 검증된 선정 목록. 범위 밖·중복 번호는 버리고(한 후보는 한 번만 — 선정이든
  * 묶음이든), 중요도 높은 순으로 maxPicks 건까지만 남긴다.
+ * already_reported 번호는 프롬프트 지시와 달리 선정·묶음에 들어 있어도 코드가 뺀다. 뺀 번호는 "쓴" 것으로 치지
+ * 않으므로 그냥 미선정으로 남는다(→ seen_items). 그 번호를 대표로 고른 선정은 통째로 빠지고, 그 묶음 번호도 쓰지 않는다.
  */
-export function resolvePicks(triage: Triage, poolSize: number, maxPicks: number): Pick[] {
-  const valid = (i: number) => Number.isInteger(i) && i >= 0 && i < poolSize;
+export function resolvePicks(triage: TriageOutput, poolSize: number, maxPicks: number): Pick[] {
+  const reported = alreadyReportedIds(triage, poolSize);
+  const valid = (i: number) => Number.isInteger(i) && i >= 0 && i < poolSize && !reported.has(i);
   const ordered = [...triage.picks].sort((a, b) => b.importance - a.importance);
 
   const used = new Set<number>();
@@ -371,6 +450,17 @@ export function resolvePicks(triage: Triage, poolSize: number, maxPicks: number)
     picks.push({ index: p.id, importance: p.importance, duplicates });
   }
   return picks;
+}
+
+/**
+ * notes 용 이미 보도함 제외 요약. 예: `이미 보도함 제외 4건(선정했다 뺀 1건)`. 0건이면 null.
+ * kpi baseline 의 notes 파싱(`선정 N건`·`후보 N건 중`)과 겹치지 않는 문구다.
+ */
+export function alreadyReportedNote(triage: TriageOutput, poolSize: number): string | null {
+  const reported = alreadyReportedIds(triage, poolSize);
+  if (reported.size === 0) return null;
+  const dropped = new Set(triage.picks.map((p) => p.id).filter((i) => reported.has(i))).size;
+  return `이미 보도함 제외 ${reported.size}건${dropped > 0 ? `(선정했다 뺀 ${dropped}건)` : ""}`;
 }
 
 /** 할당 검사용 선정 1건 요약. */
@@ -396,4 +486,15 @@ export function quotaShortfallNote(picked: PickedMix[], targets: PickTargets): s
   }
   check("Physical AI", picked.filter((p) => p.physical).length, targets.physical);
   return short.length > 0 ? `할당 미달: ${short.join(", ")}` : null;
+}
+
+/**
+ * 할당 초과 경고(notes 용) — 지금은 Physical AI 상한뿐이다. 강제로 덜어 내지 않는다. 넘지 않았으면 null.
+ * 예: `할당 초과: Physical AI 15/9`
+ */
+export function quotaOverflowNote(picked: PickedMix[], targets: PickTargets): string | null {
+  const physical = picked.filter((p) => p.physical).length;
+  return physical > targets.physicalMax
+    ? `할당 초과: Physical AI ${physical}/${targets.physicalMax}`
+    : null;
 }

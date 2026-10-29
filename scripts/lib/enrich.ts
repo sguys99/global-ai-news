@@ -11,7 +11,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { FORMAT_LABELS, type Format } from "../../src/lib/labels";
 import { PROMPTS_DIR } from "../../src/lib/paths";
 import type { RawItem } from "../../src/lib/types";
-import { approxTokens } from "./cost";
+import { approxTokens, outputFormatTokens } from "./cost";
 import type { LlmRequest } from "./llm";
 import { enrichBatchSchema, type ArticleEnrichment, type EnrichBatch } from "./schema";
 
@@ -127,11 +127,11 @@ export function buildEnrichRequests(inputs: EnrichInput[], model: string): Enric
   return chunks;
 }
 
-/** 가공 요청 1건의 비용 가드용 토큰 추정치. */
+/** 가공 요청 1건의 비용 가드용 토큰 추정치(입력에는 구조화 출력 스키마 몫도 든다). */
 export function estimateEnrichTokens({ request, ids }: EnrichChunk) {
   const user = request.params.messages.map((m) => m.content).join("");
   return {
-    input: approxTokens(SYSTEM_PROMPT + user),
+    input: approxTokens(SYSTEM_PROMPT + user) + outputFormatTokens(enrichFormat),
     output: ids.length * EST_OUTPUT_TOKENS_PER_ARTICLE,
   };
 }

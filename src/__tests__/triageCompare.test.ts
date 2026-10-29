@@ -5,12 +5,17 @@ import { summarizePicks, pickRows } from "../../scripts/lib/evalRun";
 import { triageLine, type Candidate, type Pick } from "../../scripts/lib/triage";
 import {
   buildLegacyTriageRequest,
+  columnsTable,
   compareTable,
+  DEFAULT_MAX_COST,
   DEFAULT_REV,
+  knownRepeats,
   LEGACY_MAX_PICKS,
+  legacyTriageFormat,
   legacyTriageLine,
   parseCompareArgs,
   pickOverlap,
+  quotaWarnings,
   reportedHits,
   titleTokens,
 } from "../../scripts/triage-compare";
@@ -55,6 +60,70 @@ describe("개편 전 선별 요청 재현", () => {
       `오늘 후보 2건 중 최대 30건을 고르세요.\n\n${legacyTriageLine(pool[0], 0)}\n${legacyTriageLine(pool[1], 1)}`,
     );
     expect(req.params.messages[0].content).not.toMatch(/오늘 할당|이미 보도함/);
+  });
+
+  it("개편 전 출력 스키마는 already_reported 없이 picks 만 — 지금 스키마와 따로 둔다", () => {
+    const req = buildLegacyTriageRequest([cand()], LEGACY_MAX_PICKS, "m", "OLD");
+    expect(req.params.output_config?.format).toBe(legacyTriageFormat);
+    const schema = legacyTriageFormat.schema as { properties: Record<string, unknown> };
+    expect(Object.keys(schema.properties)).toEqual(["picks"]);
+    expect(
+      legacyTriageFormat.parse(
+        JSON.stringify({ picks: [{ id: 0, importance: 3, duplicates: [] }] }),
+      ).picks,
+    ).toHaveLength(1);
+  });
+});
+
+describe("--current 3열 집계", () => {
+  it("columnsTable 은 열 수만큼 칸을 만들고 덧붙인 행을 뒤에 싣는다", () => {
+    const pool = [cand(), cand({ format: "model" })];
+    const picks: Pick[] = [{ index: 1, importance: 4, duplicates: [] }];
+    const s = summarizePicks(pickRows(pool, picks));
+    const table = columnsTable(
+      [
+        { label: "A", summary: s, enriched: false, hits: 0 },
+        { label: "B", summary: s, enriched: true, hits: 1 },
+        { label: "C", summary: s, enriched: true, hits: 2 },
+      ],
+      [["비용", "$1", "$2", "$3"]],
+    );
+    const lines = table.split("\n");
+    expect(lines[0]).toBe("| 항목 | A | B | C |");
+    expect(lines[1]).toBe("|---|---|---|---|");
+    expect(table).toContain("| 모델 | 1 | 1 | 1 |");
+    expect(table).toContain("| Physical AI (가공 분야) | — (미가공) | 0 | 0 |");
+    expect(lines.at(-1)).toBe("| 비용 | $1 | $2 | $3 |");
+  });
+
+  it("quotaWarnings 는 collect 와 같은 미달·초과 판정(가공 분야 우선, 없으면 topic)", () => {
+    const pool = [
+      ...Array.from({ length: 10 }, () => cand()),
+      ...Array.from({ length: 10 }, () => cand({ topic: "physical" })),
+      cand({ format: "model" }),
+    ];
+    // maxPicks 4 → Physical AI 상한 max(3, 1) = 3. topic physical 4건 선정 → 초과, 모델 0 → 미달.
+    const rows = [10, 11, 12, 13].map((i) => ({
+      importance: 3,
+      format: pool[i].format,
+      topic: pool[i].topic,
+    }));
+    expect(quotaWarnings(pool, rows, 4)).toBe(
+      "할당 미달: 비뉴스 0/1, 모델 0/1 / 할당 초과: Physical AI 4/3",
+    );
+    // 가공 분야가 있으면 그걸로 센다
+    const relabeled = rows.map((r) => ({ ...r, category: "industry" as const }));
+    expect(quotaWarnings(pool, relabeled, 4)).toBe(
+      "할당 미달: 비뉴스 0/1, 모델 0/1, Physical AI 0/3",
+    );
+  });
+
+  it("knownRepeats 는 대표로 다시 고른 번호만(묶음은 세지 않는다)", () => {
+    const picks: Pick[] = [
+      { index: 60, importance: 5, duplicates: [57] },
+      { index: 3, importance: 3, duplicates: [] },
+    ];
+    expect(knownRepeats(picks, [60, 57, 130])).toEqual([60]);
   });
 });
 
@@ -144,8 +213,20 @@ describe("parseCompareArgs", () => {
     expect(parseCompareArgs(["a.json"])).toEqual({
       snapshot: path.resolve("a.json"),
       rev: DEFAULT_REV,
+      current: false,
+      known: [],
+      maxCost: DEFAULT_MAX_COST,
     });
     expect(parseCompareArgs(["--rev", "abc123", "a.json"]).rev).toBe("abc123");
+  });
+
+  it("--current · --known · --max-cost", () => {
+    expect(
+      parseCompareArgs(["a.json", "--current", "--known", "60, 130,48", "--max-cost", "0.2"]),
+    ).toMatchObject({ current: true, known: [60, 130, 48], maxCost: 0.2 });
+    expect(() => parseCompareArgs(["a.json", "--known", "1,x"])).toThrow(/0 이상 정수/);
+    expect(() => parseCompareArgs(["a.json", "--known"])).toThrow(/풀 번호/);
+    expect(() => parseCompareArgs(["a.json", "--max-cost", "0"])).toThrow(/0 보다 큰/);
   });
 
   it("스냅숏이 없거나 둘 이상, 모르는 옵션은 오류", () => {

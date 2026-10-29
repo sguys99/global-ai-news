@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import type { Format } from "../../src/lib/labels";
 import { parseRunNotes } from "../../scripts/lib/baseline";
 import {
+  alreadyReportedIds,
+  alreadyReportedNote,
   buildTriagePool,
   buildTriageRequest,
   defaultPoolQuotas,
@@ -14,6 +16,7 @@ import {
   PICK_QUOTAS,
   pickTargets,
   poolMixNotes,
+  quotaOverflowNote,
   quotaShortfallNote,
   resolvePicks,
   triageFormat,
@@ -249,7 +252,7 @@ describe("triageLine / buildTriageRequest", () => {
     expect(req.params.output_config?.format?.type).toBe("json_schema");
   });
 
-  it("유저 메시지 순서: 지시 → 오늘 구성·할당 → 이미 보도함 → 후보 줄(마지막)", () => {
+  it("유저 메시지 순서: 지시 → 오늘 구성·할당 → 이미 보도함 → 후보 줄 → 출력 전 확인(마지막)", () => {
     const pool = [cand("a"), cand("gh", { format: "oss" })];
     const content = buildTriageRequest(pool, 35, "m", {
       reported: [{ issueDate: "2026-10-29", title: "앤트로픽, 새 모델 공개" }],
@@ -259,7 +262,7 @@ describe("triageLine / buildTriageRequest", () => {
     expect(at("## 오늘 할당")).toBeGreaterThan(at("## 오늘 후보 구성"));
     expect(at("## 이미 보도함")).toBeGreaterThan(at("## 오늘 할당"));
     expect(at("## 오늘 후보\n")).toBeGreaterThan(at("## 이미 보도함"));
-    expect(content.endsWith(triageLine(pool[1], 1))).toBe(true);
+    expect(content).toContain(`${triageLine(pool[1], 1)}\n\n## 출력 전 확인\n`);
   });
 });
 
@@ -272,7 +275,7 @@ describe("buildTriageRequest — 이미 보도함 주입", () => {
       ],
     }).params.messages[0].content;
     expect(content).toContain(
-      "## 이미 보도함 (최근 호 게재 제목 2건 — 같은 사건은 고르지 않음)\n" +
+      "## 이미 보도함 (최근 호 게재 제목 2건 — 같은 사건인 후보는 already_reported 에 적고 고르지 않음)\n" +
         "10-29 Kimi K3.1 Pro, 클로드에 근접\n10-28 엔비디아, 로봇용 Nemotron 공개",
     );
   });
@@ -357,6 +360,7 @@ describe("pickTargets / 오늘 할당 블록", () => {
       nonNews: PICK_QUOTAS.nonNews,
       formats: { oss: 1, model: 1, paper: 1 },
       physical: PICK_QUOTAS.physical,
+      physicalMax: 9, // ceil(35 / 4)
     });
   });
 
@@ -365,6 +369,7 @@ describe("pickTargets / 오늘 할당 블록", () => {
       nonNews: 5,
       formats: { oss: 1, model: 0, paper: 1 },
       physical: 1,
+      physicalMax: 9,
     });
   });
 
@@ -372,7 +377,15 @@ describe("pickTargets / 오늘 할당 블록", () => {
     expect(pickTargets(poolOf(10, { oss: 10, physical: 10 }), 2)).toMatchObject({
       nonNews: 2,
       physical: 2,
+      physicalMax: 2, // ceil(2 / 4) = 1 이지만 하한보다 작을 수 없다
     });
+  });
+
+  it("Physical AI 상한은 최대 선정 수의 1/4(올림)", () => {
+    const pool = poolOf(100, { physical: 30 });
+    expect(pickTargets(pool, 30).physicalMax).toBe(8);
+    expect(pickTargets(pool, 35).physicalMax).toBe(9);
+    expect(pickTargets(pool, 40).physicalMax).toBe(10);
   });
 
   it("유저 메시지에 오늘 구성과 줄인 할당을 싣고, 후보 없는 형식은 할당에서 뺀다", () => {
@@ -382,19 +395,67 @@ describe("pickTargets / 오늘 할당 블록", () => {
       "형식: 뉴스 102건, 오픈소스 10건, 모델 0건, 논문 20건 / Physical AI 전문 매체 2건",
     );
     expect(content).toContain(
-      "## 오늘 할당 (최소 건수)\n- 비뉴스(오픈소스·모델·논문) 8건 이상, 그중 오픈소스 1건·논문 1건 이상\n" +
-        "- Physical AI 2건 이상",
+      "## 오늘 할당\n- 비뉴스(오픈소스·모델·논문) 8건 이상, 그중 오픈소스 1건·논문 1건 이상\n" +
+        "- Physical AI 2건 이상 9건 이하\n",
     );
   });
 
-  it("할당할 후보가 하나도 없으면 '할당 없음'", () => {
+  it("Physical AI 후보가 없어도 상한은 싣는다(일반 매체 로봇 기사)", () => {
+    const content = buildTriageRequest(poolOf(40, {}), 35, "m").params.messages[0].content;
+    expect(content).toContain("## 오늘 할당\n- Physical AI 9건 이하\n");
+  });
+
+  it("할당할 후보가 하나도 없고 상한도 풀보다 크면 '할당 없음'", () => {
     const content = buildTriageRequest(poolOf(5, {}), 35, "m").params.messages[0].content;
-    expect(content).toContain("## 오늘 할당 (최소 건수)\n- 오늘은 할당이 없습니다.");
+    expect(content).toContain("## 오늘 할당\n- 오늘은 할당이 없습니다.");
+  });
+});
+
+describe("출력 전 확인", () => {
+  const pool = [
+    ...many(30, "n"),
+    ...many(2, "gh", { format: "oss" }),
+    ...many(2, "hf", { format: "model" }),
+    ...many(4, "arxiv", { format: "paper" }),
+    ...many(5, "robots", { physical: true }),
+  ];
+  const reported = [{ issueDate: "2026-10-29", title: "보도 제목" }];
+
+  it("후보 줄 뒤(메시지 끝)에 같은 할당 숫자로 붙는다", () => {
+    const content = buildTriageRequest(pool, 35, "m", { reported }).params.messages[0]
+      .content as string;
+    const check = content.slice(content.indexOf("## 출력 전 확인"));
+    expect(content.indexOf("## 출력 전 확인")).toBeGreaterThan(content.indexOf("## 오늘 후보\n"));
+    expect(check).toBe(
+      [
+        "## 출력 전 확인",
+        "1. already_reported: 이미 보도함과 같은 사건(새 전개 없음)인 후보 번호를 모두 적었다. 이 번호는 picks·duplicates 에 없다.",
+        "2. 할당: 비뉴스 8건 이상 — 오픈소스 1건·모델 1건·논문 1건 이상(이 형식이 0건이면 안 됨).",
+        "3. Physical AI(로봇·물리 세계가 주제, 매체 무관) 3건 이상 9건 이하.",
+        "4. 논문: 한 분야(예: 로봇)가 논문 선정의 절반을 넘지 않는다.",
+        "5. 모델의 HuggingFace 페이지와 그 모델을 다룬 뉴스는 같은 사건이다 — 하나만 id, 나머지는 duplicates.",
+      ].join("\n"),
+    );
+  });
+
+  it("이미 보도함이 없으면 그 항목을, 후보 없는 형식이면 그 형식 항목을 뺀다", () => {
+    const newsOnly = [...many(30, "n"), ...many(3, "gh", { format: "oss" })];
+    const content = buildTriageRequest(newsOnly, 35, "m").params.messages[0].content as string;
+    const check = content.slice(content.indexOf("## 출력 전 확인"));
+    expect(check).not.toContain("already_reported");
+    expect(check).not.toContain("논문:");
+    expect(check).not.toContain("HuggingFace");
+    expect(check).toContain("1. 할당: 비뉴스 3건 이상 — 오픈소스 1건 이상");
   });
 });
 
 describe("quotaShortfallNote", () => {
-  const full = { nonNews: 8, formats: { oss: 1, model: 1, paper: 1 }, physical: 3 };
+  const full = {
+    nonNews: 8,
+    formats: { oss: 1, model: 1, paper: 1 },
+    physical: 3,
+    physicalMax: 9,
+  };
   const picked = (counts: Partial<Record<Format, number>>, physical = 0): PickedMix[] => {
     const out: PickedMix[] = [];
     for (const [f, n] of Object.entries(counts) as [Format, number][]) {
@@ -417,7 +478,12 @@ describe("quotaShortfallNote", () => {
   });
 
   it("후보가 없어 줄어든 목표는 경고하지 않는다", () => {
-    const targets = { nonNews: 2, formats: { oss: 1, model: 0, paper: 1 }, physical: 0 };
+    const targets = {
+      nonNews: 2,
+      formats: { oss: 1, model: 0, paper: 1 },
+      physical: 0,
+      physicalMax: 9,
+    };
     expect(quotaShortfallNote(picked({ news: 33, oss: 1, paper: 1 }), targets)).toBeNull();
   });
 
@@ -428,13 +494,30 @@ describe("quotaShortfallNote", () => {
       { format: "paper", physical: true },
     ];
     expect(
-      quotaShortfallNote(mix, { nonNews: 1, formats: { oss: 0, model: 0, paper: 1 }, physical: 3 }),
+      quotaShortfallNote(mix, {
+        nonNews: 1,
+        formats: { oss: 0, model: 0, paper: 1 },
+        physical: 3,
+        physicalMax: 9,
+      }),
     ).toBeNull();
+  });
+
+  it("quotaOverflowNote: Physical AI 가 상한을 넘을 때만 `할당 초과: Physical AI 게재/상한`", () => {
+    expect(quotaOverflowNote(picked({ news: 20, paper: 15 }, 9), full)).toBeNull();
+    expect(quotaOverflowNote(picked({ news: 20, paper: 15 }, 15), full)).toBe(
+      "할당 초과: Physical AI 15/9",
+    );
   });
 
   it("notes 에 섞여도 kpi baseline 파싱에 영향이 없다", () => {
     const note = quotaShortfallNote(picked({ news: 30 }), full)!;
-    const notes = `aitimes: 10건(신규 8, 상한 3); 선별 풀: 후보 200건 중 180건; 이미 보도함: 최근 3개 호 제목 84건; 선정 33건(같은 사건으로 묶인 기사 5건); ${note}`;
+    const over = quotaOverflowNote(picked({ news: 30 }, 12), full)!;
+    const reportedNote = alreadyReportedNote(
+      { already_reported: [1, 2], picks: [{ id: 1, importance: 3, duplicates: [] }] },
+      10,
+    )!;
+    const notes = `aitimes: 10건(신규 8, 상한 3); 선별 풀: 후보 200건 중 180건; 이미 보도함: 최근 3개 호 제목 84건; 선정 33건(같은 사건으로 묶인 기사 5건); ${reportedNote}; ${note}; ${over}`;
     expect(parseRunNotes(notes)).toEqual({
       sources: { aitimes: { fetched: 10, fresh: 8, cap: 3, error: null } },
       poolCandidates: 200,
@@ -482,7 +565,77 @@ describe("resolvePicks", () => {
 
   it("triageFormat.parse 는 중요도 범위를 검증한다", () => {
     expect(() =>
-      triageFormat.parse(JSON.stringify({ picks: [{ id: 0, importance: 9, duplicates: [] }] })),
+      triageFormat.parse(
+        JSON.stringify({ already_reported: [], picks: [{ id: 0, importance: 9, duplicates: [] }] }),
+      ),
     ).toThrow();
+  });
+
+  it("already_reported 는 picks 보다 앞 필드다(구조화 출력이 먼저 채운다)", () => {
+    const schema = triageFormat.schema as {
+      properties: Record<string, unknown>;
+      required: string[];
+    };
+    expect(Object.keys(schema.properties)).toEqual(["already_reported", "picks"]);
+    expect(schema.required).toContain("already_reported");
+  });
+});
+
+describe("이미 보도함 제외 (already_reported)", () => {
+  it("표시된 번호는 선정에서 통째로 빠지고, 묶음에도 들지 않는다", () => {
+    const picks = resolvePicks(
+      {
+        already_reported: [0, 3, 99],
+        picks: [
+          { id: 0, importance: 5, duplicates: [1] }, // 이미 보도함 — 선정째 빠진다
+          { id: 2, importance: 4, duplicates: [3, 4] }, // 3 은 이미 보도함 — 묶음에서 빠진다
+          { id: 1, importance: 3, duplicates: [] }, // 0 의 묶음이 쓰이지 않았으므로 고를 수 있다
+        ],
+      },
+      5,
+      30,
+    );
+    expect(picks).toEqual([
+      { index: 2, importance: 4, duplicates: [4] },
+      { index: 1, importance: 3, duplicates: [] },
+    ]);
+  });
+
+  it("빠진 자리는 다음 후보가 채운다(maxPicks 는 남은 선정 기준)", () => {
+    const picks = resolvePicks(
+      {
+        already_reported: [0],
+        picks: [
+          { id: 0, importance: 5, duplicates: [] },
+          { id: 1, importance: 4, duplicates: [] },
+          { id: 2, importance: 3, duplicates: [] },
+        ],
+      },
+      3,
+      2,
+    );
+    expect(picks.map((p) => p.index)).toEqual([1, 2]);
+  });
+
+  it("필드가 없으면(개편 전 출력·옛 스냅숏) 예전과 같다", () => {
+    const triage = { picks: [{ id: 0, importance: 3, duplicates: [1] }] };
+    expect(resolvePicks(triage, 2, 30)).toEqual([{ index: 0, importance: 3, duplicates: [1] }]);
+    expect(alreadyReportedIds(triage, 2).size).toBe(0);
+    expect(alreadyReportedNote(triage, 2)).toBeNull();
+  });
+
+  it("notes: 풀 안 번호만 중복 없이 세고, 선정했다 뺀 수를 덧붙인다", () => {
+    const triage = {
+      already_reported: [1, 1, 2, 50, -1],
+      picks: [
+        { id: 1, importance: 3, duplicates: [] },
+        { id: 3, importance: 3, duplicates: [] },
+      ],
+    };
+    expect([...alreadyReportedIds(triage, 10)]).toEqual([1, 2]);
+    expect(alreadyReportedNote(triage, 10)).toBe("이미 보도함 제외 2건(선정했다 뺀 1건)");
+    expect(alreadyReportedNote({ already_reported: [2], picks: [] }, 10)).toBe(
+      "이미 보도함 제외 1건",
+    );
   });
 });

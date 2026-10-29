@@ -19,8 +19,8 @@ import {
 import { EVAL_DIR } from "../../src/lib/paths";
 import { estimateCost } from "./cost";
 import type { LlmUsage } from "./llm";
-import type { ArticleEnrichment, Triage } from "./schema";
-import type { Candidate, Pick, ReportedHeadline } from "./triage";
+import type { ArticleEnrichment } from "./schema";
+import type { Candidate, Pick, ReportedHeadline, TriageOutput } from "./triage";
 
 // ── CLI ─────────────────────────────────────────────────────────────────
 
@@ -85,8 +85,8 @@ export interface EvalSnapshot {
   candidates: number;
   pool: Candidate[];
   reported: ReportedHeadline[];
-  /** 선별 원출력(resolvePicks 이전). 선별 실패면 null. */
-  triage: Triage | null;
+  /** 선별 원출력(resolvePicks 이전). 선별 실패면 null. already_reported 가 생기기 전 스냅숏에는 그 필드가 없다. */
+  triage: TriageOutput | null;
   picks: Pick[];
   /** 풀 번호 → 가공 결과. */
   enrichments: Record<number, ArticleEnrichment>;

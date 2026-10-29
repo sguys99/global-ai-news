@@ -149,7 +149,10 @@ describe("LlmRunner — Batches API", () => {
 });
 
 describe("parseStructured", () => {
-  const ok = JSON.stringify({ picks: [{ id: 0, importance: 3, duplicates: [] }] });
+  const ok = JSON.stringify({
+    already_reported: [],
+    picks: [{ id: 0, importance: 3, duplicates: [] }],
+  });
 
   it("정상 응답은 스키마로 검증해 반환", () => {
     expect(parseStructured(message(ok), triageFormat)?.picks).toHaveLength(1);
