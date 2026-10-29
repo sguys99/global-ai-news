@@ -1,15 +1,25 @@
 // @vitest-environment node
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import type { Format } from "../../src/lib/labels";
+import { parseRunNotes } from "../../scripts/lib/baseline";
 import {
   buildTriagePool,
   buildTriageRequest,
   defaultPoolQuotas,
+  estimateTriageTokens,
+  loadReportedHeadlines,
+  PICK_QUOTAS,
+  pickTargets,
   poolMixNotes,
+  quotaShortfallNote,
   resolvePicks,
   triageFormat,
   triageLine,
   type Candidate,
+  type PickedMix,
 } from "../../scripts/lib/triage";
 
 let seq = 0;
@@ -209,22 +219,229 @@ describe("poolMixNotes", () => {
 });
 
 describe("triageLine / buildTriageRequest", () => {
-  it("번호 | 매체 | 날짜 | 화제 | 제목 | 발췌 한 줄, 발췌는 공백 정리·절단", () => {
+  it("번호 | 형식 | 매체 | 날짜 | 화제 | 제목 | 발췌 한 줄, 발췌는 공백 정리·절단", () => {
     const c = cand("hn", { score: 42, content: `first\n\nsecond ${"x".repeat(300)}` });
     const line = triageLine(c, 7);
-    expect(line.startsWith(`7 | HN | 10-06 | 화제 42 | ${c.item.title} | first second`)).toBe(true);
+    expect(
+      line.startsWith(`7 | 뉴스 | HN | 10-06 | 화제 42 | ${c.item.title} | first second`),
+    ).toBe(true);
     expect(line).not.toContain("\n");
     expect(line.length).toBeLessThan(250);
   });
 
+  it("형식 열은 표시명(뉴스·오픈소스·모델·논문)", () => {
+    const formats: Format[] = ["news", "oss", "model", "paper"];
+    expect(formats.map((f) => triageLine(cand("s", { format: f }), 0).split(" | ")[1])).toEqual([
+      "뉴스",
+      "오픈소스",
+      "모델",
+      "논문",
+    ]);
+  });
+
   it("화제·발췌가 없으면 '-'", () => {
-    expect(triageLine(cand("a"), 0)).toMatch(/\| - \| T\d+ \| -$/);
+    expect(triageLine(cand("a"), 0)).toMatch(/^0 \| 뉴스 \| A \| 10-06 \| - \| T\d+ \| -$/);
   });
 
   it("최대 선정 수를 유저 메시지에 싣고 구조화 출력을 요청한다", () => {
     const req = buildTriageRequest([cand("a"), cand("b")], 30, "claude-haiku-4-5");
     expect(req.params.messages[0].content).toContain("후보 2건 중 최대 30건");
     expect(req.params.output_config?.format?.type).toBe("json_schema");
+  });
+
+  it("유저 메시지 순서: 지시 → 오늘 구성·할당 → 이미 보도함 → 후보 줄(마지막)", () => {
+    const pool = [cand("a"), cand("gh", { format: "oss" })];
+    const content = buildTriageRequest(pool, 35, "m", {
+      reported: [{ issueDate: "2026-10-29", title: "앤트로픽, 새 모델 공개" }],
+    }).params.messages[0].content as string;
+    const at = (s: string) => content.indexOf(s);
+    expect(at("## 오늘 후보 구성")).toBeGreaterThan(at("최대 35건"));
+    expect(at("## 오늘 할당")).toBeGreaterThan(at("## 오늘 후보 구성"));
+    expect(at("## 이미 보도함")).toBeGreaterThan(at("## 오늘 할당"));
+    expect(at("## 오늘 후보\n")).toBeGreaterThan(at("## 이미 보도함"));
+    expect(content.endsWith(triageLine(pool[1], 1))).toBe(true);
+  });
+});
+
+describe("buildTriageRequest — 이미 보도함 주입", () => {
+  it("최근 호 제목을 `MM-DD 제목` 한 줄씩 넣는다", () => {
+    const content = buildTriageRequest([cand("a")], 35, "m", {
+      reported: [
+        { issueDate: "2026-10-29", title: "Kimi K3.1 Pro, 클로드에 근접" },
+        { issueDate: "2026-10-28", title: "엔비디아,\n로봇용 Nemotron 공개" },
+      ],
+    }).params.messages[0].content;
+    expect(content).toContain(
+      "## 이미 보도함 (최근 호 게재 제목 2건 — 같은 사건은 고르지 않음)\n" +
+        "10-29 Kimi K3.1 Pro, 클로드에 근접\n10-28 엔비디아, 로봇용 Nemotron 공개",
+    );
+  });
+
+  it("없으면 블록을 생략한다", () => {
+    const pool = [cand("a")];
+    const content = buildTriageRequest(pool, 35, "m").params.messages[0].content;
+    expect(content).not.toContain("이미 보도함");
+    expect(buildTriageRequest(pool, 35, "m", { reported: [] }).params.messages[0].content).toBe(
+      content,
+    );
+  });
+
+  it("토큰 추정치에 주입분이 반영된다", () => {
+    const pool = [cand("a")];
+    const reported = Array.from({ length: 90 }, (_, i) => ({
+      issueDate: "2026-10-29",
+      title: `보도 제목 ${i} ${"가".repeat(25)}`,
+    }));
+    const base = estimateTriageTokens(buildTriageRequest(pool, 35, "m"), 35);
+    const withReported = estimateTriageTokens(buildTriageRequest(pool, 35, "m", { reported }), 35);
+    expect(withReported.input - base.input).toBeGreaterThan(90 * 15);
+    expect(withReported.output).toBe(base.output);
+  });
+});
+
+describe("loadReportedHeadlines", () => {
+  const SCHEMA_PATH = path.join(process.cwd(), "scripts/lib/schema.sql");
+
+  it("최근 3개 호(KST created_at 날짜)의 공개 기사 제목, 최신 호 → 중요도 순", () => {
+    const db = new Database(":memory:");
+    db.exec(readFileSync(SCHEMA_PATH, "utf-8"));
+    db.prepare(
+      "INSERT INTO sources (id, name, kind, url) VALUES ('s', 'S', 'rss', 'https://s')",
+    ).run();
+    let n = 0;
+    const ins = (createdAt: string, title: string | null, importance = 3, published = true) =>
+      db
+        .prepare(
+          `INSERT INTO articles (dedup_key, source_id, url, title_original, published_at, created_at,
+             title_ko, summary_ko, importance) VALUES (?, 's', ?, 'o', '2026-10-01T00:00:00Z', ?, ?, ?, ?)`,
+        )
+        .run(`k${++n}`, `https://s/${n}`, createdAt, title, published ? "요약" : null, importance);
+
+    ins("2026-10-25 21:00:00", "10-26 호 A", 2); // 21:00 UTC = 10-26 06:00 KST
+    ins("2026-10-25 21:00:00", "10-26 호 B", 5);
+    ins("2026-10-24 21:00:00", "10-25 호");
+    ins("2026-10-23 15:30:00", "10-24 호(00:30 KST)"); // 15:30 UTC = 10-24 00:30 KST
+    ins("2026-10-22 21:00:00", "10-23 호 — 4번째라 빠짐");
+    ins("2026-10-25 22:00:00", "미가공", 3, false); // summary_ko 없음 — 호도 제목도 세지 않는다
+
+    expect(loadReportedHeadlines(db)).toEqual([
+      { issueDate: "2026-10-26", title: "10-26 호 B" },
+      { issueDate: "2026-10-26", title: "10-26 호 A" },
+      { issueDate: "2026-10-25", title: "10-25 호" },
+      { issueDate: "2026-10-24", title: "10-24 호(00:30 KST)" },
+    ]);
+    expect(loadReportedHeadlines(db, 1)).toHaveLength(2);
+    db.close();
+  });
+
+  it("기사가 없으면 빈 목록", () => {
+    const db = new Database(":memory:");
+    db.exec(readFileSync(SCHEMA_PATH, "utf-8"));
+    expect(loadReportedHeadlines(db)).toEqual([]);
+    db.close();
+  });
+});
+
+describe("pickTargets / 오늘 할당 블록", () => {
+  /** 뉴스 n건 + 형식별 후보 수. */
+  const poolOf = (news: number, p: Partial<Record<Format, number>> & { physical?: number }) => [
+    ...many(news, "n"),
+    ...many(p.oss ?? 0, "gh", { format: "oss" }),
+    ...many(p.model ?? 0, "hf", { format: "model" }),
+    ...many(p.paper ?? 0, "arxiv", { format: "paper" }),
+    ...many(p.physical ?? 0, "robots", { physical: true }),
+  ];
+
+  it("후보가 충분하면 PICK_QUOTAS 그대로", () => {
+    expect(pickTargets(poolOf(100, { oss: 10, model: 5, paper: 20, physical: 30 }), 35)).toEqual({
+      nonNews: PICK_QUOTAS.nonNews,
+      formats: { oss: 1, model: 1, paper: 1 },
+      physical: PICK_QUOTAS.physical,
+    });
+  });
+
+  it("후보가 모자라면 있는 만큼으로 줄인다(min(할당, 후보))", () => {
+    expect(pickTargets(poolOf(100, { oss: 3, paper: 2, physical: 1 }), 35)).toEqual({
+      nonNews: 5,
+      formats: { oss: 1, model: 0, paper: 1 },
+      physical: 1,
+    });
+  });
+
+  it("최대 선정 수도 넘지 않는다", () => {
+    expect(pickTargets(poolOf(10, { oss: 10, physical: 10 }), 2)).toMatchObject({
+      nonNews: 2,
+      physical: 2,
+    });
+  });
+
+  it("유저 메시지에 오늘 구성과 줄인 할당을 싣고, 후보 없는 형식은 할당에서 뺀다", () => {
+    const pool = poolOf(100, { oss: 10, paper: 20, physical: 2 });
+    const content = buildTriageRequest(pool, 35, "m").params.messages[0].content;
+    expect(content).toContain(
+      "형식: 뉴스 102건, 오픈소스 10건, 모델 0건, 논문 20건 / Physical AI 전문 매체 2건",
+    );
+    expect(content).toContain(
+      "## 오늘 할당 (최소 건수)\n- 비뉴스(오픈소스·모델·논문) 8건 이상, 그중 오픈소스 1건·논문 1건 이상\n" +
+        "- Physical AI 2건 이상",
+    );
+  });
+
+  it("할당할 후보가 하나도 없으면 '할당 없음'", () => {
+    const content = buildTriageRequest(poolOf(5, {}), 35, "m").params.messages[0].content;
+    expect(content).toContain("## 오늘 할당 (최소 건수)\n- 오늘은 할당이 없습니다.");
+  });
+});
+
+describe("quotaShortfallNote", () => {
+  const full = { nonNews: 8, formats: { oss: 1, model: 1, paper: 1 }, physical: 3 };
+  const picked = (counts: Partial<Record<Format, number>>, physical = 0): PickedMix[] => {
+    const out: PickedMix[] = [];
+    for (const [f, n] of Object.entries(counts) as [Format, number][]) {
+      for (let i = 0; i < n; i++) out.push({ format: f, physical: false });
+    }
+    for (let i = 0; i < physical && i < out.length; i++) out[i].physical = true;
+    return out;
+  };
+
+  it("할당을 채우면 null", () => {
+    expect(
+      quotaShortfallNote(picked({ news: 27, oss: 3, model: 2, paper: 3 }, 3), full),
+    ).toBeNull();
+  });
+
+  it("미달 항목만 `할당 미달: 항목 게재/목표` 로 남긴다", () => {
+    expect(quotaShortfallNote(picked({ news: 30, oss: 3, paper: 2 }, 2), full)).toBe(
+      "할당 미달: 비뉴스 5/8, 모델 0/1, Physical AI 2/3",
+    );
+  });
+
+  it("후보가 없어 줄어든 목표는 경고하지 않는다", () => {
+    const targets = { nonNews: 2, formats: { oss: 1, model: 0, paper: 1 }, physical: 0 };
+    expect(quotaShortfallNote(picked({ news: 33, oss: 1, paper: 1 }), targets)).toBeNull();
+  });
+
+  it("Physical AI 는 형식과 무관하게 센다(뉴스의 로봇 기사도 포함)", () => {
+    const mix: PickedMix[] = [
+      { format: "news", physical: true },
+      { format: "news", physical: true },
+      { format: "paper", physical: true },
+    ];
+    expect(
+      quotaShortfallNote(mix, { nonNews: 1, formats: { oss: 0, model: 0, paper: 1 }, physical: 3 }),
+    ).toBeNull();
+  });
+
+  it("notes 에 섞여도 kpi baseline 파싱에 영향이 없다", () => {
+    const note = quotaShortfallNote(picked({ news: 30 }), full)!;
+    const notes = `aitimes: 10건(신규 8, 상한 3); 선별 풀: 후보 200건 중 180건; 이미 보도함: 최근 3개 호 제목 84건; 선정 33건(같은 사건으로 묶인 기사 5건); ${note}`;
+    expect(parseRunNotes(notes)).toEqual({
+      sources: { aitimes: { fetched: 10, fresh: 8, cap: 3, error: null } },
+      poolCandidates: 200,
+      poolSize: 180,
+      picks: 33,
+      grouped: 5,
+    });
   });
 });
 

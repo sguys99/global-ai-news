@@ -2,7 +2,7 @@
 
 **Daily AI Brief** — 글로벌·한국의 AI/IT 뉴스를 매일 1회 자동 수집하고 LLM으로 한국어 요약·분류·중요도 평가하여 카드형 피드로 제공하는, 토큰 비용을 최소화한 큐레이션 웹서비스입니다.
 
-운영비 ≈ 0을 목표로 **SQLite 파일 DB + GitHub Actions cron + GitHub Pages 정적 배포(전환 진행 중)** 위에서 동작하며, LLM이 하루치 후보에서 30건 이하만 골라(같은 사건 묶기) 묶음 가공하고 Message Batches API(50% 할인)로 보내 1회 수집 비용을 $0.1 이하로 묶습니다.
+운영비 ≈ 0을 목표로 **SQLite 파일 DB + GitHub Actions cron + GitHub Pages 정적 배포(전환 진행 중)** 위에서 동작하며, LLM이 하루치 후보에서 35건 이하만 골라(같은 사건 묶기) 묶음 가공하고 Message Batches API(50% 할인)로 보내 1회 수집 비용을 $0.1 이하로 묶습니다.
 
 - 요구사항 원천: [docs/PRD.md](docs/PRD.md) (Daily AI Brief PRD v1.0)
 - 개발 계획·진행 현황: [docs/WORK-PLAN.md](docs/WORK-PLAN.md)
@@ -123,8 +123,8 @@
 배치(`scripts/collect.ts`)가 GitHub Actions cron으로 일 1회 실행되어 다음 4단계를 수행합니다 (PRD §4):
 
 1. **수집** — `rss-parser`로 RSS/Atom, HN Algolia·GitHub Search·HuggingFace Daily Papers API, Reddit OAuth2(`client_credentials`)에서 raw item 수집. 소스별 try/catch로 부분 실패 격리.
-2. **코드 전처리** — `normalize(url)` + `dedup_key`(sha256) 중복 제거(`articles`·`seen_items` 모두 스킵), `trendingScore()` 산출, 소스별 신규 상한(`sources.json`의 `maxItems`). 신규 후보 + 최근 7일 가공 실패분을 소스별 라운드로빈으로 선별 풀(`TRIAGE_POOL_SIZE`, 150건)에 담는다.
-3. **LLM 선별 → 가공** — 선별 1회(제목·출처·짧은 발췌만)로 최대 `MAX_PICKS_PER_RUN`(30)건을 고르고 같은 사건을 묶고 중요도(1~5)를 상대 평가한다. 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그를 생성한다. 모든 호출은 Message Batches API(50% 할인, 시간 초과 시 일반 호출로 대체), 실행당 비용 상한 `MAX_COST_USD_PER_RUN`($0.1).
+2. **코드 전처리** — `normalize(url)` + `dedup_key`(sha256) 중복 제거(`articles`·`seen_items` 모두 스킵), `trendingScore()` 산출, 소스별 신규 상한(`sources.json`의 `maxItems`). 신규 후보 + 최근 7일 가공 실패분을 소스별 라운드로빈으로 선별 풀(`TRIAGE_POOL_SIZE`, 180건)에 담는다.
+3. **LLM 선별 → 가공** — 선별 1회(제목·출처·짧은 발췌만)로 최대 `MAX_PICKS_PER_RUN`(35)건을 고르고 같은 사건을 묶고 중요도(1~5)를 상대 평가한다. 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그를 생성한다. 모든 호출은 Message Batches API(50% 할인, 시간 초과 시 일반 호출로 대체), 실행당 비용 상한 `MAX_COST_USD_PER_RUN`($0.1).
 4. **저장** — 선정 기사는 `articles`(+`related_json`: 묶인 다른 매체 보도)·`tags`/`article_tags`, 미선정 후보는 `seen_items`에 키만 기록. 실행 통계(`llm_calls`/토큰/비용/상태)를 `collection_runs`에 1행 기록. 공개 페이지는 가공을 마친 기사(`summary_ko IS NOT NULL`)만 노출한다.
 
 결과 `data/app.db`를 git 커밋 → **(전환 후)** `deploy.yml`(GitHub Actions)이 정적 export(`output:'export'`)로 빌드해 `out/`을 생성하고 GitHub Pages에 배포. `[skip ci]`/트리거 정책은 배포 워크플로에 맞춰 조정합니다(PRD-github-pages.md §3.6). _(현재 코드는 `[skip ci]` 커밋 → Vercel ISR 재배포 전제입니다.)_
@@ -205,7 +205,7 @@ docker compose up --build
 | ------------------------------------------- | ------------------------------------------------- | ---------------------- |
 | `ANTHROPIC_API_KEY`                         | LLM 가공 호출 (수집 `collect.yml` 전용 — 변화 없음) | 필수                   |
 | `LLM_MODEL`                                 | 모델 전환 (기본 `claude-haiku-4-5`)               | 선택                   |
-| `MAX_PICKS_PER_RUN` / `TRIAGE_POOL_SIZE`    | 1회 게재(가공) 상한 30 / 선별 후보 상한 150 (Actions `vars`로 조정) | 선택                   |
+| `MAX_PICKS_PER_RUN` / `TRIAGE_POOL_SIZE`    | 1회 게재(가공) 상한 35 / 선별 후보 상한 180 (Actions `vars`로 조정) | 선택                   |
 | `MAX_COST_USD_PER_RUN`                      | 1회 LLM 비용 상한 (기본 0.1)                       | 선택                   |
 | `LLM_USE_BATCH` / `BATCH_TIMEOUT_MIN`       | Batches API 사용(기본 1) / 배치 대기 상한(기본 25분) | 선택                   |
 | `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` | Reddit OAuth2 `client_credentials` (수집 전용 — 변화 없음) | 선택 (Reddit 수집 시)  |
@@ -231,12 +231,12 @@ SQLite 7개 테이블 (DDL: `scripts/lib/schema.sql`, 상세: PRD §5):
 
 LLM 호출은 채팅 엔드포인트가 아니라 **배치 파이프라인** 안에서만 일어나며, 2단계로 나뉩니다.
 
-1. **선별**(`scripts/lib/triage.ts`) — 후보 풀(최대 150건)을 `번호 | 매체 | 날짜 | 화제 | 제목 | 발췌` 한 줄씩 1회 호출로 보내, 최대 30건 선정·같은 사건 묶기(`duplicates`)·중요도(그날 후보끼리 상대 평가)를 받는다.
+1. **선별**(`scripts/lib/triage.ts`) — 후보 풀(최대 180건)을 `번호 | 형식 | 매체 | 날짜 | 화제 | 제목 | 발췌` 한 줄씩 1회 호출로 보내, 최대 35건 선정·같은 사건 묶기(`duplicates`)·중요도(같은 형식 후보끼리 상대 평가)를 받는다. 유저 메시지에 오늘 할당(`PICK_QUOTAS` 비뉴스 8·형식별 1·Physical AI 3을 풀 구성에 맞춰 줄인 값)과 최근 3개 호 게재 제목("이미 보도함")을 함께 넣고, 할당 미달은 `notes`에 `할당 미달: …`로 남긴다.
 2. **가공**(`scripts/lib/enrich.ts`) — 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그를 받는다.
 
 - 호출 계층: `scripts/lib/llm.ts` — Message Batches API로 제출, `BATCH_TIMEOUT_MIN` 초과·개별 실패 시 일반 호출로 1회 재시도. 출력은 구조화 출력(`output_config.format`)으로 받고 zod 로 검증한다.
 - 프롬프트: `configs/prompts/triage.system.md`(선별), `enrich.system.md` + `enrich.fewshot.json`(가공) + 가변 유저 메시지 (PRD §7)
-- 비용 절감: 코드 선필터(신규·소스별 상한) → LLM 선별(30건 이하) → 묶음 가공(지시문 반복 제거) → Batches 50% 할인 → 실행당 비용 상한. 프롬프트 캐싱은 쓰지 않는다(Haiku 4.5 는 4,096토큰 미만 프리픽스를 캐시하지 않음).
+- 비용 절감: 코드 선필터(신규·소스별 상한) → LLM 선별(35건 이하) → 묶음 가공(지시문 반복 제거) → Batches 50% 할인 → 실행당 비용 상한. 프롬프트 캐싱은 쓰지 않는다(Haiku 4.5 는 4,096토큰 미만 프리픽스를 캐시하지 않음).
 - 비용 기록: `scripts/lib/cost.ts`(Haiku 단가 $1/$5 per M, 배치 50%) → `collection_runs` 실행마다 1행 기록
 
 ## 주요 경로 별칭

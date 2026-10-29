@@ -6,7 +6,8 @@
  *
  * ① 다중 어댑터 수집(RSS/HN/GitHub/HF 논문·모델/arXiv) → 소스별 상한·dedup·trendingScore
  * ② 선별 풀: 신규 후보 + 최근 가공 실패분을 소스별 라운드로빈으로 TRIAGE_POOL_SIZE 건(비뉴스·Physical AI 최소 할당)
- * ③ LLM 선별 1회: 최대 MAX_PICKS_PER_RUN 건 선정·같은 사건 묶기·중요도 상대 평가
+ * ③ LLM 선별 1회: 최대 MAX_PICKS_PER_RUN 건 선정·같은 사건 묶기·중요도 상대 평가(형식 안에서)
+ *    — 오늘 할당(비뉴스·Physical AI)과 최근 3개 호 게재 제목("이미 보도함")을 함께 넣고, 할당 미달은 notes 에 경고
  * ④ LLM 가공: 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그 (비용 가드 적용)
  * ⑤ SQLite 저장: 선정 → articles, 미선정 → seen_items(키만) + collection_runs 기록
  *
@@ -33,7 +34,7 @@ import {
 } from "./lib/enrich";
 import { envFlag, envNonNegativeInt, envNonNegativeNumber, envString } from "./lib/env";
 import { ensureSchema } from "./lib/initDb";
-import { LlmRunner, parseStructured } from "./lib/llm";
+import { LlmRunner, parseStructured, type LlmRequest } from "./lib/llm";
 import type { ArticleEnrichment } from "./lib/schema";
 import { describeSync, loadSourcesConfig, syncSources } from "./lib/syncSources";
 import { saveTags } from "./lib/tags";
@@ -41,7 +42,11 @@ import {
   buildTriagePool,
   buildTriageRequest,
   estimateTriageTokens,
+  loadReportedHeadlines,
+  pickTargets,
   poolMixNotes,
+  quotaShortfallNote,
+  REPORTED_ISSUES,
   resolvePicks,
   triageFormat,
   triageLine,
@@ -53,9 +58,9 @@ import { trendingScore } from "./lib/trending";
 /** 선별·가공 모델 (Haiku 4.5 — 가장 저렴한 Claude 모델). */
 const MODEL = envString("LLM_MODEL", "claude-haiku-4-5");
 /** 1회 실행당 가공(지면 게재) 상한. */
-const MAX_PICKS_PER_RUN = envNonNegativeInt("MAX_PICKS_PER_RUN", 30);
+const MAX_PICKS_PER_RUN = envNonNegativeInt("MAX_PICKS_PER_RUN", 35);
 /** LLM 선별에 보내는 후보 수 상한(선별 입력 비용을 묶는다). */
-const TRIAGE_POOL_SIZE = envNonNegativeInt("TRIAGE_POOL_SIZE", 150);
+const TRIAGE_POOL_SIZE = envNonNegativeInt("TRIAGE_POOL_SIZE", 180);
 /** 1회 실행 LLM 비용 상한(USD). 예상 비용이 넘는 가공 요청은 보내지 않는다. */
 const MAX_COST_USD_PER_RUN = envNonNegativeNumber("MAX_COST_USD_PER_RUN", 0.1);
 /** Message Batches API 사용 여부(끄면 일반 호출 — 표준 단가). */
@@ -326,16 +331,27 @@ function persist(
   })();
 }
 
-/** dry-run: 선별 풀의 소스별 수와 앞부분 줄(선별 입력 형식 그대로)을 출력한다. 형식별·Physical AI 수는 notes 에 있다. */
-function printPoolPreview(pool: Candidate[]): void {
+/**
+ * dry-run: 선별 풀의 소스별 수·오늘 할당 목표·선별 요청 추정 비용과 앞부분 줄(선별 입력 형식 그대로)을 출력한다.
+ * 형식별·Physical AI 수와 이미 보도함 주입 수는 notes 에 있다.
+ */
+function printPoolPreview(pool: Candidate[], triageReq: LlmRequest): void {
   const bySource = new Map<string, number>();
   for (const c of pool) bySource.set(c.item.sourceId, (bySource.get(c.item.sourceId) ?? 0) + 1);
   const sources = [...bySource].map(([id, n]) => `${id} ${n}`).join(", ");
   console.log(`[collect] dry-run 선별 풀 소스별: ${sources}`);
+  const t = pickTargets(pool, MAX_PICKS_PER_RUN);
+  console.log(
+    `[collect] dry-run 오늘 할당: 비뉴스 ${t.nonNews}(오픈소스 ${t.formats.oss}·모델 ${t.formats.model}·` +
+      `논문 ${t.formats.paper}), Physical AI ${t.physical}`,
+  );
+  const est = estimateTriageTokens(triageReq, MAX_PICKS_PER_RUN);
+  const cost = estimateCost(est.input, est.output, MODEL, { batch: USE_BATCH });
+  console.log(
+    `[collect] dry-run 선별 요청 추정: 입력 ${est.input}·출력 ${est.output}토큰(근사), $${cost.toFixed(4)}`,
+  );
   console.log(`[collect] dry-run 선별 풀 앞 ${DRY_RUN_PREVIEW_LINES}줄:`);
-  pool
-    .slice(0, DRY_RUN_PREVIEW_LINES)
-    .forEach((c, i) => console.log(`  [${c.format}] ${triageLine(c, i)}`));
+  pool.slice(0, DRY_RUN_PREVIEW_LINES).forEach((c, i) => console.log(`  ${triageLine(c, i)}`));
 }
 
 async function main(): Promise<void> {
@@ -378,9 +394,13 @@ async function main(): Promise<void> {
     const inPool = new Set(pool);
     const overflow = candidates.filter((c) => !inPool.has(c));
     stats.notes.push(`선별 풀: 후보 ${candidates.length}건 중 ${pool.length}건`);
+    // 이틀에 걸친 같은 사건 중복 방지: 최근 호 게재 제목을 선별에 "이미 보도함"으로 넣는다(읽기 전용 — dry-run 도 같다).
+    const reported = loadReportedHeadlines(db);
+    stats.notes.push(`이미 보도함: 최근 ${REPORTED_ISSUES}개 호 제목 ${reported.length}건`);
+    const triageReq = buildTriageRequest(pool, MAX_PICKS_PER_RUN, MODEL, { reported });
     if (DRY_RUN) {
       mix = [candidates, pool];
-      printPoolPreview(pool);
+      printPoolPreview(pool, triageReq);
       return;
     }
     mix = [candidates, pool, []];
@@ -391,7 +411,6 @@ async function main(): Promise<void> {
     }
 
     // ── ③ 선별 ──
-    const triageReq = buildTriageRequest(pool, MAX_PICKS_PER_RUN, MODEL);
     const triageEst = estimateTriageTokens(triageReq, MAX_PICKS_PER_RUN);
     const triageCost = estimateCost(triageEst.input, triageEst.output, MODEL, { batch: USE_BATCH });
     if (triageCost > MAX_COST_USD_PER_RUN) {
@@ -417,6 +436,7 @@ async function main(): Promise<void> {
           id: p.index,
           item: pool[p.index].item,
           sourceName: pool[p.index].sourceName,
+          format: pool[p.index].format,
         })),
         MODEL,
       ),
@@ -436,6 +456,16 @@ async function main(): Promise<void> {
       stats.status = "partial";
       stats.notes.push(`가공 실패·보류 ${unfinished}건(다음 실행에서 재심사)`);
     }
+    // 할당 미달 경고(강제로 채우지 않는다). Physical AI 는 가공된 기사의 분야로 센다 — 소스 topic 은 일반 매체의
+    // 로봇 기사를 놓친다. 가공되지 않은 선정만 소스 topic 으로 대신한다.
+    const shortfall = quotaShortfallNote(
+      picks.map((p) => ({
+        format: pool[p.index].format,
+        physical: (enriched.get(p.index)?.category ?? pool[p.index].topic) === "physical",
+      })),
+      pickTargets(pool, MAX_PICKS_PER_RUN),
+    );
+    if (shortfall) stats.notes.push(shortfall);
 
     persist(db, pool, overflow, picks, enriched, stats);
     // 게재 = 이번 회차에 가공까지 마친 선정 기사(재심사 행 포함).
