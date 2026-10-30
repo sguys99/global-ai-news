@@ -14,7 +14,12 @@ import type { RawItem } from "../../src/lib/types";
  *   likes 상한 2000: 생성 30일 이내 트렌딩 모델은 대개 수백~수천(2026-10 기준 145~3,659)이라
  *   상위 대형 공개만 만점에 닿는다. HF 모델의 downloads·hf_trending 은 점수에 쓰지 않는다
  *   (downloads 는 양자화 재배포가 부풀리고, hf_trending 은 HF 자체 순위라 중복 신호다).
- * - recency: 24h 이내 1.0, 이후 선형 감쇠(하한 0.5).
+ * - recency: 24h 이내 1.0, 이후 선형 감쇠(하한 0.5). 단 likes 가 있는 항목(HF 모델)은 감쇠하지 않는다.
+ *   HF 모델의 publishedAt 은 생성 시각(30일 이내)이라 트렌딩 목록에 처음 오른 날에도 대개 64시간을 넘겨
+ *   하한 0.5 에 걸린다(2026-10-29 실측 6건 모두 200~700h). 그러면 likes 항이 설계(0.4, stars_today 와 동급)의
+ *   절반만 반영돼 likes 2,041 모델이 20점으로 생성 7일 이내 335★ 저장소(23점)보다 낮았다. likes 는 수집 시점에
+ *   HF 트렌딩 목록에 있다는 "지금" 신호이므로 생성 후 경과로 깎지 않는다(실측 18~20 → 35~40).
+ *   HF 논문(ups)·arXiv(citations)도 게시일 기준으로 대개 0.5 지만, ups 는 Reddit 과 같은 칸이라 여기서 가르지 않는다.
  * RSS 처럼 engagement 가 없으면 signal=0 → 점수 0.
  */
 export function trendingScore(item: RawItem): number {
@@ -32,7 +37,8 @@ export function trendingScore(item: RawItem): number {
   );
 
   const ageH = (Date.now() - new Date(item.publishedAt).getTime()) / 3.6e6;
-  const recency = ageH <= 24 ? 1.0 : Math.max(0.5, 1 - (ageH - 24) / 80);
+  const decay = ageH <= 24 ? 1.0 : Math.max(0.5, 1 - (ageH - 24) / 80);
+  const recency = e.likes !== undefined ? 1.0 : decay;
 
   return Math.round(100 * signal * recency);
 }

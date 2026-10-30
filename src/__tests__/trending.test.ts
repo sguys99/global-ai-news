@@ -46,6 +46,31 @@ describe("trendingScore", () => {
     expect(trendingScore(base({ engagement: { likes: 99999 } }))).toBe(40);
   });
 
+  it("HF 모델(likes)은 생성 후 경과로 감쇠하지 않는다 — publishedAt 이 생성 시각이라", () => {
+    // 2026-10-29 실측: flux-3 klein 생성 371h·likes 2,041 → 감쇠 하한 0.5 였으면 20
+    expect(trendingScore(base({ engagement: { likes: 2041 }, publishedAt: hoursAgo(371) }))).toBe(
+      40,
+    );
+    expect(trendingScore(base({ engagement: { likes: 903 }, publishedAt: hoursAgo(259) }))).toBe(
+      trendingScore(base({ engagement: { likes: 903 }, publishedAt: hoursAgo(1) })),
+    );
+    // 생성 7일 이내 335★ 검색 저장소(23)보다 위, HN 최저(52점·52댓글 = 46)보다는 아래
+    const model = trendingScore(base({ engagement: { likes: 823 }, publishedAt: hoursAgo(448) }));
+    expect(model).toBeGreaterThan(trendingScore(base({ engagement: { stars: 335 } })));
+    expect(model).toBeLessThan(
+      trendingScore(base({ engagement: { points: 52, num_comments: 52 } })),
+    );
+  });
+
+  it("likes 가 없는 오래된 항목은 여전히 감쇠한다(HF 논문 ups·arXiv citations)", () => {
+    expect(trendingScore(base({ engagement: { ups: 408 }, publishedAt: hoursAgo(123) }))).toBe(22);
+    expect(
+      trendingScore(
+        base({ engagement: { citations: 14, influential: 2 }, publishedAt: hoursAgo(722) }),
+      ),
+    ).toBe(8);
+  });
+
   it("downloads·hf_trending·표시 메타는 점수에 쓰지 않는다", () => {
     const likesOnly = trendingScore(base({ engagement: { likes: 500 } }));
     const withExtras = trendingScore(
