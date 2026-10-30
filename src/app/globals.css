@@ -130,6 +130,9 @@
   --text-meta--line-height: 1.4;
   --text-label: 0.75rem;
   --text-label--line-height: 1.3;
+  /* 형식 배지(REPO·MODEL·PAPER) 전용 — 키커(13px)보다 가볍게. 토큰 추가 시 src/lib/utils.ts FONT_SIZE_TOKENS 도 갱신 */
+  --text-badge: 0.65625rem;
+  --text-badge--line-height: 1;
 
   /* 모바일 셸: 하단 탭 바 높이 */
   --tabbar-h: 3.5rem;

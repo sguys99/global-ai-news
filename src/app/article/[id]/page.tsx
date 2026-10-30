@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
-import { CategoryKicker, ImportanceMeter, TagChips, TrendBar } from "@/components/ArticleMeta";
+import {
+  CategoryKicker,
+  FormatBadge,
+  ImportanceMeter,
+  TagChips,
+  TrendBar,
+} from "@/components/ArticleMeta";
 import { StoryEntry } from "@/components/Story";
 import { getAllArticleIds, getArticle, getFeed, getLatestPublishedAt } from "@/lib/db";
 import { categoryLabel, formatDate, shortSourceName } from "@/lib/labels";
@@ -79,7 +85,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
 
       <article className="flex flex-col">
         <header className="flex flex-col gap-4 pt-6 md:pt-8">
-          <CategoryKicker category={article.category} />
+          {/* 형식 배지(비뉴스만) + 분야 키커 — 레이더 카드 머리와 같은 순서 */}
+          {(article.format !== "news" || article.category) && (
+            <span className="flex items-center gap-2">
+              <FormatBadge format={article.format} />
+              <CategoryKicker category={article.category} />
+            </span>
+          )}
           <h1 className="text-display-lg animate-rise font-serif font-extrabold">{title}</h1>
           {showOriginalTitle && (
             <p lang="en" className="text-caption text-muted-foreground">

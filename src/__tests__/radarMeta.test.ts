@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   compactCount,
+  displayCount,
   formatParamCount,
   groupDigits,
   parseArxivId,
   parseGithubRepo,
   parseHfModelId,
   radarMeta,
+  radarMetaBlock,
 } from "@/lib/radarMeta";
 
 const texts = (input: Parameters<typeof radarMeta>[0]) => radarMeta(input).map((m) => m.text);
@@ -51,6 +53,19 @@ describe("groupDigits", () => {
     expect(groupDigits(999)).toBe("999");
     expect(groupDigits(1203)).toBe("1,203");
     expect(groupDigits(1_234_567)).toBe("1,234,567");
+  });
+});
+
+describe("displayCount — 메타 줄 개수 표기(시안 결정 ⑨)", () => {
+  it("1만 미만은 쉼표 정수, 이상은 축약", () => {
+    expect(displayCount(0)).toBe("0");
+    expect(displayCount(408)).toBe("408");
+    expect(displayCount(7406)).toBe("7,406");
+    expect(displayCount(9999)).toBe("9,999");
+    expect(displayCount(10_000)).toBe("10k");
+    expect(displayCount(16_598)).toBe("16.6k");
+    expect(displayCount(1_204_311)).toBe("1.2M");
+    expect(displayCount(-1)).toBe("0");
   });
 });
 
@@ -131,7 +146,7 @@ describe("parseArxivId", () => {
 });
 
 describe("radarMeta — 리포(oss)", () => {
-  it("owner/repo · ★ 스타 · +오늘 증가분 · 언어 순서", () => {
+  it("owner/repo · ★ 스타 · 오늘 +증가분 · 언어 순서", () => {
     const meta = radarMeta({
       format: "oss",
       url: "https://github.com/vllm-project/vllm",
@@ -155,8 +170,9 @@ describe("radarMeta — 리포(oss)", () => {
       },
       {
         key: "starsToday",
+        prefix: "오늘",
         value: "+1,203",
-        text: "+1,203",
+        text: "오늘 +1,203",
         label: "오늘 스타 1,203개 증가",
         numeric: true,
       },
@@ -167,7 +183,7 @@ describe("radarMeta — 리포(oss)", () => {
   it("증가분이 1만 이상이면 축약한다", () => {
     expect(
       texts({ format: "oss", url: "https://github.com/a/b", engagement: { stars_today: 12_400 } }),
-    ).toEqual(["a/b", "+12.4k"]);
+    ).toEqual(["a/b", "오늘 +12.4k"]);
   });
 
   it("없는 값·0(수집기의 '모름')은 빠진다", () => {
@@ -202,7 +218,7 @@ describe("radarMeta — 모델(model)", () => {
       "Qwen/Qwen3-8B",
       "8B",
       "text-generation",
-      "♥ 1.2k",
+      "♥ 1,234",
       "↓ 2.3M",
     ]);
     expect(meta.map((m) => m.label)).toEqual([
@@ -268,7 +284,7 @@ describe("radarMeta — 논문(paper)", () => {
         url: "https://arxiv.org/abs/2609.21967",
         engagement: { citations: 1500 },
       })[1],
-    ).toMatchObject({ value: "인용 1.5k", label: "인용 1,500회" });
+    ).toMatchObject({ prefix: "인용", value: "1,500", text: "인용 1,500", label: "인용 1,500회" });
   });
 
   it("메트릭이 없는 Takara 논문은 ID 만, ID 도 없으면 []", () => {
@@ -304,5 +320,54 @@ describe("radarMeta — 손상된 값", () => {
     expect(
       texts({ format: "model", url: "", engagement: { likes: Number.NaN, params: Infinity } }),
     ).toEqual([]);
+  });
+});
+
+describe("radarMetaBlock — 카드 메타 블록(시안 결정 ⑧·⑩)", () => {
+  const source = { id: "gh", name: "GitHub" };
+
+  it("식별자는 따로, 나머지는 수치 줄로 나눈다", () => {
+    const block = radarMetaBlock({
+      format: "oss",
+      url: "https://github.com/milind-soni/OpenMausBot",
+      engagement: { stars: 7406, stars_today: 1190, language: "TypeScript" },
+      source,
+    });
+    expect(block.id?.text).toBe("milind-soni/OpenMausBot");
+    expect(block.stats.map((m) => m.text)).toEqual(["★ 7,406", "오늘 +1,190", "TypeScript"]);
+  });
+
+  it("수치가 없으면 식별자 한 줄만", () => {
+    const block = radarMetaBlock({
+      format: "paper",
+      url: "https://arxiv.org/abs/2609.36870",
+      engagement: {},
+      source,
+    });
+    expect(block).toEqual({ id: expect.objectContaining({ text: "arXiv 2609.36870" }), stats: [] });
+  });
+
+  it("식별자가 없으면 수치 줄만(매체명으로 채우지 않는다)", () => {
+    const block = radarMetaBlock({
+      format: "oss",
+      url: "https://example.com/x",
+      engagement: { stars: 20 },
+      source,
+    });
+    expect(block.id).toBeUndefined();
+    expect(block.stats.map((m) => m.text)).toEqual(["★ 20"]);
+  });
+
+  it("식별자도 수치도 없으면 매체명(축약명을 넘길 수 있다)", () => {
+    const article = {
+      format: "paper" as const,
+      url: "https://example.com/p",
+      source: { id: "tk", name: "Takara TLDR" },
+    };
+    expect(radarMetaBlock(article)).toEqual({
+      id: expect.objectContaining({ key: "source", text: "Takara TLDR", numeric: false }),
+      stats: [],
+    });
+    expect(radarMetaBlock(article, "Takara").id?.text).toBe("Takara");
   });
 });

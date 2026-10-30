@@ -1,13 +1,21 @@
 /**
  * 기사 신호 프레젠테이션 컴포넌트 (DESIGN.md §4). 피드·검색·상세가 공유한다.
  * - CategoryKicker: 코발트 키커(한글 표시명)
+ * - FormatBadge: 형식 배지(REPO·MODEL·PAPER) — 잉크 1px 아웃라인, 코발트 없음. 뉴스는 렌더하지 않는다
  * - ImportanceMeter: 5칸 원형 도트 미터(4–5는 코발트)
- * - Byline: 소스 · 날짜 · 중요도 (+ 선택 화제 지수)
+ * - Byline: (형식 배지) 소스 · 날짜 · 중요도 (+ 선택 화제 지수)
  * - TrendBar: 0–100 고정 스케일 수평 바
  * - TagChips: pill 태그 칩
  */
 import { RelativeTime } from "@/components/RelativeTime";
-import { categoryLabel, formatDate, shortSourceName } from "@/lib/labels";
+import type { ReactNode } from "react";
+import {
+  FORMAT_BADGES,
+  categoryLabel,
+  formatDate,
+  shortSourceName,
+  type Format,
+} from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { ArticleCard } from "@/lib/types";
 
@@ -15,8 +23,46 @@ import type { ArticleCard } from "@/lib/types";
 export function CategoryKicker({ category, className }: { category: string; className?: string }) {
   if (!category) return null;
   return (
-    <span className={cn("text-meta text-brand font-bold tracking-[0.02em]", className)}>
+    <span
+      className={cn(
+        "text-meta text-brand font-bold tracking-[0.02em] whitespace-nowrap",
+        className,
+      )}
+    >
       {categoryLabel(category)}
+    </span>
+  );
+}
+
+/**
+ * 형식 배지 스크린리더 이름. 화면의 영문 대문자(FORMAT_BADGES)는 읽기 어색하고 뜻도 좁아서
+ * 한국어로 읽힌다 — 표시명(FORMAT_LABELS)의 "오픈소스"가 아니라 대상을 가리키는 "저장소"다.
+ */
+const FORMAT_BADGE_NAMES: Record<Format, string> = {
+  news: "",
+  oss: "저장소",
+  model: "모델",
+  paper: "논문",
+};
+
+/**
+ * 형식 배지 REPO·MODEL·PAPER (시안 결정 ⑪). 10.5px 굵은 대문자, 잉크 1px 테두리, 각진 면 — 코발트는 쓰지 않는다
+ * (단일 강조색 원칙: 코발트는 옆의 분야 키커 몫). 뉴스는 배지가 없다.
+ * 대문자는 aria-hidden, 스크린리더에는 한국어 이름(저장소·모델·논문)을 sr-only 로 읽힌다.
+ * relative 는 sr-only(absolute)의 기준 상자 — 가로 스크롤러 안에서 클립을 벗어나 페이지 폭을 늘리지 않게.
+ */
+export function FormatBadge({ format, className }: { format: Format; className?: string }) {
+  const badge = FORMAT_BADGES[format];
+  if (!badge) return null;
+  return (
+    <span
+      className={cn(
+        "border-foreground text-foreground text-badge relative inline-flex h-[17px] shrink-0 items-center border px-[5px] pt-px font-sans font-bold tracking-[0.09em] whitespace-nowrap",
+        className,
+      )}
+    >
+      <span aria-hidden>{badge}</span>
+      <span className="sr-only">{FORMAT_BADGE_NAMES[format]}</span>
     </span>
   );
 }
@@ -48,7 +94,8 @@ export function ImportanceMeter({ value }: { value: number }) {
   );
 }
 
-function Dot({ className }: { className?: string }) {
+/** 바이라인 구분 점(2px). */
+export function Dot({ className }: { className?: string }) {
   return (
     <span aria-hidden className={cn("size-0.5 shrink-0 rounded-full bg-current", className)} />
   );
@@ -58,20 +105,29 @@ function Dot({ className }: { className?: string }) {
  * 소스 · 날짜 · 중요도 바이라인. showTrend 시 화제 지수를 덧붙인다.
  * compact: 좁은 칼럼용 — md 이상에서 소스를 첫 줄, 날짜·중요도를 둘째 줄로 고정해
  * 미터만 줄바꿈되는 것을 막는다(모바일은 1열이라 한 줄 유지).
+ * showFormat: 소스 앞에 형식 배지(비뉴스만 — 섹션 밴드, 시안 결정 ⑬).
  */
 export function Byline({
   article,
   showTrend = false,
   fullSource = false,
   compact = false,
+  showFormat = false,
   showDate = true,
   timeBase,
+  prefix,
   className,
 }: {
-  article: Pick<ArticleCard, "source" | "publishedAt" | "importance" | "trendingScore" | "related">;
+  article: Pick<
+    ArticleCard,
+    "source" | "publishedAt" | "importance" | "trendingScore" | "related" | "format"
+  >;
   showTrend?: boolean;
   fullSource?: boolean;
   compact?: boolean;
+  showFormat?: boolean;
+  /** 소스 앞에 그대로 붙일 조각(구분 점 포함은 호출자 몫) — 모바일 브리핑의 키커 병합용. */
+  prefix?: ReactNode;
   /** 날짜를 별도 칼럼에 이미 보여 주는 목록(StoryEntry)에서는 끈다. */
   showDate?: boolean;
   /**
@@ -81,6 +137,21 @@ export function Byline({
   timeBase?: string;
   className?: string;
 }) {
+  const source = (
+    <span
+      className={cn(
+        "text-foreground-soft font-semibold",
+        compact && "max-w-full truncate",
+        showFormat && "inline-flex items-center gap-[7px]",
+      )}
+    >
+      {showFormat && <FormatBadge format={article.format} />}
+      <span className={cn(compact && "min-w-0 truncate")}>
+        {fullSource ? article.source.name : shortSourceName(article.source.name)}
+        <OtherSources count={article.related?.length} />
+      </span>
+    </span>
+  );
   const when = timeBase ? (
     <RelativeTime iso={article.publishedAt} base={timeBase} />
   ) : (
@@ -94,10 +165,8 @@ export function Byline({
           className,
         )}
       >
-        <span className="text-foreground-soft max-w-full truncate font-semibold">
-          {shortSourceName(article.source.name)}
-          <OtherSources count={article.related?.length} />
-        </span>
+        {prefix}
+        {source}
         <Dot className="md:hidden" />
         <span className="flex items-center gap-2.5">
           {when}
@@ -113,10 +182,8 @@ export function Byline({
         className,
       )}
     >
-      <span className="text-foreground-soft font-semibold">
-        {fullSource ? article.source.name : shortSourceName(article.source.name)}
-        <OtherSources count={article.related?.length} />
-      </span>
+      {prefix}
+      {source}
       {showDate && (
         <>
           <Dot />

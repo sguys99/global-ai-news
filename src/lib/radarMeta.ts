@@ -1,6 +1,6 @@
 /**
  * 1면 "오픈소스·논문 레이더" 카드의 형식별 메타 줄(contents-upgrade-plan Phase 6-2) — 순수 함수.
- * - 리포(oss): owner/repo · ★ 스타 · +오늘 증가분 · 주 언어
+ * - 리포(oss): owner/repo · ★ 스타 · 오늘 +증가분 · 주 언어
  * - 모델(model): org/model · 파라미터 · 태스크(pipeline_tag) · ♥ likes · ↓ downloads
  * - 논문(paper): arXiv ID · ▲ upvotes(HF Daily Papers) · 인용(arXiv/Semantic Scholar)
  * - 뉴스: 메타 줄 없음([])
@@ -23,16 +23,19 @@ export type RadarMetaKey =
   | "downloads"
   | "arxiv"
   | "upvotes"
-  | "citations";
+  | "citations"
+  | "source";
 
 /** 메타 줄 한 칸. */
 export interface RadarMetaItem {
   key: RadarMetaKey;
   /** 장식 기호(★ ♥ ↓ ▲). 렌더 시 aria-hidden 으로 두고 label 을 읽힌다. 없으면 생략. */
   icon?: string;
-  /** 기호를 뺀 값(예: "12.4k", "+1,203", "Python"). 수치 항목은 tabular-nums 로 그린다. */
+  /** 값 앞의 낱말(스타 증가분 "오늘", 인용 수 "인용"). 값만 굵게 그리도록 따로 둔다. 없으면 생략. */
+  prefix?: string;
+  /** 기호·낱말을 뺀 값(예: "12.4k", "+1,203", "Python"). 수치 항목은 tabular-nums 로 그린다. */
   value: string;
-  /** 화면 표기 = icon + " " + value (icon 없으면 value). */
+  /** 화면 표기 = icon · prefix · value 를 빈칸으로 이은 것(예: "★ 7,406", "오늘 +1,190"). */
   text: string;
   /** 스크린리더·title 용 한국어 문구(예: "스타 12,400개"). */
   label: string;
@@ -120,6 +123,15 @@ export function formatParamCount(n: number | undefined): string | undefined {
   return undefined;
 }
 
+/**
+ * 레이더 메타 줄의 개수 표기(시안 결정 ⑨): 1만 미만은 쉼표 정수("7,406"), 이상은 축약("12.4k", "1.2M").
+ * 작은 수까지 "7.4k"로 줄이면 자릿수 정보가 사라지고, 한 줄 폭은 1만 미만에서 충분하다.
+ */
+export function displayCount(n: number): string {
+  const v = toCount(n) ?? 0;
+  return v < 10_000 ? groupDigits(v) : compactCount(v);
+}
+
 /** 파라미터 수의 한국어 읽기(스크린리더용): 8.03e9 → "약 80억", 3.5e8 → "약 3.5억", 5e7 → "약 5,000만". */
 function koreanApprox(n: number): string {
   const [div, unit] = n >= 1e12 ? [1e12, "조"] : n >= 1e8 ? [1e8, "억"] : [1e4, "만"];
@@ -129,7 +141,7 @@ function koreanApprox(n: number): string {
 
 /** 증가분: 1만 미만은 쉼표 정수("+1,203"), 이상은 축약("+12.4k"). */
 function formatDelta(n: number): string {
-  return `+${n < 10_000 ? groupDigits(n) : compactCount(n)}`;
+  return `+${displayCount(n)}`;
 }
 
 // --- URL 파싱 ----------------------------------------------------------------
@@ -240,12 +252,14 @@ function item(
   label: string,
   numeric: boolean,
   icon?: string,
+  prefix?: string,
 ): RadarMetaItem {
   return {
     key,
     ...(icon ? { icon } : {}),
+    ...(prefix ? { prefix } : {}),
     value,
-    text: icon ? `${icon} ${value}` : value,
+    text: [icon, prefix, value].filter(Boolean).join(" "),
     label,
     numeric,
   };
@@ -262,12 +276,19 @@ function repoMeta(url: string, e: Engagement): RadarMetaItem[] {
   if (repo) out.push(item("repo", repo, `저장소 ${repo}`, false));
   const stars = toCount(e.stars);
   if (stars) {
-    out.push(item("stars", compactCount(stars), `스타 ${groupDigits(stars)}개`, true, "★"));
+    out.push(item("stars", displayCount(stars), `스타 ${groupDigits(stars)}개`, true, "★"));
   }
   const today = toCount(e.stars_today);
   if (today) {
     out.push(
-      item("starsToday", formatDelta(today), `오늘 스타 ${groupDigits(today)}개 증가`, true),
+      item(
+        "starsToday",
+        formatDelta(today),
+        `오늘 스타 ${groupDigits(today)}개 증가`,
+        true,
+        undefined,
+        "오늘",
+      ),
     );
   }
   const language = str(e.language);
@@ -288,14 +309,14 @@ function modelMeta(url: string, e: Engagement): RadarMetaItem[] {
   if (task) out.push(item("task", task, `태스크 ${task}`, false));
   const likes = toCount(e.likes);
   if (likes) {
-    out.push(item("likes", compactCount(likes), `좋아요 ${groupDigits(likes)}개`, true, "♥"));
+    out.push(item("likes", displayCount(likes), `좋아요 ${groupDigits(likes)}개`, true, "♥"));
   }
   const downloads = toCount(e.downloads);
   if (downloads) {
     out.push(
       item(
         "downloads",
-        compactCount(downloads),
+        displayCount(downloads),
         `최근 30일 다운로드 ${groupDigits(downloads)}회`,
         true,
         "↓",
@@ -310,15 +331,17 @@ function paperMeta(url: string, e: Engagement): RadarMetaItem[] {
   const id = parseArxivId(url);
   if (id) out.push(item("arxiv", `arXiv ${id}`, `arXiv ${id}`, false));
   const ups = toCount(e.ups);
-  if (ups) out.push(item("upvotes", compactCount(ups), `추천 ${groupDigits(ups)}개`, true, "▲"));
+  if (ups) out.push(item("upvotes", displayCount(ups), `추천 ${groupDigits(ups)}개`, true, "▲"));
   const citations = toCount(e.citations);
   if (citations) {
     out.push(
       item(
         "citations",
-        `인용 ${compactCount(citations)}`,
+        displayCount(citations),
         `인용 ${groupDigits(citations)}회`,
         true,
+        undefined,
+        "인용",
       ),
     );
   }
@@ -333,7 +356,7 @@ function paperMeta(url: string, e: Engagement): RadarMetaItem[] {
  * @example
  * radarMeta({ format: "oss", url: "https://github.com/vllm-project/vllm",
  *   engagement: { stars: 48836, stars_today: 1203, language: "Python" } }).map((m) => m.text)
- * // → ["vllm-project/vllm", "★ 48.8k", "+1,203", "Python"]
+ * // → ["vllm-project/vllm", "★ 48.8k", "오늘 +1,203", "Python"]
  */
 export function radarMeta(article: RadarMetaInput): RadarMetaItem[] {
   const e: Engagement = article.engagement ?? {};
@@ -347,4 +370,30 @@ export function radarMeta(article: RadarMetaInput): RadarMetaItem[] {
     default:
       return [];
   }
+}
+
+/** 식별자 항목(owner/repo · org/model · arXiv ID) — 카드에서 수치 줄 위에 따로 한 줄로 놓는다. */
+const ID_KEYS: ReadonlySet<RadarMetaKey> = new Set(["repo", "model", "arxiv"]);
+
+/** 레이더 카드 메타 블록: 식별자 한 줄(id) + 수치·속성 줄(stats). */
+export interface RadarMetaBlock {
+  id?: RadarMetaItem;
+  stats: RadarMetaItem[];
+}
+
+/**
+ * 카드 렌더용 메타 블록(시안 결정 ⑧·⑩). 값이 없는 조각만 빠지고, 수치가 하나도 없으면 식별자 한 줄만,
+ * 식별자도 수치도 없으면 매체명을 식별자 자리에 둔다(뉴스가 아닌 한 메타 블록은 늘 한 줄 이상).
+ */
+export function radarMetaBlock(
+  article: RadarMetaInput & { source: { name: string } },
+  sourceName: string = article.source.name,
+): RadarMetaBlock {
+  const items = radarMeta(article);
+  const id = items.find((m) => ID_KEYS.has(m.key));
+  const stats = items.filter((m) => !ID_KEYS.has(m.key));
+  if (!id && stats.length === 0) {
+    return { id: item("source", sourceName, `출처 ${sourceName}`, false), stats };
+  }
+  return id ? { id, stats } : { stats };
 }
