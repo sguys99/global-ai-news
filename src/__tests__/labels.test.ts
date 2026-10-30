@@ -9,11 +9,11 @@ import {
   normalizeCategory,
   formatDate,
   formatDateTime,
-  formatIssueDelayNotice,
   formatLongDate,
   formatMonthDay,
   formatRelativeKst,
   formatShortDate,
+  issueDelayCopy,
   issueDelayDays,
   kstDateKey,
   kstDayDiff,
@@ -198,12 +198,35 @@ describe("발행 지연 판정 — KST 기준", () => {
     expect(kstDayDiff("2026-12-31", "2027-01-01")).toBe(1);
   });
 
-  it("안내 문구", () => {
-    expect(formatIssueDelayNotice("2026-10-26", 1)).toBe(
-      "10월 26일(월) 발행 — 오늘 호는 아직 발행 전입니다",
+  it("안내 문구 — 1일: 라벨 '발행 전', 오늘 호가 아직 없고 보고 있는 호를 밝힌다", () => {
+    expect(issueDelayCopy("2026-10-29", 1, 135)).toEqual({
+      label: "발행 전",
+      strong: "10월 30일 금요일 호",
+      rest: "는 아직 발행 전입니다 — 지금은 10월 29일 목요일 제135호를 보고 계십니다.",
+      short: "10.30(금) 호 발행 전 · 10.29(목) 호를 보는 중",
+    });
+  });
+
+  it("안내 문구 — 2일 이상: 라벨 '발행 지연', 지연 일수", () => {
+    expect(issueDelayCopy("2026-10-28", 2, 134)).toEqual({
+      label: "발행 지연",
+      strong: "10월 28일 수요일 제134호",
+      rest: " 이후 새 호가 나오지 않았습니다 — 발행이 2일째 늦어지고 있습니다.",
+      short: "10.28(수) 호 이후 새 호 지연 · 2일째",
+    });
+    expect(issueDelayCopy("2026-10-28", 3, 134)?.short).toBe(
+      "10.28(수) 호 이후 새 호 지연 · 3일째",
     );
-    expect(formatIssueDelayNotice("2026-10-25", 2)).toBe(
-      "10월 25일(일) 발행 이후 새 호가 아직 나오지 않았습니다",
-    );
+  });
+
+  it("안내 문구 — 호수 미상은 '호'로, 월말·연말 다음 날도 KST 달력으로", () => {
+    expect(issueDelayCopy("2026-12-31", 1)?.strong).toBe("1월 1일 금요일 호");
+    expect(issueDelayCopy("2026-12-31", 1)?.rest).toContain("12월 31일 목요일 호를 보고 계십니다");
+    expect(issueDelayCopy("2026-10-28", 2)?.strong).toBe("10월 28일 수요일 호");
+  });
+
+  it("안내 문구 — 지연 없음·잘못된 입력은 null", () => {
+    expect(issueDelayCopy("2026-10-29", 0, 135)).toBeNull();
+    expect(issueDelayCopy("bad", 1, 135)).toBeNull();
   });
 });

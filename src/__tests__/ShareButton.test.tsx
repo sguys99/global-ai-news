@@ -90,8 +90,7 @@ describe("Masthead 공유", () => {
       <Masthead
         issueNo={113}
         publishedAt="2026-10-07T22:29:49.427Z"
-        issueCount={30}
-        issueSourceCount={12}
+        stats={{ count: 30, sources: 12, formats: [] }}
         categories={[]}
       />,
     );
@@ -106,8 +105,7 @@ describe("Masthead 공유", () => {
       <Masthead
         issueNo={0}
         publishedAt={null}
-        issueCount={0}
-        issueSourceCount={0}
+        stats={{ count: 0, sources: 0, formats: [] }}
         categories={[]}
       />,
     );

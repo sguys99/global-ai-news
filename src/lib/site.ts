@@ -20,7 +20,7 @@ import { formatMonthDay, kstDateKey } from "@/lib/labels";
 export const SITE_NAME = "Daily AI Brief";
 export const SITE_DESCRIPTION =
   "글로벌·한국 AI/IT 뉴스를 매일 한국어 요약으로 제공하는 데일리 브리핑";
-/** 마스트헤드·기본 공유 썸네일의 소개 문구. */
+/** 소개 문구 — 푸터·기본 공유 썸네일(og/default). 마스트헤드 제호 옆 자리는 이번 호 통계(귀)가 쓴다. */
 export const SITE_TAGLINE = "세계와 한국의 AI 소식을 매일 아침, 한국어로 요약해 전합니다.";
 
 /** 배포 절대 URL(basePath 포함). 프로덕션 빌드에만 next.config 가 주입하고 dev 는 로컬. */

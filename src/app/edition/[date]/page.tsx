@@ -6,7 +6,7 @@ import { EditionPager } from "@/components/EditionPager";
 import { Masthead } from "@/components/Masthead";
 import { StoryIndex } from "@/components/StoryIndex";
 import { getIssueArticles, getEditionRefs, toListCards } from "@/lib/db";
-import { buildEdition } from "@/lib/edition";
+import { buildEdition, issueStats } from "@/lib/edition";
 import { formatLongDate } from "@/lib/labels";
 import { SITE_NAME, editionMetadata, editionPath } from "@/lib/site";
 
@@ -58,8 +58,7 @@ export default async function EditionPage({ params }: Props) {
       <Masthead
         issueNo={ref.issueNo}
         publishedAt={ref.publishedAt}
-        issueCount={edition.issue.length}
-        issueSourceCount={new Set(edition.issue.map((a) => a.source.id)).size}
+        stats={issueStats(edition.issue)}
         categories={edition.sections.map((s) => s.category)}
         indexLabel="이 호의 기사"
       />

@@ -54,13 +54,14 @@ describe("FeedView — 이번 호가 비었을 때", () => {
 describe("FeedView — 발행 지연 안내 초기 상태", () => {
   it("initialDelayGap 이 있으면 정적 HTML 에 안내가 이미 담긴다", () => {
     const html = renderToString(<FeedView {...base} issueIds={[1]} initialDelayGap={2} />);
-    expect(html).toContain("최신 호");
-    expect(html).toContain("새 호 지연 중");
+    expect(html).toContain("발행 지연");
+    expect(html).toContain("새 호 지연 · 2일째");
   });
 
   it("initialDelayGap 이 없으면 안내가 없다", () => {
     const html = renderToString(<FeedView {...base} issueIds={[1]} />);
-    expect(html).not.toContain("최신 호");
+    expect(html).not.toContain("발행 지연");
+    expect(html).not.toContain("발행 전");
   });
 
   it("서버 HTML 을 하이드레이트해도 불일치 경고가 없다", async () => {
@@ -73,7 +74,7 @@ describe("FeedView — 발행 지연 안내 초기 상태", () => {
       hydrateRoot(container, el);
     });
     expect(error).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("최신 호");
+    expect(container.textContent).toContain("발행 지연");
     container.remove();
   });
 });

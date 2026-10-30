@@ -254,17 +254,47 @@ export function issueDelayDays(issueDate: string, now: string | number | Date): 
   return gap >= 2 || p.hh >= PUBLISH_GRACE_HOUR_KST ? gap : 0;
 }
 
-/** 발행 지연 안내 문구. gap 은 issueDelayDays 결과(≥1). */
-export function formatIssueDelayNotice(issueDate: string, gap: number): string {
-  const day = formatMonthDay(`${issueDate}T12:00:00+09:00`);
-  return gap >= 2
-    ? `${day} 발행 이후 새 호가 아직 나오지 않았습니다`
-    : `${day} 발행 — 오늘 호는 아직 발행 전입니다`;
+/** 'YYYY-MM-DD'(KST 달력 날짜) 정오 기준 분해 — 날짜 키를 요일 있는 표기로 바꿀 때 쓴다. */
+const kstDateParts = (dateKey: string) => kstParts(`${dateKey}T12:00:00+09:00`);
+
+/** 발행 지연 안내 문구(상태 라벨 + 전체 문장 + 좁은 화면용 짧은 문구). */
+export interface IssueDelayCopy {
+  /** 상태 라벨 — 1일 "발행 전", 2일 이상 "발행 지연". */
+  label: "발행 전" | "발행 지연";
+  /** md 이상 전체 문장: 잉크로 강조할 앞 구절 + 이어지는 문장. */
+  strong: string;
+  rest: string;
+  /** 좁은 화면용 짧은 문구 — 라벨과 한 줄에 들어가게 한다. */
+  short: string;
 }
 
-/** 좁은 화면용 짧은 안내 문구("10.25(일) 발행 · 새 호 준비 중") — 라벨과 한 줄에 들어가게 한다. */
-export function formatIssueDelayShort(issueDate: string, gap: number): string {
-  const p = kstParts(`${issueDate}T12:00:00+09:00`);
-  if (!p) return "";
-  return `${p.m}.${p.d}(${WEEKDAYS[p.w]}) 발행 · ${gap >= 2 ? "새 호 지연 중" : "새 호 준비 중"}`;
+/**
+ * 발행 지연 안내 문구. gap 은 issueDelayDays 결과(≥1), issueNo 는 보고 있는 호의 호수(0 = 미상 → 생략).
+ *  - 1일: "10월 30일 금요일 호는 아직 발행 전입니다 — 지금은 10월 29일 목요일 제135호를 보고 계십니다."
+ *  - 2일+: "10월 28일 수요일 제134호 이후 새 호가 나오지 않았습니다 — 발행이 2일째 늦어지고 있습니다."
+ * 잘못된 입력·gap < 1 이면 null(안내 없음).
+ */
+export function issueDelayCopy(issueDate: string, gap: number, issueNo = 0): IssueDelayCopy | null {
+  const issue = kstDateParts(issueDate);
+  if (!issue || !(gap >= 1)) return null;
+  const long = (p: { m: number; d: number; w: number }) => `${p.m}월 ${p.d}일 ${WEEKDAYS[p.w]}요일`;
+  const short = (p: { m: number; d: number; w: number }) => `${p.m}.${p.d}(${WEEKDAYS[p.w]})`;
+  const issueName = `${long(issue)} ${issueNo > 0 ? `제${issueNo}호` : "호"}`;
+
+  if (gap >= 2) {
+    return {
+      label: "발행 지연",
+      strong: issueName,
+      rest: ` 이후 새 호가 나오지 않았습니다 — 발행이 ${gap}일째 늦어지고 있습니다.`,
+      short: `${short(issue)} 호 이후 새 호 지연 · ${gap}일째`,
+    };
+  }
+  // 1일: 오늘(= 호 날짜 + 1일) 호가 아직 안 나왔다.
+  const today = kstParts(Date.parse(`${issueDate}T12:00:00+09:00`) + DAY)!;
+  return {
+    label: "발행 전",
+    strong: `${long(today)} 호`,
+    rest: `는 아직 발행 전입니다 — 지금은 ${issueName}를 보고 계십니다.`,
+    short: `${short(today)} 호 발행 전 · ${short(issue)} 호를 보는 중`,
+  };
 }

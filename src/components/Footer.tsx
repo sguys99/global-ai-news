@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { SITE_TAGLINE } from "@/lib/site";
 
 /**
- * 전역 푸터 (DESIGN.md v2 footer). 굵은 잉크 괘선 + 세리프 제호 + 콜로폰.
+ * 전역 푸터 (DESIGN.md v2 footer). 굵은 잉크 괘선 + 세리프 제호 + 태그라인 + 콜로폰.
+ * 태그라인(SITE_TAGLINE)은 마스트헤드 제호 옆에서 옮겨 왔다(그 자리는 이번 호 통계 '귀').
  * 테마에 따라 색이 자동 전환된다.
  */
 export function Footer() {
@@ -12,8 +14,9 @@ export function Footer() {
           <span className="font-serif text-[2.5rem] leading-none font-extrabold tracking-[-0.045em]">
             Daily <span className="text-brand">AI</span> Brief
           </span>
+          <p className="text-caption text-foreground-soft max-w-md">{SITE_TAGLINE}</p>
           <p className="text-meta text-muted-foreground max-w-md">
-            글로벌·한국 AI 뉴스를 매일 06:00 KST에 수집해 LLM이 한국어로 요약·분류합니다.
+            매일 06:00 KST에 글로벌·한국 소스를 수집하고 LLM이 요약·분류합니다.
           </p>
           <p className="text-label text-muted-foreground">
             © {new Date().getFullYear()} Nasica Inc. All rights reserved.

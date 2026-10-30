@@ -5,7 +5,7 @@ import { Masthead } from "@/components/Masthead";
 import { StoryIndex } from "@/components/StoryIndex";
 import { FilterSheet } from "@/components/mobile/FilterSheet";
 import type { EditionInfo, FeedOptions } from "@/lib/db";
-import { buildEdition } from "@/lib/edition";
+import { buildEdition, issueStats } from "@/lib/edition";
 import { filterAndSortFeed, hasActiveFilter } from "@/lib/feedFilter";
 import { categoryLabel, kstDateKey, shortSourceName } from "@/lib/labels";
 import type { ArticleCard } from "@/lib/types";
@@ -102,8 +102,7 @@ export function FeedView({
       <Masthead
         issueNo={editionInfo.issueNo}
         publishedAt={editionInfo.publishedAt}
-        issueCount={issueArticles.length}
-        issueSourceCount={new Set(issueArticles.map((a) => a.source.id)).size}
+        stats={issueStats(issueArticles)}
         categories={edition.sections.map((s) => s.category)}
         delayNoticeIssueDate={issueDate}
         delayNoticeInitialGap={initialDelayGap}
