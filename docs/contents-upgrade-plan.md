@@ -516,7 +516,8 @@
 - [ ] 반응형은 360, 768, 1280, 1536px에서 확인한다.
 - [ ] 다크 모드와 44px 터치 타깃을 확인한다.
 - [ ] 접근성 대비(배지·메타 텍스트)가 WCAG AA를 충족하는지 확인한다.
-- [ ] `DESIGN.md`에 다음을 반영한다: 분야 코드표(PHY·OSS 추가, DEV·OPS 삭제), 형식 배지, 레이더·브리핑 컴포넌트 명세.
+- [x ] `DESIGN.md`에 다음을 반영한다: 분야 코드표(PHY·OSS 추가, DEV·OPS 삭제), 형식 배지, 레이더·브리핑 컴포넌트 명세.
+  - ✅ 2026-10-30 DESIGN.md를 v2.1로 올렸다. 변경 이력에 시안 `front-v3.html` 링크를 달았다. §3 정보 구조에는 1면 슬롯표, 귀, 발행 지연 줄, 내비 순서를 새로 썼다. §4에는 분야 키·표시명·코드(LLM·AGT·PHY·OSS·RES·BIZ, DEV·OPS는 폐기)와 형식 맵을 넣었다. §5에는 FormatBadge·StoryBrief·RadarBand/StoryRadar 명세와 메타 레일 표를 더했다. §6 레이아웃, §8 접근성(배지 SR, sr-only 라벨, `relative` 컨테이닝 박스), §9 신호표도 고쳤다. §10에는 `cn()`/`FONT_SIZE_TOKENS` 동기화 규칙을 적었다(`utils.test.ts`가 강제한다). CLAUDE.md의 낡은 기술(Masthead·Edition·Story 변형 수, `CATEGORIES` 위치, 디렉터리 트리)은 Phase 7 문서 갱신에서 고친다.
 
 **Acceptance:** Playwright로 데스크톱·모바일·다크 스크린샷을 찍어 시안과 비교했을 때 레이아웃이 깨지거나 가로 스크롤이 생기지 않는다.
 
