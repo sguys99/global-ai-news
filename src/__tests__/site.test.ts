@@ -9,6 +9,7 @@ import {
   ogEditionImagePath,
   shareMetadata,
 } from "@/lib/site";
+import { buildEdition } from "@/lib/edition";
 import type { ArticleCard } from "@/lib/types";
 
 let seq = 0;
@@ -140,5 +141,89 @@ describe("hasArticleThumbnail — 최근 7일 기사만 전용 썸네일", () =>
 
   it("기준 시각이 없으면 false", () => {
     expect(hasArticleThumbnail("2026-10-08T00:00:00Z", null)).toBe(false);
+  });
+});
+
+describe("공유 메타 회귀 — Phase 5 지면(buildEdition)에서도 리드·서브만 쓴다", () => {
+  // 슬롯마다 제목을 구분해 설명에 무엇이 섞였는지 정확히 본다.
+  function issue() {
+    const news = [
+      "llm",
+      "agent",
+      "industry",
+      "llm",
+      "agent",
+      "industry",
+      "physical",
+      "research",
+    ].map((category, i) =>
+      card({ category, importance: 5 - Math.floor(i / 2), trendingScore: 9 - i }),
+    );
+    const nonNews = [
+      card({ format: "oss", importance: 5, trendingScore: 80 }),
+      card({ format: "model", importance: 5 }),
+      card({ format: "paper", importance: 5 }),
+      card({ format: "paper", importance: 4 }),
+    ];
+    return [...news, ...nonNews].map((a) => ({ ...a, titleKo: `제목-${a.id}` }));
+  }
+  const parts = (description: string) => description.split(" — ")[1]?.split(" · ") ?? [];
+
+  it("제목 = 리드, 설명 = 서브 3건(표시 순) — 브리핑·레이더·화제 제목은 새지 않는다", () => {
+    const e = buildEdition(issue());
+    expect(e.briefs).toHaveLength(3);
+    expect(e.radar).toHaveLength(4);
+    const share = editionShare(e, info);
+    expect(share.title).toBe(e.lead!.titleKo);
+    expect(parts(share.description)).toEqual(e.seconds.map((a) => a.titleKo));
+    for (const a of [...e.briefs, ...e.radar]) expect(share.description).not.toContain(a.titleKo);
+    // 화제 1위(비뉴스, 리드보다 화제 지수가 높음)도 공유 문구에 오르지 않는다
+    expect(e.trending[0].format).toBe("oss");
+    expect(share.title).not.toBe(e.trending[0].titleKo);
+    expect(share.version).toBe(`42-${e.lead!.id}`);
+  });
+
+  it("editionMetadata 는 Edition 전체를 받아도 리드·서브로만 og·twitter 를 채운다", () => {
+    const e = buildEdition(issue());
+    const m = editionMetadata(e, info, "/edition/2026-10-06/");
+    const { title, description } = editionShare({ lead: e.lead, seconds: e.seconds }, info);
+    expect(m.openGraph).toMatchObject({ title, description });
+    expect(m.twitter).toMatchObject({ title, description });
+  });
+
+  it("입력 순서를 섞어도 제목·설명·버전이 같다", () => {
+    const xs = issue();
+    const one = editionShare(buildEdition(xs), info);
+    const two = editionShare(buildEdition([...xs].reverse()), info);
+    const three = editionShare(buildEdition([...xs.slice(5), ...xs.slice(0, 5)]), info);
+    expect(two).toEqual(one);
+    expect(three).toEqual(one);
+  });
+
+  it("비뉴스만 있는 호: 리드 = 비뉴스 1위, 서브가 없어 설명은 발행 정보만, 썸네일은 그날 1면", () => {
+    const xs = [
+      card({ format: "paper", importance: 4, titleKo: "논문" }),
+      card({ format: "oss", importance: 5, titleKo: "저장소" }),
+    ];
+    const e = buildEdition(xs);
+    expect(editionShare(e, info)).toMatchObject({
+      title: "저장소",
+      description: `${SITE_NAME} 10월 6일(화) 제42호`,
+    });
+    expect(editionMetadata(e, info, "/").openGraph).toMatchObject({
+      title: "저장소",
+      images: [{ url: `/og/edition/2026-10-06.png?v=42-${xs[1].id}` }],
+    });
+  });
+
+  it("빈 호: 사이트 기본 문구 + 기본 썸네일", () => {
+    const e = buildEdition([]);
+    expect(editionShare(e, info)).toMatchObject({
+      title: SITE_NAME,
+      description: SITE_DESCRIPTION,
+    });
+    expect(editionMetadata(e, info, "/").openGraph).toMatchObject({
+      images: [{ url: OG_DEFAULT_IMAGE }],
+    });
   });
 });
