@@ -65,7 +65,10 @@ export default async function EditionPage({ params }: Props) {
       {next && (
         <p className="text-caption text-muted-foreground mx-auto max-w-[1240px] px-4 pt-4 md:px-8">
           지난 호 지면입니다.{" "}
-          <Link href="/" className="text-brand font-semibold underline-offset-4 hover:underline">
+          <Link
+            href="/"
+            className="text-brand py-3.5 font-semibold underline-offset-4 hover:underline md:py-0"
+          >
             오늘의 지면 보기 →
           </Link>
         </p>

@@ -83,7 +83,8 @@ export function ImportanceMeter({ value }: { value: number }) {
           className={cn(
             "size-1.5 rounded-full border",
             i > value
-              ? "border-muted-foreground/70"
+              ? // 빈 칸 테두리 /80 — 종이(#f4f4f1) 위 3.4:1(비텍스트 AA 3:1). 시안의 70%는 2.8:1이라 올렸다.
+                "border-muted-foreground/80"
               : high
                 ? "border-brand bg-brand"
                 : "border-foreground bg-foreground",
@@ -114,6 +115,7 @@ export function Byline({
   compact = false,
   showFormat = false,
   showDate = true,
+  truncateSource = false,
   timeBase,
   prefix,
   className,
@@ -131,6 +133,11 @@ export function Byline({
   /** 날짜를 별도 칼럼에 이미 보여 주는 목록(StoryEntry)에서는 끈다. */
   showDate?: boolean;
   /**
+   * 한 줄 고정(flex-nowrap) 메타 줄에서 넘치면 매체 칸만 말줄임으로 줄인다 — "외 N곳"이 먼저 빠지고
+   * 앞의 키커(prefix)와 뒤의 시각·중요도는 온전히 남는다(모바일 브리핑, 시안 결정 ⑤).
+   */
+  truncateSource?: boolean;
+  /**
    * 지정하면 날짜를 상대 시각(RelativeTime)으로 그린다 — 값은 정적 렌더 기준 시각(호 발행 ISO).
    * 홈 1면·섹션 전용. 상세·지난 호·검색은 생략해 절대 날짜를 유지한다(지난 호에서 "3시간 전"→"10.24"로 깜빡이지 않도록).
    */
@@ -142,6 +149,7 @@ export function Byline({
       className={cn(
         "text-foreground-soft font-semibold",
         compact && "max-w-full truncate",
+        truncateSource && "min-w-0 truncate",
         showFormat && "inline-flex items-center gap-[7px]",
       )}
     >

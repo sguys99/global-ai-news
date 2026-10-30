@@ -216,7 +216,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
             </h2>
             <Link
               href={`/?category=${encodeURIComponent(article.category)}`}
-              className="text-meta text-brand ml-auto font-semibold hover:underline"
+              className="text-meta text-brand -my-3 ml-auto inline-flex min-h-11 items-center font-semibold hover:underline md:my-0 md:min-h-0"
             >
               전체 보기 →
             </Link>

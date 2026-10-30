@@ -114,6 +114,7 @@ function BriefList({
 
 /**
  * 오픈소스·논문 레이더. lg 4열 / md 2열 / 모바일은 가로 스크롤 스냅(카드 폭 64% — 다음 카드 절반이 보여 밀어 볼 수 있다는 신호).
+ * 카드는 [본문 | 메타 레일] 2행 subgrid 라 한 줄의 카드들이 레일 헤어라인을 같은 높이에 둔다(시안 결정 ⑧).
  * 모바일 스크롤러는 -mx-4 로 화면 끝까지 닿고 px-4 로 거터를 되돌린다 — 넘침은 스크롤러 안에만 생겨
  * 페이지 가로 스크롤은 생기지 않는다.
  */
@@ -133,16 +134,20 @@ function RadarBand({ articles, className }: { articles: ArticleCard[]; className
         className={cn(
           // relative: 카드 안 sr-only(position:absolute) 문구의 기준 상자를 스크롤러로 묶는다. 없으면 초기 포함 블록 기준으로
           // 스크롤러 클립을 벗어나 화면 오른쪽에 놓여 페이지 폭을 늘린다(360px 에서 845px).
-          "relative -mx-4 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4",
+          // 모바일: 가로로 흐르는 2행 그리드(카드 폭 64%) — 카드마다 [본문 | 메타 레일] 2행을 subgrid 로 이어
+          // 레일 헤어라인을 같은 높이에 맞춘다(수치 줄이 접힌 카드가 있어도). md 이상은 2열/4열 그리드.
+          "relative -mx-4 grid snap-x snap-mandatory scroll-px-4 auto-cols-[64%] grid-flow-col grid-rows-[auto_auto] gap-y-2.5 overflow-x-auto overscroll-x-contain px-4",
           "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          "md:mx-0 md:grid md:snap-none md:grid-cols-2 md:gap-y-7 md:overflow-visible md:px-0 lg:grid-cols-4",
+          "md:mx-0 md:snap-none md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:grid-rows-none md:gap-y-7 md:overflow-visible md:px-0 lg:grid-cols-4",
         )}
       >
         {articles.map((a) => (
           <li
             key={a.id}
             className={cn(
-              "border-border w-[64%] min-w-0 shrink-0 snap-start pr-4 md:w-auto md:pr-5",
+              "border-border min-w-0 snap-start pr-4 md:pr-5",
+              // 카드(StoryRadar)의 본문·레일 2행을 띠의 행 트랙에 잇는 subgrid — 레일 헤어라인 정렬용.
+              "row-span-2 grid grid-rows-subgrid gap-y-2.5",
               "max-md:[&:nth-child(n+2)]:border-l max-md:[&:nth-child(n+2)]:pl-4",
               "md:[&:nth-child(2n)]:border-l md:[&:nth-child(2n)]:pl-5",
               "lg:last:pr-0 lg:[&:nth-child(n+2)]:border-l lg:[&:nth-child(n+2)]:pl-5",
@@ -297,7 +302,7 @@ function SectionBand({ section, timeBase }: { section: EditionSection; timeBase?
         </span>
         <Link
           href={`/?category=${encodeURIComponent(section.category)}`}
-          className="text-meta text-brand focus-visible:ring-ring ml-auto font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-2"
+          className="text-meta text-brand focus-visible:ring-ring -my-3 ml-auto inline-flex min-h-11 items-center font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-2 md:my-0 md:min-h-0"
         >
           이 분야 전체 기사 →
         </Link>

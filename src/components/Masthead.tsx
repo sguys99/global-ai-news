@@ -49,7 +49,7 @@ export function Masthead({
           <Link
             href={editionPath(kstDateKey(publishedAt))}
             title="이 호의 고정 링크"
-            className="text-foreground focus-visible:ring-ring font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2"
+            className="text-foreground focus-visible:ring-ring -my-3 inline-flex min-h-11 items-center font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2 md:my-0 md:min-h-0"
           >
             <time dateTime={publishedAt}>{formatLongDate(publishedAt)}</time>
           </Link>

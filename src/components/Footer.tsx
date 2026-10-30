@@ -6,6 +6,9 @@ import { SITE_TAGLINE } from "@/lib/site";
  * 태그라인(SITE_TAGLINE)은 마스트헤드 제호 옆에서 옮겨 왔다(그 자리는 이번 호 통계 '귀').
  * 테마에 따라 색이 자동 전환된다.
  */
+/** 44px 터치 타깃 — 음수 마진으로 시각 높이는 유지(모바일만). */
+const footLink = "hover:text-brand -my-3 inline-flex min-h-11 items-center md:my-0 md:min-h-0";
+
 export function Footer() {
   return (
     <footer className="border-rule mt-auto border-t-4">
@@ -24,10 +27,10 @@ export function Footer() {
         </div>
 
         <nav className="text-caption flex gap-6 font-semibold">
-          <Link href="/" className="hover:text-brand">
+          <Link href="/" className={footLink}>
             오늘의 지면
           </Link>
-          <Link href="/search" className="hover:text-brand">
+          <Link href="/search" className={footLink}>
             검색
           </Link>
           {/* 운영 콘솔(/admin)은 로컬 전용 도구 — 정적 배포 산출엔 없으므로 공개 푸터에 노출하지 않는다. */}

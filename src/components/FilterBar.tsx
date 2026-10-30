@@ -100,7 +100,8 @@ export function FilterBar({
               href={href({ sort: s.value })}
               aria-current={active ? "true" : undefined}
               className={cn(
-                "text-caption min-h-11 border-b-2 font-semibold transition-colors md:min-h-0 md:py-1.5",
+                // 15px — 시안(front-v3 `.tabs`)의 정렬 탭 크기. 칩(13px `text-meta`)보다 한 단계 크게 둬 위계를 만든다.
+                "min-h-11 border-b-2 text-[0.9375rem] leading-[1.55] font-semibold transition-colors md:min-h-0 md:py-1.5",
                 active
                   ? "border-brand text-foreground"
                   : "text-muted-foreground hover:text-foreground border-transparent",

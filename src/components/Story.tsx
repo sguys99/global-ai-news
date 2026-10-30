@@ -27,7 +27,10 @@ export function StoryLead({ article, timeBase }: { article: ArticleCard; timeBas
       <CategoryKicker category={article.category} />
       <h2 className="headline text-display-xl font-serif font-bold">{titleOf(article)}</h2>
       {article.summaryKo && (
-        <p className="text-dek text-foreground-soft max-w-[40em]">{article.summaryKo}</p>
+        // 모바일 17px → md 이상 19px(text-dek) — 시안 front-v3 `.lead p`. 좁은 화면에서 리드문이 첫 화면을 다 차지하지 않게.
+        <p className="text-foreground-soft md:text-dek max-w-[40em] text-[1.0625rem] leading-[1.7]">
+          {article.summaryKo}
+        </p>
       )}
       <Byline article={article} showTrend timeBase={timeBase} />
     </Link>
@@ -93,7 +96,8 @@ export function StorySectionItem({
 /**
  * 오늘의 브리핑 한 행 (시안 결정 ④·⑤).
  * - md 이상: [키커 7.5rem | 한 줄 세리프 제목(말줄임) | 매체 · 시각 · 중요도] 3칸, 행 약 50px.
- * - 모바일: 제목(15px, 2줄) → 메타 한 줄. 키커는 바이라인 맨 앞으로 들어가고, 넘치면 키커가 아니라 줄 끝이 잘린다.
+ * - 모바일: 제목(15px, 2줄) → 메타 한 줄. 키커는 바이라인 맨 앞으로 들어가고, 넘치면 키커가 아니라 매체 칸("외 N곳"부터)이
+ *   말줄임으로 줄어든다 — 키커·시각·중요도 도트는 온전히 남는다.
  *   행 약 83px(44px 터치 타깃 이상).
  */
 export function StoryBrief({ article, timeBase }: { article: ArticleCard; timeBase?: string }) {
@@ -113,6 +117,7 @@ export function StoryBrief({ article, timeBase }: { article: ArticleCard; timeBa
       <Byline
         article={article}
         timeBase={timeBase}
+        truncateSource
         prefix={
           article.category ? (
             <span className="contents md:hidden">
@@ -129,22 +134,32 @@ export function StoryBrief({ article, timeBase }: { article: ArticleCard; timeBa
 
 /**
  * 레이더 카드(오픈소스·모델·논문, 시안 결정 ⑧). 머리 = 형식 배지 + 분야 키커, 세리프 제목 3줄, 요약 2줄,
- * 바닥에 헤어라인을 깐 메타 레일 — 띠의 네 카드가 같은 높이에서 메타를 맞춰 한 줄짜리 데이터 표처럼 읽힌다.
+ * 헤어라인을 깐 메타 레일 — 띠의 subgrid 2행(본문 | 레일)에 얹혀 네 카드가 같은 높이에서 메타를 맞춘다(데이터 표처럼).
  * 날짜는 생략한다: 논문·저장소의 게시일은 수집일보다 며칠씩 앞서 1면에서 낡아 보인다(계획서 Phase 1 참고).
  */
 export function StoryRadar({ article }: { article: ArticleCard }) {
   return (
-    <Link href={hrefOf(article)} className={cn("story-link flex h-full flex-col gap-2.5", focus)}>
-      <span className="flex min-w-0 items-center gap-2">
-        <FormatBadge format={article.format} />
-        <CategoryKicker category={article.category} className="min-w-0 truncate" />
-      </span>
-      <h3 className="headline text-title line-clamp-3 font-serif leading-[1.45] font-bold tracking-[-0.03em] md:text-[1.0625rem]">
-        {titleOf(article)}
-      </h3>
-      {article.summaryKo && (
-        <p className="text-caption text-muted-foreground line-clamp-2">{article.summaryKo}</p>
+    <Link
+      href={hrefOf(article)}
+      className={cn(
+        // 본문 | 메타 레일 2행을 띠(RadarBand)의 행 트랙에 subgrid 로 묶는다 — 한 카드의 수치 줄이 두 줄로
+        // 접혀도 같은 줄 카드들의 레일 헤어라인이 같은 높이에서 시작한다(mt-auto 바닥 정렬은 어긋났다).
+        "story-link row-span-2 grid grid-rows-subgrid gap-y-2.5",
+        focus,
       )}
+    >
+      <div className="flex min-w-0 flex-col gap-2.5">
+        <span className="flex min-w-0 items-center gap-2">
+          <FormatBadge format={article.format} />
+          <CategoryKicker category={article.category} className="min-w-0 truncate" />
+        </span>
+        <h3 className="headline text-title line-clamp-3 font-serif leading-[1.45] font-bold tracking-[-0.03em] md:text-[1.0625rem]">
+          {titleOf(article)}
+        </h3>
+        {article.summaryKo && (
+          <p className="text-caption text-muted-foreground line-clamp-2">{article.summaryKo}</p>
+        )}
+      </div>
       <RadarMetaRail article={article} />
     </Link>
   );
@@ -157,7 +172,7 @@ export function StoryRadar({ article }: { article: ArticleCard }) {
 function RadarMetaRail({ article }: { article: ArticleCard }) {
   const { id, stats } = radarMetaBlock(article, shortSourceName(article.source.name));
   return (
-    <span className="border-border text-meta text-muted-foreground relative mt-auto flex min-w-0 flex-col gap-[3px] border-t pt-2.5 tabular-nums">
+    <span className="border-border text-meta text-muted-foreground relative flex min-w-0 flex-col gap-[3px] border-t pt-2.5 tabular-nums">
       {id && (
         <span className="text-foreground-soft truncate font-semibold tracking-[-0.005em]">
           <RadarMetaText item={id} />
