@@ -9,7 +9,17 @@
 import { ImageResponse } from "next/og";
 import type { EditionInfo } from "@/lib/db";
 import type { Edition } from "@/lib/edition";
-import { CATEGORY_LABELS, categoryLabel, formatLongDate, shortSourceName } from "@/lib/labels";
+import {
+  CATEGORIES,
+  CATEGORY_LABELS,
+  FORMATS,
+  FORMAT_BADGES,
+  FORMAT_LABELS,
+  categoryLabel,
+  formatLongDate,
+  shortSourceName,
+  toFormat,
+} from "@/lib/labels";
 import { OG_IMAGE_SIZE, SITE_TAGLINE } from "@/lib/site";
 import type { ArticleCard } from "@/lib/types";
 
@@ -18,6 +28,8 @@ const INK = "#141519";
 const INK_SOFT = "#3a3c43";
 const MUTED = "#66686f";
 const BRAND = "#2140e8";
+/** 헤어라인(`border` 토큰) — 칼럼 세로선. */
+const HAIRLINE = "#d8d8d2";
 
 const SERIF = "Hahmlet";
 const SANS = "Noto Sans KR";
@@ -215,10 +227,50 @@ function articleHeadline(title: string): { size: number; maxLines: number } {
   return { size: 54, maxLines: 3 };
 }
 
+/**
+ * 형식 배지(REPO·MODEL·PAPER) — 사이트 FormatBadge 와 같은 잉크 아웃라인, 코발트 없음(강조색은
+ * 하나). 썸네일은 작게 축소돼 보이므로 선은 2px. 뉴스는 배지가 없어 null.
+ */
+function FormatBadge({ format, size }: { format: string; size: number }) {
+  const badge = FORMAT_BADGES[toFormat(format)];
+  if (!badge) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        padding: `${size * 0.12}px ${size * 0.45}px`,
+        border: `2px solid ${INK}`,
+        color: INK,
+        fontSize: size,
+        fontWeight: 700,
+        lineHeight: 1.2,
+        letterSpacing: size * 0.08,
+      }}
+    >
+      {badge}
+    </div>
+  );
+}
+
+/**
+ * 호 형식 구성 "뉴스 22 · 오픈소스 3 · 논문 3" — FORMATS 순, 0건 형식은 뺀다.
+ * 전부 뉴스면 "오늘 N건"과 같은 말이라 빈 문자열.
+ */
+export function formatMix(articles: Pick<ArticleCard, "format">[]): string {
+  const counts = new Map<string, number>();
+  for (const a of articles)
+    counts.set(toFormat(a.format), (counts.get(toFormat(a.format)) ?? 0) + 1);
+  if (counts.size < 2) return "";
+  return FORMATS.filter((f) => counts.has(f))
+    .map((f) => `${FORMAT_LABELS[f]} ${counts.get(f)}`)
+    .join(" · ");
+}
+
 /** 기본 썸네일(상세·검색 등): 제호 + 소개 + 분야 목록. */
 export function defaultImage(): Promise<ImageResponse> {
   const kicker = "매일 06:00 KST 발행";
-  const categories = Object.values(CATEGORY_LABELS);
+  // 분야 표시명엔 가운뎃점이 들어 있어("오픈소스·도구") 구분자는 점 대신 헤어라인 세로선.
+  const categories = CATEGORIES.map((key) => CATEGORY_LABELS[key]);
   return render(
     <Frame>
       <div style={{ flexGrow: 1 }} />
@@ -231,18 +283,33 @@ export function defaultImage(): Promise<ImageResponse> {
         {SITE_TAGLINE}
       </div>
       <div style={{ flexGrow: 1 }} />
-      <div style={{ display: "flex", gap: 24, fontSize: 22, fontWeight: 700, color: MUTED }}>
-        {categories.map((label) => (
-          <span key={label}>{label}</span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 20,
+          fontSize: 22,
+          fontWeight: 700,
+          color: MUTED,
+        }}
+      >
+        {categories.map((label, i) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            {i > 0 && <div style={{ width: 2, height: 18, background: HAIRLINE }} />}
+            <span>{label}</span>
+          </div>
         ))}
       </div>
     </Frame>,
   );
 }
 
-/** 홈 썸네일 = 오늘의 1면: 마스트헤드 + 리드 헤드라인 + 서브 헤드라인 3건. */
+/**
+ * 홈 썸네일 = 오늘의 1면: 마스트헤드 + 리드 헤드라인 + 서브 헤드라인 3건.
+ * 키커 줄 오른쪽에 "오늘 N건"(마스트헤드 "이번 호 N건"과 같은 호 기사 수)과 형식 구성을 둔다.
+ */
 export function editionImage(
-  edition: Pick<Edition, "lead" | "seconds">,
+  edition: Pick<Edition, "lead" | "seconds" | "issue">,
   info: EditionInfo,
 ): Promise<ImageResponse> {
   const { lead } = edition;
@@ -258,6 +325,7 @@ export function editionImage(
   const kicker = ["오늘의 1면", categoryLabel(lead.category)].filter(Boolean).join(" · ");
   const title = headline(lead);
   const size = leadFontSize(title);
+  const mix = formatMix(edition.issue);
 
   return render(
     <Frame>
@@ -267,8 +335,24 @@ export function editionImage(
       </div>
       <DoubleRule marginTop={18} />
 
-      <div style={{ marginTop: 34, marginBottom: 12, fontSize: 24, fontWeight: 700, color: BRAND }}>
-        {kicker}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          marginTop: 34,
+          marginBottom: 12,
+          fontSize: 24,
+          fontWeight: 700,
+        }}
+      >
+        <span style={{ color: BRAND }}>{kicker}</span>
+        {edition.issue.length > 0 && (
+          <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+            <span>오늘 {edition.issue.length}건</span>
+            {mix && <span style={{ fontSize: 21, fontWeight: 500, color: MUTED }}>{mix}</span>}
+          </div>
+        )}
       </div>
       <Headline
         text={title}
@@ -336,7 +420,7 @@ function ImportanceDots({ value }: { value: number }) {
   );
 }
 
-/** 기사 썸네일: 제호·게시일 + 분야 키커 + 헤드라인 + 매체·중요도 바이라인. */
+/** 기사 썸네일: 제호·게시일 + 분야 키커(+ 비뉴스 형식 배지) + 헤드라인 + 매체·중요도 바이라인. */
 export function articleImage(article: ArticleCard): Promise<ImageResponse> {
   const title = headline(article);
   const { size, maxLines } = articleHeadline(title);
@@ -361,8 +445,11 @@ export function articleImage(article: ArticleCard): Promise<ImageResponse> {
           padding: "24px 0",
         }}
       >
-        <div style={{ marginBottom: 12, fontSize: 24, fontWeight: 700, color: BRAND }}>
-          {categoryLabel(article.category) || "AI 뉴스"}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 12 }}>
+          <span style={{ fontSize: 24, fontWeight: 700, color: BRAND }}>
+            {categoryLabel(article.category) || "AI 뉴스"}
+          </span>
+          <FormatBadge format={article.format} size={17} />
         </div>
         <Headline
           text={title}

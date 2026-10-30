@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fitWords } from "@/lib/ogImage";
+import { fitWords, formatMix } from "@/lib/ogImage";
+import type { Format } from "@/lib/labels";
 
 describe("fitWords — 공유 썸네일 헤드라인 어절 맞춤", () => {
   it("줄 수 안에 들어가면 어절을 그대로 둔다", () => {
@@ -29,5 +30,24 @@ describe("fitWords — 공유 썸네일 헤드라인 어절 맞춤", () => {
 
   it("공백 연속·앞뒤 공백은 무시한다", () => {
     expect(fitWords("  A  B ", 10, 1)).toEqual(["A", "B"]);
+  });
+});
+
+describe("formatMix — 호 썸네일 형식 구성", () => {
+  const issue = (...formats: Format[]) => formats.map((format) => ({ format }));
+
+  it("FORMATS 순으로 형식별 건수를 잇고 0건 형식은 뺀다", () => {
+    expect(formatMix(issue("paper", "news", "oss", "news", "paper", "news"))).toBe(
+      "뉴스 3 · 오픈소스 1 · 논문 2",
+    );
+  });
+
+  it("전부 뉴스면 '오늘 N건'과 같은 말이라 빈 문자열", () => {
+    expect(formatMix(issue("news", "news"))).toBe("");
+    expect(formatMix([])).toBe("");
+  });
+
+  it("미정의 형식 값은 뉴스로 센다", () => {
+    expect(formatMix([{ format: "blog" as Format }, { format: "model" }])).toBe("뉴스 1 · 모델 1");
   });
 });
