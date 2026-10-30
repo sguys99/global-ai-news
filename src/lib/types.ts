@@ -84,6 +84,11 @@ export interface ArticleCard {
   publishedAt: string; // ISO8601
   /** 같은 사건을 다룬 다른 매체 기사(선별 단계에서 묶음). DB 조회 결과에는 항상 채워진다. */
   related?: RelatedCoverage[];
+  /**
+   * 수집 시점 메트릭(articles.engagement_json). 메트릭이 없거나 손상된 기사는 키가 없다.
+   * 레이더 메타 줄(★ 스타·♥ likes·▲ upvotes 등)은 src/lib/radarMeta.ts 가 여기서 만든다.
+   */
+  engagement?: Engagement;
 }
 
 /** 대표 기사에 묶인 다른 매체 보도. */
@@ -97,6 +102,8 @@ export interface RelatedCoverage {
  * 클라이언트 검색 인덱스(public/search-index.json) 한 항목.
  * 카드 렌더(titleOriginal 폴백·trendingScore 배지)와 정렬(importance)에 필요한 필드를
  * 모두 포함하되, 용량/비용의 주범인 원문 본문(contentRaw)만 제외한다.
+ * engagement 는 남긴다 — 메트릭이 있는 기사가 일부(2026-10 기준 997건 중 174건)이고 값이 작아
+ * 인덱스가 1% 안쪽(약 5KB / 800KB)만 커진다. 검색 결과 카드도 같은 메타를 쓸 수 있게 구조를 맞춘다.
  * ArticleCard 와 구조 호환 → ArticleCard 컴포넌트·filterAndSortFeed 를 캐스팅 없이 재사용.
  */
 export type SearchIndexEntry = Omit<ArticleCard, "contentRaw">;
@@ -105,7 +112,8 @@ export type SearchIndexEntry = Omit<ArticleCard, "contentRaw">;
  * 최근 수집분 피드(public/latest.json) 한 항목 — 외부 소비용(자랑터 AI 큐레이터 「한입뉴스」).
  * 검색 인덱스 항목에 분야 표시명과 수집 시각을 더한다. 게시 시각(publishedAt)은 GitHub Trending 처럼 오래된 값일 수 있다.
  * `category` 는 분야 키(예: "physical"), `categoryLabel` 은 그 표시명(예: "Physical AI") — 소비자가 표시명 맵을 따로 두지 않게 한다.
- * `format`(news|oss|model|paper)은 ArticleCard 에서 그대로 실린다(필드 추가뿐이라 version 1 유지).
+ * `format`(news|oss|model|paper)·`engagement`(수집 시점 메트릭, 없으면 키 생략)는 ArticleCard 에서 그대로 실린다
+ * (선택 필드 추가뿐이라 version 1 유지).
  */
 export type LatestFeedEntry = SearchIndexEntry & { categoryLabel: string; collectedAt: string };
 

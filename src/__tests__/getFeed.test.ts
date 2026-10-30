@@ -141,6 +141,19 @@ describe("getFeed", () => {
     expect(bySource).toEqual({ hackernews: "paper", techcrunch_ai: "news" });
   });
 
+  it("engagement_json 을 카드 engagement 로 싣는다 — 없거나 손상·비객체 값은 키를 두지 않는다", () => {
+    const set = db.prepare("UPDATE articles SET engagement_json = ? WHERE title_original = ?");
+    set.run('{"stars":48836,"stars_today":1203,"language":"Python"}', "A");
+    set.run("{not json", "B");
+    set.run("[1,2]", "C");
+    const byTitle = Object.fromEntries(getFeed({}, db).map((a) => [a.titleOriginal, a]));
+    expect(byTitle.A.engagement).toEqual({ stars: 48836, stars_today: 1203, language: "Python" });
+    expect(byTitle.B).not.toHaveProperty("engagement");
+    expect(byTitle.C).not.toHaveProperty("engagement");
+    db.prepare("UPDATE articles SET engagement_json = NULL").run();
+    expect(getFeed({}, db).some((a) => "engagement" in a)).toBe(false);
+  });
+
   it("format 컬럼이 없는 예전 DB(읽기 전용이라 추가 불가)도 조회가 깨지지 않고 news 로 읽는다", () => {
     db.exec("ALTER TABLE sources DROP COLUMN format");
     const feed = getFeed({}, db);

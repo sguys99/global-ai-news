@@ -7,7 +7,13 @@ import {
   toFormat,
 } from "@/lib/labels";
 import { DB_PATH } from "@/lib/paths";
-import type { ArticleCard, LatestFeedEntry, RelatedCoverage, RunRow } from "@/lib/types";
+import type {
+  ArticleCard,
+  Engagement,
+  LatestFeedEntry,
+  RelatedCoverage,
+  RunRow,
+} from "@/lib/types";
 
 /**
  * 읽기 전용 SQLite 커넥션 싱글톤.
@@ -38,6 +44,7 @@ interface ArticleRow {
   category: string | null;
   importance: number | null;
   related_json: string | null;
+  engagement_json: string | null;
   tags: string | null; // GROUP_CONCAT 결과 (',' 구분), 태그 없으면 null
   collected_at: string; // 수집 시각(ISO8601 UTC) — 렌더 DTO 에는 싣지 않는다(latest.json 전용)
 }
@@ -54,12 +61,28 @@ function parseRelated(json: string | null): RelatedCoverage[] {
 }
 
 /**
+ * engagement_json → 메트릭 객체. 비었거나 손상됐거나 객체가 아니면 undefined.
+ * 필드 값의 형은 여기서 거르지 않는다 — 표시 쪽(src/lib/radarMeta.ts)이 숫자·문자열을 확인한다.
+ */
+export function parseEngagement(json: string | null): Engagement | undefined {
+  if (!json) return undefined;
+  try {
+    const parsed = JSON.parse(json) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Engagement)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * DB 행 → 렌더 DTO. LLM 미가공(null) 필드는 빈 값으로 채운다.
  * 분야는 새 키로 정규화한다 — 마이그레이션 전 구 값 행도 섹션·필터에 같은 분야로 잡힌다.
  * 형식은 소스 속성(sources.format)이라 지난 기사에도 그대로 소급된다.
  */
 function toArticleCard(row: ArticleRow): ArticleCard {
-  return {
+  const card: ArticleCard = {
     id: row.id,
     source: { id: row.source_id, name: row.source_name },
     url: row.url,
@@ -75,6 +98,10 @@ function toArticleCard(row: ArticleRow): ArticleCard {
     publishedAt: row.published_at,
     related: parseRelated(row.related_json),
   };
+  // 메트릭이 없는 기사(RSS 뉴스 대부분)는 키 자체를 두지 않는다 — 지면 HTML·JSON 에 빈 키가 실리지 않게.
+  const engagement = parseEngagement(row.engagement_json);
+  if (engagement) card.engagement = engagement;
+  return card;
 }
 
 /**
@@ -93,6 +120,7 @@ function articleSelect(conn: DatabaseType): string {
   SELECT a.id, a.source_id, s.name AS source_name, ${format} AS source_format, a.url,
          a.title_original, a.content_raw, a.published_at, a.trending_score,
          a.title_ko, a.summary_ko, a.category, a.importance, a.related_json,
+         a.engagement_json,
          strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at) AS collected_at,
          (SELECT GROUP_CONCAT(t.name)
             FROM article_tags at
