@@ -329,20 +329,22 @@ describe("computeBaseline — 실제 스키마 in-memory DB", () => {
     expect(r.totals.candidatesByFormat).toEqual({ news: 3, oss: 5, model: 0, paper: 2 });
   });
 
-  it("1면(리드+서브)·지금 화제를 /edition/[date] 과 같게 재구성해 그날 호 비율을 센다", () => {
+  it("1면 본문(리드·서브·브리핑·레이더)·지금 화제를 누적 입력으로 재구성해 그날 호 비율을 센다", () => {
     const r = computeBaseline(db, 14, SOURCES);
     const [d24, d25] = r.issues;
-    // 10/24: 기사 3건뿐 → 1면 3건 모두 그날 호
+    // 10/24: 기사 3건뿐 → 리드·서브(뉴스 2) + 레이더(oss 1) 모두 그날 호
     expect(d24.front).toEqual({ today: 3, size: 3 });
     expect(d24.trending).toEqual({ today: 1, size: 1 });
-    // 10/25: 중요도 5인 어제 기사 2건이 리드(#2, 화제 지수로 동점 해소)·서브를 차지 → 2/4
-    expect(d25.front).toEqual({ today: 2, size: 4 });
+    // 10/25: 중요도 5인 어제 기사 2건이 리드(#2, 화제 지수로 동점 해소)·서브를 차지하고,
+    // 어제 저장소(#3)가 레이더에 남는다 → 본문 7건 중 4건
+    expect(d25.front).toEqual({ today: 4, size: 7 });
     expect(d25.staleFront.map((s) => [s.id, s.issueDate])).toEqual([
       [2, "2026-10-24"],
       [1, "2026-10-24"],
+      [3, "2026-10-24"],
     ]);
     expect(d25.trending).toEqual({ today: 1, size: 2 });
-    expect(r.totals.front).toEqual({ today: 5, size: 7 });
+    expect(r.totals.front).toEqual({ today: 7, size: 10 });
     expect(r.totals.trending).toEqual({ today: 2, size: 3 });
   });
 

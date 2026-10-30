@@ -7,12 +7,12 @@
  * 순수 집계 모듈 — 커넥션을 받아 조회만 하고 쓰지 않는다(개편 후 Phase 7에서 같은 측정을 반복).
  *
  * - 형식 비율: sources.format(JOIN). 컬럼이 없는 예전 DB 는 소스 id/kind 규칙(provisionalFormat)으로 판정
- * - 1면 오늘 호 비율: /edition/[date] 과 똑같이 getEditionRefs → getArticlesUntil(cutoff) → buildEdition
+ * - 1면 오늘 호 비율: getEditionRefs → getArticlesUntil(cutoff) → buildEdition 의 1면 본문(frontArticles)
  * - 이틀 연속 중복 후보: 인접 호 기사 쌍의 제목 토큰 Jaccard·공유 URL — 휴리스틱(확정 아님)
  */
 import type { Database as DatabaseType } from "better-sqlite3";
 import { getArticlesUntil, getEditionRefs, hasSourceFormat } from "../../src/lib/db";
-import { buildEdition } from "../../src/lib/edition";
+import { buildEdition, frontArticles } from "../../src/lib/edition";
 import {
   FORMATS,
   kstDateKey,
@@ -537,7 +537,9 @@ export function computeBaseline(
     }
     // /edition/[date] 과 같은 재구성(그날 마감 전 수집분 → buildEdition).
     const edition = buildEdition(getArticlesUntil(ref.cutoff, conn));
-    const front = [edition.lead, ...edition.seconds].filter((a) => a !== null);
+    // 1면 = 본문 전체(리드·서브·브리핑·레이더, Phase 5). 지금 화제는 별도 지표.
+    // 누적 입력으로 옛 1면을 재현하는 방식이라 Phase 1 이후엔 근사치 — Phase 7에서 호 단위 측정으로 다시 짠다.
+    const front = frontArticles(edition);
     const isToday = (id: number) => issueDateById.get(id) === ref.date;
     return {
       date: ref.date,

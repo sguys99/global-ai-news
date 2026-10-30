@@ -128,7 +128,7 @@ function baseline(): void {
           "Physical AI 키워드 기사 수",
           `${t.physicalAi}건 (${pct(t.physicalAi, t.published)}, 호당 ${(t.physicalAi / n).toFixed(1)}; 제목·태그만 ${t.physicalAiStrict}건) — 분류: ${mix(t.physicalAiByCategory)}`,
         ],
-        ["1면 오늘 호 비율 (리드+서브)", ratio(t.front)],
+        ["1면 오늘 호 비율 (본문: 리드·서브·브리핑·레이더)", ratio(t.front)],
         ["1면 본문 기사 수", `${(t.front.size / n).toFixed(1)}건/호`],
         ["지금 화제 오늘 호 비율", ratio(t.trending)],
         [
