@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CATEGORIES,
@@ -22,6 +24,12 @@ import {
   FORMAT_LABELS,
   FORMATS,
 } from "@/lib/labels";
+import { CONFIGS_DIR } from "@/lib/paths";
+import type { SourceConfig } from "@/lib/types";
+
+const SOURCES_JSON = JSON.parse(
+  readFileSync(path.join(CONFIGS_DIR, "sources.json"), "utf-8"),
+) as SourceConfig[];
 
 describe("labels — 날짜는 KST 고정", () => {
   // 2026-10-03 23:42 UTC = 2026-10-04 08:42 KST (일요일)
@@ -102,6 +110,20 @@ describe("labels — 카테고리·소스", () => {
     expect(shortSourceName("HuggingFace Daily Papers")).toBe("Hugging Face");
     expect(shortSourceName("HuggingFace 트렌딩 모델")).toBe("Hugging Face");
     expect(shortSourceName("Hugging Face Blog")).toBe("Hugging Face Blog");
+  });
+
+  it("arXiv 카테고리 피드는 한 매체 'arXiv' — 논문을 싣는 다른 매체(HF Papers·Takara)는 따로", () => {
+    expect(shortSourceName("arXiv cs.CL (NLP)")).toBe("arXiv");
+    expect(shortSourceName("arXiv cs.AI")).toBe("arXiv");
+    expect(shortSourceName("arXiv cs.LG (ML)")).toBe("arXiv");
+    expect(shortSourceName("arXiv cs.RO (Robotics)")).toBe("arXiv");
+    expect(shortSourceName("Takara TLDR")).toBe("Takara TLDR");
+  });
+
+  it("configs/sources.json 의 arxiv_* 소스는 모두 축약명이 'arXiv'다(피드 이름이 바뀌면 칩이 다시 갈라진다)", () => {
+    const arxiv = SOURCES_JSON.filter((s) => s.id.startsWith("arxiv_"));
+    expect(arxiv.length).toBeGreaterThanOrEqual(4);
+    for (const s of arxiv) expect(shortSourceName(s.name), s.id).toBe("arXiv");
   });
 
   it("형식 이름: 프롬프트용(FORMAT_LABELS)은 그대로, 독자 화면용은 oss 를 '저장소'로", () => {

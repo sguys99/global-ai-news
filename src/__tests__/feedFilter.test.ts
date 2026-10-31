@@ -154,6 +154,27 @@ describe("groupSources — 매체 칩은 축약명 단위로 하나", () => {
     ]);
   });
 
+  it("arXiv 카테고리 피드는 칩 하나('arXiv')로 묶고, HF Papers·Takara TLDR 은 따로 둔다", () => {
+    const groups = groupSources([
+      { id: "hf_daily_papers", name: "HuggingFace Daily Papers", count: 46 },
+      { id: "arxiv_cs_ro", name: "arXiv cs.RO (Robotics)", count: 3 },
+      { id: "takara_tldr", name: "Takara TLDR", count: 8 },
+      { id: "arxiv_cs_cl", name: "arXiv cs.CL (NLP)", count: 5 },
+      { id: "arxiv_cs_lg", name: "arXiv cs.LG (ML)", count: 1 },
+    ]);
+    expect(groups).toEqual([
+      { id: "hf_daily_papers", label: "Hugging Face", ids: ["hf_daily_papers"], count: 46 },
+      {
+        id: "arxiv_cs_cl",
+        label: "arXiv",
+        ids: ["arxiv_cs_ro", "arxiv_cs_cl", "arxiv_cs_lg"],
+        count: 9,
+      },
+      { id: "takara_tldr", label: "Takara TLDR", ids: ["takara_tldr"], count: 8 },
+    ]);
+    expect(findSourceGroup(groups, "arxiv_cs_ro")?.label).toBe("arXiv");
+  });
+
   it("findSourceGroup: 묶음의 어느 id 로도 같은 묶음을 찾고, 모르는 id·빈 값은 undefined", () => {
     const groups = groupSources(SOURCES);
     expect(findSourceGroup(groups, "hnrss_frontpage")?.label).toBe("Hacker News");
@@ -186,6 +207,22 @@ describe("filterAndSortFeed — 매체 묶음 필터", () => {
       "HN1",
       "HN2",
     ]);
+  });
+
+  it("arXiv 피드 어느 id 로 들어와도(?source=arxiv_cs_ro) arXiv 묶음 전체를 거른다", () => {
+    const arxivSources = [
+      { id: "arxiv_cs_cl", name: "arXiv cs.CL (NLP)", count: 5 },
+      { id: "arxiv_cs_ro", name: "arXiv cs.RO (Robotics)", count: 1 },
+      { id: "takara_tldr", name: "Takara TLDR", count: 8 },
+    ];
+    const papers = [
+      card({ id: 21, titleOriginal: "CL", trendingScore: 3, source: arxivSources[0] }),
+      card({ id: 22, titleOriginal: "RO", trendingScore: 2, source: arxivSources[1] }),
+      card({ id: 23, titleOriginal: "TLDR", trendingScore: 1, source: arxivSources[2] }),
+    ];
+    for (const id of ["arxiv_cs_cl", "arxiv_cs_ro"]) {
+      expect(titles(filterAndSortFeed(papers, { source: id }, arxivSources))).toEqual(["CL", "RO"]);
+    }
   });
 
   it("매체 목록이 없거나 목록에 없는 id 면 id 정확 일치(getFeed 와 같은 의미)", () => {

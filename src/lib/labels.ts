@@ -138,6 +138,11 @@ const SOURCE_SHORT_LABELS: Record<string, string> = {
   "GitHub (topic:robotics·embodied-ai)": "GitHub",
   "HuggingFace Daily Papers": "Hugging Face",
   "HuggingFace 트렌딩 모델": "Hugging Face",
+  // arXiv 카테고리 피드는 한 매체다(분야는 키커가 보여 준다). HF Papers·Takara TLDR 은 다른 매체라 따로 둔다.
+  "arXiv cs.CL (NLP)": "arXiv",
+  "arXiv cs.AI": "arXiv",
+  "arXiv cs.LG (ML)": "arXiv",
+  "arXiv cs.RO (Robotics)": "arXiv",
   "MIT Technology Review": "MIT Tech Review",
   "NVIDIA Technical Blog (Robotics)": "NVIDIA Dev",
   "IEEE Spectrum Robotics": "IEEE Spectrum",
