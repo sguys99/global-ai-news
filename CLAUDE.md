@@ -10,9 +10,9 @@
 - 콘텐츠·1면 개편: [docs/contents-upgrade-plan.md](docs/contents-upgrade-plan.md) (분야 6개·형식 축·호 단위 1면·소스 확장·선별 개편 결정 기록)
 - 디자인 토큰/원칙: [DESIGN.md](DESIGN.md) (v2.1)
 
-> **현재 구현 단계:** WORK-PLAN Phase 0~6, GitHub Pages 전환(클린 컷오버), 콘텐츠·1면 개편 Phase 1~6 완료. 개편 Phase 7(통합 검증·문서 갱신) 진행 중. 상세 체크리스트는 각 계획 문서가 단일 출처입니다.
+> **현재 구현 단계:** WORK-PLAN Phase 0~6, GitHub Pages 전환(클린 컷오버), 콘텐츠·1면 개편 Phase 1~6 완료, Phase 7 통합 검증 후 2026-10-31 배포(배포 후 3일 KPI 관찰은 11-03 예약 루틴이 기록). 상세 체크리스트는 각 계획 문서가 단일 출처입니다.
 
-> **배포 구조 (`deploy/github-pages`):** Vercel/`standalone`은 폐기됐습니다. `npm run build`(= `PHASE_PRODUCTION_BUILD`)가 곧 `output:'export'` 정적 export(`out/`, `basePath:'/global-ai-news'`)이고 `deploy.yml`이 GitHub Pages로 배포합니다. admin/api/middleware는 `*.local.ts(x)` 파일로 두고 `pageExtensions` 게이팅으로 **로컬 `next dev`에서만** 라우트가 됩니다(프로덕션 빌드에서 제외). 개편 작업 브랜치는 `feat/contents-upgrade`이며, 일일 수집 커밋(`data/app.db`)은 `deploy/github-pages`에 쌓입니다.
+> **배포 구조 (`deploy/github-pages`):** Vercel/`standalone`은 폐기됐습니다. `npm run build`(= `PHASE_PRODUCTION_BUILD`)가 곧 `output:'export'` 정적 export(`out/`, `basePath:'/global-ai-news'`)이고 `deploy.yml`이 GitHub Pages로 배포합니다. admin/api/middleware는 `*.local.ts(x)` 파일로 두고 `pageExtensions` 게이팅으로 **로컬 `next dev`에서만** 라우트가 됩니다(프로덕션 빌드에서 제외). 개편 브랜치 `feat/contents-upgrade`는 `deploy/github-pages`에 병합됐고, 일일 수집 커밋(`data/app.db`)은 `deploy/github-pages`에 쌓입니다.
 
 ## 기술 스택
 
