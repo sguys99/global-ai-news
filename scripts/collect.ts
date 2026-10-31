@@ -187,6 +187,7 @@ async function collectCandidates(
 
       const capped = kept.length < fresh.length ? `, 상한 ${source.maxItems}` : "";
       const filtered = dropped.length > 0 ? `, 키워드 제외 ${dropped.length}` : "";
+      // 이 줄과 아래 `실패` 줄의 형식은 src/lib/sourceHealth.ts·scripts/lib/baseline.ts 가 파싱한다 — 바꾸면 함께 고친다.
       stats.notes.push(
         `${source.id}: ${fetched.length}건(신규 ${fresh.length}${capped}${filtered})`,
       );

@@ -64,7 +64,7 @@
 │   │   ├── HeaderWordmark.tsx    # 헤더 워드마크(홈에선 제호를 지나면 등장)
 │   │   ├── SearchInput.tsx       # 라이브 검색 입력 (디바운스)
 │   │   ├── mobile/               # 모바일 앱 셸(MobileTopBar·BottomTabBar·FilterSheet)
-│   │   ├── admin/                # Admin 전용 컴포넌트 (KpiPanel·SourceManager 등)
+│   │   ├── admin/                # Admin 전용 컴포넌트 (KpiPanel·SourceHealthPanel·SourceManager 등)
 │   │   └── ui/                   # shadcn/ui 프리미티브
 │   ├── lib/
 │   │   ├── db.ts                 # SQLite readonly 조회 (getFeed/getArticle/getIssueArticles/getEditionRefs/getLatestEditionRef/searchArticles/getKpiSummary 등)
@@ -72,6 +72,7 @@
 │   │   ├── edition.ts            # 1면 편집(buildEdition: 리드·서브·브리핑·레이더·화제·섹션) + frontArticles·issueStats
 │   │   ├── labels.ts             # 분야 CATEGORIES·표시명·코드, 형식 FORMATS·배지, 소스 축약명, KST 날짜·상대 시각·발행 지연 문구 (단일 출처)
 │   │   ├── radarMeta.ts          # 레이더 카드 메타 레일(리포 ★·모델 파라미터·논문 arXiv ID 등)
+│   │   ├── sourceHealth.ts       # 소스 헬스 판정(notes 소스별 결과 → 연속 실패 2회=오류·연속 0건 3회=경고) — admin·kpi·CI 공용
 │   │   ├── feedFilter.ts         # 클라 필터·정렬 + URL 옵션 파싱(구 분야값 URL 호환)
 │   │   ├── searchIndex.ts        # FlexSearch 문서 빌드·질의
 │   │   ├── site.ts               # 사이트 정체성·공유 메타(OG/카카오톡 미리보기) 단일 출처
@@ -89,7 +90,7 @@
 │   ├── triage-compare.ts         # no-save 스냅숏으로 개편 전후 선별 비교 (npm run triage:compare)
 │   ├── export-search-index.ts    # public/search-index.json 생성 (prebuild)
 │   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터, prebuild)
-│   ├── kpi.ts                    # KPI CLI (npm run kpi) + baseline 하위 명령(콘텐츠 개편 지표)
+│   ├── kpi.ts                    # KPI CLI (npm run kpi) + baseline 하위 명령(콘텐츠 개편 지표) + health(소스 헬스, --ci 는 collect.yml 요약)
 │   └── lib/
 │       ├── schema.ts             # 선별·가공·재보도 출력 스키마(zod/v4), CATEGORIES 재수출(정의는 src/lib/labels.ts)
 │       ├── schema.sql            # SQLite DDL + FTS5 트리거
@@ -108,6 +109,7 @@
 │       ├── env.ts                # 환경변수 헬퍼(Actions 빈 vars → 코드 기본값)
 │       ├── evalRun.ts            # dry-run·no-save 인자·스냅숏(data/eval/, git 제외)·분포 집계
 │       ├── baseline.ts           # kpi baseline 집계(형식·분야·Physical AI·1면 지표)
+│       ├── healthReport.ts       # 소스 헬스 Markdown·::warning:: 출력(판정은 src/lib/sourceHealth.ts)
 │       └── collect/
 │           ├── rss.ts            # RSS/Atom 어댑터 + SourceConfig 타입
 │           ├── api.ts            # HN Algolia / GitHub Search·Trending / HF Daily Papers / HF 트렌딩 모델
@@ -125,7 +127,7 @@
 │       ├── repeat.system.md      # 재보도 검사 시스템 프롬프트
 │       └── enrich.fewshot.json   # 가공 few-shot 6건 (뉴스·Physical AI·리포·모델·논문)
 ├── .github/workflows/
-│   ├── collect.yml               # 외부 크론 dispatch + schedule 백업 → 수집 → app.db 커밋 → deploy dispatch
+│   ├── collect.yml               # 외부 크론 dispatch + schedule 백업 → 수집 → app.db 커밋 → deploy dispatch → 소스 헬스 요약
 │   └── deploy.yml                # 정적 빌드 → GitHub Pages 배포
 ├── data/
 │   ├── app.db                    # SQLite DB (db:init/collect로 생성)
@@ -189,7 +191,7 @@ npm run collect -- --dry-run --db <path>  # --db 는 dry-run·no-save 전용(예
 npm run triage:compare -- <스냅숏>  # 같은 풀로 개편 전후 선별 비교
 npm run db:reclassify               # 구 분야값 재분류(기본 dry-run, --apply 로 백업 후 적용, --only-legacy)
 npm run db:reindex                  # FTS5 재색인
-npm run kpi                         # 최근 N일 KPI (기본 30) / npm run kpi -- baseline: 콘텐츠 개편 지표
+npm run kpi                         # 최근 N일 KPI (기본 30) / npm run kpi -- baseline: 콘텐츠 개편 지표 / -- health: 소스 헬스
 ```
 
 > 커밋된 `data/app.db`를 바꾸면 배포 브랜치의 일일 수집 커밋과 충돌한다 — 소스·풀·프롬프트 검증은 `--dry-run`/`--no-save`로 한다.

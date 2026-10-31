@@ -2,8 +2,10 @@ import { CollectButton } from "@/components/admin/CollectButton";
 import { KpiPanel } from "@/components/admin/KpiPanel";
 import { LogoutButton } from "@/components/admin/LogoutButton";
 import { RunsTable } from "@/components/admin/RunsTable";
+import { SourceHealthPanel } from "@/components/admin/SourceHealthPanel";
 import { SourceManager } from "@/components/admin/SourceManager";
-import { getKpiSummary, getRecentRuns, type KpiSummary } from "@/lib/db";
+import { getKpiSummary, getRecentRuns, getSourceHealth, type KpiSummary } from "@/lib/db";
+import type { SourceHealthReport } from "@/lib/sourceHealth";
 import { readSources } from "@/lib/sources";
 import type { RunRow, SourceConfig } from "@/lib/types";
 
@@ -32,6 +34,15 @@ export default async function AdminPage() {
   } catch {
     // DB 미생성 등 — KPI 섹션 숨김
     kpi = null;
+  }
+
+  let health: SourceHealthReport | null = null;
+  try {
+    // 판정 대상은 지금 sources.json(비활성은 개수만) — 방금 끈 소스는 바로 빠진다.
+    health = getSourceHealth(sources);
+  } catch {
+    // DB 미생성 등 — 소스 헬스 섹션 숨김
+    health = null;
   }
 
   return (
@@ -63,6 +74,15 @@ export default async function AdminPage() {
             KPI 요약
           </h2>
           <KpiPanel kpi={kpi} />
+        </section>
+      )}
+
+      {health && (
+        <section className="flex flex-col gap-4">
+          <h2 className="border-rule border-t-2 pt-3 font-serif text-2xl font-extrabold tracking-[-0.04em]">
+            소스 헬스
+          </h2>
+          <SourceHealthPanel report={health} />
         </section>
       )}
 

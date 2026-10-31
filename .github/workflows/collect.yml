@@ -159,6 +159,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run deploy.yml --ref deploy/github-pages
 
+      - name: Source health summary
+        # 소스 헬스(연속 실패·연속 0건, src/lib/sourceHealth.ts)를 잡 요약($GITHUB_STEP_SUMMARY)과
+        # ::warning:: 주석으로 남긴다 — 같은 판정을 보여 주는 로컬 admin 은 next dev 전용이라 자주 열리지 않는다.
+        # 방금 수집한 data/app.db 를 읽기만 한다. 부가 정보라 잡을 실패시키지 않는다(스크립트도 exit 0).
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 3
+        run: npm run --silent kpi -- health --ci
+
       - name: Reflect pipeline health in run status
         # 잡 배지를 파이프라인 건강도(성공률 KPI)에 맞춘다. DB 커밋은 이미 끝났다.
         if: always()

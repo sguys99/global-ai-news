@@ -159,8 +159,9 @@ GitHub `schedule` 은 정시 실행을 보장하지 않습니다. 이 저장소�
 
 ## 운영 · 모니터링
 
-- 로컬 `/admin` — 소스 CRUD(GitHub 커밋), 즉시 재수집, **KPI 요약**, 실행 이력·비용 표.
-- GitHub Actions → `collect` 실행 이력으로 파이프라인 성공/실패를, `deploy` 실행 이력으로 배포 시각·로그를 확인합니다.
+- 로컬 `/admin` — 소스 CRUD(GitHub 커밋), 즉시 재수집, **KPI 요약**, **소스 헬스**, 실행 이력·비용 표.
+- GitHub Actions → `collect` 실행 이력으로 파이프라인 성공/실패를, `deploy` 실행 이력으로 배포 시각·로그를 확인합니다. `collect` 실행 요약(Summary)에는 소스 헬스 표가 붙고, 오류·경고 소스는 `::warning::` 주석으로 뜹니다.
+- **소스 헬스** — 최근 30회 notes 의 소스별 결과로 판정합니다(`src/lib/sourceHealth.ts`): 연속 실패 2회 이상 = 오류, 연속 신규 0건 3회 이상 = 경고(피드는 응답하는데 새 글만 없으면 7회), 최근 1회 실패 = 주의. 비활성 소스는 제외합니다.
 - 회차별 notes(`collection_runs.notes`)에 소스별 결과, 형식별 후보→풀→게재 수, 할당 미달·초과, 재보도 제외 건수가 남습니다.
 
 ## KPI 확인
@@ -168,6 +169,7 @@ GitHub `schedule` 은 정시 실행을 보장하지 않습니다. 이 저장소�
 ```bash
 npm run kpi              # 최근 30일 집계 (npm run kpi 14 → 최근 14일)
 npm run kpi -- baseline  # 콘텐츠 개편 지표(형식·분야 비율, Physical AI, 1면 구성, 회차 비용 등)
+npm run kpi -- health    # 소스 헬스(연속 실패·연속 0건) Markdown 표 — --ci 는 collect.yml 용(요약·주석, 항상 exit 0)
 ```
 
 `collection_runs`/`articles` 에서 자동으로 뽑아낼 수 있는 KPI를 목표 대비 PASS/FAIL 로 출력합니다. 같은 지표가 `/admin` "KPI 요약" 패널에도 표시됩니다. `baseline` 하위 명령은 [docs/contents-upgrade-plan.md](docs/contents-upgrade-plan.md) 의 기준선·목표 지표를 측정합니다(DB 읽기 전용).
