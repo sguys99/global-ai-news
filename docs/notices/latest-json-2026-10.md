@@ -160,6 +160,18 @@ export const formatOf = (item: LatestItem): Format => item.format ?? "news";
 
 `engagement`에 들어올 수 있는 키: `points`·`num_comments`(HN), `ups`(Reddit·HF 논문), `stars`·`stars_today`·`language`(GitHub), `likes`·`downloads`·`hf_trending`·`pipeline_tag`·`params`(HF 모델), `citations`·`influential`(arXiv). 모두 선택 키입니다.
 
+## 추가 공지 (2026-11): `brief` 필드
+
+필드가 하나 늘어납니다. 기존 필드는 그대로이고 **`version`은 1 그대로**입니다.
+
+| 필드    | 형태                                                                         | 의미                                                                                |
+| ------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `brief` | `{ date: "YYYY-MM-DD", issueNo: number, lines: { id, text }[] }` 또는 `null` | 최신 호 "세 줄 요약". 저희 지면 마스트헤드 아래 띠와 같은 줄·같은 순서(1면 위계 순) |
+
+- `lines`는 2~3줄입니다. `text`는 한국어 한 줄(60자 이하, 마침표 없음), `id`는 **항상 `items[].id` 중 하나**라 그 기사로 이을 수 있습니다.
+- 요약이 없는 호(이 기능 배포 전 호, 요약 줄이 검사를 통과하지 못한 회차)이거나 최신 호 기사가 창 밖이면 `null`입니다. 키는 늘 있습니다.
+- 한입뉴스에서 쓰신다면 `brief`가 `null`일 때 지금처럼 `items` 앞쪽을 쓰시면 됩니다.
+
 ## 일정·문의
 
 | 시점                      | 내용                                                                       |

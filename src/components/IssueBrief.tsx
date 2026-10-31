@@ -52,7 +52,7 @@ export function IssueBrief({
             <li key={line.id}>
               <Link
                 href={`/article/${line.id}`}
-                className="story-link focus-visible:ring-ring focus-visible:ring-offset-background grid min-h-11 grid-cols-[1.375rem_minmax(0,1fr)] items-baseline gap-x-2.5 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-4 md:min-h-0 md:grid-cols-[1.75rem_minmax(0,1fr)] md:py-0"
+                className="story-link focus-visible:ring-ring focus-visible:ring-offset-background grid min-h-11 grid-cols-[1.375rem_minmax(0,1fr)] items-baseline gap-x-2.5 py-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-4 md:min-h-0 md:grid-cols-[1.75rem_minmax(0,1fr)] md:py-0"
               >
                 <span
                   aria-hidden
@@ -60,7 +60,7 @@ export function IssueBrief({
                 >
                   {i + 1}
                 </span>
-                <span className="headline font-serif text-[1.0625rem] leading-[1.45] font-semibold tracking-[-0.03em] text-pretty md:text-[1.1875rem] md:leading-[1.5]">
+                <span className="headline text-title font-serif leading-[1.45] font-semibold tracking-[-0.03em] text-pretty md:text-[1.1875rem] md:leading-[1.5]">
                   {line.text}
                 </span>
               </Link>

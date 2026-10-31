@@ -36,7 +36,7 @@ export const BRIEF_LINE_MAX_CHARS = 60;
 const BRIEF_LINE_MIN_CHARS = 8;
 /**
  * 선별 출력에 더해지는 brief 몫 토큰 근사치(비용 가드·max_tokens 용). 5줄 × (한글 40자 ≈ 52 + JSON 키·번호 ≈ 15)로
- * 넉넉히 잡았다. 실측은 docs/contents-upgrade-plan.md Phase 8 기록.
+ * 넉넉히 잡았다. 2026-10-31 실측(count_tokens): 5줄 214·220토큰, 입력은 프롬프트 절·스키마·확인 줄로 약 +1.7k토큰.
  */
 export const BRIEF_OUTPUT_TOKENS = 350;
 
