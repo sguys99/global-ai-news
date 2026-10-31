@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FrontPage, SectionBands } from "@/components/Edition";
+import { FrontPage, SectionBands, WeeklyRadarBand } from "@/components/Edition";
 import { EditionPager } from "@/components/EditionPager";
 import { Masthead } from "@/components/Masthead";
 import { StoryIndex } from "@/components/StoryIndex";
-import { getIssueArticles, getEditionRefs, toListCards } from "@/lib/db";
+import { getIssueArticles, getEditionRefs, getWeekRadarCandidates, toListCards } from "@/lib/db";
 import { buildEdition, issueStats } from "@/lib/edition";
 import { formatLongDate } from "@/lib/labels";
 import { SITE_NAME, editionMetadata, editionPath } from "@/lib/site";
+import { buildWeeklyRadar } from "@/lib/weeklyRadar";
 
 /**
  * 호 고정 링크(`/edition/YYYY-MM-DD/`). 홈은 매일 새 호로 바뀌므로, 공유한 날의 지면을
@@ -52,6 +53,8 @@ export default async function EditionPage({ params }: Props) {
   const { ref, prev, next, edition } = data;
   // 색인(StoryIndex)은 클라이언트 컴포넌트라 props 가 페이지에 실린다 → 목록용 카드로.
   const index = toListCards(edition.issue);
+  // 주간 레이더: 일요일 호만(아니면 null) — 그날 홈과 같은 함수·같은 입력이라 같은 밴드가 실린다.
+  const weekly = buildWeeklyRadar(getWeekRadarCandidates(ref.date), ref.date);
 
   return (
     <>
@@ -60,6 +63,7 @@ export default async function EditionPage({ params }: Props) {
         publishedAt={ref.publishedAt}
         stats={issueStats(edition.issue)}
         categories={edition.sections.map((s) => s.category)}
+        weekly={Boolean(weekly)}
         indexLabel="이 호의 기사"
       />
       {next && (
@@ -75,6 +79,7 @@ export default async function EditionPage({ params }: Props) {
       )}
       <main className="mx-auto flex max-w-[1240px] flex-col gap-14 px-4 pb-16 md:gap-16 md:px-8">
         <FrontPage edition={edition} />
+        {weekly && <WeeklyRadarBand weekly={weekly} />}
         <SectionBands sections={edition.sections} />
         <section id="all" aria-label="이 호의 기사" className="scroll-mt-20">
           <div className="border-rule mb-5 flex items-baseline gap-3 border-t-2 pt-3">

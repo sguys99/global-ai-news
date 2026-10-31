@@ -53,7 +53,7 @@
 │   │   ├── IssueDelayNotice.tsx  # 발행 지연 줄 "발행 전/발행 지연"(브라우저 KST 시각으로 판정)
 │   │   ├── ShareButton.tsx       # 호 공유(모바일 공유 시트·데스크톱 링크 복사) — 호 고정 링크를 공유
 │   │   ├── Edition.tsx           # FrontPage(리드·서브·오늘의 브리핑)·RadarBand·TrendingList(지금 화제)·이 호의 지면·SectionBands
-│   │   ├── Story.tsx             # 스토리 변형 6종(Lead/Secondary/SectionItem/Brief/Radar/Entry)
+│   │   ├── Story.tsx             # 스토리 변형 7종(Lead/Secondary/SectionItem/Brief/Radar/Weekly/Entry)
 │   │   ├── StoryIndex.tsx        # 전체 기사 색인(30건씩 더 보기)
 │   │   ├── ArticleMeta.tsx       # 신호: 키커·FormatBadge·중요도 미터·바이라인·화제 바·태그
 │   │   ├── RelativeTime.tsx      # 상대 시각("3시간 전") — 정적 HTML은 호 발행 시각 기준, 마운트 후 실시각
@@ -73,6 +73,7 @@
 │   │   ├── labels.ts             # 분야 CATEGORIES·표시명·코드, 형식 FORMATS·배지, 소스 축약명, KST 날짜·상대 시각·발행 지연 문구 (단일 출처)
 │   │   ├── radarMeta.ts          # 레이더 카드 메타 레일(리포 ★·모델 파라미터·논문 arXiv ID 등)
 │   │   ├── sourceHealth.ts       # 소스 헬스 판정(notes 소스별 결과 → 연속 실패 2회=오류·연속 0건 3회=경고) — admin·kpi·CI 공용
+│   │   ├── weeklyRadar.ts        # 주간 레이더(일요일 특집): 주 경계·같은 대상 합치기·형식 혼합·순위(buildWeeklyRadar)
 │   │   ├── feedFilter.ts         # 클라 필터·정렬 + URL 옵션 파싱(구 분야값 URL 호환)
 │   │   ├── searchIndex.ts        # FlexSearch 문서 빌드·질의
 │   │   ├── site.ts               # 사이트 정체성·공유 메타(OG/카카오톡 미리보기) 단일 출처
@@ -152,6 +153,7 @@
 
 - **호 = 그날 수집분.** 기사의 호 날짜는 `created_at`의 KST 날짜(`published_at` 아님). 홈은 최신 호(`getLatestEditionRef`, 공개 기사가 있는 날만), `/edition/[date]`는 그날 호를 `getIssueArticles(date)`로 조회한다. 호수는 실패하지 않은 회차 순번.
 - **1면(`buildEdition`, `EDITION_LIMITS`)** — 오늘 호 기사만 쓴다: 리드 1·서브 3·오늘의 브리핑 3(뉴스 축) + 오픈소스·논문 레이더 4(비뉴스 축) ≈ 11건, 사이드바 지금 화제 5(화제 지수 > 0, 중복 허용)·'이 호의 지면'. 리드+서브는 분야 3개 이상(같은 분야 ≤ 2), 브리핑은 분야당 1건(남은 분야가 모자라면 상한을 풀어 채움)이고 리드·서브에 Physical AI가 없으면 1건 우선 배정, 레이더는 오픈소스·모델·논문 각 1위 우선. 부족하면 슬롯이 줄 뿐 다른 호 기사로 채우지 않는다. 그 아래 분야 섹션 밴드(1면 게재분 제외, 분야당 ≤ 4)와 누적 전체 기사 색인.
+- **주간 레이더(일요일 호만, `buildWeeklyRadar` + `getWeekRadarCandidates`)** — 그 일요일로 끝나는 KST 월~일 7개 호의 비뉴스를 LLM 없이 집계한 상위 ≤10 순위표(1면 아래·섹션 밴드 위, 내비 "주간 레이더"). 같은 대상(owner/repo·org/model·arXiv ID·원제)은 한 번, 형식마다 2건 확보, 4건 미만이거나 한 호에서만 왔으면 숨긴다. 홈과 `/edition/<일요일>`이 같은 함수로 같은 밴드를 만든다.
 - 마스트헤드 '귀'는 이번 호 통계(`issueStats`: "이번 호 N건 · 매체 M곳" + 형식 구성), 발행이 늦으면 `IssueDelayNotice`가 "발행 전/발행 지연" 줄을 띄운다.
 
 ### 라우트 & 렌더링

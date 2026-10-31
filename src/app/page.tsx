@@ -8,11 +8,13 @@ import {
   getLatestEditionRef,
   getIssueArticles,
   getSourcesWithCounts,
+  getWeekRadarCandidates,
   toListCards,
 } from "@/lib/db";
 import { buildEdition } from "@/lib/edition";
 import { issueDelayDays } from "@/lib/labels";
 import { editionMetadata } from "@/lib/site";
+import { buildWeeklyRadar } from "@/lib/weeklyRadar";
 
 /** 홈 공유 미리보기 = 이번 호 1면(리드 헤드라인 제목·썸네일). */
 export function generateMetadata(): Metadata {
@@ -34,7 +36,9 @@ export default function Home() {
   const issueIds = ref ? getIssueArticles(ref.date).map((a) => a.id) : [];
   // 발행 지연 안내의 초기 상태 = 빌드 시점 판단. 빌드 자체가 낡았으면 정적 HTML 에 안내가 이미 들어간다.
   const initialDelayGap = ref ? issueDelayDays(ref.date, Date.now()) : 0;
-  const props = { articles, issueIds, sources, tags, editionInfo, initialDelayGap };
+  // 주간 레이더: 최신 호가 일요일일 때만(아니면 null). 호 고정 링크 지면과 같은 함수 — 그날 홈과 /edition/<일요일> 이 같다.
+  const weekly = ref ? buildWeeklyRadar(getWeekRadarCandidates(ref.date), ref.date) : null;
+  const props = { articles, issueIds, sources, tags, editionInfo, initialDelayGap, weekly };
 
   /*
    * useSearchParams는 정적 export에서 Suspense 경계가 필수이고, 해당 하위 트리는

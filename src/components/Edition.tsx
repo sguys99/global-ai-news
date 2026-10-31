@@ -5,6 +5,7 @@
  * - RadarBand:    오픈소스·논문 레이더 — 비뉴스 ≤4건, 칸 수에 맞춘 열(1건은 가로 한 줄). 비면 띠 전체를 숨긴다
  * - TrendingList: 화제 순위(번호 = 실제 순위). 비뉴스 행은 매체명 대신 형식 배지
  * - IssueContents: 이 호의 지면 — 분야별 건수·1면 게재 수 차례(lg 이상 사이드바)
+ * - WeeklyRadarBand: 주간 레이더(일요일 특집) — 한 주 저장소·모델·논문 상위 ≤10 순위표. 1면(레이더) 아래·섹션 밴드 위
  * - SectionBands: 카테고리별 섹션 밴드(≤4건, 칸 수에 맞춘 열 — 대표 칸은 늘 1/3)
  */
 import Link from "next/link";
@@ -15,8 +16,10 @@ import {
   StoryRadar,
   StorySecondary,
   StorySectionItem,
+  StoryWeekly,
 } from "@/components/Story";
 import { frontArticles, type Edition, type EditionSection } from "@/lib/edition";
+import { weekRangeLabel, weeklyFormatMix, type WeeklyRadar } from "@/lib/weeklyRadar";
 import {
   CATEGORIES,
   FORMATS,
@@ -327,6 +330,63 @@ function IssueContents({ edition, className }: { edition: Edition; className?: s
         ))}
       </ul>
     </nav>
+  );
+}
+
+/** 주간 레이더 md 이상 2열의 행 수(= ceil(건수/2)) — 세로 우선으로 흘러 왼쪽 열이 1~5위, 오른쪽이 6~10위. */
+const WEEKLY_ROWS: Record<number, string> = {
+  2: "md:grid-rows-[repeat(2,auto)]",
+  3: "md:grid-rows-[repeat(3,auto)]",
+  4: "md:grid-rows-[repeat(4,auto)]",
+  5: "md:grid-rows-[repeat(5,auto)]",
+};
+
+/**
+ * 주간 레이더(일요일 특집, DESIGN.md §5). 머리는 섹션 밴드 문법에 **이중 괘선**(2px + 1px)을 더해 정기 밴드와 구별하고,
+ * 코발트 "일요일 특집" 라벨 · "주간 레이더" · 기간과 형식 구성을 한 줄에 둔다. 본문은 순위표(`<ol>`) —
+ * md 이상 2열 세로 흐름(행 높이를 두 열이 나눠 써 헤어라인이 같은 높이에 선다, 열 사이 세로 헤어라인), 모바일 1열.
+ * 맨 아래 각주가 선정 규칙을 밝힌다(순위표의 근거). 빈약한 주는 buildWeeklyRadar 가 null 이라 그리지 않는다.
+ */
+export function WeeklyRadarBand({ weekly }: { weekly: WeeklyRadar }) {
+  const n = Math.min(weekly.items.length, 10);
+  const rows = Math.ceil(n / 2);
+  const mix = weeklyFormatMix(weekly.formats);
+  return (
+    <section id="weekly" aria-labelledby="weekly-heading" className="min-w-0 scroll-mt-20">
+      <div className="border-rule border-t-2 pt-[3px]">
+        <div className="border-rule mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t pt-3">
+          <span className="text-meta text-brand font-bold whitespace-nowrap">일요일 특집</span>
+          <h2
+            id="weekly-heading"
+            className="text-display-md font-serif font-extrabold whitespace-nowrap"
+          >
+            주간 레이더
+          </h2>
+          <span className="text-meta text-muted-foreground tabular-nums">
+            {weekRangeLabel(weekly.start, weekly.end)}
+            {mix && ` · ${mix}`}
+          </span>
+        </div>
+      </div>
+      <ol className={cn("grid grid-cols-1 md:grid-flow-col md:grid-cols-2", WEEKLY_ROWS[rows])}>
+        {weekly.items.slice(0, n).map((item, i) => (
+          <li
+            key={item.id}
+            className={cn(
+              "border-border min-w-0 border-b",
+              i < rows ? "md:pr-8" : "md:border-l md:pl-8",
+            )}
+          >
+            <StoryWeekly item={item} rank={i + 1} />
+          </li>
+        ))}
+      </ol>
+      <p className="text-label text-muted-foreground mt-3 max-w-[60em]">
+        월~일 7개 호에 실린 저장소·모델·논문 {weekly.candidates}건에서 골랐습니다. 순서는 중요도 →
+        화제 지수 → 반응(스타·좋아요·추천) 순이고, 한 형식이 자리를 독차지하지 않도록 형식마다 2건씩
+        먼저 싣습니다.
+      </p>
+    </section>
   );
 }
 

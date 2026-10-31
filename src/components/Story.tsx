@@ -7,12 +7,14 @@
  * - StorySectionItem: 섹션 밴드 항목 — featured(첫 항목)는 세리프, 나머지는 산세리프
  * - StoryBrief:     오늘의 브리핑 한 행 — 키커 · 한 줄 세리프 제목 · 매체·시각·중요도
  * - StoryRadar:     레이더 카드(비뉴스) — 형식 배지·키커 · 세리프 제목 · 요약 2줄 · 메타 레일(날짜 생략)
+ * - StoryWeekly:    주간 레이더 한 행(일요일 특집) — 순위 · 형식 배지·키커·실린 호 요일 · 세리프 제목 · 매체·메타
  * - StoryEntry:     전체 기사 색인 한 줄 — 날짜 · 키커·형식 배지 · 제목 · 바이라인
  */
 import Link from "next/link";
 import { Byline, CategoryKicker, Dot, FormatBadge } from "@/components/ArticleMeta";
 import { formatShortDate, shortSourceName } from "@/lib/labels";
 import { radarMetaBlock, type RadarMetaItem } from "@/lib/radarMeta";
+import { issueDayLabel, weeklyMetaBlock, type WeeklyItem } from "@/lib/weeklyRadar";
 import { cn } from "@/lib/utils";
 import type { ArticleCard } from "@/lib/types";
 
@@ -236,6 +238,60 @@ function RadarMetaRail({ article, wide = false }: { article: ArticleCard; wide?:
         </span>
       )}
     </span>
+  );
+}
+
+/**
+ * 주간 레이더 한 행(일요일 특집, DESIGN.md §5). 지금 화제와 같은 순위 문법 — 세리프 순위 숫자(1~3위 코발트) 옆에
+ * [형식 배지 · 분야 키커 … 실린 호 요일] → 세리프 제목 2줄 → 매체 · 식별자 · 수치(레이더 메타와 같은 표기, "오늘"은 "당일").
+ * 요약은 싣지 않는다 — 열 줄 순위표의 밀도를 지키고, 요약은 그날 레이더 카드와 상세가 맡는다.
+ */
+export function StoryWeekly({ item, rank }: { item: WeeklyItem; rank: number }) {
+  const source = shortSourceName(item.source.name);
+  const { id, stats } = weeklyMetaBlock(item, source);
+  // 식별자가 없어 매체명이 식별자 자리에 왔으면(radarMetaBlock 강등) 매체를 두 번 쓰지 않는다.
+  const showSource = id?.key !== "source";
+  return (
+    <Link
+      href={`/article/${item.id}`}
+      className={cn(
+        "story-link grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 gap-y-1 py-3.5 md:grid-cols-[2.75rem_minmax(0,1fr)]",
+        focus,
+      )}
+    >
+      <span
+        className={cn(
+          "row-span-3 pt-px font-serif text-[1.875rem] leading-none tracking-[-0.04em] tabular-nums",
+          rank <= 3 ? "text-brand font-bold" : "text-muted-foreground font-medium",
+        )}
+      >
+        {rank}
+      </span>
+      <span className="flex min-w-0 items-center gap-2">
+        <FormatBadge format={item.format} />
+        <CategoryKicker category={item.category} className="min-w-0 truncate" />
+        <span className="text-label text-muted-foreground ml-auto shrink-0 pl-1 whitespace-nowrap">
+          {issueDayLabel(item.issueDate)}
+        </span>
+      </span>
+      <h3 className="headline md:text-title line-clamp-2 font-serif text-[0.9375rem] leading-[1.45] font-bold tracking-[-0.03em]">
+        {item.title}
+      </h3>
+      {/* relative: 안쪽 sr-only(absolute) 문구의 기준 상자(레이더 메타 레일과 같은 이유). */}
+      <span className="text-meta text-muted-foreground relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums">
+        {showSource && <span className="shrink-0">{source}</span>}
+        {id && (
+          <span className="text-foreground-soft max-w-full min-w-0 truncate font-semibold tracking-[-0.005em]">
+            <RadarMetaText item={id} />
+          </span>
+        )}
+        {stats.map((m) => (
+          <span key={m.key} className="whitespace-nowrap">
+            <RadarMetaText item={m} />
+          </span>
+        ))}
+      </span>
+    </Link>
   );
 }
 
