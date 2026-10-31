@@ -549,6 +549,9 @@
   - **(추가, 계획에 없던 낡은 문서):** README.md가 Vercel·ISR·Reddit 21개 소스 시절 그대로여서 GitHub Pages 배포, 지면 구성, 실제 소스 목록(47개 등록·43개 활성, 형식별), 환경 변수, 명령을 다시 썼다. `.env.example`에서 쓰지 않는 `STATIC_EXPORT`를 지우고 `GITHUB_BRANCH` 기본값을 코드와 같은 `deploy/github-pages`로 고쳤다. `docs/WORK-PLAN.md`(Vercel 전제)와 `docs/PRD-github-pages.md`(채택되지 않은 `STATIC_EXPORT` 안)에는 머리에 대체 안내를 달았다.
   - 남은 것: Dockerfile·docker-compose는 더 이상 생기지 않는 `.next/standalone`을 복사해 동작하지 않는다(CLAUDE.md에 명시, 정리 여부는 별도 결정). 이 문서의 체크박스와 CLAUDE.md "Phase 7 진행 중" 문구는 마지막 항목을 마친 뒤 갱신한다.
 
+- [x] **(추가, 사용자 결정) `latest.json` 외부 소비자 공지문:** Phase 2의 "외부 소비자 공지" 참고 항목을 처리했다.
+  - ✅ 2026-10-31 [docs/notices/latest-json-2026-10.md](notices/latest-json-2026-10.md)를 썼다. 대상은 자랑터 「한입뉴스」 담당 개발자다. 구 분야값 → 새 키·표시명 대응표를 담았다(Dev Tools·MLOps → `oss`는 되돌릴 수 없고 `physical`은 신설). 새 필드 `categoryLabel`·`format`·`engagement`(지표가 있을 때만 들어감)를 설명했고, `version: 1`은 필드만 늘어 그대로라는 점도 적었다. 구·새 값을 모두 받는 TypeScript 스니펫과 실제 기사(#1245) 전후 JSON도 넣었다. 물량 변화도 적었다: 하루 상한 35건(비뉴스 약 8건)이고, 재보도 검사 뒤 실제 게재는 20~30건이다. 중요도는 형식 안에서 상대 평가하므로 "중요도 상위 N" 컷에 리포·논문이 섞인다는 점도 밝혔다. 배포 브랜치의 현재 출력과 대조해 확인했다. 배포 뒤 이 문서를 소비자에게 전달한다.
+
 ### 목표 지표
 
 | 지표 | 기준선 (Phase 0) | 목표 |
