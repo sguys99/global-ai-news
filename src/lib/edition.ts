@@ -10,7 +10,8 @@
  *
  * - lead:     뉴스 편집 순 1위. 뉴스가 0건인 호에서만 전체 1위(비뉴스)로 대체 — 기사가 있는 호의 1면은 비지 않는다
  * - seconds:  다음 뉴스. 리드+서브 안에서 같은 분야 최대 2건, 가능하면 분야 3개 이상(selectSeconds)
- * - briefs:   남은 뉴스 편집 순. 리드·서브에 Physical AI 가 없으면 중요도 3 이상 Physical AI 뉴스 1건 우선
+ * - briefs:   남은 뉴스 편집 순, 브리핑 안에서 분야당 1건(남은 분야가 모자라면 상한을 풀어 채운다).
+ *             리드·서브에 Physical AI 가 없으면 중요도 3 이상 Physical AI 뉴스 1건 우선(selectBriefs)
  * - radar:    비뉴스만. 오픈소스·모델·논문 각 1위를 먼저 담고 나머지는 편집 순(selectRadar)
  * - trending: 화제 지수 순 상위 N, 점수 > 0만. 위 슬롯과 중복 허용(순위 정보)
  * - sections: 분야별 편집 순 상위 N(1면 본문 기사 제외), 남은 기사가 없는 분야는 생략
@@ -35,7 +36,7 @@ export interface EditionSection {
 export interface Edition {
   lead: ArticleCard | null;
   seconds: ArticleCard[];
-  /** 오늘의 브리핑 — 서브 다음 뉴스(편집 순). */
+  /** 오늘의 브리핑 — 서브 다음 뉴스, 분야당 1건(편집 순). */
   briefs: ArticleCard[];
   /** 오픈소스·논문 레이더 — 비뉴스(편집 순). 비면 띠를 숨긴다. */
   radar: ArticleCard[];
@@ -134,8 +135,15 @@ function selectSeconds(lead: ArticleCard, pool: ArticleCard[], limit: number): A
 }
 
 /**
- * 브리핑 선정. pool 은 리드·서브를 뺀 뉴스(편집 순). 리드·서브에 Physical AI 가 없으면
- * 중요도 3 이상인 최상위 Physical AI 뉴스 1건을 먼저 확보하고 나머지는 편집 순으로 채운다. 표시도 편집 순.
+ * 브리핑 선정. pool 은 리드·서브를 뺀 뉴스(편집 순). 상한은 **브리핑 안에서 분야당 1건**이다.
+ * 리드·서브의 분야는 보지 않는다 — 리드+서브는 이미 분야 3개 이상을 덮고, 리드 분야를 피하게 하면
+ * 그 분야의 강한 뉴스가 다른 분야의 약한 뉴스에 밀려 규칙을 예측하기 어려워진다.
+ * 1) 리드·서브에 Physical AI 가 없으면 중요도 3 이상인 최상위 Physical AI 뉴스 1건을 먼저 확보한다
+ *    (그 건이 Physical AI 의 1건이다).
+ * 2) 편집 순으로 아직 브리핑에 없는 분야의 최상위 뉴스를 담는다.
+ * 3) 남은 분야가 모자라 자리가 비면 건너뛴 뉴스로 편집 순 보충 — 다양성 때문에 브리핑이 줄지는 않는다
+ *    (뉴스가 모자랄 때만 준다). 따라서 브리핑 분야 수 = min(한도, 풀의 분야 수).
+ * 표시는 편집 순. 브리핑에서 빠진 뉴스는 섹션 밴드로 간다.
  */
 function selectBriefs(pool: ArticleCard[], limit: number, physicalOnFront: boolean): ArticleCard[] {
   if (limit <= 0) return [];
@@ -143,9 +151,16 @@ function selectBriefs(pool: ArticleCard[], limit: number, physicalOnFront: boole
     ? undefined
     : pool.find((a) => a.category === "physical" && a.importance >= PHYSICAL_MIN_IMPORTANCE);
   const picked = reserved ? [reserved] : [];
+  const used = new Set(picked.map((a) => a.category));
   for (const a of pool) {
     if (picked.length >= limit) break;
-    if (a !== reserved) picked.push(a);
+    if (used.has(a.category)) continue;
+    picked.push(a);
+    used.add(a.category);
+  }
+  for (const a of pool) {
+    if (picked.length >= limit) break;
+    if (!picked.includes(a)) picked.push(a);
   }
   return picked.sort(byEditorial);
 }

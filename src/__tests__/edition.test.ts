@@ -438,6 +438,92 @@ describe("Physical AI 우선 배정 (브리핑)", () => {
   });
 });
 
+describe("브리핑 분야 상한 (분야당 1건)", () => {
+  // 리드 llm · 서브 agent·industry·llm(id 동점 깨기) — Physical AI 는 리드·서브에 없다.
+  const top = () =>
+    ["llm", "agent", "industry", "llm"].map((category, i) =>
+      card({ category, importance: 5, trendingScore: 90 - i }),
+    );
+  const cats = (xs: ArticleCard[]) => xs.map((a) => a.category);
+
+  it("한 분야가 편집 순 상위를 차지해도 분야당 1건 — 건너뛴 기사는 섹션 밴드로 간다", () => {
+    const ind = [4, 4, 4].map((importance, i) =>
+      card({ category: "industry", importance, trendingScore: 50 - i }),
+    );
+    const agent = card({ category: "agent", importance: 3 });
+    const research = card({ category: "research", importance: 2 });
+    const e = buildEdition([research, ...ind, agent, ...top()]);
+    expect(ids(e.briefs)).toEqual(ids([ind[0], agent, research]));
+    // 리드·서브의 분야(industry·agent)는 브리핑 상한에 세지 않는다
+    expect(cats([e.lead!, ...e.seconds])).toEqual(expect.arrayContaining(["industry", "agent"]));
+    const band = e.sections.find((s) => s.category === "industry")!;
+    expect(ids(band.items)).toEqual(ids([ind[1], ind[2]]));
+    expect(band.count).toBe(4);
+    expect(band.onFront).toBe(2); // 서브 1 + 브리핑 1
+  });
+
+  it("Physical AI 우선 배정분이 Physical AI 의 1건 — 더 높은 Physical AI 뉴스가 있어도 2건째는 없다", () => {
+    const phy = [4, 3].map((importance) => card({ category: "physical", importance }));
+    const ind = card({ category: "industry", importance: 4 });
+    const research = card({ category: "research", importance: 1 });
+    const e = buildEdition([...phy, ind, research, ...top()]);
+    expect(ids(e.briefs)).toEqual(ids([phy[0], ind, research]));
+    expect(ids(e.sections.find((s) => s.category === "physical")!.items)).toEqual([phy[1].id]);
+  });
+
+  it("우선 배정이 편집 순 밖이어도 분야 상한과 함께 성립한다", () => {
+    const ind = [5, 5].map((importance) => card({ category: "industry", importance }));
+    const agent = card({ category: "agent", importance: 5 });
+    const phy = card({ category: "physical", importance: 3 });
+    const e = buildEdition([phy, ...ind, agent, ...top()]);
+    expect(ids(e.briefs)).toEqual(ids([ind[0], agent, phy]));
+  });
+
+  it("리드·서브에 Physical AI 가 있어도 브리핑에 Physical AI 1건은 오를 수 있다(우선 배정만 없다)", () => {
+    const lead = card({ category: "physical", importance: 5, trendingScore: 99 });
+    const rest = ["llm", "agent", "industry"].map((category) => card({ category, importance: 5 }));
+    const phy = [4, 4].map((importance) => card({ category: "physical", importance }));
+    const llm = card({ category: "llm", importance: 2 });
+    const research = card({ category: "research", importance: 1 });
+    const e = buildEdition([lead, ...rest, ...phy, llm, research]);
+    expect(e.lead?.id).toBe(lead.id);
+    expect(ids(e.briefs)).toEqual(ids([phy[0], llm, research]));
+  });
+
+  it("남은 분야가 모자라면 상한을 풀어 편집 순으로 채운다 — 브리핑은 뉴스가 모자랄 때만 준다", () => {
+    const ind = [4, 4, 3].map((importance) => card({ category: "industry", importance }));
+    const phy = [3, 2].map((importance) => card({ category: "physical", importance }));
+    const e = buildEdition([...phy, ...ind, ...top()]);
+    // 분야 2개(industry·physical) → 각 1위 + 편집 순 다음(ind[1])
+    expect(ids(e.briefs)).toEqual(ids([ind[0], ind[1], phy[0]]));
+
+    const one = buildEdition([...ind, card({ category: "industry", importance: 1 }), ...top()]);
+    expect(cats(one.briefs)).toEqual(["industry", "industry", "industry"]);
+    expect(ids(one.briefs)).toEqual(ids(ind));
+  });
+
+  it("브리핑 한도가 커지면 분야 수만큼 1건씩, 그 뒤는 편집 순 보충", () => {
+    const ind = [4, 4].map((importance) => card({ category: "industry", importance }));
+    const agent = card({ category: "agent", importance: 3 });
+    const research = card({ category: "research", importance: 1 });
+    const e = buildEdition([research, agent, ...ind, ...top()], { ...EDITION_LIMITS, briefs: 4 });
+    expect(ids(e.briefs)).toEqual(ids([ind[0], ind[1], agent, research]));
+    expect(buildEdition([...ind, ...top()], { ...EDITION_LIMITS, briefs: 0 }).briefs).toEqual([]);
+  });
+
+  it("결정성: 입력 순서를 섞어도 같은 브리핑(동점은 id 순)", () => {
+    const ind = [4, 4, 4].map(() => card({ category: "industry", importance: 4 }));
+    const phy = [3, 3].map(() => card({ category: "physical", importance: 3 }));
+    const xs = [...ind, ...phy, card({ category: "agent", importance: 4 }), ...top()];
+    const expected = snapshot(buildEdition(xs));
+    expect(expected.briefs).toEqual(ids([ind[0], xs[5], phy[0]]));
+    const rand = rng(11);
+    for (let i = 0; i < 20; i += 1) {
+      expect(snapshot(buildEdition(shuffle(xs, rand)))).toEqual(expected);
+    }
+  });
+});
+
 describe("레이더 형식 혼합", () => {
   it("형식마다 중요도가 낮아도 오픈소스·모델·논문 각 1위를 담고, 남은 1자리는 편집 순", () => {
     const f = fullIssue();
@@ -668,6 +754,18 @@ describe("편집 규칙 불변식 (무작위 호 300개)", () => {
             e.briefs.some((a) => a.category === "physical"),
             ctx,
           ).toBe(true);
+        }
+        // 브리핑 분야 상한: 분야 수 = min(브리핑 수, 남은 뉴스의 분야 수)
+        // → 남은 분야가 브리핑 수 이상(기본 3)이면 브리핑 분야가 모두 다르다
+        const rest = e.issue.filter((a) => a.format === "news" && !top.includes(a)); // 편집 순
+        const restCats = new Set(rest.map((a) => a.category)).size;
+        const briefCats = new Set(e.briefs.map((a) => a.category)).size;
+        expect(briefCats, ctx).toBe(Math.min(e.briefs.length, restCats));
+        if (restCats >= 3) expect(briefCats, ctx).toBe(e.briefs.length);
+        // 상한을 풀어 채운 경우에도 각 분야의 1위가 먼저 오른다(건너뛴 분야 1위가 없다)
+        for (const c of new Set(e.briefs.map((a) => a.category))) {
+          const head = rest.find((a) => a.category === c)!;
+          expect(e.briefs.includes(head), `${ctx} brief head ${c}`).toBe(true);
         }
       }
 
