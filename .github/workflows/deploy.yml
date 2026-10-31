@@ -47,7 +47,8 @@ jobs:
       # 정적 export. prebuild가 build 직전 자동 실행된다:
       #   ① initDb --existing — 체크아웃한 data/app.db에 신규 컬럼(sources.format 등)·configs/sources.json 동기화를
       #      반영한다(러너 사본만 바뀌고 커밋하지 않음. 이미 맞으면 쓰지 않음, DB 파일이 없으면 실패).
-      #   ② export-search-index · export-latest — public/search-index.json·latest.json 생성 → next build가 out/ 산출.
+      #   ② export-search-index · export-feed-index · export-latest — public/search-index.json·feed-index.json(홈 색인
+      #      누적 전체)·latest.json 생성 → next build가 out/ 산출.
       - name: Build static export
         run: npm run build
 

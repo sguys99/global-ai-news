@@ -2,16 +2,16 @@
  * 피드 필터/정렬의 클라이언트 측 단일 출처.
  *
  * 정적 export(GitHub Pages)에서는 서버가 쿼리별로 다른 HTML을 만들 수 없으므로,
- * 빌드타임에 전체 카드를 내려받아 브라우저에서 거른다. 이 함수는 서버 빌드 시점의
- * `src/lib/db.ts` `buildFilters`/`orderByFor` SQL 의미를 `ArticleCard[]` 대상으로
+ * 빌드타임에 만든 전체 카드 JSON(홈 feed-index.json·검색 search-index.json)을 받아 브라우저에서 거른다.
+ * 이 함수는 서버 빌드 시점의 `src/lib/db.ts` `buildFilters`/`orderByFor` SQL 의미를 카드 배열 대상으로
  * 1:1 이전한 것이다(동점 보조 키까지 동일). 서버/클라 동작 일치는 단위 테스트로 고정한다.
  */
 import type { FeedOptions, SearchOptions } from "@/lib/db";
 import { normalizeCategory, shortSourceName } from "@/lib/labels";
-import type { ArticleCard } from "@/lib/types";
+import type { IndexCard } from "@/lib/types";
 
 /** ISO8601 문자열 내림차순 비교(사전식 비교 = 시간 내림차순과 호환). */
-function byPublishedDesc(a: ArticleCard, b: ArticleCard): number {
+function byPublishedDesc(a: IndexCard, b: IndexCard): number {
   return b.publishedAt.localeCompare(a.publishedAt);
 }
 
@@ -21,7 +21,7 @@ function byPublishedDesc(a: ArticleCard, b: ArticleCard): number {
  * - importance:  importance DESC, trending_score DESC
  * - (기본)       trending_score DESC, published_at DESC
  */
-function comparatorFor(sort: FeedOptions["sort"]): (a: ArticleCard, b: ArticleCard) => number {
+function comparatorFor(sort: FeedOptions["sort"]): (a: IndexCard, b: IndexCard) => number {
   if (sort === "latest") {
     return byPublishedDesc;
   }
@@ -85,17 +85,18 @@ export function findSourceGroup(
 }
 
 /**
- * 소스·태그·카테고리 필터 적용 후 정렬한 새 배열을 반환한다(입력 불변).
+ * 소스·태그·카테고리 필터 적용 후 정렬한 새 배열을 반환한다(입력 불변). 카드 모양은 그대로 돌려준다
+ * (ArticleCard·검색 인덱스 항목·색인 카드 IndexCard 모두 — 필터·정렬에 쓰는 필드는 IndexCard 에 다 있다).
  * - source: `sources`(매체 목록)를 주면 그 id 가 속한 **매체 묶음 전체**와 일치(`groupSources`).
  *           목록이 없거나 목록에 없는 id 면 `source.id` 정확 일치(db.ts `getFeed` 와 같은 의미).
  * - tag:    `tags` 배열에 포함
  * - category: `category` 정확 일치
  */
-export function filterAndSortFeed(
-  articles: ArticleCard[],
+export function filterAndSortFeed<T extends IndexCard>(
+  articles: readonly T[],
   opts: FeedOptions = {},
   sources: readonly SourceOption[] = [],
-): ArticleCard[] {
+): T[] {
   const sourceIds = opts.source
     ? new Set(findSourceGroup(groupSources(sources), opts.source)?.ids ?? [opts.source])
     : null;

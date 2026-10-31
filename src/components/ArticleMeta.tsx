@@ -17,8 +17,9 @@ import {
   shortSourceName,
   type Format,
 } from "@/lib/labels";
+import { relatedCountOf } from "@/lib/feedIndex";
 import { cn } from "@/lib/utils";
-import type { ArticleCard } from "@/lib/types";
+import type { ArticleCard, IndexCard } from "@/lib/types";
 
 /** 카테고리 키커. category 가 비어 있으면 렌더하지 않는다. */
 export function CategoryKicker({ category, className }: { category: string; className?: string }) {
@@ -111,10 +112,9 @@ export function Byline({
   prefix,
   className,
 }: {
-  article: Pick<
-    ArticleCard,
-    "source" | "publishedAt" | "importance" | "trendingScore" | "related" | "format"
-  >;
+  /** 카드(ArticleCard) 또는 색인 카드(IndexCard — 묶인 보도는 개수 relatedCount 만 있다). */
+  article: Pick<ArticleCard, "source" | "publishedAt" | "importance" | "trendingScore" | "format"> &
+    Partial<Pick<ArticleCard, "related"> & Pick<IndexCard, "relatedCount">>;
   showTrend?: boolean;
   fullSource?: boolean;
   compact?: boolean;
@@ -147,7 +147,7 @@ export function Byline({
       {showFormat && <FormatBadge format={article.format} />}
       <span className={cn(compact && "min-w-0 truncate")}>
         {fullSource ? article.source.name : shortSourceName(article.source.name)}
-        <OtherSources count={article.related?.length} />
+        <OtherSources count={relatedCountOf(article)} />
       </span>
     </span>
   );
