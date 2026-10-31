@@ -1,5 +1,7 @@
 # Daily AI Brief — GitHub Pages 배포 전환 PRD v1.0
 
+> **구현 메모 (2026-10-31):** 아래의 `STATIC_EXPORT=1` 플래그안(§3.5·§3.6·§5·§10)은 채택되지 않았다. 실제 구현은 빌드 phase 감지(`PHASE_PRODUCTION_BUILD` → `output:'export'`)와 `pageExtensions` 게이팅(admin/api/middleware를 `*.local.ts(x)`로 두어 `next dev`에서만 라우트)이며, `deploy.yml`은 별도 환경 변수 없이 `npm run build`만 실행한다. 검색 인덱스에는 콘텐츠 개편으로 `format` 필드가 추가됐다([contents-upgrade-plan.md](contents-upgrade-plan.md) Phase 2).
+
 **기존 Next.js + Vercel(ISR/SSR/serverless) 서비스를, 화면·기능·동작을 그대로 보존한 채 GitHub Pages 정적 호스팅으로 전환하기 위한 마이그레이션 요구사항 정의서**
 
 ---

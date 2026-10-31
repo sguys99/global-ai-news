@@ -545,6 +545,9 @@
 - [ ] `npm run build`(정적 export) 후 `basePath` 아래 홈, `/edition/<오늘>`, 지난 호, `?category=physical`, 검색이 정상인지 확인한다.
 - [ ] 배포 후 3일간 KPI를 관찰해 하단 "목표 지표" 표에 기록한다.
 - [ ] 문서를 갱신한다: `CLAUDE.md`(카테고리, 형식, 1면 구성), `docs/PRD.md` 카테고리 절, `DESIGN.md`, 이 문서의 체크박스.
+  - ✅ 2026-10-31 1차(코드 대조): **CLAUDE.md**는 낡은 "(전환 후)/(예정)" 배너를 실제 배포 구조(`PHASE_PRODUCTION_BUILD`·`*.local.ts(x)` 게이팅)로 바꾸고, 디렉터리 트리를 실제 파일로 다시 그렸다. 호·1면 구성(리드·서브·브리핑·레이더·화제·'이 호의 지면'), 분야 6개 표·경계 우선순위·형식 축, 선별 할당·이미 보도함·재보도 검사, 새 명령(`collect --dry-run/--no-save/--db`, `triage:compare`, `db:reclassify`, `kpi -- baseline`)을 반영했다. 쓰지 않는 `STATIC_EXPORT`와 `npm run start`(정적 export에서는 동작하지 않음)는 뺐다. **docs/PRD.md**는 v1.1로 올려 §3.3 분야·형식, §3.5 호 단위 1면, §5 `sources.format`, §7.3 분류 체계를 고쳤다. **DESIGN.md**는 v2.1이 코드와 일치해 변경하지 않았다.
+  - **(추가, 계획에 없던 낡은 문서):** README.md가 Vercel·ISR·Reddit 21개 소스 시절 그대로여서 GitHub Pages 배포, 지면 구성, 실제 소스 목록(47개 등록·43개 활성, 형식별), 환경 변수, 명령을 다시 썼다. `.env.example`에서 쓰지 않는 `STATIC_EXPORT`를 지우고 `GITHUB_BRANCH` 기본값을 코드와 같은 `deploy/github-pages`로 고쳤다. `docs/WORK-PLAN.md`(Vercel 전제)와 `docs/PRD-github-pages.md`(채택되지 않은 `STATIC_EXPORT` 안)에는 머리에 대체 안내를 달았다.
+  - 남은 것: Dockerfile·docker-compose는 더 이상 생기지 않는 `.next/standalone`을 복사해 동작하지 않는다(CLAUDE.md에 명시, 정리 여부는 별도 결정). 이 문서의 체크박스와 CLAUDE.md "Phase 7 진행 중" 문구는 마지막 항목을 마친 뒤 갱신한다.
 
 ### 목표 지표
 

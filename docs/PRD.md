@@ -1,4 +1,4 @@
-# Daily AI Brief PRD v1.0
+# Daily AI Brief PRD v1.1
 
 **글로벌 AI/IT 뉴스를 매일 자동 수집·한국어 요약하여 카드형 피드로 제공하는 저비용 큐레이션 웹서비스**
 
@@ -6,11 +6,17 @@
 
 | 항목           | 내용                                              |
 | -------------- | ------------------------------------------------- |
-| 문서 버전      | v1.0                                              |
-| 작성일         | 2026년 6월 7일                                    |
+| 문서 버전      | v1.1                                              |
+| 작성일         | 2026년 6월 7일 (v1.1 개정 2026년 10월 31일)       |
 | 대상 독자      | 개발자(구현), 운영자(솔로 메인테이너), 이해관계자 |
 | 구현 목표 기간 | 2~4주 (1인 개발)                                  |
 | 핵심 제약      | LLM API 토큰 비용 최소화, 운영비 ≈ 0              |
+
+> **v1.1 개정 (2026-10-31, 콘텐츠·1면 개편 반영 — 결정 기록 [contents-upgrade-plan.md](contents-upgrade-plan.md))**
+>
+> - **분류:** 카테고리 6종(Language Models / Agents / Dev Tools / MLOps / 연구·논문 / 산업·정책)을 **분야 6개**(`llm`·`agent`·`physical`·`oss`·`research`·`industry`)로 바꾸고, 출처가 정하는 **형식 축**(뉴스·오픈소스·모델·논문)을 더했다(§3.3, §5, §7.1, §7.3).
+> - **홈:** 누적 카드 피드 대신 **그날 수집분(호) 단위 편집 지면** — 1면 약 11건(리드·서브·오늘의 브리핑·오픈소스·논문 레이더) + 지금 화제·분야 섹션 밴드 + 누적 전체 기사 색인(§3.5, §6.1).
+> - 이 개정은 위 두 축만 다룬다. 렌더링·배포(Vercel ISR → GitHub Pages 정적 export)는 [PRD-github-pages.md](PRD-github-pages.md), LLM 호출 구조(선별 → 묶음 가공 → 재보도 검사, Message Batches API — 기사당 1호출·Vercel AI SDK·프롬프트 캐싱 서술은 대체됨)는 [CLAUDE.md](../CLAUDE.md) "LLM 가공"이 현행 기준이다.
 
 ---
 
@@ -217,17 +223,12 @@ export function trendingScore(item: RawItem): number {
 **LLM 출력 스키마 (Zod)**
 
 ```typescript
+// src/lib/labels.ts (분야·형식 단일 출처 — scripts/lib/schema.ts 는 재수출)
+export const CATEGORIES = ["llm", "agent", "physical", "oss", "research", "industry"] as const; // §7.3
+export const FORMATS = ["news", "oss", "model", "paper"] as const; // 소스 속성, LLM 출력 아님
+
 // scripts/lib/schema.ts
 import { z } from "zod";
-
-export const CATEGORIES = [
-  "Language Models",
-  "Agents",
-  "Dev Tools",
-  "MLOps",
-  "연구·논문",
-  "산업·정책",
-] as const;
 
 export const articleEnrichmentSchema = z.object({
   title_ko: z.string().max(60).describe("한국어 제목 (간결, 낚시성 금지)"),
@@ -276,7 +277,7 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 
 - [ ] 1 기사 = 정확히 1 LLM 호출(요약·번역·분류·점수 통합).
 - [ ] 출력은 항상 Zod 스키마를 통과한다(검증 실패 시 1회 재시도 후 스킵·로깅).
-- [ ] `category`는 사전 정의된 enum 값만 가진다.
+- [ ] `category`는 사전 정의된 분야 키 6개(§7.3) 중 하나만 가진다. 형식(`format`)은 LLM이 정하지 않고 소스(`sources.format`)가 정한다.
 - [ ] `LLM_MODEL` 환경변수로 모델을 전환할 수 있다.
 
 ---
@@ -309,7 +310,20 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 
 홈(`/`)에서 가공된 기사를 카드형 목록으로 제공한다. SQLite를 읽어 정적/ISR로 렌더한다.
 
-**입력**: URL 쿼리 `?tag=`, `?source=`, `?sort=latest|importance`
+> **v1.1:** 홈은 **최신 호(號)의 편집 지면**이다. 호 = 그날(KST) 06:00 회차가 선정한 기사(`created_at`의 KST 날짜, `published_at` 아님)이고, 1면·섹션에는 그 호 기사만 싣는다.
+>
+> | 영역                 | 수         | 대상·규칙                                                    |
+> | -------------------- | ---------- | ------------------------------------------------------------ |
+> | 리드 · 서브          | 1 · 3      | 뉴스. 리드+서브가 분야 3개 이상을 덮는다(같은 분야 최대 2건) |
+> | 오늘의 브리핑        | 3          | 남은 뉴스. 리드·서브에 Physical AI가 없으면 1건 우선         |
+> | 오픈소스·논문 레이더 | 4          | 비뉴스(오픈소스·모델·논문), 형식마다 1건 이상 섞는다         |
+> | 지금 화제            | 5          | 호 안에서 화제 지수 > 0, 위 슬롯과 중복 허용                 |
+> | 분야 섹션 밴드       | 분야별 ≤ 4 | 1면에 오른 기사 제외, 기사가 없는 분야는 생략                |
+> | 전체 기사            | 누적       | 아래 필터·정렬이 적용되는 카드 목록                          |
+>
+> 슬롯이 모자라면 줄어들 뿐 다른 호 기사로 채우지 않는다. 지난 호는 `/edition/[date]`가 같은 지면으로 보여 준다. 세부 레이아웃은 [DESIGN.md](../DESIGN.md) §3.
+
+**입력**: URL 쿼리 `?category=`(분야 키, 예: `physical` — 구 값도 새 키로 받아 줌), `?tag=`, `?source=`, `?sort=latest|importance`
 
 **출력 (카드 1장 구성요소)**
 
@@ -319,7 +333,8 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 | `title_ko`                      | 한국어 제목            |
 | `summary_ko`                    | 한국어 요약 2~3줄      |
 | `tags[]`                        | 태그 칩                |
-| `category`                      | 카테고리 배지          |
+| `category`                      | 분야 키커              |
+| `format`                        | 형식 배지(비뉴스만)    |
 | `trending_score` / `importance` | 정렬·표시용 점수       |
 | `published_at`                  | 게시 시각              |
 
@@ -510,9 +525,10 @@ export async function enrich(item: RawItem): Promise<ArticleEnrichment> {
 CREATE TABLE IF NOT EXISTS sources (
   id          TEXT PRIMARY KEY,           -- 'techcrunch_ai', 'hn', 'reddit_localllama'
   name        TEXT NOT NULL,              -- 표시명
-  kind        TEXT NOT NULL,              -- 'rss' | 'web' | 'hn' | 'github' | 'hf' | 'reddit'
+  kind        TEXT NOT NULL,              -- 'rss' | 'web' | 'hn' | 'github' | 'hf' | 'hf_models' | 'reddit' | 'arxiv'
   url         TEXT NOT NULL,
-  enabled     INTEGER NOT NULL DEFAULT 1  -- 'web'은 MVP에서 0(수집 Post-MVP)
+  enabled     INTEGER NOT NULL DEFAULT 1, -- 'web'은 MVP에서 0(수집 Post-MVP)
+  format      TEXT NOT NULL DEFAULT 'news' -- v1.1: 'news' | 'oss' | 'model' | 'paper' (기사는 JOIN으로 읽음)
 );
 
 -- articles: 수집 원본 + LLM 가공 결과 통합
@@ -531,7 +547,7 @@ CREATE TABLE IF NOT EXISTS articles (
   -- LLM 가공 결과
   title_ko        TEXT,
   summary_ko      TEXT,
-  category        TEXT,                   -- CATEGORIES enum
+  category        TEXT,                   -- 분야 키 (CATEGORIES, §7.3)
   importance      INTEGER,                -- 1~5 (LLM 보조)
   -- 메타
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
@@ -595,7 +611,8 @@ export interface ArticleCard {
   titleKo: string;
   summaryKo: string;
   titleOriginal: string;
-  category: string; // CATEGORIES
+  category: string; // 분야 키 (CATEGORIES, §7.3)
+  format: "news" | "oss" | "model" | "paper"; // v1.1: 형식 (sources.format JOIN)
   tags: string[];
   trendingScore: number; // 0~100
   importance: number; // 1~5
@@ -631,6 +648,8 @@ DESIGN.md(Apple 디자인 분석)의 토큰을 따른다. **핵심 원칙**: 단
 - **운영자 콘솔(`/admin`)**: 인증 후 접근하는 별도 운영 섹션(§6.6). 동일 디자인 시스템을 재사용한다.
 
 ### 6.1 페이지 1 — 피드(홈, `/`)
+
+> **v1.1:** 아래 와이어프레임과 §6.2·§6.4의 카테고리 표기(LM·Agents·Dev Tools·Language Models)·카드 그리드·Apple 토큰은 v1.0 초안이다. 현행 홈은 호 단위 편집 지면(§3.5)이고, 분야 표기는 §7.3, 시각 디자인은 [DESIGN.md](../DESIGN.md) v2.1 "Edition"이 단일 출처다.
 
 ```
 ┌──────────────────────────────────────────────────────────┐  global-nav (#000, h44)
@@ -772,19 +791,14 @@ DESIGN.md(Apple 디자인 분석)의 토큰을 따른다. **핵심 원칙**: 단
 - importance: 1~5 (업계 영향도 기준, 5=매우 중요)
 
 [분류 체계]
-- Language Models: 모델 출시·성능·아키텍처 (LLM, 멀티모달 등)
-- Agents: 에이전트·자율 시스템·툴 유즈
-- Dev Tools: 개발자 도구·프레임워크·SDK·IDE
-- MLOps: 학습·서빙·인프라·배포·평가 운영
-- 연구·논문: arXiv·논문·연구 성과
-- 산업·정책: 투자·인수·규제·정책·시장 동향
+{{CATEGORIES}}  ← v1.1: configs/prompts/categories.md 를 enrich.ts 가 끼워 넣는다 (§7.3)
 
 [출력 규칙]
 - 반드시 구조화 스키마에 맞춰 출력 (자유 서술 금지)
 - 사실에 없는 내용 추가 금지 (환각 금지)
 ```
 
-**few-shot 예시 (캐싱 대상)** — `configs/prompts/enrich.fewshot.json`: 카테고리별 대표 입력→출력 2~3쌍을 고정 포함.
+**few-shot 예시 (캐싱 대상)** — `configs/prompts/enrich.fewshot.json`: 대표 입력→출력 쌍을 고정 포함(v1.1: 6건 — 뉴스·Physical AI 뉴스·GitHub 리포·HF 모델·논문 등 4개 형식을 모두 다룸).
 
 **유저 메시지 (가변)**: `[출처]/[제목]/[본문 절단]` (§3.3 참조).
 
@@ -794,10 +808,43 @@ DESIGN.md(Apple 디자인 분석)의 토큰을 따른다. **핵심 원칙**: 단
 - **비캐싱(가변)**: 기사별 유저 메시지.
 - 효과: 배치 내 N건을 연속 처리할 때 고정 입력 토큰의 재청구를 절감.
 
-### 7.3 카테고리/태그 분류 체계
+### 7.3 분야·형식·태그 분류 체계
 
-- **카테고리(고정 enum, §3.3 `CATEGORIES`)**: Language Models / Agents / Dev Tools / MLOps / 연구·논문 / 산업·정책. 운영자가 `schema.ts` + 시스템 프롬프트에서 동시 조정.
-- **태그(자유, 1~5개)**: LLM 생성. 정규화(소문자·trim) 후 `tags` 테이블에 누적.
+> v1.1에서 개정. 구 카테고리 6종(Language Models / Agents / Dev Tools / MLOps / 연구·논문 / 산업·정책)은 폐지됐다. 기존 행은 `npm run db:reclassify`(규칙 매핑 폴백 + LLM 재분류)로 옮겼고, 아직 구 값인 행과 예전 URL은 `LEGACY_CATEGORY_MAP`(Dev Tools·MLOps → `oss`)으로 읽을 때 변환한다.
+
+**분야(category, LLM 분류, 6개 고정 — "기타" 없음).** 저장값은 안정 키다. 키·표시명·코드·순서의 단일 출처는 `src/lib/labels.ts`(`CATEGORIES`·`CATEGORY_LABELS`·`CATEGORY_CODES`), 정의·경계 규칙의 단일 출처는 `configs/prompts/categories.md`(가공·재분류 프롬프트가 공유)다.
+
+| 키         | 표시명        | 코드 | 포함 범위                                                                                                   |
+| ---------- | ------------- | ---- | ----------------------------------------------------------------------------------------------------------- |
+| `llm`      | LLM           | LLM  | 파운데이션·멀티모달 모델 출시·성능·아키텍처, 오픈 웨이트 모델, 이미지·영상·음성 생성 모델. 모델 자체가 주제 |
+| `agent`    | 에이전트      | AGT  | 에이전트 자체·에이전트 프레임워크·하네스·SDK·툴 유즈·MCP·코딩 에이전트·AI 비서·오케스트레이션               |
+| `physical` | Physical AI   | PHY  | 로보틱스·휴머노이드·VLA·자율주행·드론·임바디드 AI·로봇 시뮬레이션·월드 모델(로봇용)·엣지 AI 디바이스        |
+| `oss`      | 오픈소스·도구 | OSS  | 오픈소스 프로젝트, 개발 도구·프레임워크·SDK·라이브러리, 학습·서빙 인프라(구 Dev Tools·MLOps)                |
+| `research` | 연구·논문     | RES  | 논문·연구 성과·벤치마크·기술 리포트                                                                         |
+| `industry` | 산업·정책     | BIZ  | 투자·인수·규제·정책·시장·기업 전략·칩·데이터센터. 위 5개에 해당하지 않는 비즈니스 소식                      |
+
+**경계 규칙 (번호가 앞선 규칙이 우선 — physical > agent > llm·oss > research > industry):**
+
+1. **Physical AI 최우선:** 로봇·물리 세계가 주제면 투자·출시 소식이어도 `physical`. 로봇 에이전트·로봇 논문·로봇 제어 저장소·VLA 모델도 `physical`.
+2. 주제가 **에이전트 자체**일 때만 `agent`(에이전트 제품, 프레임워크·하네스·SDK, 코딩 에이전트, MCP 서버·프로토콜 — 저장소 공개여도). 에이전트가 쓰거나 겨냥한 도구(보안 스캐너, 미디어 엔진, 실행 환경·인프라)는 3번 이하로 넘어간다(대개 `oss`).
+3. 모델 공개는 `llm`, 그 밖의 저장소·도구 공개는 `oss`.
+4. 논문·벤치마크가 주제면 `research`.
+5. 위 어디에도 해당하지 않는 비즈니스·정책 소식만 `industry`. 클라우드·칩 공급 계약과 기업 간 제휴는 인프라를 다뤄도 `industry`, 보안 기능·사고는 대상의 분야(에이전트 자체 → `agent`, 보안 도구 → `oss`)를 따른다.
+
+**형식(format, 출처가 결정 — LLM 비용 없음).** `configs/sources.json`의 소스 속성 `format`(생략 시 `news`)을 `sources.format` 컬럼에 동기화하고, 기사는 JOIN으로 읽는다(값을 바꾸면 지난 기사에도 소급). 단일 출처는 `src/lib/labels.ts`(`FORMATS`·`FORMAT_LABELS`·`FORMAT_BADGES`).
+
+| 키      | 표시명   | 배지    | 출처                                           |
+| ------- | -------- | ------- | ---------------------------------------------- |
+| `news`  | 뉴스     | (없음)  | 기본값(RSS 매체·HN 등)                         |
+| `oss`   | 오픈소스 | `REPO`  | GitHub 트렌딩·토픽 검색                        |
+| `model` | 모델     | `MODEL` | HuggingFace 트렌딩 모델                        |
+| `paper` | 논문     | `PAPER` | arXiv · HuggingFace Daily Papers · Takara TLDR |
+
+- 형식은 출처의 종류일 뿐 분야를 정하지 않는다(로봇 제어 저장소 → `physical`, 에이전트 프레임워크 저장소 → `agent`).
+- 형식은 선별 풀·선별 할당(비뉴스·형식별 최소 건수), 1면 슬롯(뉴스 축 / 레이더), 배지 표시에 쓴다.
+- 소스 속성 `topic: "physical"`은 선별 풀에서 Physical AI 후보를 확보하기 위한 힌트이며 DB에 저장하지 않는다. 기사의 분야는 언제나 LLM 가공이 정한다.
+
+**태그(자유, 1~5개).** LLM 생성. 정규화(소문자·trim) 후 `tags` 테이블에 누적.
 
 ---
 

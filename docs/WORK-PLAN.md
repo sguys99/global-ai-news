@@ -1,5 +1,7 @@
 # Daily AI Brief 상세 작업 계획서 (Work Plan)
 
+> **역사 기록 (2026-10-31):** 이 문서는 최초 구현(Phase 0~6, Vercel·ISR 전제) 기록이다. 배포 구조는 [PRD-github-pages.md](PRD-github-pages.md)·[WORK-PLAN-github-pages.md](WORK-PLAN-github-pages.md)(GitHub Pages 정적 export), 분야·형식·1면·수집량(`MAX_ITEMS_PER_RUN` → `MAX_PICKS_PER_RUN`/`TRIAGE_POOL_SIZE`)은 [contents-upgrade-plan.md](contents-upgrade-plan.md)로 대체됐다. 현재 동작은 [CLAUDE.md](../CLAUDE.md)를 기준으로 본다.
+
 ## Context
 
 [PRD.md](PRD.md)(Daily AI Brief PRD v1.0)를 실행 가능한 단계별 개발 계획으로 분해한다.
