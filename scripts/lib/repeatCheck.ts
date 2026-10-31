@@ -6,6 +6,11 @@
  * 4-3 검증에서 알려진 재보도 5건 중 4건을 다시 골랐다. 여기서는 같은 언어(한국어)끼리, 짧은 입력으로 이 일만 시킨다.
  *
  * 실패에 열려 있다(fail-open): 호출이 실패하거나 응답이 검증되지 않으면 아무것도 빼지 않고 notes 에만 남긴다.
+ *
+ * 모델의 재보도 판정은 코드로 한 번 더 확인한다(confirmRepeats). 7-3 배치 회차에서 6건을 뺐는데 5건이 같은 회사이거나
+ * "투자"·"수학" 같은 단어 하나만 겹친 오탐이었다. 잘못 빼는 손해(그 호의 가장 강한 뉴스가 사라짐)가 재보도 하나를
+ * 놓치는 손해(선별의 already_reported 가 이미 1차로 거른다)보다 훨씬 크므로, 두 기사가 내용어를 충분히 함께 쓰지
+ * 않으면 판정을 기각하고 싣는다.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -15,6 +20,7 @@ import { PROMPTS_DIR } from "../../src/lib/paths";
 import { approxTokens, estimateCost, outputFormatTokens } from "./cost";
 import { parseStructured, type LlmRequest, type LlmResult, type LlmRunner } from "./llm";
 import { repeatCheckSchema, type ArticleEnrichment } from "./schema";
+import { contentTokensOf, ENTITY_KEYS, RELATION_PATTERN, sharedTokens } from "./textTokens";
 import type { Pick as TriagePick, ReportedHeadline } from "./triage";
 
 export const repeatFormat = zodOutputFormat(repeatCheckSchema);
@@ -136,6 +142,65 @@ export function estimateRepeatTokens(req: LlmRequest, inputCount: number) {
   };
 }
 
+/** 재보도 판정을 받아들이는 최소 공유 증거 수(repeatEvidence.score). */
+export const MIN_REPEAT_EVIDENCE = 2;
+
+/** 오늘 기사와 이미 보도함 한 건이 함께 쓰는 내용어와 그 증거 점수. */
+export interface RepeatEvidence {
+  /** 함께 쓰는 내용어(회사는 정규 키 — openai·google …). */
+  shared: string[];
+  score: number;
+}
+
+/**
+ * 두 기사가 같은 사건이라는 코드 쪽 증거. 모델이 본 것과 같은 텍스트(제목 + 요약 첫 문장)만 쓴다.
+ * - 내용어(textTokens.contentTokens — 일반어·분야어 제외) 하나가 증거 하나다.
+ * - 회사는 몇 개가 겹치든 증거 하나다("같은 회사"만으로는 같은 사건이 아니다). 단, 두 회사가 함께 겹치고 두 기사
+ *   모두 제휴·계약·인수·투자를 다루면 둘로 센다 — 상대가 있는 사건은 두 회사가 곧 주체와 대상이다.
+ */
+export function repeatEvidence(today: RepeatInput, reported: ReportedHeadline): RepeatEvidence {
+  const todayTexts = [today.title, firstSentence(today.summary)];
+  const reportedTexts = [
+    reported.title,
+    reported.summary ? firstSentence(reported.summary, REPORTED_SENTENCE_CHARS) : undefined,
+  ];
+  const shared = sharedTokens(contentTokensOf(todayTexts), contentTokensOf(reportedTexts));
+  const entities = shared.filter((t) => ENTITY_KEYS.has(t)).length;
+  const relation =
+    entities >= 2 &&
+    todayTexts.some((t) => RELATION_PATTERN.test(t)) &&
+    reportedTexts.some((t) => t !== undefined && RELATION_PATTERN.test(t));
+  const score = shared.length - entities + Math.min(entities, 1) + (relation ? 1 : 0);
+  return { shared, score };
+}
+
+/** 코드 확인에서 기각한 재보도 판정(그대로 싣는다). */
+export interface RejectedRepeat extends RepeatMatch {
+  shared: string[];
+}
+
+/**
+ * 재보도 판정 → 받아들인 것 / 기각한 것. 공유 증거가 MIN_REPEAT_EVIDENCE 미만이면 기각한다.
+ * 짝의 기사·R번호를 찾지 못하면(resolveRepeats 를 거쳤다면 없다) 기각한다 — 실패에 열린 쪽.
+ */
+export function confirmRepeats(
+  repeats: RepeatMatch[],
+  inputs: RepeatInput[],
+  reported: ReportedHeadline[],
+): { confirmed: RepeatMatch[]; rejected: RejectedRepeat[] } {
+  const byId = new Map(inputs.map((x) => [x.id, x]));
+  const confirmed: RepeatMatch[] = [];
+  const rejected: RejectedRepeat[] = [];
+  for (const m of repeats) {
+    const today = byId.get(m.id);
+    const headline = reported[m.reported - 1];
+    const evidence = today && headline ? repeatEvidence(today, headline) : { shared: [], score: 0 };
+    if (evidence.score >= MIN_REPEAT_EVIDENCE) confirmed.push(m);
+    else rejected.push({ ...m, shared: evidence.shared });
+  }
+  return { confirmed, rejected };
+}
+
 /** 검증한 검사 결과. */
 export interface RepeatVerdict {
   repeats: RepeatMatch[];
@@ -167,10 +232,15 @@ export function resolveRepeats(
   return { repeats, followups: [...followups.values()] };
 }
 
-/** runRepeatCheck 결과. note 는 collect notes 에 넣을 한 줄(없으면 null). */
+/**
+ * runRepeatCheck 결과. repeats 는 코드 확인을 통과한 판정만(게재에서 뺄 것), rejected 는 기각한 판정(싣는다).
+ * note·rejectNote 는 collect notes 에 넣을 줄(없으면 null).
+ */
 export interface RepeatCheckOutcome extends RepeatVerdict {
   status: "skipped" | "ok" | "failed";
+  rejected: RejectedRepeat[];
   note: string | null;
+  rejectNote: string | null;
 }
 
 export interface RepeatCheckOptions {
@@ -188,27 +258,51 @@ export function repeatNote(verdict: RepeatVerdict): string | null {
   return `재보도 제외 ${verdict.repeats.length}건${follow}`;
 }
 
-const failed = (reason: string): RepeatCheckOutcome => ({
-  status: "failed",
+/**
+ * 코드 확인에서 기각한 판정 수. `재보도 제외` 와 따로 둔 notes 한 줄이다 — kpi baseline 은
+ * parseRunWarnings.repeatRejected 로 읽는다(`재보도 제외`·`재보도 검사 실패·생략` 파싱과 겹치지 않는다).
+ */
+export function rejectNote(rejected: RejectedRepeat[]): string | null {
+  return rejected.length > 0 ? `재보도 판정 기각 ${rejected.length}건(내용어 겹침 부족)` : null;
+}
+
+/** 아무것도 빼지 않는 결과(실패·생략). */
+const nothing = (status: "skipped" | "failed", note: string | null): RepeatCheckOutcome => ({
+  status,
   repeats: [],
   followups: [],
-  note: `재보도 검사 실패(전부 게재): ${reason}`,
+  rejected: [],
+  note,
+  rejectNote: null,
 });
 
-/** 러너 결과 1건 → 판정. 응답이 없거나 검증되지 않으면 실패(아무것도 빼지 않음). */
+const failed = (reason: string) => nothing("failed", `재보도 검사 실패(전부 게재): ${reason}`);
+
+/**
+ * 러너 결과 1건 → 판정. 응답이 없거나 검증되지 않으면 실패(아무것도 빼지 않음).
+ * 검증된 재보도 판정은 confirmRepeats 로 한 번 더 확인해, 내용어 겹침이 부족한 것은 기각하고 싣는다.
+ */
 export function interpretRepeatResult(
   result: LlmResult | undefined,
   inputs: RepeatInput[],
-  reportedCount: number,
+  reported: ReportedHeadline[],
 ): RepeatCheckOutcome {
   const parsed = parseStructured(result?.message ?? null, repeatFormat);
   if (!parsed) return failed(result?.error ?? "응답 검증 실패");
   const verdict = resolveRepeats(
     parsed,
     inputs.map((x) => x.id),
-    reportedCount,
+    reported.length,
   );
-  return { status: "ok", ...verdict, note: repeatNote(verdict) };
+  const { confirmed, rejected } = confirmRepeats(verdict.repeats, inputs, reported);
+  const kept = { repeats: confirmed, followups: verdict.followups };
+  return {
+    status: "ok",
+    ...kept,
+    rejected,
+    note: repeatNote(kept),
+    rejectNote: rejectNote(rejected),
+  };
 }
 
 /**
@@ -222,22 +316,15 @@ export async function runRepeatCheck(
   model: string,
   { remainingUsd, batch }: RepeatCheckOptions,
 ): Promise<RepeatCheckOutcome> {
-  if (inputs.length === 0 || reported.length === 0) {
-    return { status: "skipped", repeats: [], followups: [], note: null };
-  }
+  if (inputs.length === 0 || reported.length === 0) return nothing("skipped", null);
   const req = buildRepeatRequest(inputs, reported, model);
   const est = estimateRepeatTokens(req, inputs.length);
   const cost = estimateCost(est.input, est.output, model, { batch });
   if (cost > remainingUsd) {
-    return {
-      status: "skipped",
-      repeats: [],
-      followups: [],
-      note: `재보도 검사 생략: 비용 한도 초과 예상($${cost.toFixed(4)})`,
-    };
+    return nothing("skipped", `재보도 검사 생략: 비용 한도 초과 예상($${cost.toFixed(4)})`);
   }
   try {
-    return interpretRepeatResult((await runner.run([req])).get(req.id), inputs, reported.length);
+    return interpretRepeatResult((await runner.run([req])).get(req.id), inputs, reported);
   } catch (err) {
     return failed((err as Error).message);
   }

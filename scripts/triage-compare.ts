@@ -21,7 +21,8 @@
  *
  * `--repeat-check <파일>`: 재보도 검사(④-2)만 일반 호출 1회로 돌린다. 대상은 그 파일(스냅숏 또는 `.current.json`)의
  * 선정·가공 결과, 대조할 이미 보도함은 스냅숏의 것이다. `--known` 과 비교해 맞힌·놓친 재보도와, 눈으로 확인할
- * 오탐 후보(known 밖에서 걸린 기사 — 오늘 제목과 짝지은 이미 보도함 제목을 나란히)를 출력한다. 결과는 `<파일>.repeat.json`.
+ * 오탐 후보(known 밖에서 걸린 기사 — 오늘 제목과 짝지은 이미 보도함 제목을 나란히)를 출력한다. 재현율·오탐 후보는
+ * 코드 확인(confirmRepeats)을 통과한 판정 기준이고, 기각한 판정은 따로 출력한다. 결과는 `<파일>.repeat.json`.
  * `--db <path>` 를 주면 그 DB(readonly)에서 이미 보도함 요약을 읽어 collect 와 같은 입력(제목 — 요약 첫 문장)으로 돌린다.
  */
 import { execFileSync } from "node:child_process";
@@ -673,6 +674,16 @@ async function runRepeatEval(
     const mark = args.known.length === 0 ? "" : known.has(m.id) ? " [known]" : " [오탐 후보]";
     console.log(
       `  #${m.id}${mark} ${titleOf(m.id)}\n    ≈ ${headline(m.reported)}  [${m.event ?? ""}]`,
+    );
+  }
+  console.log(
+    `\n## 재보도 판정 기각 ${outcome.rejected.length}건 (코드 확인: 내용어 겹침 부족 — 그대로 게재)`,
+  );
+  for (const m of outcome.rejected) {
+    const mark = args.known.length === 0 ? "" : known.has(m.id) ? " [known]" : "";
+    console.log(
+      `  #${m.id}${mark} ${titleOf(m.id)}\n    ≈ ${headline(m.reported)}  [${m.event ?? ""}]` +
+        ` 겹침: ${m.shared.join(", ") || "없음"}`,
     );
   }
   console.log(`\n## 후속 보도 판정 ${outcome.followups.length}건 (그대로 게재)`);

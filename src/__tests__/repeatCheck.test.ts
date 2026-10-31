@@ -105,6 +105,9 @@ describe("buildRepeatRequest", () => {
     expect(system).toContain("발표했던 모델의 실제 출시·가중치 공개");
     expect(system).toContain("R12 → 12");
     expect(system).toContain("주체만 같은 기사");
+    // 7-3 오탐 대응: 회사·주제·단어 하나만 겹치는 짝과, 한쪽 기사만 설명하는 event 를 막는다.
+    expect(system).toContain("주제·단어만 겹치는 기사");
+    expect(system).toContain("두 제목을 모두 그대로 설명하는 구절");
     expect(system).toContain("`event`");
   });
 
@@ -203,13 +206,15 @@ describe("interpretRepeatResult (실패에 열림)", () => {
         followups: [],
       }),
       inputs,
-      reported.length,
+      reported,
     );
     expect(out).toEqual({
       status: "ok",
       repeats: [{ id: 60, reported: 1, event: "미스트랄 라지 4 가중치 공개" }],
       followups: [],
+      rejected: [],
       note: "재보도 제외 1건",
+      rejectNote: null,
     });
   });
 
@@ -232,7 +237,7 @@ describe("interpretRepeatResult (실패에 열림)", () => {
       ],
     ];
     for (const [result, reason] of cases) {
-      const out = interpretRepeatResult(result, inputs, reported.length);
+      const out = interpretRepeatResult(result, inputs, reported);
       expect(out.status).toBe("failed");
       expect(out.repeats).toEqual([]);
       expect(out.note).toMatch(/^재보도 검사 실패\(전부 게재\): /);
@@ -251,7 +256,14 @@ describe("runRepeatCheck", () => {
       [inputs, []],
     ] as const) {
       const out = await runRepeatCheck(runner, [...ins], [...rep], "m", opts);
-      expect(out).toEqual({ status: "skipped", repeats: [], followups: [], note: null });
+      expect(out).toEqual({
+        status: "skipped",
+        repeats: [],
+        followups: [],
+        rejected: [],
+        note: null,
+        rejectNote: null,
+      });
     }
     expect(runner.run).not.toHaveBeenCalled();
   });

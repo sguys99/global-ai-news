@@ -105,13 +105,15 @@ describe("parseRunWarnings — notes 의 재보도·할당·쏠림 경고(Phase 
     const w = parseRunWarnings(
       "aitimes: 10건(신규 8); 선별 풀: 후보 263건 중 180건; 이미 보도함: 최근 3개 호 제목 84건; " +
         "선정 35건(같은 사건으로 묶인 기사 6건); 이미 보도함 제외 4건(선정했다 뺀 1건); " +
-        "재보도 제외 3건(후속 보도 유지 2건); 할당 미달: 비뉴스 5/8, 모델 0/1; 할당 초과: Physical AI 15/9; " +
+        "재보도 제외 3건(후속 보도 유지 2건); 재보도 판정 기각 4건(내용어 겹침 부족); " +
+        "할당 미달: 비뉴스 5/8, 모델 0/1; 할당 초과: Physical AI 15/9; " +
         "논문 분야 쏠림: Physical AI 5/8; 형식별 후보→풀→게재: 뉴스 210→104→25, 오픈소스 14→14→2, 모델 6→6→1, 논문 33→26→2; " +
         "Physical AI 후보→풀→게재: 41→22→3; LLM batch 호출 6회, $0.0432",
     );
     expect(w).toEqual({
       repeatDropped: 3,
       repeatFollowups: 2,
+      repeatRejected: 4,
       repeatCheckFailed: null,
       quotaShortfall: "비뉴스 5/8, 모델 0/1",
       quotaOverflow: "Physical AI 15/9",
@@ -123,6 +125,10 @@ describe("parseRunWarnings — notes 의 재보도·할당·쏠림 경고(Phase 
   it("후속 보도 없는 재보도 제외·검사 실패/생략·dry-run 형식(게재 없음)", () => {
     expect(parseRunWarnings("재보도 제외 2건").repeatDropped).toBe(2);
     expect(parseRunWarnings("재보도 제외 2건").repeatFollowups).toBe(0);
+    // 모델 판정을 모두 기각하면 `재보도 제외` 줄 없이 기각 줄만 남는다 — 제외 건수(null)와 섞이지 않는다.
+    const onlyRejected = parseRunWarnings("재보도 판정 기각 5건(내용어 겹침 부족)");
+    expect([onlyRejected.repeatDropped, onlyRejected.repeatRejected]).toEqual([null, 5]);
+    expect(onlyRejected.repeatCheckFailed).toBeNull();
     expect(parseRunWarnings("재보도 검사 실패(전부 게재): 응답 검증 실패").repeatCheckFailed).toBe(
       "응답 검증 실패",
     );
@@ -140,6 +146,7 @@ describe("parseRunWarnings — notes 의 재보도·할당·쏠림 경고(Phase 
     const none = {
       repeatDropped: null,
       repeatFollowups: 0,
+      repeatRejected: 0,
       repeatCheckFailed: null,
       quotaShortfall: null,
       quotaOverflow: null,
@@ -448,7 +455,7 @@ describe("computeBaseline — 실제 스키마 in-memory DB", () => {
     run(
       "2026-10-24T21:30:00Z",
       0.01,
-      "선정 30건(같은 사건으로 묶인 기사 5건); 재보도 제외 3건(후속 보도 유지 1건); " +
+      "선정 30건(같은 사건으로 묶인 기사 5건); 재보도 제외 3건(후속 보도 유지 1건); 재보도 판정 기각 2건(내용어 겹침 부족); " +
         "할당 미달: 비뉴스 5/8; 논문 분야 쏠림: Physical AI 5/8; Physical AI 후보→풀→게재: 41→22→3",
       "success",
     );
@@ -459,6 +466,7 @@ describe("computeBaseline — 실제 스키마 in-memory DB", () => {
       repeatRuns: 1,
       repeatDropped: 3,
       repeatFollowups: 1,
+      repeatRejected: 2,
       repeatCheckFailed: 0,
       quotaShortfall: 1,
       quotaOverflow: 0,

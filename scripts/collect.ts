@@ -413,6 +413,19 @@ function printNoSaveResult(
       );
     }
   }
+  if (repeat.outcome.rejected.length > 0) {
+    console.log(
+      `[collect] no-save 재보도 판정 기각 ${repeat.outcome.rejected.length}건 (내용어 겹침 부족 — 그대로 게재):`,
+    );
+    for (const m of repeat.outcome.rejected) {
+      const r = reported[m.reported - 1];
+      console.log(
+        `  #${m.id} ${repeat.all.get(m.id)?.title_ko ?? pool[m.id].item.title}` +
+          `\n    ≈ R${m.reported} ${r ? `${r.issueDate.slice(5)} ${r.title}` : "?"}` +
+          `  [${m.event ?? ""}] 겹침: ${m.shared.join(", ") || "없음"}`,
+      );
+    }
+  }
   console.log(`[collect] no-save 게재 ${picks.length}건 (중요도 | 형식 | 분야 | 매체 | 제목):`);
   for (const p of picks) {
     const c = pool[p.index];
@@ -572,10 +585,10 @@ async function main(): Promise<void> {
       MODEL,
       { remainingUsd: MAX_COST_USD_PER_RUN - llm.usage.costUsd, batch: USE_BATCH },
     );
-    if (repeat.note) stats.notes.push(repeat.note);
+    for (const note of [repeat.note, repeat.rejectNote]) if (note) stats.notes.push(note);
     if (snapshot) {
-      const { status, repeats, followups, note } = repeat;
-      snapshot.repeatCheck = { status, repeats, followups, note };
+      const { status, repeats, followups, rejected, note, rejectNote } = repeat;
+      snapshot.repeatCheck = { status, repeats, followups, rejected, note, rejectNote };
     }
     const published = dropRepeats(
       picks,

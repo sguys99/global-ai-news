@@ -12,7 +12,7 @@
  *   - legacy: getArticlesUntil(cutoff) 누적 입력 — Phase 0 기준선과 비교하려는 근사(옛 1면 재현)
  * - Physical AI 는 세 기준을 나눠 센다: 가공 분야(category = physical, 구 값 정규화 포함) · 키워드(PHYSICAL_AI_PATTERN)
  *   · 소스 topic(회차 notes 의 `Physical AI 후보→풀→게재`)
- * - 회차 경고: notes 의 `재보도 제외`·`할당 미달`·`할당 초과`·`논문 분야 쏠림`(parseRunWarnings)
+ * - 회차 경고: notes 의 `재보도 제외`·`재보도 판정 기각`·`할당 미달`·`할당 초과`·`논문 분야 쏠림`(parseRunWarnings)
  * - 이틀 연속 중복 후보: 인접 호 기사 쌍의 제목 토큰 Jaccard·공유 URL — 휴리스틱(확정 아님)
  */
 import type { Database as DatabaseType } from "better-sqlite3";
@@ -276,6 +276,8 @@ export interface RunWarnings {
   repeatDropped: number | null;
   /** 같은 줄의 M(없으면 0). */
   repeatFollowups: number;
+  /** `재보도 판정 기각 K건(…)` 의 K — 모델이 재보도로 봤지만 코드 확인에서 기각해 실은 수(없으면 0). */
+  repeatRejected: number;
   /** `재보도 검사 실패(전부 게재): 사유` 또는 `재보도 검사 생략: …` 의 뒷부분. */
   repeatCheckFailed: string | null;
   /** `할당 미달: 비뉴스 5/8, Physical AI 2/3` 의 콜론 뒤. */
@@ -292,6 +294,7 @@ export function parseRunWarnings(notes: string | null): RunWarnings {
   const out: RunWarnings = {
     repeatDropped: null,
     repeatFollowups: 0,
+    repeatRejected: 0,
     repeatCheckFailed: null,
     quotaShortfall: null,
     quotaOverflow: null,
@@ -305,6 +308,11 @@ export function parseRunWarnings(notes: string | null): RunWarnings {
     if (repeat) {
       out.repeatDropped = Number(repeat[1]);
       out.repeatFollowups = repeat[2] ? Number(repeat[2]) : 0;
+      continue;
+    }
+    const rejected = /^재보도 판정 기각 (\d+)건/.exec(part);
+    if (rejected) {
+      out.repeatRejected = Number(rejected[1]);
       continue;
     }
     const failed = /^재보도 검사 (?:실패\(전부 게재\)|생략): (.*)$/.exec(part);
@@ -570,6 +578,8 @@ export interface BaselineReport {
       repeatRuns: number;
       repeatDropped: number;
       repeatFollowups: number;
+      /** 코드 확인에서 기각한 재보도 판정 합. */
+      repeatRejected: number;
       repeatCheckFailed: number;
       quotaShortfall: number;
       quotaOverflow: number;
@@ -835,6 +845,7 @@ export function computeBaseline(
         repeatRuns: runs.filter((r) => (r.warnings.repeatDropped ?? 0) > 0).length,
         repeatDropped: runs.reduce((s, r) => s + (r.warnings.repeatDropped ?? 0), 0),
         repeatFollowups: runs.reduce((s, r) => s + r.warnings.repeatFollowups, 0),
+        repeatRejected: runs.reduce((s, r) => s + r.warnings.repeatRejected, 0),
         repeatCheckFailed: countRuns((w) => w.repeatCheckFailed),
         quotaShortfall: countRuns((w) => w.quotaShortfall),
         quotaOverflow: countRuns((w) => w.quotaOverflow),

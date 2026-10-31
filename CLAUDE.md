@@ -101,7 +101,8 @@
 │       ├── llm.ts                # Claude 호출 계층 (Batches API + 일반 호출 대체, usage 비용 누적)
 │       ├── triage.ts             # 선별 풀(형식·Physical AI 최소 할당) + LLM 선별(PICK_QUOTAS·이미 보도함·할당 경고)
 │       ├── enrich.ts             # LLM 가공: 선정 기사 10건씩 묶음 → 한국어 제목·요약·분야·태그 (형식 줄 포함)
-│       ├── repeatCheck.ts        # LLM 재보도 검사: 가공 제목·요약 첫 문장 ↔ 최근 호 게재분 대조, 새 전개 없는 재보도 제외(실패 시 전부 게재)
+│       ├── repeatCheck.ts        # LLM 재보도 검사: 가공 제목·요약 첫 문장 ↔ 최근 호 게재분 대조, 새 전개 없는 재보도 제외(코드 확인으로 오탐 기각, 실패 시 전부 게재)
+│       ├── textTokens.ts         # 재보도 코드 확인용 내용어 토큰(조사·어미 절단, 회사 표기 통일, 일반어 제외)
 │       ├── cost.ts               # 토큰→비용 산출 (Haiku 단가, Batches 50% 할인, 문자 종류별 토큰 추정)
 │       ├── tags.ts               # tags/article_tags upsert
 │       ├── env.ts                # 환경변수 헬퍼(Actions 빈 vars → 코드 기본값)
@@ -278,7 +279,7 @@ LLM 호출은 채팅 엔드포인트가 아니라 **배치 파이프라인** 안
 
 1. **선별**(`scripts/lib/triage.ts`) — 후보 풀(최대 180건)을 `번호 | 형식 | 매체 | 날짜 | 화제 | 제목 | 발췌` 한 줄씩 1회 호출로 보내, 최대 35건 선정·같은 사건 묶기(`duplicates`, 모델 파생본·논문 보도 포함)·중요도(같은 형식 후보끼리 상대 평가)·`already_reported`를 받는다. 유저 메시지는 "오늘 후보 구성·오늘 할당 → 이미 보도함 → 오늘 후보" 순이다. 할당 숫자의 단일 출처는 `PICK_QUOTAS`(비뉴스 8·형식별 1·Physical AI 3, 상한 `ceil(35/4)`=9)이며 `pickTargets`가 풀 구성에 맞춰 줄여 넣는다. "이미 보도함"은 최근 3개 호 게재 제목(`loadReportedHeadlines`). 할당 미달·초과·논문 분야 쏠림은 최종 게재분 기준으로 notes에 경고만 남긴다.
 2. **가공**(`scripts/lib/enrich.ts`) — 선정 기사만 10건씩 묶어 한국어 제목·요약·분야·태그를 받는다. 입력에 `[형식]` 줄과 분리된 `[토픽]` 줄(분류용, 기능 근거 아님)을 넣고, 형식별 요약 가이드(뉴스·리포·모델·논문)를 따른다.
-3. **재보도 검사**(`scripts/lib/repeatCheck.ts`) — 가공된 `title_ko`+요약 첫 문장을 최근 3개 호 게재분과 1회 호출로 대조해, 새 전개 없는 재보도(`repeats`)를 게재에서 뺀다(묶음 포함 → `seen_items`, 재심사 행은 삭제). 후속 보도(`followups`)는 유지. 호출·검증 실패 시 전부 게재(fail-open).
+3. **재보도 검사**(`scripts/lib/repeatCheck.ts`) — 가공된 `title_ko`+요약 첫 문장을 최근 3개 호 게재분과 1회 호출로 대조해, 새 전개 없는 재보도(`repeats`)를 게재에서 뺀다(묶음 포함 → `seen_items`, 재심사 행은 삭제). 후속 보도(`followups`)는 유지. 모델의 재보도 판정은 코드로 다시 확인한다(`confirmRepeats`) — 두 기사가 내용어(`textTokens.ts`, 일반어·분야어 제외, 회사는 몇 개가 겹쳐도 1개 — 제휴·인수·투자처럼 상대가 있는 사건만 2개)를 2개 이상 함께 쓰지 않으면 판정을 기각하고 싣는다(notes `재보도 판정 기각 N건`). 호출·검증 실패 시 전부 게재(fail-open).
 
 - 호출 계층: `scripts/lib/llm.ts` — Message Batches API로 제출, `BATCH_TIMEOUT_MIN` 초과·개별 실패 시 일반 호출로 1회 재시도. 출력은 구조화 출력(`output_config.format`)으로 받고 zod 로 검증한다.
 - 프롬프트: `configs/prompts/triage.system.md`(선별), `enrich.system.md` + `categories.md`(`{{CATEGORIES}}`) + `enrich.fewshot.json`(가공), `repeat.system.md`(재보도) + 가변 유저 메시지 (PRD §7)
