@@ -19,7 +19,7 @@ import {
 import { EVAL_DIR } from "../../src/lib/paths";
 import { estimateCost } from "./cost";
 import type { LlmUsage } from "./llm";
-import type { RejectedRepeat, RepeatMatch } from "./repeatCheck";
+import type { FollowUpLink, RejectedRepeat, RepeatMatch } from "./repeatCheck";
 import type { ArticleEnrichment } from "./schema";
 import type { Candidate, Pick, ReportedHeadline, TriageOutput } from "./triage";
 
@@ -94,12 +94,15 @@ export interface EvalSnapshot {
   /**
    * 재보도 검사 결과(검사를 건너뛰었거나 이 단계가 생기기 전 스냅숏이면 없음). repeats 는 코드 확인을 통과한 판정,
    * rejected 는 기각한 판정이다 — rejected·rejectNote 는 코드 확인이 생기기 전 스냅숏에 없다(그때 repeats 는 모델 판정 그대로).
+   * links·followRejected 는 후속 보도 연결(코드 확인을 통과한 후속 판정 / 기각한 후속 판정)로, 그 전 스냅숏에 없다.
    */
   repeatCheck?: {
     status: "skipped" | "ok" | "failed";
     repeats: RepeatMatch[];
     followups: RepeatMatch[];
     rejected?: RejectedRepeat[];
+    links?: FollowUpLink[];
+    followRejected?: RejectedRepeat[];
     note: string | null;
     rejectNote?: string | null;
   } | null;

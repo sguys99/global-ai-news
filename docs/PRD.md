@@ -549,6 +549,8 @@ CREATE TABLE IF NOT EXISTS articles (
   summary_ko      TEXT,
   category        TEXT,                   -- 분야 키 (CATEGORIES, §7.3)
   importance      INTEGER,                -- 1~5 (LLM 보조)
+  -- 이전 보도 articles.id (Phase 8 후속 보도 연결: 재보도 검사의 followups 중 코드 확인을 통과한 짝, FK 없음)
+  follow_up_of    INTEGER,
   -- 메타
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );

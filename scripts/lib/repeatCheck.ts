@@ -11,6 +11,10 @@
  * "투자"·"수학" 같은 단어 하나만 겹친 오탐이었다. 잘못 빼는 손해(그 호의 가장 강한 뉴스가 사라짐)가 재보도 하나를
  * 놓치는 손해(선별의 already_reported 가 이미 1차로 거른다)보다 훨씬 크므로, 두 기사가 내용어를 충분히 함께 쓰지
  * 않으면 판정을 기각하고 싣는다.
+ *
+ * 후속 보도(followups — 같은 사건의 새 전개)는 그대로 싣고, 짝지은 이미 보도함 기사를 follow_up_of 로 잇는다
+ * (상세 페이지의 사건 타임라인). 추가 호출은 없다. 잘못 이은 링크는 독자 눈에 보이는 오류라 같은 코드 확인
+ * (confirmFollowups)을 거친 짝만 잇는다 — 기각한 후속 판정도 기사는 그대로 싣고 링크만 달지 않는다.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -65,20 +69,26 @@ export function firstSentence(text: string, max = SENTENCE_CHARS): string {
 
 /**
  * 이미 보도함 제목에 그 기사의 요약(summary_ko)을 붙인다. 제목만으로는 "같은 회사의 다른 발표"를 가르지 못해 오탐이 났다
- * (4-3 검증). 호 날짜(created_at 의 KST 날짜)와 title_ko 로 찾고, 못 찾으면 제목만 둔다. 읽기 전용.
+ * (4-3 검증). 기사 id 가 있으면 id 로, 없으면(옛 스냅숏) 호 날짜(created_at 의 KST 날짜)와 title_ko 로 찾아 id 도
+ * 채운다 — 후속 보도 연결이 R번호를 기사로 되짚는다. 못 찾으면 그대로 둔다. 읽기 전용.
  */
 export function attachReportedSummaries(
   db: DatabaseType,
   reported: ReportedHeadline[],
 ): ReportedHeadline[] {
-  const find = db.prepare(
-    `SELECT summary_ko FROM articles
+  const byId = db.prepare(
+    `SELECT id, summary_ko FROM articles WHERE id = ? AND summary_ko IS NOT NULL`,
+  );
+  const byTitle = db.prepare(
+    `SELECT id, summary_ko FROM articles
       WHERE title_ko = ? AND date(created_at, '+9 hours') = ? AND summary_ko IS NOT NULL
       ORDER BY id LIMIT 1`,
   );
   return reported.map((r) => {
-    const row = find.get(r.title, r.issueDate) as { summary_ko: string } | undefined;
-    return row ? { ...r, summary: row.summary_ko } : r;
+    const row = (r.id !== undefined ? byId.get(r.id) : byTitle.get(r.title, r.issueDate)) as
+      | { id: number; summary_ko: string }
+      | undefined;
+    return row ? { ...r, id: row.id, summary: row.summary_ko } : r;
   });
 }
 
@@ -201,6 +211,98 @@ export function confirmRepeats(
   return { confirmed, rejected };
 }
 
+/**
+ * 후속 보도 연결을 받아들이는 최소 공유 증거 수. 재보도와 같은 기준(2)이다 — 후속 보도는 정의상 같은 사건이라
+ * 재보도와 같은 증거(주체 + 제품·대상 하나, 또는 내용어 둘)가 나와야 한다. 3으로 올리면 "Mistral Large 4 공개" →
+ * "Mistral Large 4 가중치 공개"(실제 10-06 → 10-30)처럼 주체와 제품만 겹치는 전형적인 후속 보도를 놓친다.
+ * 1(회사 하나)이면 같은 회사의 다른 소식을 잇는다 — 지금까지 모델이 낸 후속 판정 4건이 모두 이 경우였다.
+ */
+export const MIN_FOLLOWUP_EVIDENCE = MIN_REPEAT_EVIDENCE;
+
+/** 숫자·버전·수치만인 토큰("3.5"·"15%"·"1,000") — 무엇에 관한 소식인지 말해 주지 않는다. */
+const NUMERIC_TOKEN = /^[\d.,%]+$/;
+
+/**
+ * 후속 보도 연결은 점수에 더해, 회사도 숫자도 아닌 공유 낱말(제품·대상 — "large"·"k3.1"·"voxtral")이 하나는 있어야 한다.
+ * 회사 + 버전 번호만으로는 같은 제품군의 다른 출시를 잇는다(실제: "NVIDIA, 로봇용 소형 언어모델 Nemotron 3.5 출시" →
+ * "엔비디아, 40개 언어 지원 음성 모델 Nemotron 3.5 공개"가 nvidia·3.5 로 2점). 재보도 판정에는 쓰지 않는다
+ * — 그쪽은 잘못 빼는 손해를 줄이는 기각 규칙이고, 여기는 잘못 잇는 손해(보이는 오류)를 줄이는 규칙이다.
+ */
+export function hasTopicWord(shared: string[]): boolean {
+  return shared.some((t) => !ENTITY_KEYS.has(t) && !NUMERIC_TOKEN.test(t));
+}
+
+/** 저장할 후속 보도 연결: 오늘 기사(id = 풀 번호)가 이미 보도함 기사(articleId)의 후속 보도다. */
+export interface FollowUpLink extends RepeatMatch {
+  /** 이전 보도의 articles.id — follow_up_of 에 저장한다. */
+  articleId: number;
+}
+
+/**
+ * 후속 판정 → 이을 짝 / 기각한 짝. 같은 텍스트로 repeatEvidence 를 매겨 MIN_FOLLOWUP_EVIDENCE 이상이고 hasTopicWord 이면
+ * 잇는다. 짝의 기사·R번호를 찾지 못하면 기각한다. 통과한 짝 중 이미 보도함 기사 id 를 모르는 것(id 없는 옛 스냅숏)은
+ * 잇지도 기각하지도 않는다 — 어느 쪽이든 기사는 싣고 링크만 달지 않는다(실패에 열린 쪽).
+ */
+export function confirmFollowups(
+  followups: RepeatMatch[],
+  inputs: RepeatInput[],
+  reported: ReportedHeadline[],
+): { links: FollowUpLink[]; rejected: RejectedRepeat[] } {
+  const byId = new Map(inputs.map((x) => [x.id, x]));
+  const links: FollowUpLink[] = [];
+  const rejected: RejectedRepeat[] = [];
+  for (const m of followups) {
+    const today = byId.get(m.id);
+    const headline = reported[m.reported - 1];
+    const evidence = today && headline ? repeatEvidence(today, headline) : { shared: [], score: 0 };
+    if (evidence.score < MIN_FOLLOWUP_EVIDENCE || !hasTopicWord(evidence.shared)) {
+      rejected.push({ ...m, shared: evidence.shared });
+    } else if (Number.isInteger(headline?.id)) {
+      links.push({ ...m, articleId: headline.id as number });
+    }
+  }
+  return { links, rejected };
+}
+
+/** 후속 판정 중 코드 확인에서 기각한 수(기사는 싣고 링크만 달지 않는다). */
+export function followUpRejectNote(rejected: RejectedRepeat[]): string | null {
+  return rejected.length > 0 ? `후속 판정 기각 ${rejected.length}건(내용어 겹침 부족)` : null;
+}
+
+/** 실제로 저장한 후속 보도 연결 수(collect 가 저장 뒤에 센다). */
+export function followUpNote(linked: number): string | null {
+  return linked > 0 ? `후속 보도 연결 ${linked}건` : null;
+}
+
+/**
+ * 후속 보도 연결 1건 저장기(collect 의 저장 트랜잭션 안에서 부른다). 이 기사(id·dedup_key 가 모두 맞는 공개 행)에만,
+ * 자기 자신이 아니고 공개된 이전 보도로만 follow_up_of 를 적고 바뀐 행 수(0|1)를 돌려준다. 실패에 열려 있다 — 준비·실행
+ * 오류는 onError 로 알리고 0(준비 실패면 null)을 돌려, 링크 하나 때문에 그날 호 저장이 깨지지 않게 한다.
+ */
+export function prepareFollowUpLink(
+  db: DatabaseType,
+  onError: (err: Error) => void,
+): ((id: number, key: string, prev: number) => number) | null {
+  try {
+    const stmt = db.prepare(
+      `UPDATE articles SET follow_up_of = @prev
+        WHERE id = @id AND dedup_key = @key AND id != @prev AND summary_ko IS NOT NULL
+          AND EXISTS (SELECT 1 FROM articles p WHERE p.id = @prev AND p.summary_ko IS NOT NULL)`,
+    );
+    return (id, key, prev) => {
+      try {
+        return stmt.run({ id, key, prev }).changes;
+      } catch (err) {
+        onError(err as Error);
+        return 0;
+      }
+    };
+  } catch (err) {
+    onError(err as Error);
+    return null;
+  }
+}
+
 /** 검증한 검사 결과. */
 export interface RepeatVerdict {
   repeats: RepeatMatch[];
@@ -234,13 +336,18 @@ export function resolveRepeats(
 
 /**
  * runRepeatCheck 결과. repeats 는 코드 확인을 통과한 판정만(게재에서 뺄 것), rejected 는 기각한 판정(싣는다).
- * note·rejectNote 는 collect notes 에 넣을 줄(없으면 null).
+ * followups 는 모델의 후속 판정 전부(모두 싣는다), links 는 그중 코드 확인을 통과해 follow_up_of 로 이을 짝,
+ * followRejected 는 기각한 후속 판정(링크 없이 싣는다).
+ * note·rejectNote·followRejectNote 는 collect notes 에 넣을 줄(없으면 null). `후속 보도 연결`은 저장 뒤에 센다(followUpNote).
  */
 export interface RepeatCheckOutcome extends RepeatVerdict {
   status: "skipped" | "ok" | "failed";
   rejected: RejectedRepeat[];
+  links: FollowUpLink[];
+  followRejected: RejectedRepeat[];
   note: string | null;
   rejectNote: string | null;
+  followRejectNote: string | null;
 }
 
 export interface RepeatCheckOptions {
@@ -272,8 +379,11 @@ const nothing = (status: "skipped" | "failed", note: string | null): RepeatCheck
   repeats: [],
   followups: [],
   rejected: [],
+  links: [],
+  followRejected: [],
   note,
   rejectNote: null,
+  followRejectNote: null,
 });
 
 const failed = (reason: string) => nothing("failed", `재보도 검사 실패(전부 게재): ${reason}`);
@@ -281,6 +391,7 @@ const failed = (reason: string) => nothing("failed", `재보도 검사 실패(�
 /**
  * 러너 결과 1건 → 판정. 응답이 없거나 검증되지 않으면 실패(아무것도 빼지 않음).
  * 검증된 재보도 판정은 confirmRepeats 로 한 번 더 확인해, 내용어 겹침이 부족한 것은 기각하고 싣는다.
+ * 후속 판정도 같은 확인(confirmFollowups)을 거친 짝만 links 로 낸다.
  */
 export function interpretRepeatResult(
   result: LlmResult | undefined,
@@ -296,12 +407,16 @@ export function interpretRepeatResult(
   );
   const { confirmed, rejected } = confirmRepeats(verdict.repeats, inputs, reported);
   const kept = { repeats: confirmed, followups: verdict.followups };
+  const follow = confirmFollowups(verdict.followups, inputs, reported);
   return {
     status: "ok",
     ...kept,
     rejected,
+    links: follow.links,
+    followRejected: follow.rejected,
     note: repeatNote(kept),
     rejectNote: rejectNote(rejected),
+    followRejectNote: followUpRejectNote(follow.rejected),
   };
 }
 

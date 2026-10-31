@@ -686,9 +686,22 @@ async function runRepeatEval(
         ` 겹침: ${m.shared.join(", ") || "없음"}`,
     );
   }
-  console.log(`\n## 후속 보도 판정 ${outcome.followups.length}건 (그대로 게재)`);
+  // 후속 보도 판정(모두 게재): 코드 확인을 통과해 follow_up_of 로 이을 짝은 [연결 #이전 보도 id], 기각은 겹친 내용어와 함께.
+  const linkOf = new Map(outcome.links.map((l) => [l.id, l.articleId]));
+  const followRejected = new Map(outcome.followRejected.map((m) => [m.id, m.shared]));
+  console.log(
+    `\n## 후속 보도 판정 ${outcome.followups.length}건 (그대로 게재 — 연결 ${outcome.links.length}건, 기각 ${outcome.followRejected.length}건)`,
+  );
   for (const m of outcome.followups) {
-    console.log(`  #${m.id} ${titleOf(m.id)}\n    ≈ ${headline(m.reported)}  [${m.event ?? ""}]`);
+    const shared = followRejected.get(m.id);
+    const mark = linkOf.has(m.id)
+      ? ` [연결 #${linkOf.get(m.id)}]`
+      : shared
+        ? ` [기각 — 겹침: ${shared.join(", ") || "없음"}]`
+        : " [연결 안 함 — 이전 보도 id 없음]";
+    console.log(
+      `  #${m.id} ${titleOf(m.id)}\n    ≈ ${headline(m.reported)}  [${m.event ?? ""}]${mark}`,
+    );
   }
   if (args.known.length > 0) {
     console.log(

@@ -329,11 +329,12 @@ describe("loadReportedHeadlines", () => {
     ins("2026-10-22 21:00:00", "10-23 호 — 4번째라 빠짐");
     ins("2026-10-25 22:00:00", "미가공", 3, false); // summary_ko 없음 — 호도 제목도 세지 않는다
 
+    // id 는 후속 보도 연결(follow_up_of)이 R번호를 기사로 되짚는 데 쓴다.
     expect(loadReportedHeadlines(db)).toEqual([
-      { issueDate: "2026-10-26", title: "10-26 호 B" },
-      { issueDate: "2026-10-26", title: "10-26 호 A" },
-      { issueDate: "2026-10-25", title: "10-25 호" },
-      { issueDate: "2026-10-24", title: "10-24 호(00:30 KST)" },
+      { id: 2, issueDate: "2026-10-26", title: "10-26 호 B" },
+      { id: 1, issueDate: "2026-10-26", title: "10-26 호 A" },
+      { id: 3, issueDate: "2026-10-25", title: "10-25 호" },
+      { id: 4, issueDate: "2026-10-24", title: "10-24 호(00:30 KST)" },
     ]);
     expect(loadReportedHeadlines(db, 1)).toHaveLength(2);
     db.close();

@@ -9,8 +9,15 @@ import {
   TagChips,
   TrendBar,
 } from "@/components/ArticleMeta";
+import { FollowUpThread } from "@/components/FollowUpThread";
 import { StoryEntry } from "@/components/Story";
-import { getAllArticleIds, getArticle, getFeed, getLatestPublishedAt } from "@/lib/db";
+import {
+  getAllArticleIds,
+  getArticle,
+  getFeed,
+  getFollowUpThread,
+  getLatestPublishedAt,
+} from "@/lib/db";
 import { categoryLabel, formatDate, shortSourceName } from "@/lib/labels";
 import {
   SITE_DESCRIPTION,
@@ -72,6 +79,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
         .filter((a) => a.id !== article.id)
         .slice(0, RELATED_LIMIT)
     : [];
+  // 같은 사건의 앞선·뒤이은 보도(후속 보도 연결). 연결이 없으면 빈 배열이라 섹션이 그려지지 않는다.
+  const thread = getFollowUpThread(article.id);
 
   return (
     <main className="mx-auto flex max-w-[720px] flex-col px-4 pt-2 pb-32 md:px-6 md:pt-10 md:pb-20">
@@ -148,6 +157,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
             <p className="text-dek md:text-[1.25rem] md:leading-[1.75]">{article.summaryKo}</p>
           </section>
         )}
+
+        {/* 사건 타임라인 — 요약 바로 뒤: 이 소식이 어디서 이어졌는지가 요약 다음으로 궁금한 맥락이다. */}
+        <FollowUpThread entries={thread} />
 
         {article.related && article.related.length > 0 && (
           <section

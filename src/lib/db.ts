@@ -16,6 +16,7 @@ import {
 import type {
   ArticleCard,
   Engagement,
+  FollowUpEntry,
   LatestFeedEntry,
   RelatedCoverage,
   RunRow,
@@ -577,6 +578,86 @@ export function getArticle(id: number): ArticleCard | null {
     | ArticleRow
     | undefined;
   return row ? toArticleCard(row) : null;
+}
+
+/**
+ * articles.follow_up_of 컬럼 유무. ensureSchema(수집·prebuild)가 추가하지만, 그 전의 DB 에서도 상세 페이지가
+ * 깨지지 않게 확인한다(hasSourceFormat 과 같은 이유) — 없으면 타임라인이 비어 섹션이 그려지지 않는다.
+ */
+function hasFollowUpColumn(conn: DatabaseType): boolean {
+  const cols = conn.prepare("PRAGMA table_info(articles)").all() as { name: string }[];
+  return cols.some((c) => c.name === "follow_up_of");
+}
+
+/** 사건 타임라인에 담는 최대 기사 수(보고 있는 기사 포함). 가까운 연결부터 담는다. */
+export const FOLLOW_UP_THREAD_LIMIT = 6;
+
+/**
+ * 상세 페이지 사건 타임라인: 후속 보도 연결(follow_up_of)로 이어진 같은 사건의 공개 기사들 + 보고 있는 기사.
+ * 연결을 양방향으로 따라간다 — 이전 보도(이 기사의 follow_up_of, 그 이전 보도의 이전 보도 …)와 후속 보도(이 기사를
+ * follow_up_of 로 가리키는 기사들, 그 후속 …), 같은 이전 보도를 가리키는 다른 후속 보도까지. 가까운 연결부터
+ * 넓혀 가며 `limit` 건에서 멈추고(방문 집합이라 순환해도 끝난다), 호 날짜(created_at) 순으로 돌려준다.
+ * 비공개(summary_ko NULL) 기사는 건너뛰고 그 너머로도 넘어가지 않는다. 연결이 없으면 빈 배열.
+ */
+export function getFollowUpThread(
+  id: number,
+  limit = FOLLOW_UP_THREAD_LIMIT,
+  conn: DatabaseType = getDb(),
+): FollowUpEntry[] {
+  if (!hasFollowUpColumn(conn)) return [];
+  const node = conn.prepare(
+    `SELECT a.id, a.follow_up_of AS prev FROM articles a WHERE a.id = ? AND ${PUBLISHED}`,
+  );
+  const children = conn.prepare(
+    `SELECT a.id FROM articles a WHERE a.follow_up_of = ? AND ${PUBLISHED} ORDER BY a.created_at, a.id`,
+  );
+  const start = node.get(id) as { id: number; prev: number | null } | undefined;
+  if (!start) return [];
+
+  const seen = new Set<number>([id]);
+  const queue: { id: number; prev: number | null }[] = [start];
+  while (queue.length > 0 && seen.size < limit) {
+    const cur = queue.shift()!;
+    const next = [
+      ...(cur.prev !== null ? [cur.prev] : []),
+      ...(children.all(cur.id) as { id: number }[]).map((r) => r.id),
+    ];
+    for (const n of next) {
+      if (seen.size >= limit) break;
+      if (seen.has(n)) continue;
+      const row = node.get(n) as { id: number; prev: number | null } | undefined;
+      if (!row) continue; // 비공개·없는 기사 — 그 너머로 가지 않는다
+      seen.add(n);
+      queue.push(row);
+    }
+  }
+  if (seen.size < 2) return [];
+
+  const ids = [...seen];
+  const rows = conn
+    .prepare(
+      `SELECT a.id, a.title_ko, a.title_original, s.name AS source_name,
+              strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at) AS issued_at
+         FROM articles a JOIN sources s ON s.id = a.source_id
+        WHERE a.id IN (${ids.map(() => "?").join(", ")})
+        ORDER BY a.created_at, a.id`,
+    )
+    .all(...ids) as {
+    id: number;
+    title_ko: string | null;
+    title_original: string;
+    source_name: string;
+    issued_at: string;
+  }[];
+  const at = rows.findIndex((r) => r.id === id);
+  return rows.map((r, i) => ({
+    id: r.id,
+    titleKo: r.title_ko ?? "",
+    titleOriginal: r.title_original,
+    sourceName: r.source_name,
+    issuedAt: r.issued_at,
+    relation: i < at ? "earlier" : i > at ? "later" : "current",
+  }));
 }
 
 /**
