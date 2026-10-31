@@ -1,13 +1,23 @@
+# 빌드 컨텍스트에서 뺀다 — data/app.db 는 빌드 입력이라 남긴다(정적 export 가 읽는다).
 node_modules
 .next
+out
 .git
 .github
+.claude
 .vscode
 .idea
 coverage
 data/raw
 data/intermediate
 data/processed
+data/eval
+data/app.db-wal
+data/app.db-shm
+data/app.db.bak-*
+data/reclassify-cache.json
+public/search-index.json
+public/latest.json
 *.log
 .env
 .env*.local

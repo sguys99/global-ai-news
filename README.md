@@ -72,6 +72,14 @@ npm run dev                      # http://localhost:3000
 
 > 커밋된 `data/app.db` 를 로컬에서 바꾸면 배포 브랜치의 일일 수집 커밋과 충돌합니다. 소스·프롬프트 검증은 `--dry-run`/`--no-save` 로 하세요.
 
+### Docker (정적 사이트 미리보기)
+
+```bash
+docker compose up --build        # http://localhost:8080/global-ai-news/
+```
+
+GitHub Pages 에 올라가는 것과 같은 정적 export(`out/`)를 이미지 안에서 빌드해 nginx 로 서빙합니다. 콘텐츠는 빌드 시점의 `data/app.db` 로 굳으므로 API 키·볼륨이 필요 없고, 새 수집분은 `--build` 로 다시 굽습니다. `/admin` 은 들어가지 않습니다(로컬 `npm run dev` 전용).
+
 ## 환경 변수
 
 `.env.local`(git 미커밋)에 설정합니다. 변수는 **실행 위치별로** 필요한 곳이 다릅니다. 배포(GitHub Pages)는 정적 파일이라 런타임 환경 변수가 없습니다.
@@ -100,6 +108,7 @@ npm run dev                      # http://localhost:3000
 
 - 트리거: 외부 크론의 `workflow_dispatch`(06:00 KST 정시 발행, 아래 "발행 트리거") + 백업 `schedule` `47 21 * * *`(21:47 UTC = 06:47 KST) + `workflow_dispatch`(관리자 콘솔 "재수집" 버튼/수동).
 - 백업 `schedule` 실행은 최근 12시간 안에 성공한 수집이 있으면 `guard` 잡에서 건너뜁니다(하루 2회 수집 시 LLM 비용 2배·호수 2씩 증가 방지). `workflow_dispatch` 는 항상 수집합니다.
+- **살아 있는 워크플로 파일은 `deploy/github-pages` 의 것 하나입니다.** 이 저장소의 기본 브랜치가 `deploy/github-pages` 이고, GitHub 는 `schedule` 을 기본 브랜치의 워크플로 파일로 돌립니다. 외부 크론·관리자 콘솔의 dispatch 도 `ref: deploy/github-pages` 입니다. `main` 은 2026-07 이후 갱신하지 않은 옛 브랜치라 그쪽 `collect.yml` 은 어떤 트리거로도 실행되지 않습니다 — 워크플로는 `deploy/github-pages` 에서만 고칩니다. 확인: `gh repo view --json defaultBranchRef`, `gh run list --workflow collect.yml`(실행의 브랜치 열).
 - 동작: `npm ci` → `npm run collect` → `data/app.db` 변경분만 `deploy/github-pages` 에 커밋·push → `deploy.yml` 을 dispatch 해 GitHub Pages 배포.
 - `concurrency: collect` 로 실행을 직렬화해 `app.db` 동시 쓰기/푸시 경쟁을 막습니다.
 

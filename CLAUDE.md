@@ -225,7 +225,11 @@ npm run typecheck
 
 ### Docker
 
-`Dockerfile`·`docker-compose.yaml`은 standalone 시절 산출물(`.next/standalone`)을 전제해 현재 정적 export 빌드와 맞지 않는다.
+```bash
+docker compose up --build   # http://localhost:8080/global-ai-news/ (/ 는 여기로 302)
+```
+
+`Dockerfile`은 2단계다: `node:22-bookworm-slim`에서 `npm ci` → `npm run build`(deploy.yml과 같은 정적 export, `better-sqlite3`는 이미지 안에서 설치·필요하면 소스 빌드) → `nginxinc/nginx-unprivileged`(비루트, 8080)가 `out/`을 `/global-ai-news/` 아래에서 서빙한다(`docker/nginx.conf`: 슬래시 없는 디렉터리 경로 301, 없는 경로 404 + `404.html`, `_next/static` 1년 immutable·나머지 600초 — GitHub Pages와 같은 동작). 콘텐츠는 빌드 시점 `data/app.db`로 굳으므로 런타임 볼륨·환경변수가 없고, 새 수집분은 `--build`로 다시 굽는다. admin/api는 들어가지 않는다(로컬 `next dev` 전용). og:url·og:image는 배포 주소(`sguys99.github.io`) 절대 URL 그대로다.
 
 ## 환경변수
 

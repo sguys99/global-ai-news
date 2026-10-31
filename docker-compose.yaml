@@ -1,12 +1,11 @@
+# 로컬 정적 서빙: docker compose up --build → http://localhost:8080/global-ai-news/
+# 콘텐츠는 빌드 시점의 data/app.db 로 굳는다(런타임 볼륨·환경 변수 불필요). 새 수집분은 --build 로 다시 굽는다.
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
+    image: daily-ai-brief:local
     ports:
-      - "3000:3000"
-    env_file:
-      - .env
-    environment:
-      - NODE_ENV=production
+      - "8080:8080"
     restart: unless-stopped
