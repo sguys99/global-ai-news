@@ -606,13 +606,17 @@
 
 우선순위 순서다. 본 개편이 안정된 뒤 하나씩 결정한다.
 
+**진행 결정 (2026-10-31 사용자 확인):** 7개 항목을 모두 진행한다. 항목마다 서브에이전트가 별도 worktree에서 작업하고, 오케스트레이터가 `feat/contents-upgrade`에 병합·검증한 뒤 **항목마다 바로 `deploy/github-pages`에 배포한다**(KPI 관찰 기간과 겹친다는 점을 알고 내린 결정이다). 파이프라인을 바꾸는 항목(편집자 노트, 후속 보도, 같은 사건 묶기)은 fail-open으로 만들고 `--no-save` 실검증을 거친 뒤에 배포하며, 수집이 도는 05:30~07:30 KST에는 push하지 않는다. 사용자가 범위 확장 네 가지를 승인했다. ① 후속 보도는 양방향으로 연결한다(이전 기사에 "후속 보도" 역링크). ② 소스 헬스를 `npm run kpi`와 Actions job summary에도 띄운다. ③ 편집자 노트를 og:description과 `latest.json`의 `brief`에도 쓴다. ④ 주간 레이더를 호 고정 링크(`/edition/<일요일>`)에서도 똑같이 렌더한다. 편집자 노트는 **마스트헤드 바로 아래**에 둔다.
+
 - [ ] **오늘 호 3줄 요약(편집자 노트):** 선별 호출의 출력에 `brief`(오늘 핵심 3줄)를 추가해 1면 리드 위나 마스트헤드 아래에 둔다. 별도 호출 없이 1회 출력 토큰만 약간 늘어난다. 공유 메타 설명으로도 쓸 수 있다.
 - [ ] **후속 보도 연결:** 4-1의 "이미 보도함" 판정을 확장한다. 새로운 전개로 고른 기사에 `follow_up_of`를 저장하고 상세 페이지에 "이전 보도" 링크를 단다.
 - [ ] **소스 헬스 패널:** 연속으로 실패하거나 3회 연속 0건인 소스를 로컬 admin KPI 패널에 경고로 띄운다(지금은 403 소스가 방치돼 있다).
 - [ ] **주간 레이더:** 일요일 호에 한 주 동안의 오픈소스·모델·논문 상위 10을 묶은 특집 밴드를 싣는다(LLM 호출 없이 집계만 한다).
 - [ ] **(Phase 7 검증에서 추가) 같은 사건 묶기 보강:** 배치 회차에서 선별이 같은 사건(OpenAI 투자 유치의 HN 경유 WSJ 보도와 The Decoder 기사)을 묶지 못해, 리드와 같은 사건이 브리핑에 함께 실릴 수 있었다. 재보도 검사용 `textTokens`/`repeatEvidence`를 호 **안** 선정 기사끼리에도 적용해, 내용어가 많이 겹치는 쌍을 가공 뒤 코드로 `related`에 합친다. LLM 호출은 늘지 않는다.
 - [ ] **(Phase 7 검증에서 추가) 홈 페이로드 줄이기:** 홈 `index.html`이 1.27MB(gzip 307KB)이고 RSC 페이로드가 1.05MB다. 누적 기사 1,146건 전체를 색인용으로 싣기 때문이며, 하루 25~35건씩 계속 커진다. 색인은 최근 N일(또는 첫 30건)만 정적으로 싣고, 나머지는 `search-index.json`처럼 정적 JSON 조각에서 "더 보기" 때 불러온다.
-- [ ] **(Phase 7 검증에서 추가) 정리:** ① 작동하지 않는 Dockerfile·docker-compose(`.next/standalone` 전제)를 지우거나 정적 서빙(nginx + `out/`)으로 바꾼다. ② arXiv 카테고리 피드 4개가 매체 칩 4개로 나뉜다. 여러 피드에 기사가 쌓이면 "arXiv"로 묶는다(`groupSources`에 맵 1줄). ③ `main` 브랜치의 `collect.yml`(백업 schedule이 쓰는 워크플로 파일)은 아직 `GH_SEARCH_PAT`만 참조한다. 백업 회차의 GitHub 검색이 미인증으로 돌지 않도록 `deploy/github-pages`와 맞춘다.
+- [x] **(Phase 7 검증에서 추가) 정리:** ① 작동하지 않는 Dockerfile·docker-compose(`.next/standalone` 전제)를 지우거나 정적 서빙(nginx + `out/`)으로 바꾼다. ② arXiv 카테고리 피드 4개가 매체 칩 4개로 나뉜다. 여러 피드에 기사가 쌓이면 "arXiv"로 묶는다(`groupSources`에 맵 1줄). ③ `main` 브랜치의 `collect.yml`(백업 schedule이 쓰는 워크플로 파일)은 아직 `GH_SEARCH_PAT`만 참조한다. 백업 회차의 GitHub 검색이 미인증으로 돌지 않도록 `deploy/github-pages`와 맞춘다.
+  - ✅ 2026-10-31 ① **Dockerfile을 2단계 정적 서빙 이미지로 바꿨다.** 빌드 단계는 `node:22-bookworm-slim`에서 `npm ci` → `npm run build`를 돌린다(deploy.yml과 같은 정적 export이고, `better-sqlite3`는 이미지 안에서 설치한다). 서빙 단계는 `nginx-unprivileged`(비루트, 8080)가 `out/`을 `/global-ai-news/` 아래에서 서빙한다. `docker/nginx.conf`는 GitHub Pages처럼 동작한다: `/`는 302, 슬래시 없는 디렉터리 경로는 301, 없는 경로는 404와 `404.html`을 돌려준다. 캐시는 `_next/static`이 1년 immutable, 나머지가 600초다. 콘텐츠는 빌드 시점 `data/app.db`로 굳으므로 compose에 env와 볼륨이 없다(`docker compose up --build` → `:8080/global-ai-news/`). ② **arXiv 묶기:** `SOURCE_SHORT_LABELS`에 arXiv 피드 4개 → "arXiv"를 넣었다. 그래서 매체 칩, 바이라인, 상세 "매체", OG, 귀의 "매체 N곳"이 한 매체로 센다. HF Papers와 Takara TLDR은 다른 매체라 따로 두었고, `latest.json`은 원래 이름을 그대로 쓴다. `sources.json`의 `arxiv_*`가 모두 "arXiv"로 묶이는지는 테스트로 지킨다. ③ **전제 정정:** 위 ③의 전제는 틀렸다. 저장소 기본 브랜치가 `deploy/github-pages`이고, GitHub는 schedule을 기본 브랜치의 파일로 돌린다(최근 schedule 실행 12회도 모두 이 브랜치였다). 이 브랜치의 `collect.yml`은 이미 `GH_SEARCH_PAT || GITHUB_TOKEN`을 쓴다. `main`의 옛 파일은 어떤 트리거로도 실행되지 않으므로 고치지 않았고, 이 사실을 `collect.yml` 머리 주석과 README에 적었다. `main`은 배포 브랜치보다 192커밋 뒤이고, 전환 전 수집 커밋 12개가 따로 있어 갈라져 있다.
+  - 검증: vitest 665건(+4) 통과, typecheck, lint(기존 경고 1건), prettier 통과. `docker build`(정적 페이지 1,389개)와 `docker compose up` 뒤 curl로 확인했다. 홈, 호(슬래시 없는 경로는 301), 필터, 검색, 상세, OG, JSON은 200이고, admin·api·없는 경로는 404다. 캐시 헤더와 gzip도 확인했다. 칩 "arXiv"(`?source=arxiv_cs_cl`)와 상세 "매체" "arXiv"(title "arXiv cs.CL (NLP)")도 확인했다. `data/app.db`의 sha256은 같다.
 
 ---
 
