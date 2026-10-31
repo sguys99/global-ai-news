@@ -7,7 +7,9 @@ import {
   computeBaseline,
   findDuplicatePairs,
   isPhysicalAi,
+  parseBaselineArgs,
   parseRunNotes,
+  parseRunWarnings,
   provisionalFormat,
   titleTokens,
   type BaselineArticle,
@@ -95,6 +97,83 @@ describe("parseRunNotes — collect.ts notes 파싱", () => {
       picks: null,
       grouped: null,
     });
+  });
+});
+
+describe("parseRunWarnings — notes 의 재보도·할당·쏠림 경고(Phase 7)", () => {
+  it("재보도 제외·할당 미달·초과·논문 쏠림·소스 topic Physical AI 를 읽고 다른 줄은 건너뛴다", () => {
+    const w = parseRunWarnings(
+      "aitimes: 10건(신규 8); 선별 풀: 후보 263건 중 180건; 이미 보도함: 최근 3개 호 제목 84건; " +
+        "선정 35건(같은 사건으로 묶인 기사 6건); 이미 보도함 제외 4건(선정했다 뺀 1건); " +
+        "재보도 제외 3건(후속 보도 유지 2건); 할당 미달: 비뉴스 5/8, 모델 0/1; 할당 초과: Physical AI 15/9; " +
+        "논문 분야 쏠림: Physical AI 5/8; 형식별 후보→풀→게재: 뉴스 210→104→25, 오픈소스 14→14→2, 모델 6→6→1, 논문 33→26→2; " +
+        "Physical AI 후보→풀→게재: 41→22→3; LLM batch 호출 6회, $0.0432",
+    );
+    expect(w).toEqual({
+      repeatDropped: 3,
+      repeatFollowups: 2,
+      repeatCheckFailed: null,
+      quotaShortfall: "비뉴스 5/8, 모델 0/1",
+      quotaOverflow: "Physical AI 15/9",
+      paperSpread: "Physical AI 5/8",
+      physicalTopic: { candidates: 41, pool: 22, published: 3 },
+    });
+  });
+
+  it("후속 보도 없는 재보도 제외·검사 실패/생략·dry-run 형식(게재 없음)", () => {
+    expect(parseRunWarnings("재보도 제외 2건").repeatDropped).toBe(2);
+    expect(parseRunWarnings("재보도 제외 2건").repeatFollowups).toBe(0);
+    expect(parseRunWarnings("재보도 검사 실패(전부 게재): 응답 검증 실패").repeatCheckFailed).toBe(
+      "응답 검증 실패",
+    );
+    expect(
+      parseRunWarnings("재보도 검사 생략: 비용 한도 초과 예상($0.0123)").repeatCheckFailed,
+    ).toBe("비용 한도 초과 예상($0.0123)");
+    expect(parseRunWarnings("Physical AI 후보→풀: 41→22").physicalTopic).toEqual({
+      candidates: 41,
+      pool: 22,
+      published: null,
+    });
+  });
+
+  it("예전 notes·빈 notes 는 경고 없음", () => {
+    const none = {
+      repeatDropped: null,
+      repeatFollowups: 0,
+      repeatCheckFailed: null,
+      quotaShortfall: null,
+      quotaOverflow: null,
+      paperSpread: null,
+      physicalTopic: null,
+    };
+    expect(parseRunWarnings(null)).toEqual(none);
+    expect(
+      parseRunWarnings("aitimes: 10건(신규 8); industrial_ai: 실패 Status code 403; 선정 28건"),
+    ).toEqual(none);
+  });
+});
+
+describe("parseBaselineArgs — kpi baseline 인자", () => {
+  it("기본값·days·--front·--since(공백/= 꼴)", () => {
+    expect(parseBaselineArgs([])).toEqual({ days: 14 });
+    expect(parseBaselineArgs(["7", "--front", "legacy"])).toEqual({ days: 7, front: "legacy" });
+    expect(parseBaselineArgs(["--front=issue", "--since=2026-11-01"])).toEqual({
+      days: 14,
+      front: "issue",
+      since: "2026-11-01",
+    });
+    expect(parseBaselineArgs(["--since", "2026-11-01", "30"])).toEqual({
+      days: 30,
+      since: "2026-11-01",
+    });
+  });
+
+  it("잘못된 값은 예외", () => {
+    expect(() => parseBaselineArgs(["--front", "old"])).toThrow(/--front/);
+    expect(() => parseBaselineArgs(["--since", "11/01"])).toThrow(/--since/);
+    expect(() => parseBaselineArgs(["--since"])).toThrow(/값이 없습니다/);
+    expect(() => parseBaselineArgs(["0"])).toThrow(/알 수 없는 인자/);
+    expect(() => parseBaselineArgs(["--days", "3"])).toThrow(/알 수 없는 인자/);
   });
 });
 
@@ -329,8 +408,85 @@ describe("computeBaseline — 실제 스키마 in-memory DB", () => {
     expect(r.totals.candidatesByFormat).toEqual({ news: 3, oss: 5, model: 0, paper: 2 });
   });
 
-  it("1면 본문(리드·서브·브리핑·레이더)·지금 화제를 누적 입력으로 재구성해 그날 호 비율을 센다", () => {
+  it("기본(issue): 호마다 그 호 기사만으로 1면을 구성 — 오늘 호 비율 100%, 슬롯·비뉴스·Physical AI 지표", () => {
     const r = computeBaseline(db, 14, SOURCES);
+    expect(r.front).toBe("issue");
+    const [d24, d25] = r.issues;
+    // 10/24: 리드 #2(중요도 5·화제 10) · 서브 #1 · 레이더 #3(oss)
+    expect(d24.front).toEqual({ today: 3, size: 3 });
+    expect(d24.frontSlots).toEqual({ lead: 1, seconds: 1, briefs: 0, radar: 1 });
+    // 10/25: 리드 #4 · 서브 #6·#7 · 레이더 #5(논문) — 어제 기사는 섞이지 않는다
+    expect(d25.front).toEqual({ today: 4, size: 4 });
+    expect(d25.frontSlots).toEqual({ lead: 1, seconds: 2, briefs: 0, radar: 1 });
+    expect(d25.staleFront).toEqual([]);
+    expect(d25.trending).toEqual({ today: 1, size: 1 });
+    expect(r.totals.front).toEqual({ today: 7, size: 7 });
+    expect(r.totals.trending).toEqual({ today: 2, size: 2 });
+
+    expect([d24.nonNews, d25.nonNews]).toEqual([1, 1]);
+    // 키워드: #1(제목 로봇)·#5(태그 humanoid) — 둘 다 1면(서브·레이더)에 있다. 가공 분야 physical 은 아직 없다.
+    expect([d24.physicalAi, d25.physicalAi]).toEqual([1, 1]);
+    expect([d24.physicalCategory, d25.physicalCategory]).toEqual([0, 0]);
+    expect([d24.physicalTopic, d25.physicalTopic]).toEqual([null, null]); // 예전 notes 엔 topic 줄이 없다
+    expect(d24.frontPhysical).toEqual({ category: 0, keyword: 1 });
+    expect(r.totals.frontPhysicalIssues).toEqual({ category: 0, keyword: 2 });
+    expect(r.totals.perIssue.frontSize).toEqual({ n: 2, avg: 3.5, min: 3, max: 4 });
+    expect(r.totals.perIssue.radar).toEqual({ n: 2, avg: 1, min: 1, max: 1 });
+    expect(r.totals.perIssue.nonNews).toEqual({ n: 2, avg: 1, min: 1, max: 1 });
+    expect(r.totals.perIssue.physicalTopic.n).toBe(0);
+
+    // 가공 분야는 category 로 센다 — #1 을 physical 로 바꾸면 그 호·1면 모두 따라간다.
+    db.prepare("UPDATE articles SET category = 'physical' WHERE id = 1").run();
+    const p = computeBaseline(db, 14, SOURCES);
+    expect(p.issues[0].physicalCategory).toBe(1);
+    expect(p.issues[0].frontPhysical).toEqual({ category: 1, keyword: 1 });
+    expect(p.totals.frontPhysicalIssues).toEqual({ category: 1, keyword: 2 });
+    expect(p.totals.perIssue.physicalCategory).toEqual({ n: 2, avg: 0.5, min: 0, max: 1 });
+  });
+
+  it("회차 notes 경고·소스 topic Physical AI 를 호·합계에 싣는다", () => {
+    run(
+      "2026-10-24T21:30:00Z",
+      0.01,
+      "선정 30건(같은 사건으로 묶인 기사 5건); 재보도 제외 3건(후속 보도 유지 1건); " +
+        "할당 미달: 비뉴스 5/8; 논문 분야 쏠림: Physical AI 5/8; Physical AI 후보→풀→게재: 41→22→3",
+      "success",
+    );
+    const r = computeBaseline(db, 14, SOURCES);
+    expect(r.issues.map((i) => i.physicalTopic)).toEqual([null, 3]);
+    expect(r.totals.perIssue.physicalTopic).toEqual({ n: 1, avg: 3, min: 3, max: 3 });
+    expect(r.totals.warnings).toEqual({
+      repeatRuns: 1,
+      repeatDropped: 3,
+      repeatFollowups: 1,
+      repeatCheckFailed: 0,
+      quotaShortfall: 1,
+      quotaOverflow: 0,
+      paperSpread: 1,
+    });
+    expect(r.runs.at(-1)?.warnings.quotaShortfall).toBe("비뉴스 5/8");
+  });
+
+  it("--since: 그 날짜 이후 호만(창보다 이르면 창 그대로)", () => {
+    const r = computeBaseline(db, 14, SOURCES, { since: "2026-10-25" });
+    expect([r.since, r.from, r.to]).toEqual(["2026-10-25", "2026-10-25", "2026-10-25"]);
+    expect(r.issues.map((i) => i.date)).toEqual(["2026-10-25"]);
+    expect(r.totals.published).toBe(4);
+    expect(r.totals.cost.runs).toBe(1);
+    expect(r.duplicates).toEqual([]);
+
+    const wide = computeBaseline(db, 14, SOURCES, { since: "2026-01-01" });
+    expect(wide.from).toBe("2026-10-12");
+    expect(wide.issues).toHaveLength(2);
+
+    const none = computeBaseline(db, 14, SOURCES, { since: "2026-11-01" });
+    expect(none.issues).toEqual([]);
+    expect(none.totals.perIssue.frontSize.n).toBe(0);
+  });
+
+  it("legacy: 1면 본문(리드·서브·브리핑·레이더)·지금 화제를 누적 입력으로 재구성해 그날 호 비율을 센다", () => {
+    const r = computeBaseline(db, 14, SOURCES, { front: "legacy" });
+    expect(r.front).toBe("legacy");
     const [d24, d25] = r.issues;
     // 10/24: 기사 3건뿐 → 리드·서브(뉴스 2) + 레이더(oss 1) 모두 그날 호
     expect(d24.front).toEqual({ today: 3, size: 3 });

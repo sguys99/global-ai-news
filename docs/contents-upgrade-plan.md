@@ -534,7 +534,12 @@
 
 **의존성:** Phase 1~6
 
-- [ ] `scripts/lib/baseline.ts`: 1면·화제 지표를 Phase 1 이후 동작(`getIssueArticles` → `buildEdition`)으로 측정하는 모드를 추가한다(Phase 1 참고 항목).
+- [x] `scripts/lib/baseline.ts`: 1면·화제 지표를 Phase 1 이후 동작(`getIssueArticles` → `buildEdition`)으로 측정하는 모드를 추가한다(Phase 1 참고 항목).
+  - ✅ 2026-10-31 사용법: `npm run kpi -- baseline [days=14] [--front issue|legacy] [--since YYYY-MM-DD]`. 기본은 `issue`(그 호 기사만으로 1면을 구성하는 실제 동작)이고, `legacy`는 마감 전 누적 기사로 옛 1면을 근사한다. `--since`는 배포 뒤 회차만 재는 데 쓴다.
+  - 출력 맨 앞에 아래 "목표 지표" 표와 행이 1:1로 맞는 **"목표 지표 (Phase 7)"** 표를 둔다. 새 지표는 1면 본문 수(리드·서브·브리핑·레이더 슬롯별), 레이더 건수, 회차당 비뉴스 게재, Physical AI 세 기준(**가공 분야**·키워드(기준선 방식)·소스 topic(notes))과 "1면 Physical AI ≥ 1" 호 수, 회차 notes 경고(재보도 제외 건수·재보도 검사 실패·할당 미달·할당 초과·논문 분야 쏠림)다. Phase 3-5에서 미룬 Physical AI 기준 구분을 여기서 했다.
+  - 현재 DB(10-12~10-25, 개편 전 회차)의 issue 모드: 1면 오늘 호 비율 **100%**(117/117), 1면 본문 평균 8.4건(7~11, 레이더 평균 1.4), 지금 화제 오늘 호 100%(20/20). 비뉴스·비용·중복 등 나머지 지표는 기준선과 같다. 1면이 11건에 못 미치는 것은 개편 전 회차에 비뉴스가 적어 레이더가 줄기 때문이다.
+  - **legacy 모드는 기준선 숫자를 재현하지 못한다:** 지금의 5슬롯 `buildEdition`에 누적 입력을 넣는 근사라 1면 오늘 호 비율이 23%(36/154)로 나온다(기록값 52%는 4슬롯 시절). 측정 방식만 같으므로 "기준선 기록" 표는 Phase 1 이전 측정값으로 그대로 둔다.
+  - 게이트: vitest 50파일·597건(baseline 22건) 통과(Node 24), typecheck 통과, lint 오류 0건, prettier 통과. `data/app.db`는 실행 전후 sha256이 같다.
 - [ ] `npm run lint && npm run typecheck && npm test`가 통과한다. DB 테스트는 Node 24 PATH에서 실행한다.
 - [ ] 로컬에서 `npm run collect`를 1회 실행해 비용, 형식·분야 분포, 할당 경고를 확인한다.
 - [ ] `npm run build`(정적 export) 후 `basePath` 아래 홈, `/edition/<오늘>`, 지난 호, `?category=physical`, 검색이 정상인지 확인한다.
