@@ -16,10 +16,12 @@ import { formatShortDate, shortSourceName } from "@/lib/labels";
 import { radarMetaBlock, type RadarMetaItem } from "@/lib/radarMeta";
 import { issueDayLabel, weeklyMetaBlock, type WeeklyItem } from "@/lib/weeklyRadar";
 import { cn } from "@/lib/utils";
-import type { ArticleCard } from "@/lib/types";
+import type { ArticleCard, IndexCard } from "@/lib/types";
 
-const titleOf = (a: ArticleCard) => a.titleKo || a.titleOriginal;
-const hrefOf = (a: ArticleCard) => `/article/${a.id}`;
+// 색인 카드(IndexCard)는 원제가 없다 — 만들 때 원제 폴백을 titleKo 에 이미 넣었다(src/lib/feedIndex.ts).
+const titleOf = (a: Pick<ArticleCard, "titleKo"> & Partial<Pick<ArticleCard, "titleOriginal">>) =>
+  a.titleKo || a.titleOriginal;
+const hrefOf = (a: Pick<ArticleCard, "id">) => `/article/${a.id}`;
 const focus =
   "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background";
 
@@ -342,7 +344,8 @@ export function StoryEntry({
   article,
   hideCategory = false,
 }: {
-  article: ArticleCard;
+  /** 색인 카드 — ArticleCard·검색 인덱스 항목도 그대로 받는다. */
+  article: IndexCard;
   /** 이미 분야가 정해진 목록(상세의 "같은 분야 기사")에서는 키커를 생략한다. */
   hideCategory?: boolean;
 }) {

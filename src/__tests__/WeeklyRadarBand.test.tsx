@@ -109,8 +109,9 @@ function card(id: number): ArticleCard {
 
 describe("FeedView — 주간 레이더 자리", () => {
   const base = {
-    articles: [card(1), card(2)],
-    issueIds: [1, 2],
+    issueArticles: [card(1), card(2)],
+    index: [card(1), card(2)],
+    indexTotal: 2,
     sources: [{ id: "hn", name: "Hacker News" }],
     tags: [],
     options: {},

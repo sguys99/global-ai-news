@@ -125,6 +125,30 @@ export interface FollowUpEntry {
 export type SearchIndexEntry = Omit<ArticleCard, "contentRaw">;
 
 /**
+ * 전체 기사 색인(StoryEntry)·피드 필터/정렬에 필요한 필드만 남긴 카드 — 홈 색인의 첫 페이지(정적 HTML)와
+ * public/feed-index.json(나머지, "더 보기"·필터 때 fetch) 한 항목.
+ * 원문 URL·원제·묶인 보도 목록·메트릭은 색인이 그리지 않아 뺀다. 원제 폴백은 만들 때 titleKo 에 미리 넣고,
+ * 묶인 보도는 바이라인 "외 N곳"에 쓰는 개수(relatedCount, 0 이면 키 생략)만 남긴다.
+ * ArticleCard·SearchIndexEntry 도 구조상 이 타입을 만족한다(색인 컴포넌트·필터가 셋을 모두 받는다).
+ */
+export type IndexCard = Pick<
+  ArticleCard,
+  | "id"
+  | "source"
+  | "titleKo"
+  | "summaryKo"
+  | "category"
+  | "format"
+  | "tags"
+  | "trendingScore"
+  | "importance"
+  | "publishedAt"
+> & {
+  /** 같은 사건을 다룬 다른 매체 수(related.length). */
+  relatedCount?: number;
+};
+
+/**
  * 최근 수집분 피드(public/latest.json) 한 항목 — 외부 소비용(자랑터 AI 큐레이터 「한입뉴스」).
  * 검색 인덱스 항목에 분야 표시명과 수집 시각을 더한다. 게시 시각(publishedAt)은 GitHub Trending 처럼 오래된 값일 수 있다.
  * `category` 는 분야 키(예: "physical"), `categoryLabel` 은 그 표시명(예: "Physical AI") — 소비자가 표시명 맵을 따로 두지 않게 한다.

@@ -153,7 +153,7 @@ GitHub `schedule` 은 정시 실행을 보장하지 않습니다. 이 저장소�
 
 1. 저장소 **Settings → Pages → Source = "GitHub Actions"** 로 설정합니다.
 2. 트리거: `deploy/github-pages` 브랜치에 `data/app.db`·`configs/**`·`src/**`·`next.config.ts`·`package.json` 변경이 push 되거나, `collect.yml` 이 수집 후 직접 dispatch 할 때(빌트인 `GITHUB_TOKEN` 의 push 는 다른 워크플로를 트리거하지 못하기 때문), 또는 수동 `workflow_dispatch`.
-3. 빌드: Node 22 → `npm ci` → `npm run build`. `prebuild` 가 `initDb --existing`(스키마·sources 동기화, DB 가 없으면 실패) → `public/search-index.json` → `public/latest.json` 을 만든 뒤 `next build` 가 정적 export(`out/`, `basePath` `/global-ai-news`)를 산출하고 Pages 에 올립니다.
+3. 빌드: Node 22 → `npm ci` → `npm run build`. `prebuild` 가 `initDb --existing`(스키마·sources 동기화, DB 가 없으면 실패) → `public/search-index.json` → `public/feed-index.json` → `public/latest.json` 을 만든 뒤 `next build` 가 정적 export(`out/`, `basePath` `/global-ai-news`)를 산출하고 Pages 에 올립니다.
 
 `npm run start`(`next start`)는 정적 export 와 함께 쓸 수 없습니다. 로컬에서 산출물을 확인하려면 `out/` 을 `/global-ai-news` 서브경로로 서빙하세요.
 
@@ -200,6 +200,7 @@ PRD §9 목표:
 | `npm run collect -- --no-save`          | LLM 단계까지 실행, DB 쓰기 없이 `data/eval/` 스냅숏                    |
 | `npm run triage:compare -- <스냅숏>`    | 같은 풀로 개편 전후 선별 비교                                          |
 | `npm run export-search-index`           | `public/search-index.json` 생성(prebuild 가 자동 실행)                 |
+| `npm run export-feed-index`             | `public/feed-index.json`(홈 색인 누적분) 생성(prebuild 가 자동 실행)   |
 | `npm run export-latest`                 | `public/latest.json`(최근 3일 수집분, 외부 소비용) 생성                |
 | `npm run kpi`                           | 최근 N일 KPI 집계(기본 30), `-- baseline` 콘텐츠 개편 지표             |
 | `npm run lint` / `format` / `typecheck` | ESLint / Prettier / 타입체크                                           |

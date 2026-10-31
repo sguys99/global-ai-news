@@ -37,7 +37,7 @@
 ├── src/                          # 웹 애플리케이션 소스
 │   ├── app/                      # Next.js App Router
 │   │   ├── layout.tsx
-│   │   ├── page.tsx              # 홈(/) — 최신 호 지면 SSG + 누적 색인 클라 필터
+│   │   ├── page.tsx              # 홈(/) — 최신 호 지면·색인 첫 30건 SSG + 누적 색인(feed-index.json) 클라 필터
 │   │   ├── globals.css           # Tailwind v4 + DESIGN.md 디자인 토큰
 │   │   ├── icon.svg              # 파비콘 원본(이니셜 "D.") — favicon.ico·apple-icon.png 는 여기서 래스터화
 │   │   ├── article/[id]/page.tsx # 상세(/article/[id]) — SSG generateStaticParams
@@ -54,7 +54,7 @@
 │   │   ├── ShareButton.tsx       # 호 공유(모바일 공유 시트·데스크톱 링크 복사) — 호 고정 링크를 공유
 │   │   ├── Edition.tsx           # FrontPage(리드·서브·오늘의 브리핑)·RadarBand·TrendingList(지금 화제)·이 호의 지면·SectionBands
 │   │   ├── Story.tsx             # 스토리 변형 7종(Lead/Secondary/SectionItem/Brief/Radar/Weekly/Entry)
-│   │   ├── StoryIndex.tsx        # 전체 기사 색인(30건씩 더 보기)
+│   │   ├── StoryIndex.tsx        # 전체 기사 색인(30건씩 더 보기, 홈은 첫 30건 밖을 feed-index.json 으로 받아 펼침)
 │   │   ├── ArticleMeta.tsx       # 신호: 키커·FormatBadge·중요도 미터·바이라인·화제 바·태그
 │   │   ├── FollowUpThread.tsx    # 상세 사건 타임라인(이전 보도·후속 보도 — follow_up_of 양방향)
 │   │   ├── RelativeTime.tsx      # 상대 시각("3시간 전") — 정적 HTML은 호 발행 시각 기준, 마운트 후 실시각
@@ -76,6 +76,7 @@
 │   │   ├── sourceHealth.ts       # 소스 헬스 판정(notes 소스별 결과 → 연속 실패 2회=오류·연속 0건 3회=경고) — admin·kpi·CI 공용
 │   │   ├── weeklyRadar.ts        # 주간 레이더(일요일 특집): 주 경계·같은 대상 합치기·형식 혼합·순위(buildWeeklyRadar)
 │   │   ├── feedFilter.ts         # 클라 필터·정렬 + URL 옵션 파싱(구 분야값 URL 호환)
+│   │   ├── feedIndex.ts          # 홈 색인 분할: IndexCard 변환·첫 페이지/전체 합치기·feed-index.json fetch(1회 캐시)
 │   │   ├── searchIndex.ts        # FlexSearch 문서 빌드·질의
 │   │   ├── site.ts               # 사이트 정체성·공유 메타(OG/카카오톡 미리보기) 단일 출처
 │   │   ├── ogImage.tsx           # 공유 썸네일 렌더러(next/og + Google Fonts 정적 TTF)
@@ -91,6 +92,7 @@
 │   ├── reclassify.ts             # 구 분야값 → 6개 키 LLM 재분류 (npm run db:reclassify, 기본 dry-run)
 │   ├── triage-compare.ts         # no-save 스냅숏으로 개편 전후 선별 비교 (npm run triage:compare)
 │   ├── export-search-index.ts    # public/search-index.json 생성 (prebuild)
+│   ├── export-feed-index.ts      # public/feed-index.json — 홈 전체 기사 색인 누적분(IndexCard, prebuild)
 │   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터, prebuild)
 │   ├── kpi.ts                    # KPI CLI (npm run kpi) + baseline 하위 명령(콘텐츠 개편 지표) + health(소스 헬스, --ci 는 collect.yml 요약)
 │   └── lib/
@@ -135,7 +137,7 @@
 │   ├── app.db                    # SQLite DB (db:init/collect로 생성)
 │   └── eval/                     # collect --no-save 스냅숏 (git 제외)
 ├── docs/                         # PRD.md, PRD-github-pages.md, WORK-PLAN*.md, contents-upgrade-plan.md, design/mockups/
-├── public/                       # 정적 자산 + 빌드 생성물(search-index.json·latest.json)
+├── public/                       # 정적 자산 + 빌드 생성물(search-index.json·feed-index.json·latest.json)
 └── DESIGN.md                     # v2.1 "Edition" 에디토리얼 디자인 토큰/가이드
 ```
 
@@ -148,7 +150,7 @@
 3. **LLM 선별 → 가공 → 재보도 검사** — 선별 1회로 최대 `MAX_PICKS_PER_RUN`(35)건을 고르고 같은 사건을 묶고 중요도(1~5, 형식 안에서 상대 평가)를 매긴다. 선정 기사만 10건씩 묶어 한국어 제목·요약·분야·태그를 생성한 뒤, 재보도 검사 1회로 새 전개 없는 재보도를 뺀다. 모든 호출은 Message Batches API(50% 할인, 시간 초과 시 일반 호출로 대체), 실행당 비용 상한 `MAX_COST_USD_PER_RUN`($0.1). 회차당 LLM 호출은 보통 6회(선별 1·가공 4·재보도 1).
 4. **저장** — 선정 기사는 `articles`(+`related_json`: 묶인 다른 매체 보도)·`tags`/`article_tags`, 미선정·재보도 후보는 `seen_items`에 키만 기록. 실행 통계(`llm_calls`/토큰/비용/상태)와 notes(소스별 결과, `형식별 후보→풀→게재`, `할당 미달/초과`, `재보도 제외 N건` 등)를 `collection_runs`에 1행 기록. 공개 페이지는 가공을 마친 기사(`summary_ko IS NOT NULL`)만 노출한다.
 
-결과 `data/app.db`를 `deploy/github-pages`에 커밋하고 `deploy.yml`을 dispatch → `npm run build`(prebuild: `initDb --existing`(스키마·sources 동기화) → `export-search-index` → `export-latest`) → `out/`을 GitHub Pages에 배포합니다.
+결과 `data/app.db`를 `deploy/github-pages`에 커밋하고 `deploy.yml`을 dispatch → `npm run build`(prebuild: `initDb --existing`(스키마·sources 동기화) → `export-search-index` → `export-feed-index` → `export-latest`) → `out/`을 GitHub Pages에 배포합니다.
 
 ### 호(issue)와 1면
 

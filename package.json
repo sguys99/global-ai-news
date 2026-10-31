@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "export-search-index": "tsx scripts/export-search-index.ts",
+    "export-feed-index": "tsx scripts/export-feed-index.ts",
     "export-latest": "tsx scripts/export-latest.ts",
-    "prebuild": "tsx scripts/lib/initDb.ts --existing && tsx scripts/export-search-index.ts && tsx scripts/export-latest.ts",
+    "prebuild": "tsx scripts/lib/initDb.ts --existing && tsx scripts/export-search-index.ts && tsx scripts/export-feed-index.ts && tsx scripts/export-latest.ts",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
