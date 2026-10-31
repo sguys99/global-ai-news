@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { FeedView } from "@/components/FeedView";
 import type { IndexLoadState } from "@/components/StoryIndex";
 import type { EditionInfo } from "@/lib/db";
+import type { IssueBriefLine } from "@/lib/edition";
 import { feedIndexUrl, loadFeedIndex, mergeIndex, toIndexCard } from "@/lib/feedIndex";
 import { hasActiveFilter, parseFeedOptions, type SourceOption } from "@/lib/feedFilter";
 import type { ArticleCard as ArticleCardType, IndexCard } from "@/lib/types";
@@ -31,6 +32,7 @@ export function FeedClient({
   editionInfo,
   initialDelayGap,
   weekly,
+  brief,
 }: {
   issueArticles: ArticleCardType[];
   indexHead: IndexCard[];
@@ -42,6 +44,7 @@ export function FeedClient({
   editionInfo: EditionInfo;
   initialDelayGap?: number;
   weekly?: WeeklyRadar | null;
+  brief?: IssueBriefLine[];
 }) {
   const searchParams = useSearchParams();
   // 피드는 검색어를 쓰지 않으므로 q 는 버린다.
@@ -99,6 +102,7 @@ export function FeedClient({
       editionInfo={editionInfo}
       initialDelayGap={initialDelayGap}
       weekly={weekly}
+      brief={brief}
     />
   );
 }

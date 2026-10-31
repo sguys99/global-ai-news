@@ -29,10 +29,21 @@ export const enrichBatchSchema = z.object({
 export type EnrichBatch = z.infer<typeof enrichBatchSchema>;
 
 /**
+ * 세 줄 요약(brief)의 한 줄: 요약하는 선정의 후보 번호(id)와 한국어 한 줄(text).
+ * 길이·한글 여부·말미 마침표는 스키마로 묶지 않는다 — zod 검증이 실패하면 선별 출력 전체가 버려져 회차가
+ * 실패하므로, 거르는 일은 코드(scripts/lib/brief.ts cleanBriefText)가 줄 단위로 한다(fail-open).
+ */
+const briefLineSchema = z.object({
+  id: z.number().int(),
+  text: z.string().describe("한국어 한 줄, 40자 안팎, 마침표 없음"),
+});
+
+/**
  * 선별(triage) 출력. 모든 번호는 후보 목록의 번호.
  * already_reported 는 "이미 보도함"과 같은 사건(새 전개 없음)인 후보 — picks 보다 앞에 두어 구조화 출력이
  * 먼저 채우게 한다(고르기 전에 걸러 내는 단계). 코드(resolvePicks)가 이 번호를 선정·묶음에서 뺀다.
  * picks 는 중요도 내림차순, duplicates 는 같은 사건을 다룬 다른 후보.
+ * brief 는 picks 뒤 — 고른 다음에 그 선정 중에서 이번 호 핵심을 한 줄씩 쓴다(Phase 8 세 줄 요약).
  */
 export const triageSchema = z.object({
   already_reported: z
@@ -47,6 +58,11 @@ export const triageSchema = z.object({
       duplicates: z.array(z.number().int()),
     }),
   ),
+  brief: z
+    .array(briefLineSchema)
+    .describe(
+      "이번 호 핵심을 중요한 순서로 5줄. id 는 그 줄이 요약하는 picks 의 id, 서로 다른 사건, text 는 한국어 한 줄.",
+    ),
 });
 
 export type Triage = z.infer<typeof triageSchema>;

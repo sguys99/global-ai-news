@@ -18,6 +18,8 @@ const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "articles", column: "related_json", ddl: "related_json TEXT" },
   { table: "sources", column: "format", ddl: "format TEXT NOT NULL DEFAULT 'news'" },
   { table: "articles", column: "follow_up_of", ddl: "follow_up_of INTEGER" },
+  // 세 줄 요약(Phase 8): 선별이 쓴 이번 호 핵심 줄 — [{id: articles.id, text}] JSON, 없으면 NULL
+  { table: "collection_runs", column: "brief_json", ddl: "brief_json TEXT" },
 ];
 
 /** 추가 컬럼에 거는 인덱스. schema.sql 에 두면 컬럼이 없는 기존 DB 에서 exec 가 실패하므로 컬럼 추가 뒤에 만든다. */

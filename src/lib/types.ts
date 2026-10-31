@@ -157,10 +157,23 @@ export type IndexCard = Pick<
  */
 export type LatestFeedEntry = SearchIndexEntry & { categoryLabel: string; collectedAt: string };
 
-/** public/latest.json 전체. `version` 은 모양이 바뀔 때만 올린다(소비자가 검사한다). */
+/**
+ * latest.json 의 세 줄 요약 — 최신 호(그 호 1면 위계 순). lines[].id 는 늘 items[].id 중 하나다.
+ * 요약이 없는 호(이 기능 전 지난 호·요약 생략 회차)이거나 최신 호 기사가 창 밖이면 피드의 brief 는 null.
+ */
+export interface LatestFeedBrief {
+  /** 호 날짜(KST 'YYYY-MM-DD'). */
+  date: string;
+  issueNo: number;
+  lines: { id: number; text: string }[];
+}
+
+/** public/latest.json 전체. `version` 은 모양이 바뀔 때만 올린다(소비자가 검사한다 — 필드 추가는 1 그대로). */
 export interface LatestFeed {
   version: 1;
   generatedAt: string; // ISO8601 UTC
   windowDays: number;
   items: LatestFeedEntry[];
+  /** 최신 호 세 줄 요약(2026-11 추가). 없으면 null — 키는 늘 있다. */
+  brief: LatestFeedBrief | null;
 }

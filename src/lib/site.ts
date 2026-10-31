@@ -14,7 +14,7 @@
  */
 import type { Metadata } from "next";
 import type { EditionInfo } from "@/lib/db";
-import type { Edition } from "@/lib/edition";
+import type { Edition, IssueBriefLine } from "@/lib/edition";
 import { formatMonthDay, kstDateKey } from "@/lib/labels";
 
 export const SITE_NAME = "Daily AI Brief";
@@ -110,12 +110,15 @@ export function shareMetadata({
 const headline = (a: { titleKo: string; titleOriginal: string }) => a.titleKo || a.titleOriginal;
 
 /**
- * 홈 공유 문구·이미지 버전. 제목 = 1면 리드 헤드라인, 설명 = 발행일·호수 + 서브 헤드라인.
+ * 홈 공유 문구·이미지 버전. 제목 = 1면 리드 헤드라인, 설명 = 발행일·호수 + 세 줄 요약(있으면) 또는 서브 헤드라인.
+ * 세 줄 요약 중 리드를 요약한 줄은 뺀다 — 바로 위 제목(리드 헤드라인)과 같은 소식이 두 번 읽힌다. 빼고 남은 줄이
+ * 없으면 서브 헤드라인으로 돌아간다(요약이 없는 지난 호도 같은 경로).
  * 버전은 호수·리드가 바뀔 때마다 달라져, 페이지가 다시 스크랩될 때 이전 썸네일 캐시를 피한다.
  */
 export function editionShare(
   edition: Pick<Edition, "lead" | "seconds">,
   info: EditionInfo,
+  brief: readonly IssueBriefLine[] = [],
 ): { title: string; description: string; version: string } {
   const { lead, seconds } = edition;
   if (!lead) return { title: SITE_NAME, description: SITE_DESCRIPTION, version: "0" };
@@ -127,7 +130,8 @@ export function editionShare(
   ]
     .filter(Boolean)
     .join(" ");
-  const more = seconds.map(headline).join(" · ");
+  const briefMore = brief.filter((line) => line.id !== lead.id).map((line) => line.text);
+  const more = (briefMore.length > 0 ? briefMore : seconds.map(headline)).join(" · ");
   return {
     title: headline(lead),
     description: more ? `${dateline} — ${more}` : dateline,
@@ -136,15 +140,16 @@ export function editionShare(
 }
 
 /**
- * 호 공유 메타(홈·호 고정 링크 공용): 제목 = 1면 리드, 썸네일 = 그날 1면.
+ * 호 공유 메타(홈·호 고정 링크 공용): 제목 = 1면 리드, 설명 = 세 줄 요약(없으면 서브), 썸네일 = 그날 1면.
  * `path` 는 og:url — 공유되는 페이지 자신의 경로(홈 "/", 호 고정 링크 "/edition/[date]/").
  */
 export function editionMetadata(
   edition: Pick<Edition, "lead" | "seconds">,
   info: EditionInfo,
   path: string,
+  brief: readonly IssueBriefLine[] = [],
 ): Pick<Metadata, "openGraph" | "twitter"> {
-  const { title, description, version } = editionShare(edition, info);
+  const { title, description, version } = editionShare(edition, info, brief);
   if (!edition.lead || !info.publishedAt) return shareMetadata({ title, description, path });
   const date = kstDateKey(info.publishedAt);
   return shareMetadata({

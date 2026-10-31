@@ -18,6 +18,7 @@ import {
 } from "../../src/lib/labels";
 import { PROMPTS_DIR } from "../../src/lib/paths";
 import type { RawItem } from "../../src/lib/types";
+import { BRIEF_OUTPUT_TOKENS, BRIEF_REQUESTED, type BriefLineOutput } from "./brief";
 import { approxTokens, outputFormatTokens } from "./cost";
 import type { LlmRequest } from "./llm";
 import { triageSchema } from "./schema";
@@ -368,7 +369,9 @@ function checklistBlock(pool: Candidate[], targets: PickTargets, hasReported: bo
       "모델의 HuggingFace 페이지와 그 모델을 다룬 뉴스는 같은 사건이다 — 하나만 id, 나머지는 duplicates.",
     );
   }
-  if (items.length === 0) return "";
+  items.push(
+    `brief: picks 중 이번 호 핵심 ${BRIEF_REQUESTED}줄(서로 다른 사건, 중요한 순서) — id 는 그 줄이 요약하는 picks 의 id, text 는 한국어 40자 안팎·마침표 없음.`,
+  );
   return ["## 출력 전 확인", ...items.map((t, i) => `${i + 1}. ${t}`)].join("\n");
 }
 
@@ -401,7 +404,9 @@ export function buildTriageRequest(
     params: {
       model,
       // 선정 1건 ≈ 25토큰(OUTPUT_TOKENS_PER_PICK)이라 35건이어도 1,000토큰 안팎 — 넉넉히 잡는다.
-      max_tokens: 1000 + maxPicks * 60,
+      // brief(세 줄 요약 5줄 ≈ 350토큰)는 그 위에 두 배 남짓 더 둔다 — max_tokens 에 걸리면 선별 출력 전체가
+      // 버려져 회차가 실패하므로(parseStructured), 요약 때문에 선별이 잘리는 일이 없게 한다.
+      max_tokens: 1000 + maxPicks * 60 + BRIEF_OUTPUT_TOKENS * 2,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: blocks.join("\n\n") }],
       output_config: { format: triageFormat },
@@ -414,7 +419,7 @@ export function estimateTriageTokens(req: LlmRequest, maxPicks: number) {
   const user = req.params.messages.map((m) => m.content).join("");
   return {
     input: approxTokens(SYSTEM_PROMPT + user) + outputFormatTokens(triageFormat),
-    output: maxPicks * OUTPUT_TOKENS_PER_PICK,
+    output: maxPicks * OUTPUT_TOKENS_PER_PICK + BRIEF_OUTPUT_TOKENS,
   };
 }
 
@@ -425,6 +430,8 @@ export function estimateTriageTokens(req: LlmRequest, maxPicks: number) {
 export interface TriageOutput {
   already_reported?: number[];
   picks: { id: number; importance: number; duplicates: number[] }[];
+  /** 세 줄 요약 원출력(scripts/lib/brief.ts resolveBrief 가 게재분에 맞춰 거른다). 이 필드가 생기기 전 스냅숏에는 없다. */
+  brief?: BriefLineOutput[];
 }
 
 /** already_reported 중 풀 범위 안의 번호(중복 제거). */

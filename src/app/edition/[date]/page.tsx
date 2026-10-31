@@ -3,10 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FrontPage, SectionBands, WeeklyRadarBand } from "@/components/Edition";
 import { EditionPager } from "@/components/EditionPager";
+import { IssueBrief } from "@/components/IssueBrief";
 import { Masthead } from "@/components/Masthead";
 import { StoryIndex } from "@/components/StoryIndex";
-import { getIssueArticles, getEditionRefs, getWeekRadarCandidates, toListCards } from "@/lib/db";
-import { buildEdition, issueStats } from "@/lib/edition";
+import {
+  getEditionRefs,
+  getIssueArticles,
+  getIssueBriefs,
+  getWeekRadarCandidates,
+  toListCards,
+} from "@/lib/db";
+import { buildEdition, issueStats, selectIssueBrief } from "@/lib/edition";
 import { formatLongDate } from "@/lib/labels";
 import { SITE_NAME, editionMetadata, editionPath } from "@/lib/site";
 import { buildWeeklyRadar } from "@/lib/weeklyRadar";
@@ -29,28 +36,30 @@ function loadEdition(date: string) {
   const i = refs.findIndex((r) => r.date === date);
   if (i < 0) return null;
   const ref = refs[i];
+  const edition = buildEdition(getIssueArticles(ref.date));
   return {
     ref,
     prev: refs[i - 1] ?? null,
     next: refs[i + 1] ?? null,
-    edition: buildEdition(getIssueArticles(ref.date)),
+    edition,
+    brief: selectIssueBrief(edition, getIssueBriefs(ref.date)),
   };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = loadEdition((await params).date);
   if (!data) return {};
-  const { ref, edition } = data;
+  const { ref, edition, brief } = data;
   return {
     title: `${formatLongDate(ref.publishedAt)} 제${ref.issueNo}호 — ${SITE_NAME}`,
-    ...editionMetadata(edition, ref, editionPath(ref.date)),
+    ...editionMetadata(edition, ref, editionPath(ref.date), brief),
   };
 }
 
 export default async function EditionPage({ params }: Props) {
   const data = loadEdition((await params).date);
   if (!data) notFound();
-  const { ref, prev, next, edition } = data;
+  const { ref, prev, next, edition, brief } = data;
   // 색인(StoryIndex)은 클라이언트 컴포넌트라 props 가 페이지에 실린다 → 목록용 카드로.
   const index = toListCards(edition.issue);
   // 주간 레이더: 일요일 호만(아니면 null) — 그날 홈과 같은 함수·같은 입력이라 같은 밴드가 실린다.
@@ -66,6 +75,7 @@ export default async function EditionPage({ params }: Props) {
         weekly={Boolean(weekly)}
         indexLabel="이 호의 기사"
       />
+      <IssueBrief lines={brief} />
       {next && (
         <p className="text-caption text-muted-foreground mx-auto max-w-[1240px] px-4 pt-4 md:px-8">
           지난 호 지면입니다.{" "}

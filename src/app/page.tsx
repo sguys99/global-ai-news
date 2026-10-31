@@ -7,22 +7,24 @@ import {
   getFeed,
   getLatestEditionRef,
   getIssueArticles,
+  getIssueBriefs,
   getSourcesWithCounts,
   getWeekRadarCandidates,
   toListCards,
 } from "@/lib/db";
-import { buildEdition } from "@/lib/edition";
+import { buildEdition, selectIssueBrief } from "@/lib/edition";
 import { INDEX_PAGE_SIZE, buildFeedIndex, feedIndexVersion } from "@/lib/feedIndex";
 import { issueDelayDays } from "@/lib/labels";
 import { editionMetadata } from "@/lib/site";
 import { buildWeeklyRadar } from "@/lib/weeklyRadar";
 
-/** 홈 공유 미리보기 = 이번 호 1면(리드 헤드라인 제목·썸네일). */
+/** 홈 공유 미리보기 = 이번 호 1면(리드 헤드라인 제목·썸네일, 설명 = 세 줄 요약). */
 export function generateMetadata(): Metadata {
   // 호 목록에는 기사가 있는 호만 있으므로 최신 호는 항상 비어 있지 않다(호가 없으면 null).
   const ref = getLatestEditionRef();
   if (!ref) return {};
-  return editionMetadata(buildEdition(getIssueArticles(ref.date)), ref, "/");
+  const edition = buildEdition(getIssueArticles(ref.date));
+  return editionMetadata(edition, ref, "/", selectIssueBrief(edition, getIssueBriefs(ref.date)));
 }
 
 export default function Home() {
@@ -37,11 +39,13 @@ export default function Home() {
   const ref = getLatestEditionRef();
   const editionInfo = { issueNo: ref?.issueNo ?? 0, publishedAt: ref?.publishedAt ?? null };
   const issueArticles = ref ? toListCards(getIssueArticles(ref.date)) : [];
+  // 세 줄 요약(마스트헤드 아래 띠): 줄 id·문장만 넘긴다. 없으면 빈 배열 → 띠를 숨긴다.
+  const brief = ref ? selectIssueBrief(buildEdition(issueArticles), getIssueBriefs(ref.date)) : [];
   // 발행 지연 안내의 초기 상태 = 빌드 시점 판단. 빌드 자체가 낡았으면 정적 HTML 에 안내가 이미 들어간다.
   const initialDelayGap = ref ? issueDelayDays(ref.date, Date.now()) : 0;
   // 주간 레이더: 최신 호가 일요일일 때만(아니면 null). 호 고정 링크 지면과 같은 함수 — 그날 홈과 /edition/<일요일> 이 같다.
   const weekly = ref ? buildWeeklyRadar(getWeekRadarCandidates(ref.date), ref.date) : null;
-  const props = { issueArticles, sources, tags, editionInfo, initialDelayGap, weekly };
+  const props = { issueArticles, sources, tags, editionInfo, initialDelayGap, weekly, brief };
   const index = { indexHead, indexTotal, indexVersion: feedIndexVersion(ref?.date, indexTotal) };
 
   /*

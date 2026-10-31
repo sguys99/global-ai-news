@@ -437,6 +437,7 @@ describe("출력 전 확인", () => {
         "3. Physical AI(로봇·물리 세계가 주제, 매체 무관) 3건 이상 9건 이하.",
         "4. 논문: 한 분야(예: 로봇)가 논문 선정의 절반을 넘지 않는다.",
         "5. 모델의 HuggingFace 페이지와 그 모델을 다룬 뉴스는 같은 사건이다 — 하나만 id, 나머지는 duplicates.",
+        "6. brief: picks 중 이번 호 핵심 5줄(서로 다른 사건, 중요한 순서) — id 는 그 줄이 요약하는 picks 의 id, text 는 한국어 40자 안팎·마침표 없음.",
       ].join("\n"),
     );
   });
@@ -574,13 +575,14 @@ describe("resolvePicks", () => {
     ).toThrow();
   });
 
-  it("already_reported 는 picks 보다 앞 필드다(구조화 출력이 먼저 채운다)", () => {
+  it("already_reported 는 picks 보다 앞 필드, brief 는 picks 뒤 필드다(고른 다음에 요약한다)", () => {
     const schema = triageFormat.schema as {
       properties: Record<string, unknown>;
       required: string[];
     };
-    expect(Object.keys(schema.properties)).toEqual(["already_reported", "picks"]);
+    expect(Object.keys(schema.properties)).toEqual(["already_reported", "picks", "brief"]);
     expect(schema.required).toContain("already_reported");
+    expect(schema.required).toContain("brief");
   });
 });
 

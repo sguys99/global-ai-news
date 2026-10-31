@@ -152,6 +152,7 @@ describe("parseStructured", () => {
   const ok = JSON.stringify({
     already_reported: [],
     picks: [{ id: 0, importance: 3, duplicates: [] }],
+    brief: [],
   });
 
   it("정상 응답은 스키마로 검증해 반환", () => {

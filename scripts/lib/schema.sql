@@ -98,5 +98,6 @@ CREATE TABLE IF NOT EXISTS collection_runs (
   output_tokens     INTEGER NOT NULL DEFAULT 0,
   est_cost_usd      REAL    NOT NULL DEFAULT 0,
   status            TEXT    NOT NULL,        -- 'success' | 'partial' | 'failed'
-  notes             TEXT                     -- 소스별 실패 요약 등
+  notes             TEXT,                    -- 소스별 실패 요약 등
+  brief_json        TEXT                     -- 세 줄 요약 [{id: articles.id, text}] (없으면 NULL — 지면이 띠를 숨긴다)
 );

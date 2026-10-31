@@ -482,6 +482,54 @@ export function getLatestEditionRef(conn: DatabaseType = getDb()): EditionRef | 
   return getEditionRefs(conn).at(-1) ?? null;
 }
 
+/** 세 줄 요약 저장값 한 줄(collection_runs.brief_json 원소) — id 는 articles.id. 쓰는 쪽은 scripts/lib/brief.ts. */
+export interface StoredBriefLine {
+  id: number;
+  text: string;
+}
+
+/** brief_json → 줄 목록. 손상됐거나 모양이 다른 원소는 버린다(빈 배열 = 요약 없음). */
+export function parseBriefJson(json: string | null): StoredBriefLine[] {
+  if (!json) return [];
+  try {
+    const parsed = JSON.parse(json) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((line: unknown) => {
+      const { id, text } = (line ?? {}) as { id?: unknown; text?: unknown };
+      return Number.isInteger(id) && typeof text === "string" && text.trim()
+        ? [{ id: id as number, text: text.trim() }]
+        : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 호의 세 줄 요약 후보: 그 KST 날짜에 저장을 마친(getEditionRefs 와 같은 saved_at 기준) 실패 아닌 실행의
+ * brief_json, **최신 실행 먼저**. 같은 날 재수집이 있으면 후보가 여럿이다 — 고르는 일은 edition.ts selectIssueBrief.
+ * brief_json 컬럼은 ensureSchema(수집·prebuild)가 더한다. 그 전 DB 이거나 읽기에 실패하면 빈 배열(요약 없이 렌더).
+ */
+export function getIssueBriefs(dateKey: string, conn: DatabaseType = getDb()): StoredBriefLine[][] {
+  try {
+    const cols = conn.prepare("PRAGMA table_info(collection_runs)").all() as { name: string }[];
+    if (!cols.some((c) => c.name === "brief_json")) return [];
+    const rows = conn
+      .prepare(
+        `SELECT COALESCE(finished_at, started_at) AS saved_at, brief_json FROM collection_runs
+          WHERE status != 'failed' AND brief_json IS NOT NULL ORDER BY started_at DESC, id DESC`,
+      )
+      .all() as { saved_at: string; brief_json: string }[];
+    return rows
+      .filter((r) => kstDateKey(r.saved_at) === dateKey)
+      .map((r) => parseBriefJson(r.brief_json))
+      .filter((lines) => lines.length > 0);
+  } catch (err) {
+    console.warn(`[db] 세 줄 요약 읽기 실패(${dateKey}) — 요약 없이 렌더:`, err);
+    return [];
+  }
+}
+
 /**
  * 호 기사: dateKey(KST 'YYYY-MM-DD') 하루 [00:00 KST, 다음 날 00:00 KST) 안에 **수집된** 공개 기사,
  * 중요도 순(동점 시 화제·최신 게시순). 게시 시각(published_at)이 아니라 수집 시각(created_at)으로 자른다.

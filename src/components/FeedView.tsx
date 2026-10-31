@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { FrontPage, SectionBands, WeeklyRadarBand } from "@/components/Edition";
 import { FilterBar } from "@/components/FilterBar";
+import { IssueBrief } from "@/components/IssueBrief";
 import { Masthead } from "@/components/Masthead";
 import { IndexLoadStatus, StoryIndex, type IndexLoadState } from "@/components/StoryIndex";
 import { FilterSheet } from "@/components/mobile/FilterSheet";
 import type { EditionInfo, FeedOptions } from "@/lib/db";
-import { buildEdition, issueStats } from "@/lib/edition";
+import { buildEdition, issueStats, type IssueBriefLine } from "@/lib/edition";
 import {
   filterAndSortFeed,
   findSourceGroup,
@@ -45,6 +46,7 @@ export function FeedView({
   editionInfo,
   initialDelayGap,
   weekly,
+  brief = [],
 }: {
   /** 이번 호(그날 수집분) 기사 — 1면·섹션 밴드는 이 기사로만 구성한다. */
   issueArticles: ArticleCard[];
@@ -64,6 +66,8 @@ export function FeedView({
   initialDelayGap?: number;
   /** 주간 레이더(일요일 호만, 서버 page 가 계산). null·없음이면 밴드를 그리지 않는다. */
   weekly?: WeeklyRadar | null;
+  /** 이번 호 세 줄 요약(서버 page 가 selectIssueBrief 로 고른 줄). 비면 띠를 숨긴다. 필터 모드에서는 쓰지 않는다. */
+  brief?: IssueBriefLine[];
 }) {
   const filtered = hasActiveFilter(options);
   // 필터·정렬은 누적 전체가 있어야 맞다. 앞부분뿐이면 결과 대신 상태 줄(null).
@@ -142,6 +146,7 @@ export function FeedView({
         delayNoticeIssueDate={issueDate}
         delayNoticeInitialGap={initialDelayGap}
       />
+      <IssueBrief lines={brief} />
       <main className="mx-auto flex max-w-[1240px] flex-col gap-14 px-4 pb-16 md:gap-16 md:px-8">
         <FrontPage edition={edition} timeBase={timeBase} />
         {weekly && <WeeklyRadarBand weekly={weekly} />}

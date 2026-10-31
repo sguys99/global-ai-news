@@ -267,3 +267,57 @@ export function issueStats(issueArticles: Pick<ArticleCard, "format" | "source">
     })),
   };
 }
+
+/**
+ * 세 줄 요약(마스트헤드 아래 띠, `IssueBrief`)의 한 줄 — id 는 그 줄이 요약하는 이 호 기사.
+ * 1면 슬롯 "오늘의 브리핑"(`Edition.briefs`)과는 다른 것이다: 브리핑은 기사 제목 목록, 요약은 선별 LLM 이 쓴 문장이다.
+ */
+export interface IssueBriefLine {
+  id: number;
+  text: string;
+}
+
+/** 띠에 싣는 최대·최소 줄 수(수집 쪽 scripts/lib/brief.ts BRIEF_LINES·BRIEF_MIN_LINES 와 같은 값). */
+export const ISSUE_BRIEF_LIMITS = { max: 3, min: 2 } as const;
+
+/**
+ * 호의 세 줄 요약을 고르고 1면 위계 순으로 늘어놓는다(순수 함수). candidates 는 그 호 날짜 실행들의 저장값,
+ * 최신 실행 먼저(db.ts getIssueBriefs).
+ *
+ * 1) 줄마다 가리키는 기사가 **이 호 공개 기사**인지 다시 확인한다 — 수집이 이미 게재분만 남기지만, 자정을 넘긴
+ *    실행·이후 삭제 같은 경계에서 다른 호 기사나 없는 기사를 요약한 줄이 띠에 서지 않게 한다. 같은 기사는 한 줄만.
+ * 2) 남은 줄이 min 미만인 후보는 버린다. 같은 날 재수집으로 후보가 여럿이면 **1면 본문에 오른 기사를 가장 많이 덮는**
+ *    후보를 쓰고, 같으면 최신 실행. 재수집은 대개 아침 회차가 놓친 잔여분이라, "최신"만 보면 그날 핵심이 아닌
+ *    잔여분 요약이 아침 요약을 덮는다.
+ * 3) 표시 순서 = 1면 위계(리드 → 서브 → 브리핑 → 레이더, frontArticles 순), 1면 밖 기사는 그 뒤에 편집 순.
+ *    리드를 요약한 줄이 있으면 늘 첫 줄이다. 최대 max 줄.
+ * 고를 후보가 없으면 빈 배열 — 띠를 숨긴다(이 기능 전의 모든 지난 호).
+ */
+export function selectIssueBrief(
+  edition: Pick<Edition, "lead" | "seconds" | "briefs" | "radar" | "issue">,
+  candidates: readonly (readonly IssueBriefLine[])[],
+  limits: { max: number; min: number } = ISSUE_BRIEF_LIMITS,
+): IssueBriefLine[] {
+  const editorialRank = new Map(edition.issue.map((a, i) => [a.id, i]));
+  const frontRank = new Map(frontArticles(edition).map((a, i) => [a.id, i]));
+
+  let best: { lines: IssueBriefLine[]; onFront: number } | null = null;
+  for (const candidate of candidates) {
+    const seen = new Set<number>();
+    const lines = candidate.filter((line) => {
+      if (!editorialRank.has(line.id) || seen.has(line.id) || !line.text.trim()) return false;
+      seen.add(line.id);
+      return true;
+    });
+    if (lines.length < limits.min) continue;
+    const onFront = lines.filter((line) => frontRank.has(line.id)).length;
+    if (!best || onFront > best.onFront) best = { lines, onFront };
+  }
+  if (!best) return [];
+
+  const rank = (id: number) => frontRank.get(id) ?? frontRank.size + editorialRank.get(id)!;
+  return [...best.lines]
+    .sort((a, b) => rank(a.id) - rank(b.id))
+    .slice(0, limits.max)
+    .map(({ id, text }) => ({ id, text: text.trim() }));
+}

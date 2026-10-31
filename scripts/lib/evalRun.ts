@@ -17,6 +17,7 @@ import {
   type Format,
 } from "../../src/lib/labels";
 import { EVAL_DIR } from "../../src/lib/paths";
+import type { ResolvedBriefLine } from "./brief";
 import { estimateCost } from "./cost";
 import type { LlmUsage } from "./llm";
 import type { FollowUpLink, RejectedRepeat, RepeatMatch } from "./repeatCheck";
@@ -106,6 +107,8 @@ export interface EvalSnapshot {
     note: string | null;
     rejectNote?: string | null;
   } | null;
+  /** 세 줄 요약 중 게재분에 맞춰 남은 줄(풀 번호). 원출력은 triage.brief. 이 단계가 생기기 전 스냅숏에는 없다. */
+  brief?: ResolvedBriefLine[];
   /** repeat 는 재보도 검사가 생기기 전 스냅숏에 없다. */
   usage: { triage: LlmUsage; enrich: LlmUsage; repeat?: LlmUsage };
   notes: string[];

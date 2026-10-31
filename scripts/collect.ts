@@ -16,6 +16,8 @@
  * ④-2 LLM 재보도 검사 1회: 가공된 한국어 제목·요약 첫 문장을 이미 보도함과 대조해 새 전개 없는 재보도를 게재에서 뺀다
  *    (실패하면 전부 게재). 새 전개가 있는 후속 보도는 코드 확인을 거쳐 이전 보도에 잇는다(follow_up_of).
  *    할당 미달·초과·논문 분야 쏠림 경고는 이 뒤의 최종 게재분으로 센다
+ * ④-3 세 줄 요약: 선별 출력의 brief 중 실제로 게재된 선정의 줄만 남겨 collection_runs.brief_json 에 기사 id 로 저장
+ *    (lib/brief.ts — 남은 줄이 모자라거나 무엇이 잘못돼도 요약 없이 발행한다)
  * ⑤ SQLite 저장: 선정 → articles, 미선정 → seen_items(키만) + collection_runs 기록
  *
  * LLM 호출은 기본적으로 Message Batches API(50% 할인)로 보낸다(lib/llm.ts).
@@ -30,6 +32,7 @@ import { fetchArxiv } from "./lib/collect/arxiv";
 import { applyKeywordFilter } from "./lib/collect/keywordFilter";
 import { fetchReddit } from "./lib/collect/reddit";
 import { fetchRss, type SourceConfig } from "./lib/collect/rss";
+import { briefNote, resolveBrief, serializeBrief, type BriefResolution } from "./lib/brief";
 import { estimateCost } from "./lib/cost";
 import { dedupKey } from "./lib/dedup";
 import {
@@ -268,6 +271,8 @@ function withinBudget(chunks: EnrichChunk[], spent: number, stats: RunStats): En
 /**
  * ⑤ 선별·가공 결과 저장. 한 트랜잭션으로 묶는다.
  * followUpOf(풀 번호 → 이전 보도 articles.id)는 재보도 검사가 확인한 후속 보도 연결이다. 저장한 연결 수를 돌려준다.
+ * articleIdOf 를 넘기면 이번 회차에 게재한(가공을 마친) 선정의 풀 번호 → articles.id 를 채운다 — 세 줄 요약이
+ * 줄마다 기사를 가리키는 데 쓴다.
  */
 function persist(
   db: DatabaseType,
@@ -277,6 +282,7 @@ function persist(
   enriched: Map<number, ArticleEnrichment>,
   stats: RunStats,
   followUpOf: ReadonlyMap<number, number> = new Map(),
+  articleIdOf?: Map<number, number>,
 ): number {
   const insertArticle = db.prepare(
     `INSERT OR IGNORE INTO articles
@@ -332,12 +338,13 @@ function persist(
       };
 
       let articleId: number | bigint | undefined = c.articleId;
+      let stored = articleId !== undefined;
       if (articleId !== undefined) {
         // 재심사 행: 이번에도 가공에 실패하면 그대로 두어 다음 실행에서 다시 후보가 된다.
         if (e) updateArticle.run({ id: articleId, ...fields });
       } else {
         // 가공에 실패해도 저장(미노출) → BACKFILL_DAYS 동안 다음 실행에서 재심사.
-        articleId = insertArticle.run({
+        const inserted = insertArticle.run({
           dedup_key: c.key,
           source_id: c.item.sourceId,
           url: c.item.url,
@@ -347,7 +354,10 @@ function persist(
           engagement_json: c.item.engagement ? JSON.stringify(c.item.engagement) : null,
           trending_score: c.score,
           ...fields,
-        }).lastInsertRowid;
+        });
+        articleId = inserted.lastInsertRowid;
+        // INSERT OR IGNORE 가 무시되면 lastInsertRowid 는 앞선 행의 값이다 — 세 줄 요약이 엉뚱한 기사를 가리키지 않게 뺀다.
+        stored = inserted.changes > 0;
       }
 
       if (e) {
@@ -356,6 +366,7 @@ function persist(
         const prev = followUpOf.get(pick.index);
         if (prev !== undefined && linkFollowUp)
           linked += linkFollowUp(Number(articleId), c.key, prev);
+        if (stored) articleIdOf?.set(pick.index, Number(articleId));
       }
       // 묶인 기사는 대표 기사의 related_json 으로만 남긴다.
       for (const d of pick.duplicates) reject(pool[d]);
@@ -483,6 +494,23 @@ function printNoSaveResult(
   console.log(`[collect] no-save 분야별(가공): ${categoryCounts(s)}`);
 }
 
+/** no-save: 세 줄 요약 원출력(5줄)과 게재에 맞춰 남은 줄. */
+function printBrief(
+  raw: { id: number; text: string }[] | undefined,
+  brief: BriefResolution | null,
+  enriched: Map<number, ArticleEnrichment>,
+): void {
+  console.log(`[collect] no-save 세 줄 요약 원출력 ${raw?.length ?? 0}줄:`);
+  for (const line of raw ?? []) console.log(`  #${line.id} ${line.text}`);
+  const lines = brief?.lines ?? [];
+  console.log(`[collect] no-save 세 줄 요약 게재 ${lines.length}줄:`);
+  for (const line of lines) {
+    console.log(
+      `  #${line.index} ${line.text}\n    → ${enriched.get(line.index)?.title_ko ?? "?"}`,
+    );
+  }
+}
+
 async function main(): Promise<void> {
   const startedAt = new Date().toISOString();
   // dry-run·no-save 는 readonly 로 연다 — 커밋 대상인 data/app.db 를 실수로라도 바꾸지 않는다.
@@ -499,6 +527,8 @@ async function main(): Promise<void> {
   let triageUsage = emptyUsage();
   /** 가공 단계까지의 누적 usage(재보도 검사 몫 = 전체 − 이것). 가공 전에 끝났으면 null. */
   let enrichUsage: LlmUsage | null = null;
+  /** 세 줄 요약 저장값(collection_runs.brief_json). 없거나 모자라면 null — 요약 없이 발행한다. */
+  let briefJson: string | null = null;
 
   try {
     // 소스 행(형식 포함)은 실행 시작에 sources.json 전체와 한 번에 맞춘다 — 비활성·삭제 소스도 반영된다.
@@ -661,6 +691,22 @@ async function main(): Promise<void> {
       physical: (published.enriched.get(p.index)?.category ?? pool[p.index].topic) === "physical",
     }));
     const targets = pickTargets(pool, MAX_PICKS_PER_RUN);
+    // ④-3 세 줄 요약: 게재되는 선정을 가리키고 그 기사의 한국어 가공 제목·요약과 내용·수치가 맞는 줄만 남긴다.
+    // 어떤 문제도 회차를 막지 않는다(fail-open).
+    let brief: BriefResolution | null = null;
+    try {
+      const evidence = new Map(
+        [...published.enriched].map(([i, e]) => [i, { title: e.title_ko, summary: e.summary_ko }]),
+      );
+      // 가공 뒤 단계가 같은 사건 선정을 합치면(합쳐진 풀 번호 → 남은 대표) 4번째 인자 representativeOf 로 넘겨
+      // 합쳐진 선정을 가리키는 줄을 버리지 않고 대표 기사로 옮긴다. 그 단계는 이 호출보다 앞에 둔다.
+      brief = resolveBrief(triage.brief, picks, evidence);
+      stats.notes.push(briefNote(brief));
+    } catch (err) {
+      stats.notes.push(`세 줄 요약 생략: ${(err as Error).message}`);
+    }
+    if (snapshot) snapshot.brief = brief?.lines ?? [];
+
     for (const note of [
       quotaShortfallNote(mixPicked, targets),
       quotaOverflowNote(mixPicked, targets),
@@ -685,8 +731,24 @@ async function main(): Promise<void> {
         { outcome: repeat, dropped: published.dropped, all: enriched },
         reportedFull,
       );
+      printBrief(triage.brief, brief, published.enriched);
     } else {
-      linked = persist(db, pool, overflow, published.picks, published.enriched, stats, followUpOf);
+      const articleIdOf = new Map<number, number>();
+      linked = persist(
+        db,
+        pool,
+        overflow,
+        published.picks,
+        published.enriched,
+        stats,
+        followUpOf,
+        articleIdOf,
+      );
+      try {
+        briefJson = brief ? serializeBrief(brief.lines, articleIdOf) : null;
+      } catch {
+        briefJson = null;
+      }
     }
     const linkNote = followUpNote(linked);
     if (linkNote) stats.notes.push(linkNote);
@@ -733,23 +795,36 @@ async function main(): Promise<void> {
         console.log(`[collect] no-save 스냅숏: ${file}`);
       }
     } else {
-      db.prepare(
-        `INSERT INTO collection_runs
+      const run = db
+        .prepare(
+          `INSERT INTO collection_runs
            (started_at, finished_at, items_collected, items_new,
             llm_calls, input_tokens, output_tokens, est_cost_usd, status, notes)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(
-        startedAt,
-        new Date().toISOString(),
-        stats.itemsCollected,
-        stats.itemsPublished,
-        calls,
-        inputTokens,
-        outputTokens,
-        costUsd,
-        stats.status,
-        stats.notes.join("; "),
-      );
+        )
+        .run(
+          startedAt,
+          new Date().toISOString(),
+          stats.itemsCollected,
+          stats.itemsPublished,
+          calls,
+          inputTokens,
+          outputTokens,
+          costUsd,
+          stats.status,
+          stats.notes.join("; "),
+        );
+      // 세 줄 요약은 실행 기록과 따로 쓴다 — 컬럼이 없거나(ensureSchema 실패) 쓰기가 실패해도 실행 기록은 남는다.
+      if (briefJson) {
+        try {
+          db.prepare("UPDATE collection_runs SET brief_json = ? WHERE id = ?").run(
+            briefJson,
+            run.lastInsertRowid,
+          );
+        } catch (err) {
+          console.error("[collect] brief_json 저장 실패(요약 없이 발행):", err);
+        }
+      }
     }
     db.close();
   }
