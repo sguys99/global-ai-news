@@ -7,6 +7,12 @@ import {
   toFormat,
 } from "@/lib/labels";
 import { DB_PATH } from "@/lib/paths";
+import {
+  assessSourceHealth,
+  SOURCE_HEALTH_RULES,
+  type HealthSourceInput,
+  type SourceHealthReport,
+} from "@/lib/sourceHealth";
 import type {
   ArticleCard,
   Engagement,
@@ -381,6 +387,28 @@ export function getKpiSummary(days = 30, conn: DatabaseType = getDb()): KpiSumma
     avgDailyNew,
     duplicateKeys: dup.n,
   };
+}
+
+/**
+ * 소스 헬스(src/lib/sourceHealth.ts): 최근 회차 notes 의 소스별 결과로 연속 실패·연속 0건을 판정한다.
+ * `sources` 는 판정 대상 목록(sources.json — 비활성 포함, 비활성은 개수만 센다).
+ * 창을 넘긴 연속("30+회")을 알 수 있게 한 회차 더 읽는다. 실패 회차도 수집 단계 줄이 있으면 포함한다.
+ */
+export function getSourceHealth(
+  sources: HealthSourceInput[],
+  conn: DatabaseType = getDb(),
+): SourceHealthReport {
+  const runs = conn
+    .prepare(
+      `SELECT id, started_at AS startedAt, notes FROM collection_runs
+        ORDER BY started_at DESC LIMIT ?`,
+    )
+    .all(SOURCE_HEALTH_RULES.windowRuns + 1) as {
+    id: number;
+    startedAt: string;
+    notes: string | null;
+  }[];
+  return assessSourceHealth(sources, runs);
 }
 
 /** 마스트헤드 발행 정보: 호수 = 실패를 제외한 배치 실행 수, 발행 시각 = 마지막 실행 시작 시각. */

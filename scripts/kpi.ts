@@ -13,10 +13,16 @@
  *   --front legacy 마감 전 누적 기사로 옛 1면을 재현 — Phase 0 기준선과 같은 방식의 근사
  *   --since 날짜   그 날짜(KST 호 날짜) 이후 호만 — 배포 후 N일 관찰용(days 창과 겹치는 부분)
  *   예: npm run kpi -- baseline 14 · npm run kpi -- baseline 14 --front legacy · npm run kpi -- baseline --since 2026-11-01
+ *
+ * 하위 명령: npm run kpi -- health [--ci]
+ *   소스 헬스(연속 실패·연속 0건 — 판정 src/lib/sourceHealth.ts, 출력 scripts/lib/healthReport.ts)를 Markdown 으로 출력한다.
+ *   기본 `npm run kpi` 끝에도 같은 표가 붙는다.
+ *   --ci  collect.yml 용: $GITHUB_STEP_SUMMARY 에 붙이고 오류·경고 소스마다 `::warning::` 을 낸다.
+ *         DB 가 없거나 읽기에 실패해도 경고 한 줄만 내고 exit 0 — 수집 잡을 실패시키지 않는다.
  */
-import { readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { getDb, getKpiSummary } from "../src/lib/db";
+import { getDb, getKpiSummary, getSourceHealth } from "../src/lib/db";
 import { FORMAT_LABELS, FORMATS, type Format } from "../src/lib/labels";
 import { CONFIGS_DIR } from "../src/lib/paths";
 import {
@@ -28,9 +34,11 @@ import {
   type RunWarnings,
   type Spread,
 } from "./lib/baseline";
+import { healthAnnotations, healthMarkdown } from "./lib/healthReport";
 
 const [, , first, ...rest] = process.argv;
 const isBaseline = first === "baseline";
+const isHealth = first === "health";
 const days = Number(first ?? 30);
 
 function row(label: string, value: string, target: string, pass: boolean | null): string {
@@ -75,6 +83,37 @@ function main(): void {
   console.log("  —   피드 LCP            ≤ 2.0s   (Vercel Analytics / Lighthouse)");
   console.log("  —   한국어 요약 품질    ≥ 90%    (주간 20건 샘플 리뷰)");
   console.log("  —   소스 변경→재배포    ≤ 10분   (Vercel 배포 타임스탬프)\n");
+
+  console.log(healthMarkdown(getSourceHealth(readSourcesConfig())) + "\n");
+}
+
+// ── health ───────────────────────────────────────────────────────────────
+
+function health(): void {
+  const ci = rest.includes("--ci");
+  let markdown: string;
+  let annotations: string[] = [];
+  try {
+    const report = getSourceHealth(readSourcesConfig());
+    markdown = healthMarkdown(report);
+    annotations = healthAnnotations(report);
+  } catch (err) {
+    if (!ci) throw err;
+    // 헬스 요약은 부가 정보다 — DB·설정을 못 읽어도 수집 잡을 실패시키지 않는다.
+    console.log(`::warning title=소스 헬스::판정 실패 — ${(err as Error).message}`);
+    return;
+  }
+  console.log(markdown);
+  if (!ci) return;
+  for (const a of annotations) console.log(a);
+  const summary = process.env.GITHUB_STEP_SUMMARY;
+  if (summary) {
+    try {
+      appendFileSync(summary, `${markdown}\n`);
+    } catch (err) {
+      console.log(`::warning title=소스 헬스::요약 기록 실패 — ${(err as Error).message}`);
+    }
+  }
 }
 
 // ── baseline ─────────────────────────────────────────────────────────────
@@ -355,4 +394,5 @@ function baseline(): void {
 }
 
 if (isBaseline) baseline();
+else if (isHealth) health();
 else main();
