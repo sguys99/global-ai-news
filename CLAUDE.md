@@ -56,6 +56,7 @@
 │   │   ├── Story.tsx             # 스토리 변형 6종(Lead/Secondary/SectionItem/Brief/Radar/Entry)
 │   │   ├── StoryIndex.tsx        # 전체 기사 색인(30건씩 더 보기)
 │   │   ├── ArticleMeta.tsx       # 신호: 키커·FormatBadge·중요도 미터·바이라인·화제 바·태그
+│   │   ├── FollowUpThread.tsx    # 상세 사건 타임라인(이전 보도·후속 보도 — follow_up_of 양방향)
 │   │   ├── RelativeTime.tsx      # 상대 시각("3시간 전") — 정적 HTML은 호 발행 시각 기준, 마운트 후 실시각
 │   │   ├── FeedView.tsx / FeedClient.tsx # 홈 지면+색인 렌더 / useSearchParams 필터 래퍼
 │   │   ├── SearchClient.tsx      # 검색 인덱스 fetch + FlexSearch + 필터·정렬
@@ -67,7 +68,7 @@
 │   │   ├── admin/                # Admin 전용 컴포넌트 (KpiPanel·SourceManager 등)
 │   │   └── ui/                   # shadcn/ui 프리미티브
 │   ├── lib/
-│   │   ├── db.ts                 # SQLite readonly 조회 (getFeed/getArticle/getIssueArticles/getEditionRefs/getLatestEditionRef/searchArticles/getKpiSummary 등)
+│   │   ├── db.ts                 # SQLite readonly 조회 (getFeed/getArticle/getIssueArticles/getEditionRefs/getLatestEditionRef/getFollowUpThread/searchArticles/getKpiSummary 등)
 │   │   ├── types.ts              # RawItem, ArticleCard(format 포함), SourceConfig, RunRow 등
 │   │   ├── edition.ts            # 1면 편집(buildEdition: 리드·서브·브리핑·레이더·화제·섹션) + frontArticles·issueStats
 │   │   ├── labels.ts             # 분야 CATEGORIES·표시명·코드, 형식 FORMATS·배지, 소스 축약명, KST 날짜·상대 시각·발행 지연 문구 (단일 출처)
@@ -250,7 +251,7 @@ npm run typecheck
 SQLite 7개 테이블 (DDL: `scripts/lib/schema.sql`, 상세: PRD §5):
 
 - `sources` — 소스 메타 (`configs/sources.json`과 `syncSources`로 동기화). **`format`**(`news|oss|model|paper`, 기본 `news`) 컬럼이 기사 형식의 단일 저장처 — 기사는 JOIN으로 읽어 지난 기사에도 소급된다. sources.json에서 빠진 소스는 기사가 없으면 삭제, 있으면 `enabled=0`.
-- `articles` — 선별된 기사: 수집 원본 + LLM 가공 결과 + `related_json`(같은 사건의 다른 매체 보도) + `engagement_json`(수집 시점 메트릭: stars·stars_today·language·likes·downloads·params·ups 등). `category`는 분야 키 6개 중 하나.
+- `articles` — 선별된 기사: 수집 원본 + LLM 가공 결과 + `related_json`(같은 사건의 다른 매체 보도) + `engagement_json`(수집 시점 메트릭: stars·stars_today·language·likes·downloads·params·ups 등) + `follow_up_of`(이전 보도 `articles.id` — 재보도 검사의 후속 판정 중 코드 확인을 통과한 짝, FK 없음·역방향 인덱스 `articles_follow_up_of`, 2026-10-31 이전 기사는 없음). `category`는 분야 키 6개 중 하나.
 - `seen_items` — 선별에서 떨어지거나 재보도로 빠진 후보의 dedup 키(본문 미저장, 30일 보존)
 - `tags`, `article_tags` — 태그 다대다 매핑
 - `articles_fts` — FTS5 가상 테이블 (트리거로 동기화·`db:reindex`. 공개 검색은 빌드 시 만든 FlexSearch 인덱스를 쓴다)
@@ -279,7 +280,7 @@ LLM 호출은 채팅 엔드포인트가 아니라 **배치 파이프라인** 안
 
 1. **선별**(`scripts/lib/triage.ts`) — 후보 풀(최대 180건)을 `번호 | 형식 | 매체 | 날짜 | 화제 | 제목 | 발췌` 한 줄씩 1회 호출로 보내, 최대 35건 선정·같은 사건 묶기(`duplicates`, 모델 파생본·논문 보도 포함)·중요도(같은 형식 후보끼리 상대 평가)·`already_reported`를 받는다. 유저 메시지는 "오늘 후보 구성·오늘 할당 → 이미 보도함 → 오늘 후보" 순이다. 할당 숫자의 단일 출처는 `PICK_QUOTAS`(비뉴스 8·형식별 1·Physical AI 3, 상한 `ceil(35/4)`=9)이며 `pickTargets`가 풀 구성에 맞춰 줄여 넣는다. "이미 보도함"은 최근 3개 호 게재 제목(`loadReportedHeadlines`). 할당 미달·초과·논문 분야 쏠림은 최종 게재분 기준으로 notes에 경고만 남긴다.
 2. **가공**(`scripts/lib/enrich.ts`) — 선정 기사만 10건씩 묶어 한국어 제목·요약·분야·태그를 받는다. 입력에 `[형식]` 줄과 분리된 `[토픽]` 줄(분류용, 기능 근거 아님)을 넣고, 형식별 요약 가이드(뉴스·리포·모델·논문)를 따른다.
-3. **재보도 검사**(`scripts/lib/repeatCheck.ts`) — 가공된 `title_ko`+요약 첫 문장을 최근 3개 호 게재분과 1회 호출로 대조해, 새 전개 없는 재보도(`repeats`)를 게재에서 뺀다(묶음 포함 → `seen_items`, 재심사 행은 삭제). 후속 보도(`followups`)는 유지. 모델의 재보도 판정은 코드로 다시 확인한다(`confirmRepeats`) — 두 기사가 내용어(`textTokens.ts`, 일반어·분야어 제외, 회사는 몇 개가 겹쳐도 1개 — 제휴·인수·투자처럼 상대가 있는 사건만 2개)를 2개 이상 함께 쓰지 않으면 판정을 기각하고 싣는다(notes `재보도 판정 기각 N건`). 호출·검증 실패 시 전부 게재(fail-open).
+3. **재보도 검사**(`scripts/lib/repeatCheck.ts`) — 가공된 `title_ko`+요약 첫 문장을 최근 3개 호 게재분과 1회 호출로 대조해, 새 전개 없는 재보도(`repeats`)를 게재에서 뺀다(묶음 포함 → `seen_items`, 재심사 행은 삭제). 후속 보도(`followups`)는 유지하고, 짝지은 이전 보도에 `follow_up_of`로 잇는다(추가 호출 없음 — 상세 페이지 사건 타임라인이 양방향으로 읽는다). 모델의 재보도 판정은 코드로 다시 확인한다(`confirmRepeats`) — 두 기사가 내용어(`textTokens.ts`, 일반어·분야어 제외, 회사는 몇 개가 겹쳐도 1개 — 제휴·인수·투자처럼 상대가 있는 사건만 2개)를 2개 이상 함께 쓰지 않으면 판정을 기각하고 싣는다(notes `재보도 판정 기각 N건`). 후속 판정도 같은 확인(`confirmFollowups`, 기준 2 + 회사·숫자가 아닌 공유 낱말 1개 이상 — 회사·버전 번호만 겹치는 같은 제품군의 다른 출시를 잇지 않게)을 통과해야 잇고(기각은 링크 없이 게재, notes `후속 판정 기각 N건`), 저장은 자기 자신·비공개 이전 보도를 거른다(notes `후속 보도 연결 N건`). 호출·검증·연결 실패 시 전부 게재(fail-open).
 
 - 호출 계층: `scripts/lib/llm.ts` — Message Batches API로 제출, `BATCH_TIMEOUT_MIN` 초과·개별 실패 시 일반 호출로 1회 재시도. 출력은 구조화 출력(`output_config.format`)으로 받고 zod 로 검증한다.
 - 프롬프트: `configs/prompts/triage.system.md`(선별), `enrich.system.md` + `categories.md`(`{{CATEGORIES}}`) + `enrich.fewshot.json`(가공), `repeat.system.md`(재보도) + 가변 유저 메시지 (PRD §7)

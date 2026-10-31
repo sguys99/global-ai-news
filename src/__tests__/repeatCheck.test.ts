@@ -213,8 +213,11 @@ describe("interpretRepeatResult (실패에 열림)", () => {
       repeats: [{ id: 60, reported: 1, event: "미스트랄 라지 4 가중치 공개" }],
       followups: [],
       rejected: [],
+      links: [],
+      followRejected: [],
       note: "재보도 제외 1건",
       rejectNote: null,
+      followRejectNote: null,
     });
   });
 
@@ -261,8 +264,11 @@ describe("runRepeatCheck", () => {
         repeats: [],
         followups: [],
         rejected: [],
+        links: [],
+        followRejected: [],
         note: null,
         rejectNote: null,
+        followRejectNote: null,
       });
     }
     expect(runner.run).not.toHaveBeenCalled();
@@ -377,10 +383,22 @@ describe("attachReportedSummaries", () => {
       { issueDate: "2026-10-30", title: "미가공" },
       { issueDate: "2026-10-30", title: "없는 제목" },
     ];
+    // 제목으로 찾은 행은 기사 id 도 채운다(옛 스냅숏 — 후속 보도 연결이 R번호를 기사로 되짚는다).
     expect(attachReportedSummaries(db, reported)).toEqual([
-      { issueDate: "2026-10-30", title: "같은 제목", summary: "10-30 호 요약." },
+      { id: 1, issueDate: "2026-10-30", title: "같은 제목", summary: "10-30 호 요약." },
       { issueDate: "2026-10-30", title: "미가공" },
       { issueDate: "2026-10-30", title: "없는 제목" },
+    ]);
+    // id 가 있으면(loadReportedHeadlines) id 로 찾는다 — 같은 날 같은 제목이 둘이어도 그 기사의 요약이다.
+    ins("2026-10-29 22:00:00", "같은 제목", "같은 호 둘째 기사 요약.");
+    expect(
+      attachReportedSummaries(db, [
+        { id: 4, issueDate: "2026-10-30", title: "같은 제목" },
+        { id: 3, issueDate: "2026-10-30", title: "미가공" },
+      ]),
+    ).toEqual([
+      { id: 4, issueDate: "2026-10-30", title: "같은 제목", summary: "같은 호 둘째 기사 요약." },
+      { id: 3, issueDate: "2026-10-30", title: "미가공" },
     ]);
     db.close();
   });

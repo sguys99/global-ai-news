@@ -99,6 +99,22 @@ export interface RelatedCoverage {
 }
 
 /**
+ * 상세 페이지 사건 타임라인 한 줄(`getFollowUpThread`). 후속 보도 연결(articles.follow_up_of)로 이어진 같은 사건의
+ * 공개 기사들이고, 보고 있는 기사(relation = "current")도 한 줄로 들어간다. 호 날짜 순(오래된 것 먼저).
+ */
+export interface FollowUpEntry {
+  id: number;
+  titleKo: string;
+  titleOriginal: string;
+  /** 매체 표시명(sources.name) — 화면은 shortSourceName 으로 줄인다. */
+  sourceName: string;
+  /** 게재 시각(created_at, UTC ISO) — 이 시각의 KST 날짜가 호 날짜다. */
+  issuedAt: string;
+  /** 보고 있는 기사 기준: 앞선 보도 / 이 기사 / 뒤이은 보도. */
+  relation: "earlier" | "current" | "later";
+}
+
+/**
  * 클라이언트 검색 인덱스(public/search-index.json) 한 항목.
  * 카드 렌더(titleOriginal 폴백·trendingScore 배지)와 정렬(importance)에 필요한 필드를
  * 모두 포함하되, 용량/비용의 주범인 원문 본문(contentRaw)만 제외한다.

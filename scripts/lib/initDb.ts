@@ -17,6 +17,13 @@ const SCHEMA_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "sch
 const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "articles", column: "related_json", ddl: "related_json TEXT" },
   { table: "sources", column: "format", ddl: "format TEXT NOT NULL DEFAULT 'news'" },
+  { table: "articles", column: "follow_up_of", ddl: "follow_up_of INTEGER" },
+];
+
+/** 추가 컬럼에 거는 인덱스. schema.sql 에 두면 컬럼이 없는 기존 DB 에서 exec 가 실패하므로 컬럼 추가 뒤에 만든다. */
+const ADDED_INDEXES = [
+  // 상세 페이지의 후속 보도(역방향) 조회 — 빌드가 기사마다 부른다.
+  "CREATE INDEX IF NOT EXISTS articles_follow_up_of ON articles(follow_up_of)",
 ];
 
 /**
@@ -29,6 +36,7 @@ export function ensureSchema(db: DatabaseType): void {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
     if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
   }
+  for (const ddl of ADDED_INDEXES) db.exec(ddl);
 }
 
 export function initDb(dbPath: string = DB_PATH, opts: { mustExist?: boolean } = {}): void {

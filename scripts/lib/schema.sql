@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS articles (
   importance      INTEGER,                 -- 1~5 (LLM 선별 단계의 상대 평가)
   -- 같은 사건을 다룬 다른 매체 기사(선별 단계에서 묶음). '[{"source":..,"url":..,"title":..}]'
   related_json    TEXT,
+  -- 이전 보도(같은 사건, 앞선 호) articles.id — 재보도 검사의 후속 판정(followups)이 코드 확인을 통과하면 저장.
+  -- 상세 페이지 사건 타임라인용. FK 는 두지 않는다(잘못된 링크가 저장 트랜잭션을 깨지 않게 — 읽는 쪽이 공개 여부를 확인).
+  -- 역방향(후속 보도) 조회 인덱스 articles_follow_up_of 는 기존 DB 에 컬럼을 추가한 뒤 ensureSchema 가 만든다.
+  follow_up_of    INTEGER,
   -- 메타
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );

@@ -295,6 +295,8 @@ function quotaBlock(pool: Candidate[], targets: PickTargets): string {
 
 /** "이미 보도함" 한 줄의 재료 — 최근 호에 실린 기사. */
 export interface ReportedHeadline {
+  /** 기사 id(articles.id) — 재보도 검사의 후속 보도 연결(follow_up_of)이 R번호를 기사로 되짚을 때 쓴다. 옛 스냅숏에는 없다. */
+  id?: number;
   /** 호 날짜(KST 'YYYY-MM-DD'). */
   issueDate: string;
   /** 게재 제목(title_ko). */
@@ -321,7 +323,7 @@ export function loadReportedHeadlines(
          SELECT DISTINCT date(created_at, '+9 hours') AS d FROM articles
           WHERE summary_ko IS NOT NULL ORDER BY d DESC LIMIT ?
        )
-       SELECT date(a.created_at, '+9 hours') AS issueDate, a.title_ko AS title FROM articles a
+       SELECT a.id, date(a.created_at, '+9 hours') AS issueDate, a.title_ko AS title FROM articles a
         WHERE a.summary_ko IS NOT NULL AND a.title_ko IS NOT NULL
           AND date(a.created_at, '+9 hours') IN (SELECT d FROM recent)
         ORDER BY issueDate DESC, a.importance DESC, a.id`,

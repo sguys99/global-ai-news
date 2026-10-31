@@ -14,7 +14,8 @@
  *    — 오늘 할당(비뉴스·Physical AI)과 최근 3개 호 게재 제목("이미 보도함")을 함께 넣고, 할당 미달은 notes 에 경고
  * ④ LLM 가공: 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그 (비용 가드 적용)
  * ④-2 LLM 재보도 검사 1회: 가공된 한국어 제목·요약 첫 문장을 이미 보도함과 대조해 새 전개 없는 재보도를 게재에서 뺀다
- *    (실패하면 전부 게재). 할당 미달·초과·논문 분야 쏠림 경고는 이 뒤의 최종 게재분으로 센다
+ *    (실패하면 전부 게재). 새 전개가 있는 후속 보도는 코드 확인을 거쳐 이전 보도에 잇는다(follow_up_of).
+ *    할당 미달·초과·논문 분야 쏠림 경고는 이 뒤의 최종 게재분으로 센다
  * ⑤ SQLite 저장: 선정 → articles, 미선정 → seen_items(키만) + collection_runs 기록
  *
  * LLM 호출은 기본적으로 Message Batches API(50% 할인)로 보낸다(lib/llm.ts).
@@ -57,6 +58,8 @@ import { LlmRunner, parseStructured, type LlmRequest, type LlmUsage } from "./li
 import {
   attachReportedSummaries,
   dropRepeats,
+  followUpNote,
+  prepareFollowUpLink,
   runRepeatCheck,
   toRepeatInputs,
   type RepeatCheckOutcome,
@@ -261,7 +264,10 @@ function withinBudget(chunks: EnrichChunk[], spent: number, stats: RunStats): En
   return allowed;
 }
 
-/** ⑤ 선별·가공 결과 저장. 한 트랜잭션으로 묶는다. */
+/**
+ * ⑤ 선별·가공 결과 저장. 한 트랜잭션으로 묶는다.
+ * followUpOf(풀 번호 → 이전 보도 articles.id)는 재보도 검사가 확인한 후속 보도 연결이다. 저장한 연결 수를 돌려준다.
+ */
 function persist(
   db: DatabaseType,
   pool: Candidate[],
@@ -269,7 +275,8 @@ function persist(
   picks: Pick[],
   enriched: Map<number, ArticleEnrichment>,
   stats: RunStats,
-): void {
+  followUpOf: ReadonlyMap<number, number> = new Map(),
+): number {
   const insertArticle = db.prepare(
     `INSERT OR IGNORE INTO articles
        (dedup_key, source_id, url, title_original, content_raw,
@@ -291,6 +298,10 @@ function persist(
   );
   const markSeen = db.prepare("INSERT OR IGNORE INTO seen_items (dedup_key) VALUES (?)");
   const dropUnenriched = db.prepare("DELETE FROM articles WHERE id = ? AND summary_ko IS NULL");
+  const linkFollowUp = prepareFollowUpLink(db, (err) =>
+    stats.notes.push(`후속 보도 연결 실패: ${err.message}`),
+  );
+  let linked = 0;
 
   /** 선별에서 떨어진 후보: 키만 남기고, 재심사 중이던 미가공 행은 지운다. */
   const reject = (c: Candidate) => {
@@ -341,6 +352,9 @@ function persist(
       if (e) {
         saveTags(db, articleId, e.tags);
         stats.itemsPublished += 1;
+        const prev = followUpOf.get(pick.index);
+        if (prev !== undefined && linkFollowUp)
+          linked += linkFollowUp(Number(articleId), c.key, prev);
       }
       // 묶인 기사는 대표 기사의 related_json 으로만 남긴다.
       for (const d of pick.duplicates) reject(pool[d]);
@@ -364,6 +378,7 @@ function persist(
       `-${SEEN_RETENTION_DAYS} days`,
     );
   })();
+  return linked;
 }
 
 /**
@@ -422,6 +437,33 @@ function printNoSaveResult(
       console.log(
         `  #${m.id} ${repeat.all.get(m.id)?.title_ko ?? pool[m.id].item.title}` +
           `\n    ≈ R${m.reported} ${r ? `${r.issueDate.slice(5)} ${r.title}` : "?"}` +
+          `  [${m.event ?? ""}] 겹침: ${m.shared.join(", ") || "없음"}`,
+      );
+    }
+  }
+  const title = (id: number) => repeat.all.get(id)?.title_ko ?? pool[id].item.title;
+  const reportedTitle = (n: number) => {
+    const r = reported[n - 1];
+    return r ? `${r.issueDate.slice(5)} ${r.title}` : "?";
+  };
+  if (repeat.outcome.links.length > 0) {
+    console.log(
+      `[collect] no-save 후속 보도 연결 ${repeat.outcome.links.length}건 (오늘 제목 → 이전 보도):`,
+    );
+    for (const m of repeat.outcome.links) {
+      console.log(
+        `  #${m.id} ${title(m.id)}\n    → R${m.reported} (#${m.articleId}) ${reportedTitle(m.reported)}` +
+          `  [${m.event ?? ""}]`,
+      );
+    }
+  }
+  if (repeat.outcome.followRejected.length > 0) {
+    console.log(
+      `[collect] no-save 후속 판정 기각 ${repeat.outcome.followRejected.length}건 (내용어 겹침 부족 — 링크 없이 게재):`,
+    );
+    for (const m of repeat.outcome.followRejected) {
+      console.log(
+        `  #${m.id} ${title(m.id)}\n    → R${m.reported} ${reportedTitle(m.reported)}` +
           `  [${m.event ?? ""}] 겹침: ${m.shared.join(", ") || "없음"}`,
       );
     }
@@ -578,17 +620,31 @@ async function main(): Promise<void> {
 
     // ── ④-2 재보도 검사 ── 선별의 already_reported 를 빠져나온 재보도를 한국어끼리 다시 대조한다. 실패하면 전부 게재.
     // 뺀 선정(과 그 묶음)은 persist 에 넘기지 않아 미선정 후보처럼 seen_items 로 간다(재심사 행은 지운다 — dropRepeats).
+    // 요약·기사 id 를 붙인 이미 보도함 — 후속 보도 연결이 R번호를 이 목록으로 되짚는다.
+    const reportedFull = attachReportedSummaries(db, reported);
     const repeat = await runRepeatCheck(
       llm,
       toRepeatInputs(picks, (i) => enriched.get(i)),
-      attachReportedSummaries(db, reported),
+      reportedFull,
       MODEL,
       { remainingUsd: MAX_COST_USD_PER_RUN - llm.usage.costUsd, batch: USE_BATCH },
     );
-    for (const note of [repeat.note, repeat.rejectNote]) if (note) stats.notes.push(note);
+    for (const note of [repeat.note, repeat.rejectNote, repeat.followRejectNote]) {
+      if (note) stats.notes.push(note);
+    }
     if (snapshot) {
-      const { status, repeats, followups, rejected, note, rejectNote } = repeat;
-      snapshot.repeatCheck = { status, repeats, followups, rejected, note, rejectNote };
+      const { status, repeats, followups, rejected, links, followRejected, note, rejectNote } =
+        repeat;
+      snapshot.repeatCheck = {
+        status,
+        repeats,
+        followups,
+        rejected,
+        links,
+        followRejected,
+        note,
+        rejectNote,
+      };
     }
     const published = dropRepeats(
       picks,
@@ -617,15 +673,22 @@ async function main(): Promise<void> {
       if (note) stats.notes.push(note);
     }
 
+    // 후속 보도 연결(풀 번호 → 이전 보도 id). 재보도와 겹치지 않는다(resolveRepeats). 저장한 수만 notes 에 센다.
+    const followUpOf = new Map(repeat.links.map((l) => [l.id, l.articleId]));
+    let linked = followUpOf.size;
     if (NO_SAVE) {
       printNoSaveResult(
         pool,
         published.picks,
         published.enriched,
         { outcome: repeat, dropped: published.dropped, all: enriched },
-        reported,
+        reportedFull,
       );
-    } else persist(db, pool, overflow, published.picks, published.enriched, stats);
+    } else {
+      linked = persist(db, pool, overflow, published.picks, published.enriched, stats, followUpOf);
+    }
+    const linkNote = followUpNote(linked);
+    if (linkNote) stats.notes.push(linkNote);
     // 게재 = 이번 회차에 가공까지 마치고 재보도가 아닌 선정 기사(재심사 행 포함).
     mix = [candidates, pool, [...published.enriched.keys()].map((i) => pool[i])];
 
