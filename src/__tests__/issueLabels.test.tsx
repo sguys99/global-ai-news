@@ -104,7 +104,9 @@ describe("Masthead 귀(이번 호 통계)", () => {
     );
     const ear = screen.getByTestId("issue-ear");
     // 모바일 첫 줄("이번 호 " 인라인)·md 머리("이번 호")가 함께 마크업된다(표시는 CSS 로 갈린다).
-    expect(ear.textContent).toBe("이번 호이번 호 30건 · 매체 14곳뉴스 22·오픈소스 3·모델 2·논문 3");
+    // 형식 oss 는 화면 표시명 "저장소" — 분야 "오픈소스·도구 N건"(이 호의 지면)과 같은 낱말이 다른 건수로 겹치지 않게.
+    expect(ear.textContent).toBe("이번 호이번 호 30건 · 매체 14곳뉴스 22·저장소 3·모델 2·논문 3");
+    expect(ear.textContent).not.toContain("오픈소스");
     expect(screen.queryByText(/누적|기사 \d+건/)).toBeNull();
     // 폴리오는 날짜·호수만 — 통계는 귀로 옮겼다.
     expect(screen.getByText("제136호")).toBeTruthy();
@@ -121,7 +123,7 @@ describe("Masthead 귀(이번 호 통계)", () => {
     );
     const ear = screen.getByTestId("issue-ear");
     expect(ear.textContent).toContain("뉴스 28");
-    expect(ear.textContent).not.toMatch(/오픈소스|모델|논문/);
+    expect(ear.textContent).not.toMatch(/저장소|오픈소스|모델|논문/);
 
     rerender(
       <Masthead

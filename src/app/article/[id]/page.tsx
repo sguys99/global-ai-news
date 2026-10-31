@@ -101,7 +101,18 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
         </header>
 
         <dl className="border-t-rule border-b-border mt-7 grid grid-cols-2 border-t-2 border-b md:grid-cols-4">
-          <Signal label="매체">{article.source.name}</Signal>
+          {/* 사이트 전체와 같은 매체 축약명 — 피드 구분("GitHub (topic:llm)")은 독자에게 매체가 아니다. 원래 이름은 툴팁. */}
+          <Signal label="매체">
+            <span
+              title={
+                article.source.name !== shortSourceName(article.source.name)
+                  ? article.source.name
+                  : undefined
+              }
+            >
+              {shortSourceName(article.source.name)}
+            </span>
+          </Signal>
           <Signal label="게시">
             <time dateTime={article.publishedAt} className="tabular-nums">
               {formatDate(article.publishedAt)}

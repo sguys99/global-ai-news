@@ -113,7 +113,7 @@ describe("groupSources — 매체 칩은 축약명 단위로 하나", () => {
       { id: "techcrunch_ai", label: "TechCrunch", ids: ["techcrunch_ai"], count: 119 },
       {
         id: "hf_daily_papers",
-        label: "HuggingFace",
+        label: "Hugging Face",
         ids: ["hf_daily_papers", "hf_models"],
         count: 58,
       },

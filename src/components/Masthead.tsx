@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  FORMAT_LABELS,
+  FORMAT_DISPLAY_LABELS,
   categoryLabel,
   categorySlug,
   formatLongDate,
@@ -116,6 +116,7 @@ export function Masthead({
 
 /**
  * 제호 '귀'(신문 제호 옆 작은 안내 칸) — 이번 호 N건 · 매체 M곳 + 형식 구성(0건 형식 생략).
+ * 형식은 화면 표시명("뉴스 24 · 저장소 1") — 프롬프트용 "오픈소스"를 쓰면 이 호의 지면 "오픈소스·도구 N건"과 겹친다.
  * md 이상: 제호 오른쪽 세로 칸(왼쪽 헤어라인, 세리프 큰 숫자). 모바일: 제호 아래 두 줄.
  * "오늘"이 아니라 "이번 호" — 발행이 지연되면 보고 있는 호가 어제 것이라 "오늘"은 거짓이 된다.
  */
@@ -146,7 +147,7 @@ function IssueEar({ stats }: { stats: IssueStats }) {
                 </span>
               )}
               <span>
-                {FORMAT_LABELS[format]}{" "}
+                {FORMAT_DISPLAY_LABELS[format]}{" "}
                 <b className="text-foreground-soft font-semibold tabular-nums">{count}</b>
               </span>
             </span>

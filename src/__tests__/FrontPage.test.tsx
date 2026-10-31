@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { FrontPage, issueContents } from "@/components/Edition";
+import { FrontPage, SectionBands, issueContents, radarSubtitle } from "@/components/Edition";
 import { buildEdition } from "@/lib/edition";
 import type { ArticleCard } from "@/lib/types";
 
@@ -251,5 +251,130 @@ describe("FrontPage — Phase 6-2 시안 반영", () => {
       ["llm", "llm", "agent", "agent", "industry"].map((category) => card({ category })),
     );
     expect(issueContents(edition).map((r) => r.category)).toEqual(["llm", "agent", "industry"]);
+  });
+});
+
+describe("RadarBand — 칸 수(1–4)에 맞춘 열, 빈 열 없음", () => {
+  const nonNews = () => [
+    card({ format: "oss", category: "agent", importance: 5, titleKo: "R-저장소" }),
+    card({ format: "paper", category: "research", importance: 4, titleKo: "R-논문" }),
+    card({ format: "model", category: "llm", importance: 3, titleKo: "R-모델" }),
+    card({ format: "paper", category: "physical", importance: 2, titleKo: "R-논문2" }),
+  ];
+  const renderRadar = (k: number) => {
+    const edition = buildEdition([...newsIssue(), ...nonNews().slice(0, k)]);
+    expect(edition.radar).toHaveLength(k);
+    render(<FrontPage edition={edition} />);
+    const radar = screen.getByRole("region", { name: "오픈소스·논문 레이더" });
+    return { radar, list: within(radar).getByRole("list"), edition };
+  };
+
+  it("4건: lg 4열 / md 2열 / 모바일 가로 스냅(변경 없음)", () => {
+    const { radar, list } = renderRadar(4);
+    expect(within(list).getAllByRole("listitem")).toHaveLength(4);
+    expect(list).toHaveClass(
+      "lg:grid-cols-4",
+      "md:grid-cols-2",
+      "overflow-x-auto",
+      "auto-cols-[64%]",
+    );
+    expect(within(radar).getByText("이번 호의 저장소·모델·논문")).toBeInTheDocument();
+  });
+
+  it("3건: md 이상 같은 폭 3열, 4열 트랙을 쓰지 않는다", () => {
+    const { radar, list } = renderRadar(3);
+    expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+    expect(list).toHaveClass("md:grid-cols-3", "overflow-x-auto");
+    expect(list).not.toHaveClass("lg:grid-cols-4");
+    expect(list).not.toHaveClass("md:grid-cols-2");
+    // 칸마다 subgrid(본문 | 메타 레일) — 레일 헤어라인 정렬 유지
+    for (const li of within(list).getAllByRole("listitem"))
+      expect(li).toHaveClass("row-span-2", "grid-rows-subgrid");
+    expect(within(radar).getByText("이번 호의 저장소·모델·논문")).toBeInTheDocument();
+  });
+
+  it("2건: md 이상 같은 폭 2열, 보조 문구는 실린 형식만", () => {
+    const { radar, list } = renderRadar(2);
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+    expect(list).toHaveClass("md:grid-cols-2");
+    expect(list).not.toHaveClass("lg:grid-cols-4");
+    expect(within(radar).getByText("이번 호의 저장소·논문")).toBeInTheDocument();
+  });
+
+  it("1건: 스크롤러 없이 띠 전폭 가로 한 줄(1면과 같은 8:4) — 메타 레일은 세로 헤어라인", () => {
+    const { radar, list } = renderRadar(1);
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(list).not.toHaveClass("overflow-x-auto");
+    expect(list.className).not.toMatch(/grid-cols-/);
+    const link = within(items[0]).getByRole("link");
+    expect(link).toHaveClass("md:grid", "md:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]");
+    expect(link).not.toHaveClass("grid-rows-subgrid");
+    // 머리·제목·요약 — 요약은 제목 옆 칸(md)
+    expect(within(link).getByRole("heading")).toHaveClass("md:col-start-1", "md:row-start-2");
+    expect(within(link).getByText("요약")).toHaveClass("md:col-start-2", "md:row-start-2");
+    // 레일: 모바일은 위 가로선, md 이상은 왼쪽 세로선
+    const rail = link.lastElementChild as HTMLElement;
+    expect(rail).toHaveClass("border-t", "md:border-t-0", "md:border-l");
+    expect(within(radar).getByText("이번 호의 저장소")).toBeInTheDocument();
+  });
+
+  it("radarSubtitle: FORMATS 순 화면 표시명, 뉴스·빈 목록은 제외", () => {
+    expect(radarSubtitle([{ format: "paper" }, { format: "oss" }])).toBe("이번 호의 저장소·논문");
+    expect(radarSubtitle([{ format: "model" }])).toBe("이번 호의 모델");
+    expect(radarSubtitle([])).toBe("");
+  });
+});
+
+describe("SectionBands — 항목이 4건 미만인 밴드도 빈 열 없이", () => {
+  const band = (k: number) => ({
+    category: "llm",
+    count: k + 1,
+    onFront: 1,
+    items: Array.from({ length: k }, (_, i) => card({ category: "llm", titleKo: `S${k}-${i}` })),
+  });
+  const grids = () =>
+    Array.from(document.querySelectorAll<HTMLElement>("section[id^='section-'] > .grid"));
+
+  it("칸 수별 lg 열: 4건 1.5fr+3 · 3건 3열 · 2건 1fr:2fr · 1건 한 칸 — 대표 칸은 늘 1/3", () => {
+    const sections = [4, 3, 2, 1].map((k, i) => ({
+      ...band(k),
+      category: ["llm", "agent", "oss", "industry"][i],
+    }));
+    render(<SectionBands sections={sections} />);
+    const [g4, g3, g2, g1] = grids();
+    expect(g4).toHaveClass("lg:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))]");
+    expect(g3).toHaveClass("lg:grid-cols-3");
+    expect(g2).toHaveClass("lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]");
+    expect(g1.className).not.toMatch(/grid-cols-\[|md:grid-cols|lg:grid-cols/);
+    expect(g4.children).toHaveLength(4);
+    expect(g3.children).toHaveLength(3);
+    expect(g2.children).toHaveLength(2);
+    expect(g1.children).toHaveLength(1);
+  });
+
+  it("세로 헤어라인은 줄의 첫 칸이 아닌 칸에만 — 3건 md 는 대표가 두 칸을 차지", () => {
+    render(<SectionBands sections={[band(3)]} />);
+    const [g3] = grids();
+    const [c0, c1, c2] = Array.from(g3.children);
+    expect(c0).toHaveClass("md:col-span-2", "lg:col-span-1");
+    expect(c0.className).not.toMatch(/border-l/);
+    expect(c1).toHaveClass("lg:border-l");
+    expect(c1).not.toHaveClass("md:border-l");
+    expect(c2).toHaveClass("md:border-l");
+  });
+
+  it("1건 밴드: 대표 기사를 [제목 | 요약·바이라인] 가로 한 줄로", () => {
+    render(<SectionBands sections={[band(1)]} />);
+    const [g1] = grids();
+    const link = within(g1).getByRole("link");
+    expect(link).toHaveClass("md:grid", "lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]");
+    expect(within(link).getByRole("heading")).toHaveClass("md:row-span-2", "font-serif");
+  });
+
+  it("2건 이상 밴드의 항목은 가로 한 줄 변형을 쓰지 않는다", () => {
+    render(<SectionBands sections={[band(2)]} />);
+    for (const link of within(grids()[0]).getAllByRole("link"))
+      expect(link).not.toHaveClass("md:grid");
   });
 });

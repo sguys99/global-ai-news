@@ -53,21 +53,37 @@ export function StorySecondary({ article, timeBase }: { article: ArticleCard; ti
 export function StorySectionItem({
   article,
   featured = false,
+  wide = false,
   timeBase,
 }: {
   article: ArticleCard;
   featured?: boolean;
+  /**
+   * 밴드에 이 기사 하나뿐일 때(대표) — md 이상에서 [제목 | 요약·바이라인] 가로 한 줄로 펼친다.
+   * lg 는 1fr:2fr 이라 제목 칸이 다른 밴드의 대표 칸(1/3)과 같은 폭, 요약은 둘째 칸과 같은 x 에서 시작한다.
+   */
+  wide?: boolean;
   /** 홈 전용 — 바이라인을 상대 시각으로(Byline timeBase 참조). */
   timeBase?: string;
 }) {
   return (
-    <Link href={hrefOf(article)} className={cn("story-link flex h-full flex-col gap-2", focus)}>
+    <Link
+      href={hrefOf(article)}
+      className={cn(
+        "story-link flex h-full flex-col gap-2",
+        // gap-x 30px: 1fr:2fr 둘째 칸 시작 = W/3 + 20px — 2·3·4건 밴드의 둘째 칸 본문(pl-5)과 같은 x.
+        wide &&
+          "md:grid md:grid-cols-2 md:grid-rows-[auto_1fr] md:gap-x-7.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]",
+        focus,
+      )}
+    >
       <h3
         className={cn(
           "headline",
           featured
             ? "text-headline font-serif font-bold md:text-[1.5rem] md:leading-[1.3]"
             : "text-title font-semibold tracking-[-0.02em]",
+          wide && "md:row-span-2",
         )}
       >
         {titleOf(article)}
@@ -77,6 +93,9 @@ export function StorySectionItem({
           className={cn(
             "text-caption text-muted-foreground line-clamp-3",
             !featured && "max-md:hidden",
+            // 넓은 칸(2건 밴드의 둘째·1건 밴드)에서도 읽기 폭은 한 줄 40자 남짓으로.
+            "max-w-[42em]",
+            wide && "md:pt-1",
           )}
         >
           {article.summaryKo}
@@ -87,7 +106,7 @@ export function StorySectionItem({
         compact={!featured}
         showFormat
         timeBase={timeBase}
-        className="mt-auto pt-1"
+        className={wide ? "pt-1" : "mt-auto pt-1"}
       />
     </Link>
   );
@@ -137,42 +156,71 @@ export function StoryBrief({ article, timeBase }: { article: ArticleCard; timeBa
  * 헤어라인을 깐 메타 레일 — 띠의 subgrid 2행(본문 | 레일)에 얹혀 네 카드가 같은 높이에서 메타를 맞춘다(데이터 표처럼).
  * 날짜는 생략한다: 논문·저장소의 게시일은 수집일보다 며칠씩 앞서 1면에서 낡아 보인다(계획서 Phase 1 참고).
  */
-export function StoryRadar({ article }: { article: ArticleCard }) {
+export function StoryRadar({ article, wide = false }: { article: ArticleCard; wide?: boolean }) {
   return (
     <Link
       href={hrefOf(article)}
       className={cn(
-        // 본문 | 메타 레일 2행을 띠(RadarBand)의 행 트랙에 subgrid 로 묶는다 — 한 카드의 수치 줄이 두 줄로
-        // 접혀도 같은 줄 카드들의 레일 헤어라인이 같은 높이에서 시작한다(mt-auto 바닥 정렬은 어긋났다).
-        "story-link row-span-2 grid grid-rows-subgrid gap-y-2.5",
+        "story-link",
+        wide
+          ? // 띠에 한 건뿐일 때 — md 이상 1면과 같은 8:4 분할로 펼친다: [머리·제목 | 요약](8) / 메타 레일(4).
+            // 레일 세로 헤어라인이 바로 위 '지금 화제' 칼럼의 헤어라인과 같은 x 에 선다(gap-x-10 · pl-8 동일).
+            "flex flex-col gap-2.5 md:grid md:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] md:gap-x-10"
+          : // 본문 | 메타 레일 2행을 띠(RadarBand)의 행 트랙에 subgrid 로 묶는다 — 한 카드의 수치 줄이 두 줄로
+            // 접혀도 같은 줄 카드들의 레일 헤어라인이 같은 높이에서 시작한다(mt-auto 바닥 정렬은 어긋났다).
+            "row-span-2 grid grid-rows-subgrid gap-y-2.5",
         focus,
       )}
     >
-      <div className="flex min-w-0 flex-col gap-2.5">
-        <span className="flex min-w-0 items-center gap-2">
+      <div
+        className={cn(
+          "flex min-w-0 flex-col gap-2.5",
+          // 가로 한 줄: 머리(배지·키커)는 첫 줄, 제목과 요약은 둘째 줄에서 같은 높이로 시작한다.
+          wide && "md:grid md:grid-cols-2 md:content-start md:gap-x-8",
+        )}
+      >
+        <span className={cn("flex min-w-0 items-center gap-2", wide && "md:col-start-1")}>
           <FormatBadge format={article.format} />
           <CategoryKicker category={article.category} className="min-w-0 truncate" />
         </span>
-        <h3 className="headline text-title line-clamp-3 font-serif leading-[1.45] font-bold tracking-[-0.03em] md:text-[1.0625rem]">
+        <h3
+          className={cn(
+            "headline text-title line-clamp-3 font-serif leading-[1.45] font-bold tracking-[-0.03em] md:text-[1.0625rem]",
+            // self-start: 줄 높이에 맞춰 늘어나면 line-clamp 상자가 커져 잘린 다음 줄이 비친다.
+            wide && "md:col-start-1 md:row-start-2 md:self-start lg:text-[1.1875rem]",
+          )}
+        >
           {titleOf(article)}
         </h3>
         {article.summaryKo && (
-          <p className="text-caption text-muted-foreground line-clamp-2">{article.summaryKo}</p>
+          <p
+            className={cn(
+              "text-caption text-muted-foreground line-clamp-2",
+              wide && "md:col-start-2 md:row-start-2 md:line-clamp-3 md:self-start md:pt-0.5",
+            )}
+          >
+            {article.summaryKo}
+          </p>
         )}
       </div>
-      <RadarMetaRail article={article} />
+      <RadarMetaRail article={article} wide={wide} />
     </Link>
   );
 }
 
 /**
  * 레이더 메타 레일 — 식별자 한 줄(owner/repo · org/model · arXiv ID) + 수치 줄(radarMetaBlock).
- * 빠진 값은 그 조각만 빠지고(시안 결정 ⑩), 헤어라인은 늘 남는다.
+ * 빠진 값은 그 조각만 빠지고(시안 결정 ⑩), 헤어라인은 늘 남는다 — 카드는 위 가로선, 가로 한 줄(wide)은 왼쪽 세로선.
  */
-function RadarMetaRail({ article }: { article: ArticleCard }) {
+function RadarMetaRail({ article, wide = false }: { article: ArticleCard; wide?: boolean }) {
   const { id, stats } = radarMetaBlock(article, shortSourceName(article.source.name));
   return (
-    <span className="border-border text-meta text-muted-foreground relative flex min-w-0 flex-col gap-[3px] border-t pt-2.5 tabular-nums">
+    <span
+      className={cn(
+        "border-border text-meta text-muted-foreground relative flex min-w-0 flex-col gap-[3px] border-t pt-2.5 tabular-nums",
+        wide && "md:border-t-0 md:border-l md:pt-0 md:pl-8",
+      )}
+    >
       {id && (
         <span className="text-foreground-soft truncate font-semibold tracking-[-0.005em]">
           <RadarMetaText item={id} />
@@ -246,7 +294,9 @@ export function StoryEntry({
     <Link
       href={hrefOf(article)}
       className={cn(
-        "story-link border-border grid grid-cols-[3.25rem_minmax(0,1fr)] gap-x-3 gap-y-1 border-b py-4",
+        // grid-rows-[1fr_auto]: 2열 색인에서 옆 항목에 맞춰 늘어난 높이를 본문 행이 받는다 — 바이라인이 바닥에 붙어
+        // 좌우 항목의 바이라인이 같은 높이에 선다(auto 행 두 개면 여분이 반씩 나뉘어 어긋났다).
+        "story-link border-border grid grid-cols-[3.25rem_minmax(0,1fr)] grid-rows-[1fr_auto] gap-x-3 gap-y-1 border-b py-4",
         focus,
       )}
     >

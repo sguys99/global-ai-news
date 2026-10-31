@@ -87,10 +87,25 @@ export const FORMATS = ["news", "oss", "model", "paper"] as const;
 
 export type Format = (typeof FORMATS)[number];
 
-/** 형식 키 → 한글 표시명. */
+/**
+ * 형식 키 → LLM·운영 도구용 이름. 선별 프롬프트의 형식 칸·가공 `[형식]` 줄(configs/prompts 의 정의와 짝)과
+ * 수집 로그·KPI·Admin 이 쓴다. 프롬프트 계약이라 바꾸지 않는다 — 독자 화면은 FORMAT_DISPLAY_LABELS.
+ */
 export const FORMAT_LABELS: Record<Format, string> = {
   news: "뉴스",
   oss: "오픈소스",
+  model: "모델",
+  paper: "논문",
+};
+
+/**
+ * 형식 키 → 독자 화면 표시명(마스트헤드 귀·OG 형식 구성·레이더 머리·형식 배지 스크린리더).
+ * oss 는 "오픈소스"가 아니라 대상을 가리키는 "저장소" — 같은 지면의 분야 "오픈소스·도구"와 낱말이 겹쳐
+ * "오픈소스 1"과 "오픈소스·도구 2건"처럼 다른 건수가 같은 말로 읽히지 않게 한다.
+ */
+export const FORMAT_DISPLAY_LABELS: Record<Format, string> = {
+  news: "뉴스",
+  oss: "저장소",
   model: "모델",
   paper: "논문",
 };
@@ -112,14 +127,17 @@ export function toFormat(value: unknown): Format {
   return isFormat(value) ? value : "news";
 }
 
-/** 칩·메타에서 쓰는 소스명 축약 맵 (상세 등 공간이 넉넉한 곳은 원래 이름 유지). */
+/**
+ * 바이라인·칩·메타·상세 신호 패널에서 쓰는 매체 축약명 맵 — 독자가 아는 매체 이름(공식 표기, 예: "Hugging Face").
+ * 축약명이 같은 소스는 매체 하나로 묶인다(feedFilter `groupSources`, 귀의 "매체 N곳"). 원래 이름은 title 툴팁에 둔다.
+ */
 const SOURCE_SHORT_LABELS: Record<string, string> = {
   "TechCrunch AI": "TechCrunch",
   "GitHub (topic:llm)": "GitHub",
   "GitHub (topic:ai-agents·mcp)": "GitHub",
   "GitHub (topic:robotics·embodied-ai)": "GitHub",
-  "HuggingFace Daily Papers": "HuggingFace",
-  "HuggingFace 트렌딩 모델": "HuggingFace",
+  "HuggingFace Daily Papers": "Hugging Face",
+  "HuggingFace 트렌딩 모델": "Hugging Face",
   "MIT Technology Review": "MIT Tech Review",
   "NVIDIA Technical Blog (Robotics)": "NVIDIA Dev",
   "IEEE Spectrum Robotics": "IEEE Spectrum",

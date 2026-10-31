@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { fitWords, formatMix } from "@/lib/ogImage";
+import {
+  balancedLineEm,
+  editionKicker,
+  fitWords,
+  formatMix,
+  issueCountLabel,
+  wrapWords,
+} from "@/lib/ogImage";
 import type { Format } from "@/lib/labels";
 
 describe("fitWords — 공유 썸네일 헤드라인 어절 맞춤", () => {
@@ -38,16 +45,62 @@ describe("formatMix — 호 썸네일 형식 구성", () => {
 
   it("FORMATS 순으로 형식별 건수를 잇고 0건 형식은 뺀다", () => {
     expect(formatMix(issue("paper", "news", "oss", "news", "paper", "news"))).toBe(
-      "뉴스 3 · 오픈소스 1 · 논문 2",
+      "뉴스 3 · 저장소 1 · 논문 2",
     );
   });
 
-  it("전부 뉴스면 '오늘 N건'과 같은 말이라 빈 문자열", () => {
+  it("전부 뉴스면 '이번 호 N건'과 같은 말이라 빈 문자열", () => {
     expect(formatMix(issue("news", "news"))).toBe("");
     expect(formatMix([])).toBe("");
   });
 
   it("미정의 형식 값은 뉴스로 센다", () => {
     expect(formatMix([{ format: "blog" as Format }, { format: "model" }])).toBe("뉴스 1 · 모델 1");
+  });
+});
+
+describe("호 썸네일 문구 — 마스트헤드와 같은 '이번 호'", () => {
+  it("키커는 '1면' + 리드 분야(지난 호 공유에도 맞는 말), '오늘'을 쓰지 않는다", () => {
+    expect(editionKicker({ category: "industry" })).toEqual(["1면", "산업·정책"]);
+    expect(editionKicker({ category: "" })).toEqual(["1면"]);
+    expect(editionKicker({ category: "industry" }).join(" ")).not.toContain("오늘");
+  });
+
+  it("호 기사 수는 '이번 호 N건'", () => {
+    expect(issueCountLabel(25)).toBe("이번 호 25건");
+  });
+
+  it("형식 구성은 화면 표시명(저장소)이고 프롬프트용 '오픈소스'가 아니다", () => {
+    expect(formatMix([{ format: "news" }, { format: "oss" }])).toBe("뉴스 1 · 저장소 1");
+  });
+});
+
+describe("balancedLineEm — 헤드라인 균형 줄바꿈", () => {
+  // 2026-10-31 호 리드: 60px·1072px(17.87em) 에서 앞으로 채우면 "…1.5조원 투자 / 유치" 로 한 어절만 넘어갔다.
+  const title = "코히어, 캐나다 정부로부터 1.5조원 투자 유치";
+  const em = 1072 / 60;
+
+  it("줄 수는 그대로 두고 상자를 좁혀 마지막 줄 외톨이 어절을 없앤다", () => {
+    expect(wrapWords(title, em)).toEqual([
+      ["코히어,", "캐나다", "정부로부터", "1.5조원", "투자"],
+      ["유치"],
+    ]);
+    const w = balancedLineEm(title, em, 3);
+    expect(w).toBeLessThan(em);
+    expect(wrapWords(title, w)).toEqual([
+      ["코히어,", "캐나다", "정부로부터"],
+      ["1.5조원", "투자", "유치"],
+    ]);
+    // 말줄임 없이 전부 담긴다.
+    expect(fitWords(title, w, 3).join(" ")).toBe(title);
+  });
+
+  it("한 줄 제목·말줄임되는 제목은 원래 폭 그대로", () => {
+    expect(balancedLineEm("짧은 제목", 17, 3)).toBe(17);
+    expect(balancedLineEm("가나다라 가나 다라 마바", 4.5, 2)).toBe(4.5);
+  });
+
+  it("폭을 넘지 않는다", () => {
+    expect(balancedLineEm("가나다 라마바 사아자 차카타 파하", 9, 3)).toBeLessThanOrEqual(9);
   });
 });

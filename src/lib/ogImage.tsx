@@ -14,7 +14,7 @@ import {
   CATEGORY_LABELS,
   FORMATS,
   FORMAT_BADGES,
-  FORMAT_LABELS,
+  FORMAT_DISPLAY_LABELS,
   categoryLabel,
   formatLongDate,
   shortSourceName,
@@ -111,28 +111,62 @@ function charEm(ch: string): number {
 
 const WORD_GAP_EM = 0.26;
 
+const wordEm = (w: string) => Array.from(w).reduce((sum, ch) => sum + charEm(ch), 0);
+const lineEmOf = (ws: string[]) =>
+  ws.reduce((sum, w) => sum + wordEm(w), 0) + WORD_GAP_EM * Math.max(0, ws.length - 1);
+const wordsOf = (text: string) => text.split(/\s+/).filter(Boolean);
+
+/** 앞에서부터 줄 폭(em)이 찰 때까지 어절을 담는 줄 나누기(줄 수 제한 없음). */
+function greedyLines(words: string[], lineEm: number): string[][] {
+  const lines: string[][] = [];
+  for (const word of words) {
+    const last = lines.at(-1);
+    if (last && lineEmOf([...last, word]) <= lineEm) last.push(word);
+    else lines.push([word]);
+  }
+  return lines;
+}
+
 /**
  * 어절을 줄 폭(em)에 채워 maxLines 를 넘으면 마지막 줄을 "…" 로 맺는다. 높이로만 자르면
  * "일시 금지 추진"이 "일시 금지"로 보이듯 뜻이 바뀔 수 있어, 잘렸다는 표시를 반드시 남긴다.
  */
 export function fitWords(text: string, lineEm: number, maxLines: number): string[] {
-  const width = (w: string) => Array.from(w).reduce((sum, ch) => sum + charEm(ch), 0);
-  const lineWidth = (ws: string[]) =>
-    ws.reduce((sum, w) => sum + width(w), 0) + WORD_GAP_EM * Math.max(0, ws.length - 1);
+  const lines = greedyLines(wordsOf(text), lineEm);
+  if (lines.length <= maxLines) return lines.flat();
+  const kept = lines.slice(0, maxLines);
+  const tail = kept[maxLines - 1];
+  while (tail.length > 1 && lineEmOf(tail) + wordEm("…") > lineEm) tail.pop();
+  tail[tail.length - 1] += "…";
+  return kept.flat();
+}
 
-  const lines: string[][] = [];
-  for (const word of text.split(/\s+/).filter(Boolean)) {
-    const last = lines.at(-1);
-    if (last && lineWidth([...last, word]) <= lineEm) last.push(word);
-    else if (lines.length < maxLines) lines.push([word]);
-    else {
-      const tail = lines[maxLines - 1];
-      while (tail.length > 1 && lineWidth(tail) + width("…") > lineEm) tail.pop();
-      tail[tail.length - 1] += "…";
-      break;
-    }
+/** 제목을 줄 폭(em)으로 나눈 줄들(추정 폭 기준, 줄 수 제한 없음) — 균형 줄바꿈 검증용. */
+export function wrapWords(text: string, lineEm: number): string[][] {
+  return greedyLines(wordsOf(text), lineEm);
+}
+
+/** 균형 줄바꿈 폭의 여유(em) — 추정 폭의 반올림 오차로 줄이 하나 늘어 마지막 어절이 잘리지 않게. */
+const BALANCE_SLACK_EM = 0.3;
+
+/**
+ * 균형 줄바꿈(CSS `text-wrap: balance`) 폭(em). 줄 수를 늘리지 않는 가장 좁은 폭을 이분 탐색으로 찾아
+ * 마지막 줄에 어절 하나("…투자 / 유치")만 남는 일을 막는다. satori 의 textWrap:'balance' 는 한 텍스트 노드에만
+ * 듣는데 헤드라인은 어절별 span(flex-wrap)이라 직접 계산한다. 한 줄이거나 maxLines 를 넘어 말줄임되는 제목은
+ * 원래 폭 그대로. 실제 글자 폭 ≤ 추정 폭(charEm)이므로 이 폭에서도 실제 줄 수는 늘지 않는다.
+ */
+export function balancedLineEm(text: string, lineEm: number, maxLines: number): number {
+  const words = wordsOf(text);
+  const count = greedyLines(words, lineEm).length;
+  if (count <= 1 || count > maxLines) return lineEm;
+  let lo = Math.max(...words.map(wordEm));
+  let hi = lineEm;
+  while (hi - lo > 0.01) {
+    const mid = (lo + hi) / 2;
+    if (greedyLines(words, mid).length > count) lo = mid;
+    else hi = mid;
   }
-  return lines.flat();
+  return Math.min(lineEm, hi + BALANCE_SLACK_EM);
 }
 
 /**
@@ -147,6 +181,7 @@ function Headline({
   lineHeight,
   maxLines,
   tracking = 0,
+  balance = false,
 }: {
   text: string;
   width: number;
@@ -154,13 +189,16 @@ function Headline({
   lineHeight: number;
   maxLines: number;
   tracking?: number;
+  /** 균형 줄바꿈(balancedLineEm) — 상자 폭을 줄 수가 같은 가장 좁은 폭으로 줄인다. */
+  balance?: boolean;
 }) {
+  const boxWidth = balance ? balancedLineEm(text, width / size, maxLines) * size : width;
   return (
     <div
       style={{
         display: "flex",
         flexWrap: "wrap",
-        width,
+        width: boxWidth,
         columnGap: size * WORD_GAP_EM,
         maxHeight: size * lineHeight * maxLines,
         overflow: "hidden",
@@ -253,8 +291,8 @@ function FormatBadge({ format, size }: { format: string; size: number }) {
 }
 
 /**
- * 호 형식 구성 "뉴스 22 · 오픈소스 3 · 논문 3" — FORMATS 순, 0건 형식은 뺀다.
- * 전부 뉴스면 "오늘 N건"과 같은 말이라 빈 문자열.
+ * 호 형식 구성 "뉴스 22 · 저장소 3 · 논문 3" — FORMATS 순, 화면 표시명(마스트헤드 귀와 같은 말), 0건 형식은 뺀다.
+ * 전부 뉴스면 "이번 호 N건"과 같은 말이라 빈 문자열.
  */
 export function formatMix(articles: Pick<ArticleCard, "format">[]): string {
   const counts = new Map<string, number>();
@@ -262,7 +300,7 @@ export function formatMix(articles: Pick<ArticleCard, "format">[]): string {
     counts.set(toFormat(a.format), (counts.get(toFormat(a.format)) ?? 0) + 1);
   if (counts.size < 2) return "";
   return FORMATS.filter((f) => counts.has(f))
-    .map((f) => `${FORMAT_LABELS[f]} ${counts.get(f)}`)
+    .map((f) => `${FORMAT_DISPLAY_LABELS[f]} ${counts.get(f)}`)
     .join(" · ");
 }
 
@@ -305,8 +343,21 @@ export function defaultImage(): Promise<ImageResponse> {
 }
 
 /**
- * 홈 썸네일 = 오늘의 1면: 마스트헤드 + 리드 헤드라인 + 서브 헤드라인 3건.
- * 키커 줄 오른쪽에 "오늘 N건"(마스트헤드 "이번 호 N건"과 같은 호 기사 수)과 형식 구성을 둔다.
+ * 호 썸네일 키커 — "1면" + 리드 분야. "오늘의 1면"은 지난 호 고정 링크를 공유하면 틀린 말이 되고,
+ * 호 날짜·호수는 바로 위 데이트라인에 있다. 분야 표시명에 가운뎃점이 있어("산업·정책") 구분은 헤어라인으로 그린다.
+ */
+export function editionKicker(lead: Pick<ArticleCard, "category">): string[] {
+  return ["1면", categoryLabel(lead.category)].filter(Boolean);
+}
+
+/** 호 기사 수 — 마스트헤드 귀와 같은 말("이번 호 N건"). 발행이 늦은 날·지난 호에서 "오늘"은 틀린 말이다. */
+export function issueCountLabel(count: number): string {
+  return `이번 호 ${count}건`;
+}
+
+/**
+ * 호 썸네일 = 그 호의 1면: 마스트헤드 + 리드 헤드라인 + 서브 헤드라인 3건.
+ * 키커 줄 오른쪽에 "이번 호 N건"(마스트헤드 귀와 같은 호 기사 수)과 형식 구성을 둔다.
  */
 export function editionImage(
   edition: Pick<Edition, "lead" | "seconds" | "issue">,
@@ -322,7 +373,7 @@ export function editionImage(
   ]
     .filter(Boolean)
     .join("  ·  ");
-  const kicker = ["오늘의 1면", categoryLabel(lead.category)].filter(Boolean).join(" · ");
+  const kicker = editionKicker(lead);
   const title = headline(lead);
   const size = leadFontSize(title);
   const mix = formatMix(edition.issue);
@@ -346,10 +397,17 @@ export function editionImage(
           fontWeight: 700,
         }}
       >
-        <span style={{ color: BRAND }}>{kicker}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, color: BRAND }}>
+          {kicker.map((part, i) => (
+            <div key={part} style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              {i > 0 && <div style={{ width: 2, height: 20, background: HAIRLINE }} />}
+              <span>{part}</span>
+            </div>
+          ))}
+        </div>
         {edition.issue.length > 0 && (
           <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-            <span>오늘 {edition.issue.length}건</span>
+            <span>{issueCountLabel(edition.issue.length)}</span>
             {mix && <span style={{ fontSize: 21, fontWeight: 500, color: MUTED }}>{mix}</span>}
           </div>
         )}
@@ -361,6 +419,7 @@ export function editionImage(
         lineHeight={1.22}
         maxLines={3}
         tracking={-0.02}
+        balance
       />
 
       <div style={{ flexGrow: 1 }} />
@@ -458,6 +517,7 @@ export function articleImage(article: ArticleCard): Promise<ImageResponse> {
           lineHeight={1.22}
           maxLines={maxLines}
           tracking={-0.02}
+          balance
         />
       </div>
 

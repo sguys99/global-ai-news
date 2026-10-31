@@ -18,6 +18,9 @@ import {
   kstDateKey,
   kstDayDiff,
   shortSourceName,
+  FORMAT_DISPLAY_LABELS,
+  FORMAT_LABELS,
+  FORMATS,
 } from "@/lib/labels";
 
 describe("labels — 날짜는 KST 고정", () => {
@@ -93,6 +96,25 @@ describe("labels — 카테고리·소스", () => {
     expect(shortSourceName("GitHub (topic:ai-agents·mcp)")).toBe("GitHub");
     expect(shortSourceName("GitHub (topic:robotics·embodied-ai)")).toBe("GitHub");
     expect(shortSourceName("Hacker News")).toBe("Hacker News");
+  });
+
+  it("Hugging Face 는 공식 표기(띄어쓰기)로 — 논문·모델 피드는 한 매체, 회사 블로그는 따로", () => {
+    expect(shortSourceName("HuggingFace Daily Papers")).toBe("Hugging Face");
+    expect(shortSourceName("HuggingFace 트렌딩 모델")).toBe("Hugging Face");
+    expect(shortSourceName("Hugging Face Blog")).toBe("Hugging Face Blog");
+  });
+
+  it("형식 이름: 프롬프트용(FORMAT_LABELS)은 그대로, 독자 화면용은 oss 를 '저장소'로", () => {
+    // FORMAT_LABELS 는 선별·가공 프롬프트 계약(configs/prompts)이라 바뀌면 안 된다.
+    expect(FORMAT_LABELS).toEqual({ news: "뉴스", oss: "오픈소스", model: "모델", paper: "논문" });
+    expect(FORMAT_DISPLAY_LABELS).toEqual({
+      news: "뉴스",
+      oss: "저장소",
+      model: "모델",
+      paper: "논문",
+    });
+    // 화면 형식명이 분야명(오픈소스·도구 등)과 같은 낱말로 시작하지 않는다 — 귀·이 호의 지면 건수 혼동 방지.
+    for (const f of FORMATS) expect(FORMAT_DISPLAY_LABELS[f]).not.toMatch(/오픈소스/);
   });
 });
 

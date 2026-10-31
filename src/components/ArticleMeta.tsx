@@ -11,6 +11,7 @@ import { RelativeTime } from "@/components/RelativeTime";
 import type { ReactNode } from "react";
 import {
   FORMAT_BADGES,
+  FORMAT_DISPLAY_LABELS,
   categoryLabel,
   formatDate,
   shortSourceName,
@@ -35,20 +36,10 @@ export function CategoryKicker({ category, className }: { category: string; clas
 }
 
 /**
- * 형식 배지 스크린리더 이름. 화면의 영문 대문자(FORMAT_BADGES)는 읽기 어색하고 뜻도 좁아서
- * 한국어로 읽힌다 — 표시명(FORMAT_LABELS)의 "오픈소스"가 아니라 대상을 가리키는 "저장소"다.
- */
-const FORMAT_BADGE_NAMES: Record<Format, string> = {
-  news: "",
-  oss: "저장소",
-  model: "모델",
-  paper: "논문",
-};
-
-/**
  * 형식 배지 REPO·MODEL·PAPER (시안 결정 ⑪). 10.5px 굵은 대문자, 잉크 1px 테두리, 각진 면 — 코발트는 쓰지 않는다
  * (단일 강조색 원칙: 코발트는 옆의 분야 키커 몫). 뉴스는 배지가 없다.
- * 대문자는 aria-hidden, 스크린리더에는 한국어 이름(저장소·모델·논문)을 sr-only 로 읽힌다.
+ * 대문자는 aria-hidden(읽기 어색하고 뜻도 좁다), 스크린리더에는 화면 표시명(FORMAT_DISPLAY_LABELS — 저장소·모델·논문)을
+ * sr-only 로 읽힌다.
  * relative 는 sr-only(absolute)의 기준 상자 — 가로 스크롤러 안에서 클립을 벗어나 페이지 폭을 늘리지 않게.
  */
 export function FormatBadge({ format, className }: { format: Format; className?: string }) {
@@ -62,7 +53,7 @@ export function FormatBadge({ format, className }: { format: Format; className?:
       )}
     >
       <span aria-hidden>{badge}</span>
-      <span className="sr-only">{FORMAT_BADGE_NAMES[format]}</span>
+      <span className="sr-only">{FORMAT_DISPLAY_LABELS[format]}</span>
     </span>
   );
 }

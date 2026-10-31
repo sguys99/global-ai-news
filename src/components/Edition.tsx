@@ -2,10 +2,10 @@
  * 홈 편집 지면 (DESIGN.md §3). 서버·클라 공용 프레젠테이션(훅 없음).
  * - FrontPage:    1면 — [리드 + 서브 3 + 오늘의 브리핑 3](8) / [지금 화제 Top 5 + 이 호의 지면](4), 그 아래 전폭 레이더
  * - BriefList:    오늘의 브리핑 — 서브 그리드 아래 가는 괘선으로 구분한 3행 목록
- * - RadarBand:    오픈소스·논문 레이더 — 비뉴스 4건. 비면 띠 전체를 숨긴다
+ * - RadarBand:    오픈소스·논문 레이더 — 비뉴스 ≤4건, 칸 수에 맞춘 열(1건은 가로 한 줄). 비면 띠 전체를 숨긴다
  * - TrendingList: 화제 순위(번호 = 실제 순위). 비뉴스 행은 매체명 대신 형식 배지
  * - IssueContents: 이 호의 지면 — 분야별 건수·1면 게재 수 차례(lg 이상 사이드바)
- * - SectionBands: 카테고리별 섹션 밴드
+ * - SectionBands: 카테고리별 섹션 밴드(≤4건, 칸 수에 맞춘 열 — 대표 칸은 늘 1/3)
  */
 import Link from "next/link";
 import { FormatBadge, TrendBar } from "@/components/ArticleMeta";
@@ -17,7 +17,14 @@ import {
   StorySectionItem,
 } from "@/components/Story";
 import { frontArticles, type Edition, type EditionSection } from "@/lib/edition";
-import { CATEGORIES, categoryLabel, categorySlug, shortSourceName } from "@/lib/labels";
+import {
+  CATEGORIES,
+  FORMATS,
+  FORMAT_DISPLAY_LABELS,
+  categoryLabel,
+  categorySlug,
+  shortSourceName,
+} from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { ArticleCard } from "@/lib/types";
 
@@ -112,13 +119,40 @@ function BriefList({
   );
 }
 
+/** 레이더 띠 칸 수별 열 구성(md 이상). 4건은 lg 4열/md 2열, 2·3건은 그 수만큼 같은 폭 열 — 빈 열을 남기지 않는다. */
+const RADAR_COLS: Record<number, string> = {
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "md:grid-cols-2 lg:grid-cols-4",
+};
+
+/** 칸 사이 세로 헤어라인(md 이상) — 줄의 첫 칸을 뺀 칸 왼쪽에 긋는다. */
+const RADAR_DIVIDERS: Record<number, string> = {
+  2: "md:[&:nth-child(2)]:border-l md:[&:nth-child(2)]:pl-5 md:last:pr-0",
+  3: "md:[&:nth-child(n+2)]:border-l md:[&:nth-child(n+2)]:pl-5 md:last:pr-0",
+  4: "md:[&:nth-child(2n)]:border-l md:[&:nth-child(2n)]:pl-5 lg:last:pr-0 lg:[&:nth-child(n+2)]:border-l lg:[&:nth-child(n+2)]:pl-5",
+};
+
+/** 레이더 띠 보조 문구 — 실린 형식만 화면 표시명으로("이번 호의 저장소·논문"). */
+export function radarSubtitle(articles: Pick<ArticleCard, "format">[]): string {
+  const formats = FORMATS.filter((f) => f !== "news" && articles.some((a) => a.format === f));
+  return formats.length > 0
+    ? `이번 호의 ${formats.map((f) => FORMAT_DISPLAY_LABELS[f]).join("·")}`
+    : "";
+}
+
 /**
- * 오픈소스·논문 레이더. lg 4열 / md 2열 / 모바일은 가로 스크롤 스냅(카드 폭 64% — 다음 카드 절반이 보여 밀어 볼 수 있다는 신호).
- * 카드는 [본문 | 메타 레일] 2행 subgrid 라 한 줄의 카드들이 레일 헤어라인을 같은 높이에 둔다(시안 결정 ⑧).
- * 모바일 스크롤러는 -mx-4 로 화면 끝까지 닿고 px-4 로 거터를 되돌린다 — 넘침은 스크롤러 안에만 생겨
- * 페이지 가로 스크롤은 생기지 않는다.
+ * 오픈소스·논문 레이더(최대 4건). 칸 수에 맞춰 짠다 — 빈 열을 남기지 않는다.
+ * - 4건: lg 4열 / md 2열. 2·3건: md 이상 그 수만큼 같은 폭 열.
+ * - 2건 이상 모바일: 가로 스크롤 스냅(카드 폭 64% — 다음 카드 절반이 보여 밀어 볼 수 있다는 신호).
+ *   카드는 [본문 | 메타 레일] 2행 subgrid 라 한 줄의 카드들이 레일 헤어라인을 같은 높이에 둔다(시안 결정 ⑧).
+ *   스크롤러는 -mx-4 로 화면 끝까지 닿고 px-4 로 거터를 되돌린다 — 넘침은 스크롤러 안에만 생겨 페이지 가로 스크롤은 없다.
+ * - 1건: 카드 한 장을 띠 전폭 가로 한 줄로 펼친다(StoryRadar wide — 1면과 같은 8:4, 메타 레일이 '지금 화제' 칼럼 아래).
+ *   모바일은 전폭 카드 한 장(스크롤러 없음).
  */
 function RadarBand({ articles, className }: { articles: ArticleCard[]; className?: string }) {
+  const n = Math.min(articles.length, 4);
+  const subtitle = radarSubtitle(articles);
   return (
     <section aria-labelledby="radar-heading" className={cn("min-w-0", className)}>
       <div className="border-rule mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t-2 pt-3">
@@ -128,35 +162,44 @@ function RadarBand({ articles, className }: { articles: ArticleCard[]; className
         >
           오픈소스·논문 레이더
         </h2>
-        <span className="text-meta text-muted-foreground">이번 호의 저장소·모델·논문</span>
+        {subtitle && <span className="text-meta text-muted-foreground">{subtitle}</span>}
       </div>
-      <ul
-        className={cn(
-          // relative: 카드 안 sr-only(position:absolute) 문구의 기준 상자를 스크롤러로 묶는다. 없으면 초기 포함 블록 기준으로
-          // 스크롤러 클립을 벗어나 화면 오른쪽에 놓여 페이지 폭을 늘린다(360px 에서 845px).
-          // 모바일: 가로로 흐르는 2행 그리드(카드 폭 64%) — 카드마다 [본문 | 메타 레일] 2행을 subgrid 로 이어
-          // 레일 헤어라인을 같은 높이에 맞춘다(수치 줄이 접힌 카드가 있어도). md 이상은 2열/4열 그리드.
-          "relative -mx-4 grid snap-x snap-mandatory scroll-px-4 auto-cols-[64%] grid-flow-col grid-rows-[auto_auto] gap-y-2.5 overflow-x-auto overscroll-x-contain px-4",
-          "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          "md:mx-0 md:snap-none md:auto-cols-auto md:grid-flow-row md:grid-cols-2 md:grid-rows-none md:gap-y-7 md:overflow-visible md:px-0 lg:grid-cols-4",
-        )}
-      >
-        {articles.map((a) => (
-          <li
-            key={a.id}
-            className={cn(
-              "border-border min-w-0 snap-start pr-4 md:pr-5",
-              // 카드(StoryRadar)의 본문·레일 2행을 띠의 행 트랙에 잇는 subgrid — 레일 헤어라인 정렬용.
-              "row-span-2 grid grid-rows-subgrid gap-y-2.5",
-              "max-md:[&:nth-child(n+2)]:border-l max-md:[&:nth-child(n+2)]:pl-4",
-              "md:[&:nth-child(2n)]:border-l md:[&:nth-child(2n)]:pl-5",
-              "lg:last:pr-0 lg:[&:nth-child(n+2)]:border-l lg:[&:nth-child(n+2)]:pl-5",
-            )}
-          >
-            <StoryRadar article={a} />
+      {n === 1 ? (
+        // relative: 카드 안 sr-only(absolute) 문구의 기준 상자.
+        <ul className="relative">
+          <li className="min-w-0">
+            <StoryRadar article={articles[0]} wide />
           </li>
-        ))}
-      </ul>
+        </ul>
+      ) : (
+        <ul
+          className={cn(
+            // relative: 카드 안 sr-only(position:absolute) 문구의 기준 상자를 스크롤러로 묶는다. 없으면 초기 포함 블록 기준으로
+            // 스크롤러 클립을 벗어나 화면 오른쪽에 놓여 페이지 폭을 늘린다(360px 에서 845px).
+            // 모바일: 가로로 흐르는 2행 그리드(카드 폭 64%) — 카드마다 [본문 | 메타 레일] 2행을 subgrid 로 이어
+            // 레일 헤어라인을 같은 높이에 맞춘다(수치 줄이 접힌 카드가 있어도). md 이상은 칸 수별 열(RADAR_COLS).
+            "relative -mx-4 grid snap-x snap-mandatory scroll-px-4 auto-cols-[64%] grid-flow-col grid-rows-[auto_auto] gap-y-2.5 overflow-x-auto overscroll-x-contain px-4",
+            "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            "md:mx-0 md:snap-none md:auto-cols-auto md:grid-flow-row md:grid-rows-none md:gap-y-7 md:overflow-visible md:px-0",
+            RADAR_COLS[n],
+          )}
+        >
+          {articles.slice(0, 4).map((a) => (
+            <li
+              key={a.id}
+              className={cn(
+                "border-border min-w-0 snap-start pr-4 md:pr-5",
+                // 카드(StoryRadar)의 본문·레일 2행을 띠의 행 트랙에 잇는 subgrid — 레일 헤어라인 정렬용.
+                "row-span-2 grid grid-rows-subgrid gap-y-2.5",
+                "max-md:[&:nth-child(n+2)]:border-l max-md:[&:nth-child(n+2)]:pl-4",
+                RADAR_DIVIDERS[n],
+              )}
+            >
+              <StoryRadar article={a} />
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -198,7 +241,7 @@ export function TrendingList({
                 {a.titleKo || a.titleOriginal}
               </span>
               <span className="text-label text-muted-foreground flex items-center gap-2">
-                {/* 비뉴스(저장소·모델·논문)는 매체명(GitHub·HuggingFace) 대신 형식 배지 — 시안 결정 ⑥ */}
+                {/* 비뉴스(저장소·모델·논문)는 매체명(GitHub·Hugging Face) 대신 형식 배지 — 시안 결정 ⑥ */}
                 {a.format === "news" ? (
                   <span className="shrink-0">{shortSourceName(a.source.name)}</span>
                 ) : (
@@ -287,9 +330,36 @@ function IssueContents({ edition, className }: { edition: Edition; className?: s
   );
 }
 
+/**
+ * 섹션 밴드 칸 수별 열 구성. 대표(첫 항목) 칸은 lg 에서 늘 띠 폭의 1/3 이다(4건 1.5fr/4.5fr · 3건 1/3 · 2건 1fr:2fr ·
+ * 1건 가로 한 줄의 제목 칸) — 밴드를 내려 읽을 때 대표 제목의 폭과 둘째 칸의 시작 x 가 밴드마다 같다.
+ * 나머지 항목이 남은 2/3 을 나눠 가져 빈 열이 생기지 않는다.
+ */
+const SECTION_GRID: Record<number, string> = {
+  1: "",
+  2: "md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]",
+  3: "md:grid-cols-2 md:gap-y-6 lg:grid-cols-3",
+  4: "md:grid-cols-2 md:gap-y-6 lg:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))]",
+};
+
+/** 칸별 여백·세로 헤어라인(md 이상) — [칸 수][순서]. 3건 md 는 대표가 두 칸을 차지하고 나머지 둘이 아랫줄. */
+const SECTION_CELLS: Record<number, string[]> = {
+  1: [""],
+  2: ["md:pr-5", "md:border-l md:pl-5"],
+  3: ["md:col-span-2 lg:col-span-1 lg:pr-5", "md:pr-5 lg:border-l lg:pl-5", "md:border-l md:pl-5"],
+  4: [
+    "md:pr-5",
+    "md:border-l md:pl-5 md:pr-5",
+    "md:pr-5 lg:border-l lg:pl-5",
+    "md:border-l md:pl-5",
+  ],
+};
+
 function SectionBand({ section, timeBase }: { section: EditionSection; timeBase?: string }) {
   const slug = categorySlug(section.category);
   const headingId = `section-${slug}-heading`;
+  const items = section.items.slice(0, 4);
+  const n = items.length;
   return (
     <section id={`section-${slug}`} aria-labelledby={headingId} className="scroll-mt-20">
       {/* 긴 분야명("오픈소스·도구")이 좁은 화면에서 링크와 겹치지 않게 — 링크가 다음 줄로 내려간다. */}
@@ -307,17 +377,16 @@ function SectionBand({ section, timeBase }: { section: EditionSection; timeBase?
           이 분야 전체 기사 →
         </Link>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 md:gap-y-6 lg:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))]">
-        {section.items.map((a, i) => (
+      <div className={cn("grid grid-cols-1", SECTION_GRID[n])}>
+        {items.map((a, i) => (
           <div
             key={a.id}
             className={cn(
-              "border-border min-w-0 py-4 first:pt-0 max-md:border-t max-md:first:border-t-0 md:py-0 md:pr-5",
-              "md:[&:nth-child(2n)]:border-l md:[&:nth-child(2n)]:pl-5",
-              "lg:last:pr-0 lg:[&:nth-child(n+2)]:border-l lg:[&:nth-child(n+2)]:pl-5",
+              "border-border min-w-0 py-4 first:pt-0 max-md:border-t max-md:first:border-t-0 md:py-0",
+              SECTION_CELLS[n]?.[i],
             )}
           >
-            <StorySectionItem article={a} featured={i === 0} timeBase={timeBase} />
+            <StorySectionItem article={a} featured={i === 0} wide={n === 1} timeBase={timeBase} />
           </div>
         ))}
       </div>
