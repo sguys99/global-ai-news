@@ -105,7 +105,7 @@ describe("parseRunWarnings — notes 의 재보도·할당·쏠림 경고(Phase 
     const w = parseRunWarnings(
       "aitimes: 10건(신규 8); 선별 풀: 후보 263건 중 180건; 이미 보도함: 최근 3개 호 제목 84건; " +
         "선정 35건(같은 사건으로 묶인 기사 6건); 이미 보도함 제외 4건(선정했다 뺀 1건); " +
-        "재보도 제외 3건(후속 보도 유지 2건); 재보도 판정 기각 4건(내용어 겹침 부족); " +
+        "재보도 제외 3건(후속 보도 유지 2건); 재보도 판정 기각 4건(내용어 겹침 부족); 같은 사건 합침 2건; " +
         "할당 미달: 비뉴스 5/8, 모델 0/1; 할당 초과: Physical AI 15/9; " +
         "논문 분야 쏠림: Physical AI 5/8; 형식별 후보→풀→게재: 뉴스 210→104→25, 오픈소스 14→14→2, 모델 6→6→1, 논문 33→26→2; " +
         "Physical AI 후보→풀→게재: 41→22→3; LLM batch 호출 6회, $0.0432",
@@ -114,6 +114,7 @@ describe("parseRunWarnings — notes 의 재보도·할당·쏠림 경고(Phase 
       repeatDropped: 3,
       repeatFollowups: 2,
       repeatRejected: 4,
+      sameEventMerged: 2,
       repeatCheckFailed: null,
       quotaShortfall: "비뉴스 5/8, 모델 0/1",
       quotaOverflow: "Physical AI 15/9",
@@ -147,6 +148,7 @@ describe("parseRunWarnings — notes 의 재보도·할당·쏠림 경고(Phase 
       repeatDropped: null,
       repeatFollowups: 0,
       repeatRejected: 0,
+      sameEventMerged: 0,
       repeatCheckFailed: null,
       quotaShortfall: null,
       quotaOverflow: null,
@@ -467,6 +469,7 @@ describe("computeBaseline — 실제 스키마 in-memory DB", () => {
       repeatDropped: 3,
       repeatFollowups: 1,
       repeatRejected: 2,
+      sameEventMerged: 0,
       repeatCheckFailed: 0,
       quotaShortfall: 1,
       quotaOverflow: 0,

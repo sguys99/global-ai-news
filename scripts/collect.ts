@@ -15,9 +15,10 @@
  * ④ LLM 가공: 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그 (비용 가드 적용)
  * ④-2 LLM 재보도 검사 1회: 가공된 한국어 제목·요약 첫 문장을 이미 보도함과 대조해 새 전개 없는 재보도를 게재에서 뺀다
  *    (실패하면 전부 게재). 새 전개가 있는 후속 보도는 코드 확인을 거쳐 이전 보도에 잇는다(follow_up_of).
- *    할당 미달·초과·논문 분야 쏠림 경고는 이 뒤의 최종 게재분으로 센다
- * ④-3 세 줄 요약: 선별 출력의 brief 중 실제로 게재된 선정의 줄만 남겨 collection_runs.brief_json 에 기사 id 로 저장
- *    (lib/brief.ts — 남은 줄이 모자라거나 무엇이 잘못돼도 요약 없이 발행한다)
+ * ④-3 같은 사건 합치기(코드만): 오늘 게재분끼리 같은 내용어로 대조해, 선별이 묶지 못한 같은 사건 보도를 대표의
+ *    related 로 합친다(뉴스끼리, 실패하면 그대로 게재). 할당 미달·초과·논문 분야 쏠림 경고는 이 뒤의 최종 게재분으로 센다
+ * ④-4 세 줄 요약: 선별 출력의 brief 중 실제로 게재된 선정의 줄만 남겨 collection_runs.brief_json 에 기사 id 로 저장
+ *    (lib/brief.ts — 합쳐진 선정을 가리키는 줄은 대표로 옮긴다. 남은 줄이 모자라거나 무엇이 잘못돼도 요약 없이 발행한다)
  * ⑤ SQLite 저장: 선정 → articles, 미선정 → seen_items(키만) + collection_runs 기록
  *
  * LLM 호출은 기본적으로 Message Batches API(50% 할인)로 보낸다(lib/llm.ts).
@@ -67,6 +68,7 @@ import {
   toRepeatInputs,
   type RepeatCheckOutcome,
 } from "./lib/repeatCheck";
+import { adoptFollowUps, mergeSameEvents, type SameEventMerge } from "./lib/sameEvent";
 import type { ArticleEnrichment } from "./lib/schema";
 import { describeSync, loadSourcesConfig, syncSources } from "./lib/syncSources";
 import { saveTags } from "./lib/tags";
@@ -426,6 +428,7 @@ function printNoSaveResult(
   enriched: Map<number, ArticleEnrichment>,
   repeat: { outcome: RepeatCheckOutcome; dropped: Pick[]; all: Map<number, ArticleEnrichment> },
   reported: ReportedHeadline[],
+  merges: SameEventMerge[],
 ): void {
   if (repeat.dropped.length > 0) {
     const pairOf = new Map(repeat.outcome.repeats.map((m) => [m.id, m.reported]));
@@ -477,6 +480,17 @@ function printNoSaveResult(
       console.log(
         `  #${m.id} ${title(m.id)}\n    → R${m.reported} ${reportedTitle(m.reported)}` +
           `  [${m.event ?? ""}] 겹침: ${m.shared.join(", ") || "없음"}`,
+      );
+    }
+  }
+  if (merges.length > 0) {
+    console.log(`[collect] no-save 같은 사건 합침 ${merges.length}건 (대표 ← 합친 기사):`);
+    for (const m of merges) {
+      console.log(
+        `  #${m.representative} ${title(m.representative)} (${pool[m.representative].sourceName})` +
+          `\n    ← #${m.merged} ${title(m.merged)} (${pool[m.merged].sourceName})` +
+          `  점수 ${m.score}·겹침 ${m.overlap.toFixed(2)} [${m.shared.join(", ")}]` +
+          (m.theme.length > 0 ? ` 주제어 제외 [${m.theme.join(", ")}]` : ""),
       );
     }
   }
@@ -677,13 +691,29 @@ async function main(): Promise<void> {
         rejectNote,
       };
     }
-    const published = dropRepeats(
+    const afterRepeat = dropRepeats(
       picks,
       enriched,
       repeat.repeats.map((m) => m.id),
     );
 
-    // 할당 미달·초과·논문 분야 쏠림 경고(강제로 채우거나 덜어 내지 않는다) — 재보도를 뺀 최종 게재분으로 센다.
+    // ── ④-3 같은 사건 합치기(코드만, LLM 호출 없음) ── 선별이 묶지 못한 같은 사건 보도를 대표 하나로 합친다
+    // (합쳐진 기사는 대표의 related_json·seen_items 로 — sameEvent.ts). 실패하면 합치지 않고 그대로 게재한다.
+    const sameEvent = mergeSameEvents(afterRepeat.picks, pool, afterRepeat.enriched);
+    if (sameEvent.note) stats.notes.push(sameEvent.note);
+    if (snapshot) {
+      const { status, merges, note } = sameEvent;
+      snapshot.sameEvent = { status, merges, note };
+    }
+    /**
+     * 합쳐진 풀 번호 → 대표 풀 번호. 선정 id 를 참조하는 다른 출력(편집자 노트 등)은 이 맵으로 대표에 옮긴다 —
+     * 합쳐진 선정은 아래 published 에 없다.
+     */
+    const mergedInto: ReadonlyMap<number, number> = sameEvent.mergedInto;
+    // 이 아래(할당 경고·저장·mix)는 모두 합친 뒤의 최종 게재분을 쓴다.
+    const published = { ...afterRepeat, picks: sameEvent.picks, enriched: sameEvent.enriched };
+
+    // 할당 미달·초과·논문 분야 쏠림 경고(강제로 채우거나 덜어 내지 않는다) — 재보도를 빼고 같은 사건을 합친 최종 게재분으로 센다.
     // Physical AI 는 가공된 기사의 분야로 센다 — 소스 topic 은 일반 매체의 로봇 기사를 놓친다. 가공되지 않은 선정만
     // 소스 topic 으로 대신한다.
     const mixPicked = published.picks.map((p) => ({
@@ -691,16 +721,16 @@ async function main(): Promise<void> {
       physical: (published.enriched.get(p.index)?.category ?? pool[p.index].topic) === "physical",
     }));
     const targets = pickTargets(pool, MAX_PICKS_PER_RUN);
-    // ④-3 세 줄 요약: 게재되는 선정을 가리키고 그 기사의 한국어 가공 제목·요약과 내용·수치가 맞는 줄만 남긴다.
+    // ④-4 세 줄 요약: 게재되는 선정을 가리키고 그 기사의 한국어 가공 제목·요약과 내용·수치가 맞는 줄만 남긴다.
     // 어떤 문제도 회차를 막지 않는다(fail-open).
     let brief: BriefResolution | null = null;
     try {
+      // 대조 기사는 같은 사건 합치기 뒤의 게재분이다(합쳐진 선정은 없다).
       const evidence = new Map(
         [...published.enriched].map(([i, e]) => [i, { title: e.title_ko, summary: e.summary_ko }]),
       );
-      // 가공 뒤 단계가 같은 사건 선정을 합치면(합쳐진 풀 번호 → 남은 대표) 4번째 인자 representativeOf 로 넘겨
-      // 합쳐진 선정을 가리키는 줄을 버리지 않고 대표 기사로 옮긴다. 그 단계는 이 호출보다 앞에 둔다.
-      brief = resolveBrief(triage.brief, picks, evidence);
+      // 합쳐진 선정을 가리키는 줄은 버리지 않고 대표 기사로 옮긴다(representativeOf = mergedInto).
+      brief = resolveBrief(triage.brief, picks, evidence, (i) => mergedInto.get(i) ?? i);
       stats.notes.push(briefNote(brief));
     } catch (err) {
       stats.notes.push(`세 줄 요약 생략: ${(err as Error).message}`);
@@ -721,7 +751,11 @@ async function main(): Promise<void> {
     }
 
     // 후속 보도 연결(풀 번호 → 이전 보도 id). 재보도와 겹치지 않는다(resolveRepeats). 저장한 수만 notes 에 센다.
-    const followUpOf = new Map(repeat.links.map((l) => [l.id, l.articleId]));
+    // 합쳐진 기사의 연결은 대표에 연결이 없을 때 대표가 받는다(adoptFollowUps).
+    const followUpOf = adoptFollowUps(
+      new Map(repeat.links.map((l) => [l.id, l.articleId])),
+      mergedInto,
+    );
     let linked = followUpOf.size;
     if (NO_SAVE) {
       printNoSaveResult(
@@ -730,6 +764,7 @@ async function main(): Promise<void> {
         published.enriched,
         { outcome: repeat, dropped: published.dropped, all: enriched },
         reportedFull,
+        sameEvent.merges,
       );
       printBrief(triage.brief, brief, published.enriched);
     } else {
@@ -752,7 +787,7 @@ async function main(): Promise<void> {
     }
     const linkNote = followUpNote(linked);
     if (linkNote) stats.notes.push(linkNote);
-    // 게재 = 이번 회차에 가공까지 마치고 재보도가 아닌 선정 기사(재심사 행 포함).
+    // 게재 = 이번 회차에 가공까지 마치고 재보도가 아니며 다른 기사에 합쳐지지 않은 선정 기사(재심사 행 포함).
     mix = [candidates, pool, [...published.enriched.keys()].map((i) => pool[i])];
 
     // 선정이 있었는데 한 건도 가공되지 않았다면(키 오류·크레딧 소진 등) 파이프라인 고장이다.

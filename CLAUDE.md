@@ -89,7 +89,7 @@
 │   │   └── utils.ts              # shadcn cn() — 글자 크기 토큰(FONT_SIZE_TOKENS)을 twMerge에 등록
 │   └── middleware.local.ts       # /admin/* 인증 보호 — 로컬 전용
 ├── scripts/                      # 배치 파이프라인 (tsx 실행)
-│   ├── collect.ts                # 수집→전처리→선별→가공→재보도 검사→SQLite 오케스트레이터 (--dry-run / --no-save / --db)
+│   ├── collect.ts                # 수집→전처리→선별→가공→재보도 검사→같은 사건 합치기→SQLite 오케스트레이터 (--dry-run / --no-save / --db)
 │   ├── reclassify.ts             # 구 분야값 → 6개 키 LLM 재분류 (npm run db:reclassify, 기본 dry-run)
 │   ├── triage-compare.ts         # no-save 스냅숏으로 개편 전후 선별 비교 (npm run triage:compare)
 │   ├── export-search-index.ts    # public/search-index.json 생성 (prebuild)
@@ -110,6 +110,7 @@
 │       ├── brief.ts              # 세 줄 요약: 선별 brief → 게재분·기사 내용·수치 코드 대조 → brief_json (fail-open)
 │       ├── repeatCheck.ts        # LLM 재보도 검사: 가공 제목·요약 첫 문장 ↔ 최근 호 게재분 대조, 새 전개 없는 재보도 제외(코드 확인으로 오탐 기각, 실패 시 전부 게재)
 │       ├── textTokens.ts         # 재보도 코드 확인용 내용어 토큰(조사·어미 절단, 회사 표기 통일, 일반어 제외)
+│       ├── sameEvent.ts          # 호 안 같은 사건 합치기(코드만): 오늘 게재 뉴스끼리 내용어 대조 → 대표의 related 로 합침(실패 시 그대로 게재)
 │       ├── cost.ts               # 토큰→비용 산출 (Haiku 단가, Batches 50% 할인, 문자 종류별 토큰 추정)
 │       ├── tags.ts               # tags/article_tags upsert
 │       ├── env.ts                # 환경변수 헬퍼(Actions 빈 vars → 코드 기본값)
@@ -149,8 +150,8 @@
 
 1. **수집** — RSS/Atom, HN Algolia, GitHub(토픽 검색 3개 + 트렌딩 페이지), HuggingFace(Daily Papers·트렌딩 모델), arXiv(cs.CL·cs.RO, 인용·기관 게이트)에서 raw item 수집. 소스별 try/catch로 부분 실패 격리. `keywordFilter`가 지정된 소스는 수집 직후 키워드 없는 항목을 버린다(dedup 키도 남기지 않음).
 2. **코드 전처리** — `normalize(url)` + `dedup_key`(sha256) 중복 제거(`articles`·`seen_items` 모두 스킵), `trendingScore()` 산출, 소스별 신규 상한(`maxItems`). 신규 후보 + 최근 7일 가공 실패분을 소스별 라운드로빈으로 선별 풀(`TRIAGE_POOL_SIZE`, 180건)에 담되, **비뉴스 2/9·Physical AI 소스(`topic: physical`) 1/9 최소 할당**을 보장한다.
-3. **LLM 선별 → 가공 → 재보도 검사** — 선별 1회로 최대 `MAX_PICKS_PER_RUN`(35)건을 고르고 같은 사건을 묶고 중요도(1~5, 형식 안에서 상대 평가)를 매긴다. 선정 기사만 10건씩 묶어 한국어 제목·요약·분야·태그를 생성한 뒤, 재보도 검사 1회로 새 전개 없는 재보도를 뺀다. 모든 호출은 Message Batches API(50% 할인, 시간 초과 시 일반 호출로 대체), 실행당 비용 상한 `MAX_COST_USD_PER_RUN`($0.1). 회차당 LLM 호출은 보통 6회(선별 1·가공 4·재보도 1). 선별 출력의 세 줄 요약(`brief`)은 게재분·내용·수치를 코드로 대조해 남은 줄만 `collection_runs.brief_json`에 저장한다(별도 호출 없음, fail-open).
-4. **저장** — 선정 기사는 `articles`(+`related_json`: 묶인 다른 매체 보도)·`tags`/`article_tags`, 미선정·재보도 후보는 `seen_items`에 키만 기록. 실행 통계(`llm_calls`/토큰/비용/상태)와 notes(소스별 결과, `형식별 후보→풀→게재`, `할당 미달/초과`, `재보도 제외 N건` 등)를 `collection_runs`에 1행 기록. 공개 페이지는 가공을 마친 기사(`summary_ko IS NOT NULL`)만 노출한다.
+3. **LLM 선별 → 가공 → 재보도 검사** — 선별 1회로 최대 `MAX_PICKS_PER_RUN`(35)건을 고르고 같은 사건을 묶고 중요도(1~5, 형식 안에서 상대 평가)를 매긴다. 선정 기사만 10건씩 묶어 한국어 제목·요약·분야·태그를 생성한 뒤, 재보도 검사 1회로 새 전개 없는 재보도를 뺀다. 이어서 코드만으로(LLM 호출 없음) 오늘 게재 뉴스끼리 같은 사건을 다시 대조해, 선별이 묶지 못한 보도를 대표 기사의 `related`로 합친다. 모든 호출은 Message Batches API(50% 할인, 시간 초과 시 일반 호출로 대체), 실행당 비용 상한 `MAX_COST_USD_PER_RUN`($0.1). 회차당 LLM 호출은 보통 6회(선별 1·가공 4·재보도 1). 선별 출력의 세 줄 요약(`brief`)은 합친 뒤 게재분·내용·수치를 코드로 대조해 남은 줄만 `collection_runs.brief_json`에 저장한다(별도 호출 없음, fail-open).
+4. **저장** — 선정 기사는 `articles`(+`related_json`: 묶인 다른 매체 보도)·`tags`/`article_tags`, 미선정·재보도 후보와 같은 사건으로 합쳐진 기사는 `seen_items`에 키만 기록. 실행 통계(`llm_calls`/토큰/비용/상태)와 notes(소스별 결과, `형식별 후보→풀→게재`, `할당 미달/초과`, `재보도 제외 N건`, `같은 사건 합침 N건` 등)를 `collection_runs`에 1행 기록. 공개 페이지는 가공을 마친 기사(`summary_ko IS NOT NULL`)만 노출한다.
 
 결과 `data/app.db`를 `deploy/github-pages`에 커밋하고 `deploy.yml`을 dispatch → `npm run build`(prebuild: `initDb --existing`(스키마·sources 동기화) → `export-search-index` → `export-feed-index` → `export-latest`) → `out/`을 GitHub Pages에 배포합니다.
 
@@ -265,7 +266,7 @@ SQLite 7개 테이블 (DDL: `scripts/lib/schema.sql`, 상세: PRD §5):
 
 - `sources` — 소스 메타 (`configs/sources.json`과 `syncSources`로 동기화). **`format`**(`news|oss|model|paper`, 기본 `news`) 컬럼이 기사 형식의 단일 저장처 — 기사는 JOIN으로 읽어 지난 기사에도 소급된다. sources.json에서 빠진 소스는 기사가 없으면 삭제, 있으면 `enabled=0`.
 - `articles` — 선별된 기사: 수집 원본 + LLM 가공 결과 + `related_json`(같은 사건의 다른 매체 보도) + `engagement_json`(수집 시점 메트릭: stars·stars_today·language·likes·downloads·params·ups 등) + `follow_up_of`(이전 보도 `articles.id` — 재보도 검사의 후속 판정 중 코드 확인을 통과한 짝, FK 없음·역방향 인덱스 `articles_follow_up_of`, 2026-10-31 이전 기사는 없음). `category`는 분야 키 6개 중 하나.
-- `seen_items` — 선별에서 떨어지거나 재보도로 빠진 후보의 dedup 키(본문 미저장, 30일 보존)
+- `seen_items` — 선별에서 떨어지거나 재보도로 빠지거나 같은 사건으로 합쳐진 후보의 dedup 키(본문 미저장, 30일 보존)
 - `tags`, `article_tags` — 태그 다대다 매핑
 - `articles_fts` — FTS5 가상 테이블 (트리거로 동기화·`db:reindex`. 공개 검색은 빌드 시 만든 FlexSearch 인덱스를 쓴다)
 - `collection_runs` — 배치 실행 이력 (토큰·비용·상태·notes) + `brief_json`(세 줄 요약 `[{id: articles.id, text}]`, 없으면 NULL — `ensureSchema` 마이그레이션)
@@ -289,13 +290,13 @@ SQLite 7개 테이블 (DDL: `scripts/lib/schema.sql`, 상세: PRD §5):
 
 ## LLM 가공
 
-LLM 호출은 채팅 엔드포인트가 아니라 **배치 파이프라인** 안에서만 일어나며, 3단계(+ 선별 출력에 얹은 세 줄 요약)로 나뉩니다.
+LLM 호출은 채팅 엔드포인트가 아니라 **배치 파이프라인** 안에서만 일어나며, 3단계(+ 선별 출력에 얹은 세 줄 요약)로 나뉩니다(4번 같은 사건 합치기는 호출 없이 코드만 돈다).
 
 1. **선별**(`scripts/lib/triage.ts`) — 후보 풀(최대 180건)을 `번호 | 형식 | 매체 | 날짜 | 화제 | 제목 | 발췌` 한 줄씩 1회 호출로 보내, 최대 35건 선정·같은 사건 묶기(`duplicates`, 모델 파생본·논문 보도 포함)·중요도(같은 형식 후보끼리 상대 평가)·`already_reported`를 받는다. 유저 메시지는 "오늘 후보 구성·오늘 할당 → 이미 보도함 → 오늘 후보" 순이다. 할당 숫자의 단일 출처는 `PICK_QUOTAS`(비뉴스 8·형식별 1·Physical AI 3, 상한 `ceil(35/4)`=9)이며 `pickTargets`가 풀 구성에 맞춰 줄여 넣는다. "이미 보도함"은 최근 3개 호 게재 제목(`loadReportedHeadlines`). 할당 미달·초과·논문 분야 쏠림은 최종 게재분 기준으로 notes에 경고만 남긴다.
 2. **가공**(`scripts/lib/enrich.ts`) — 선정 기사만 10건씩 묶어 한국어 제목·요약·분야·태그를 받는다. 입력에 `[형식]` 줄과 분리된 `[토픽]` 줄(분류용, 기능 근거 아님)을 넣고, 형식별 요약 가이드(뉴스·리포·모델·논문)를 따른다.
 3. **재보도 검사**(`scripts/lib/repeatCheck.ts`) — 가공된 `title_ko`+요약 첫 문장을 최근 3개 호 게재분과 1회 호출로 대조해, 새 전개 없는 재보도(`repeats`)를 게재에서 뺀다(묶음 포함 → `seen_items`, 재심사 행은 삭제). 후속 보도(`followups`)는 유지하고, 짝지은 이전 보도에 `follow_up_of`로 잇는다(추가 호출 없음 — 상세 페이지 사건 타임라인이 양방향으로 읽는다). 모델의 재보도 판정은 코드로 다시 확인한다(`confirmRepeats`) — 두 기사가 내용어(`textTokens.ts`, 일반어·분야어 제외, 회사는 몇 개가 겹쳐도 1개 — 제휴·인수·투자처럼 상대가 있는 사건만 2개)를 2개 이상 함께 쓰지 않으면 판정을 기각하고 싣는다(notes `재보도 판정 기각 N건`). 후속 판정도 같은 확인(`confirmFollowups`, 기준 2 + 회사·숫자가 아닌 공유 낱말 1개 이상 — 회사·버전 번호만 겹치는 같은 제품군의 다른 출시를 잇지 않게)을 통과해야 잇고(기각은 링크 없이 게재, notes `후속 판정 기각 N건`), 저장은 자기 자신·비공개 이전 보도를 거른다(notes `후속 보도 연결 N건`). 호출·검증·연결 실패 시 전부 게재(fail-open).
-
-4. **세 줄 요약**(`scripts/lib/brief.ts`) — 선별 출력의 `brief`(picks 뒤 필드, 핵심 5줄 `{id, text}`)를 재보도 검사 뒤 코드로 거른다: 게재되는 선정(묶음 번호는 대표로, 같은 사건 합침은 `representativeOf` 훅)만, 줄의 내용어가 그 기사 가공 제목·요약과 겹치고 다른 게재 기사가 더 겹치지 않을 것(번호 착오 제거), 줄의 숫자가 모두 그 기사 한국어 텍스트에 있을 것(아니면 그 기사 `title_ko`로 교체 — 영문 금액 단위 환산 오류). 앞에서 3줄, 2줄 미만이면 생략. 저장은 실행 기록 INSERT 뒤 별도 UPDATE(실패해도 회차 무영향). notes `세 줄 요약 N줄(…)`/`세 줄 요약 생략: …`.
+4. **같은 사건 합치기**(`scripts/lib/sameEvent.ts`, 코드만 — LLM 호출 없음) — 선별이 같은 사건의 두 보도를 묶지 못해 리드와 같은 사건이 브리핑에 실리는 일을 막는다. 재보도 검사 뒤 오늘 게재분 중 **뉴스끼리** 같은 입력(제목+요약 첫 문장)의 내용어를 대조하되 재보도 확인(2)보다 훨씬 엄격하다: 그날 게재분 4건 이상이 쓰는 주제어(행사명·장소·회사)는 빼고, 남은 증거 ≥ 4·짧은 쪽 내용어의 50% 이상·제목끼리 증거 ≥ 2·회사/숫자 아닌 낱말과 숫자·로마자 표지(금액·모델명) 각 1개 이상. 대표는 1면 편집 순(중요도 → 화제 → 최신)의 첫 기사이고, 다른 기사는 대표와 직접 같아야 합친다(사슬 없음). 합쳐진 기사(와 그 묶음)는 대표의 `related_json`·`seen_items`로 가고, 후속 보도 연결은 대표에 없을 때 대표가 받는다. 합친 뒤의 게재분으로 할당 경고를 센다. notes `같은 사건 합침 N건`(실패 시 `같은 사건 합침 실패(그대로 게재): …`). `collect.ts`의 `mergedInto`(합쳐진 풀 번호 → 대표)로 선정 id를 참조하는 다른 출력(세 줄 요약)을 대표로 옮긴다.
+5. **세 줄 요약**(`scripts/lib/brief.ts`) — 선별 출력의 `brief`(picks 뒤 필드, 핵심 5줄 `{id, text}`)를 같은 사건 합치기 뒤 코드로 거른다: 게재되는 선정(묶음 번호는 대표로, 합쳐진 선정은 `representativeOf` = `mergedInto`로 대표로)만, 줄의 내용어가 그 기사 가공 제목·요약과 겹치고 다른 게재 기사가 더 겹치지 않을 것(번호 착오 제거), 줄의 숫자가 모두 그 기사 한국어 텍스트에 있을 것(아니면 그 기사 `title_ko`로 교체 — 영문 금액 단위 환산 오류). 앞에서 3줄, 2줄 미만이면 생략. 저장은 실행 기록 INSERT 뒤 별도 UPDATE(실패해도 회차 무영향). notes `세 줄 요약 N줄(…)`/`세 줄 요약 생략: …`.
 
 - 호출 계층: `scripts/lib/llm.ts` — Message Batches API로 제출, `BATCH_TIMEOUT_MIN` 초과·개별 실패 시 일반 호출로 1회 재시도. 출력은 구조화 출력(`output_config.format`)으로 받고 zod 로 검증한다.
 - 프롬프트: `configs/prompts/triage.system.md`(선별), `enrich.system.md` + `categories.md`(`{{CATEGORIES}}`) + `enrich.fewshot.json`(가공), `repeat.system.md`(재보도) + 가변 유저 메시지 (PRD §7)

@@ -21,6 +21,7 @@ import type { ResolvedBriefLine } from "./brief";
 import { estimateCost } from "./cost";
 import type { LlmUsage } from "./llm";
 import type { FollowUpLink, RejectedRepeat, RepeatMatch } from "./repeatCheck";
+import type { SameEventMerge } from "./sameEvent";
 import type { ArticleEnrichment } from "./schema";
 import type { Candidate, Pick, ReportedHeadline, TriageOutput } from "./triage";
 
@@ -109,6 +110,11 @@ export interface EvalSnapshot {
   } | null;
   /** 세 줄 요약 중 게재분에 맞춰 남은 줄(풀 번호). 원출력은 triage.brief. 이 단계가 생기기 전 스냅숏에는 없다. */
   brief?: ResolvedBriefLine[];
+  /**
+   * 같은 사건 합치기(코드만) 결과 — 이 단계가 생기기 전 스냅숏이나 재보도 검사 전에 끝난 회차에는 없다.
+   * merges 는 실제로 합친 쌍(대표 ← 합친 기사, 증거·겹침 비율)이다. 게재 = 재보도를 뺀 picks 에서 merged 를 뺀 것.
+   */
+  sameEvent?: { status: "ok" | "failed"; merges: SameEventMerge[]; note: string | null } | null;
   /** repeat 는 재보도 검사가 생기기 전 스냅숏에 없다. */
   usage: { triage: LlmUsage; enrich: LlmUsage; repeat?: LlmUsage };
   notes: string[];

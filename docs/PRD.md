@@ -16,7 +16,7 @@
 >
 > - **분류:** 카테고리 6종(Language Models / Agents / Dev Tools / MLOps / 연구·논문 / 산업·정책)을 **분야 6개**(`llm`·`agent`·`physical`·`oss`·`research`·`industry`)로 바꾸고, 출처가 정하는 **형식 축**(뉴스·오픈소스·모델·논문)을 더했다(§3.3, §5, §7.1, §7.3).
 > - **홈:** 누적 카드 피드 대신 **그날 수집분(호) 단위 편집 지면** — 1면 약 11건(리드·서브·오늘의 브리핑·오픈소스·논문 레이더) + 지금 화제·분야 섹션 밴드 + 누적 전체 기사 색인(§3.5, §6.1).
-> - 이 개정은 위 두 축만 다룬다. 렌더링·배포(Vercel ISR → GitHub Pages 정적 export)는 [PRD-github-pages.md](PRD-github-pages.md), LLM 호출 구조(선별 → 묶음 가공 → 재보도 검사, Message Batches API — 기사당 1호출·Vercel AI SDK·프롬프트 캐싱 서술은 대체됨)는 [CLAUDE.md](../CLAUDE.md) "LLM 가공"이 현행 기준이다.
+> - 이 개정은 위 두 축만 다룬다. 렌더링·배포(Vercel ISR → GitHub Pages 정적 export)는 [PRD-github-pages.md](PRD-github-pages.md), LLM 호출 구조(선별 → 묶음 가공 → 재보도 검사 → 코드만의 같은 사건 합치기, Message Batches API — 기사당 1호출·Vercel AI SDK·프롬프트 캐싱 서술은 대체됨)는 [CLAUDE.md](../CLAUDE.md) "LLM 가공"이 현행 기준이다.
 
 ---
 

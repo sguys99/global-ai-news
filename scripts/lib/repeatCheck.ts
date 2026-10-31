@@ -175,13 +175,23 @@ export function repeatEvidence(today: RepeatInput, reported: ReportedHeadline): 
     reported.summary ? firstSentence(reported.summary, REPORTED_SENTENCE_CHARS) : undefined,
   ];
   const shared = sharedTokens(contentTokensOf(todayTexts), contentTokensOf(reportedTexts));
+  return { shared, score: evidenceScore(shared, todayTexts, reportedTexts) };
+}
+
+/**
+ * 공유 내용어 → 증거 점수(repeatEvidence 와 호 안 같은 사건 합치기(sameEvent)가 함께 쓴다). 회사는 몇 개든 1점이고,
+ * 두 회사가 겹치고 양쪽 텍스트 모두 제휴·계약·인수·투자를 다루면 1점을 더한다. texts 는 shared 를 뽑은 원문(관계어 확인용).
+ */
+export function evidenceScore(
+  shared: string[],
+  textsA: (string | undefined)[],
+  textsB: (string | undefined)[],
+): number {
   const entities = shared.filter((t) => ENTITY_KEYS.has(t)).length;
-  const relation =
-    entities >= 2 &&
-    todayTexts.some((t) => RELATION_PATTERN.test(t)) &&
-    reportedTexts.some((t) => t !== undefined && RELATION_PATTERN.test(t));
-  const score = shared.length - entities + Math.min(entities, 1) + (relation ? 1 : 0);
-  return { shared, score };
+  const related = (texts: (string | undefined)[]) =>
+    texts.some((t) => t !== undefined && RELATION_PATTERN.test(t));
+  const relation = entities >= 2 && related(textsA) && related(textsB);
+  return shared.length - entities + Math.min(entities, 1) + (relation ? 1 : 0);
 }
 
 /** 코드 확인에서 기각한 재보도 판정(그대로 싣는다). */

@@ -132,6 +132,7 @@ function warningText(w: RunWarnings): string {
       ? `재보도 제외 ${w.repeatDropped}${w.repeatFollowups ? `(후속 ${w.repeatFollowups})` : ""}`
       : "",
     w.repeatRejected ? `재보도 판정 기각 ${w.repeatRejected}` : "",
+    w.sameEventMerged ? `같은 사건 합침 ${w.sameEventMerged}` : "",
     w.repeatCheckFailed ? `재보도 검사 실패: ${w.repeatCheckFailed}` : "",
     w.quotaShortfall ? `할당 미달 ${w.quotaShortfall}` : "",
     w.quotaOverflow ? `할당 초과 ${w.quotaOverflow}` : "",
@@ -242,7 +243,7 @@ function baseline(): void {
         ],
         [
           "회차 notes 경고",
-          `재보도 제외 ${w.repeatDropped}건(${w.repeatRuns}회, 후속 유지 ${w.repeatFollowups}건, 판정 기각 ${w.repeatRejected}건) · 재보도 검사 실패·생략 ${w.repeatCheckFailed}회 · 할당 미달 ${w.quotaShortfall}회 · 할당 초과 ${w.quotaOverflow}회 · 논문 분야 쏠림 ${w.paperSpread}회 (회차 ${t.cost.runs}회 중)`,
+          `재보도 제외 ${w.repeatDropped}건(${w.repeatRuns}회, 후속 유지 ${w.repeatFollowups}건, 판정 기각 ${w.repeatRejected}건) · 같은 사건 합침 ${w.sameEventMerged}건 · 재보도 검사 실패·생략 ${w.repeatCheckFailed}회 · 할당 미달 ${w.quotaShortfall}회 · 할당 초과 ${w.quotaOverflow}회 · 논문 분야 쏠림 ${w.paperSpread}회 (회차 ${t.cost.runs}회 중)`,
           "참고",
         ],
       ],
