@@ -3,10 +3,13 @@
  * DESIGN.md §5: 정렬은 밑줄 탭, 분야·소스·태그는 pill 칩(활성 = 잉크 채움).
  *
  * 정렬은 단일 선택(화제순 = 쿼리 없음 = 기본), 분야·소스·태그는 클릭 시 토글(같은 값 재클릭 시 해제).
+ * 매체 칩은 축약명 단위로 하나씩만 둔다(`groupSources`) — 같은 매체의 여러 피드(Hacker News 두 피드 등)는
+ * 칩 하나로 묶이고, URL 에는 대표 id 를 싣는다. 묶음의 어느 id 로 들어와도 그 칩이 활성으로 보인다.
  */
 import Link from "next/link";
 import type { SearchOptions } from "@/lib/db";
-import { CATEGORIES, CATEGORY_LABELS, shortSourceName } from "@/lib/labels";
+import { groupSources, type SourceOption } from "@/lib/feedFilter";
+import { CATEGORIES, CATEGORY_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 /** 기본 정렬(sort 미지정)은 트렌딩 점수순 — feedFilter/db 의 기본 정렬과 동일. */
@@ -66,9 +69,18 @@ function Chip({
   );
 }
 
+/**
+ * 라벨 + 칩 묶음 한 행. 모바일(시트)은 라벨을 칩 위에 쌓고, md 이상은 라벨을 왼쪽 열에 둔다.
+ * md 정렬은 baseline — 칩이 여러 줄로 감겨도 라벨이 칩 묶음 세로 가운데로 떠내려가지 않고
+ * **첫 줄 칩 글자와 같은 기준선**에 놓인다(행이 한 줄일 때도 12px 라벨과 13px 칩 글자가 기준선으로 맞는다).
+ */
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+    <div
+      role="group"
+      aria-label={label}
+      className="flex flex-col gap-2 md:flex-row md:items-baseline md:gap-4"
+    >
       <span className="text-label text-muted-foreground w-10 shrink-0 font-semibold">{label}</span>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
@@ -83,12 +95,13 @@ export function FilterBar({
   anchor = "",
 }: {
   current: SearchOptions;
-  sources: { id: string; name: string }[];
+  sources: readonly SourceOption[];
   tags: string[];
   basePath?: string;
   anchor?: string;
 }) {
   const href = (patch: Partial<SearchOptions>) => buildHref(basePath, current, patch, anchor);
+  const outlets = groupSources(sources);
   return (
     <div className="flex flex-col gap-3">
       <div role="group" aria-label="정렬" className="flex gap-5">
@@ -126,13 +139,13 @@ export function FilterBar({
         })}
       </Row>
 
-      {sources.length > 0 && (
+      {outlets.length > 0 && (
         <Row label="매체">
-          {sources.map((s) => {
-            const active = current.source === s.id;
+          {outlets.map((o) => {
+            const active = Boolean(current.source && o.ids.includes(current.source));
             return (
-              <Chip key={s.id} href={href({ source: active ? undefined : s.id })} active={active}>
-                {shortSourceName(s.name)}
+              <Chip key={o.id} href={href({ source: active ? undefined : o.id })} active={active}>
+                {o.label}
               </Chip>
             );
           })}

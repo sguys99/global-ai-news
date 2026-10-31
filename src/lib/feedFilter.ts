@@ -7,7 +7,7 @@
  * 1:1 이전한 것이다(동점 보조 키까지 동일). 서버/클라 동작 일치는 단위 테스트로 고정한다.
  */
 import type { FeedOptions, SearchOptions } from "@/lib/db";
-import { normalizeCategory } from "@/lib/labels";
+import { normalizeCategory, shortSourceName } from "@/lib/labels";
 import type { ArticleCard } from "@/lib/types";
 
 /** ISO8601 문자열 내림차순 비교(사전식 비교 = 시간 내림차순과 호환). */
@@ -31,15 +31,76 @@ function comparatorFor(sort: FeedOptions["sort"]): (a: ArticleCard, b: ArticleCa
   return (a, b) => b.trendingScore - a.trendingScore || byPublishedDesc(a, b);
 }
 
+/** 매체 필터 옵션 한 건 — `getSourcesWithCounts` 행(소스 id·원래 이름·게재 기사 수). */
+export interface SourceOption {
+  id: string;
+  name: string;
+  count?: number;
+}
+
+/**
+ * 매체 칩 한 개 = 축약명(`shortSourceName`)이 같은 소스 묶음.
+ *
+ * 수집은 한 매체를 여러 피드로 받는다(Hacker News 두 피드, Google News 질의 3개, HuggingFace 논문·모델,
+ * GitHub 토픽 검색 3개). 독자에게 "매체"는 바이라인에 찍히는 이름이므로 칩도 그 이름 단위로 하나만 둔다.
+ * - id: URL `?source=`에 싣는 대표 id — 묶음에서 기사가 가장 많은 소스(동률이면 먼저 나온 소스).
+ * - ids: 묶음의 모든 소스 id. 어느 id 로 들어온 링크든 같은 묶음으로 풀린다(옛 `?source=<id>` 호환).
+ */
+export interface SourceGroup {
+  id: string;
+  label: string;
+  ids: string[];
+  count: number;
+}
+
+/** 소스 목록을 축약명 단위로 묶는다. 묶음 기사 수 합계 내림차순(동률은 입력 순서 유지). */
+export function groupSources(sources: readonly SourceOption[]): SourceGroup[] {
+  const groups = new Map<string, SourceGroup>();
+  const repCount = new Map<string, number>(); // 묶음별 대표 id 의 기사 수
+  for (const s of sources) {
+    const label = shortSourceName(s.name);
+    const count = s.count ?? 0;
+    const g = groups.get(label);
+    if (!g) {
+      groups.set(label, { id: s.id, label, ids: [s.id], count });
+      repCount.set(label, count);
+      continue;
+    }
+    g.ids.push(s.id);
+    g.count += count;
+    if (count > repCount.get(label)!) {
+      g.id = s.id;
+      repCount.set(label, count);
+    }
+  }
+  return [...groups.values()].sort((a, b) => b.count - a.count);
+}
+
+/** 소스 id 가 속한 매체 묶음. 목록에 없는 id 면 undefined. */
+export function findSourceGroup(
+  groups: readonly SourceGroup[],
+  sourceId: string | undefined,
+): SourceGroup | undefined {
+  return sourceId ? groups.find((g) => g.ids.includes(sourceId)) : undefined;
+}
+
 /**
  * 소스·태그·카테고리 필터 적용 후 정렬한 새 배열을 반환한다(입력 불변).
- * - source: `source.id` 정확 일치
+ * - source: `sources`(매체 목록)를 주면 그 id 가 속한 **매체 묶음 전체**와 일치(`groupSources`).
+ *           목록이 없거나 목록에 없는 id 면 `source.id` 정확 일치(db.ts `getFeed` 와 같은 의미).
  * - tag:    `tags` 배열에 포함
  * - category: `category` 정확 일치
  */
-export function filterAndSortFeed(articles: ArticleCard[], opts: FeedOptions = {}): ArticleCard[] {
+export function filterAndSortFeed(
+  articles: ArticleCard[],
+  opts: FeedOptions = {},
+  sources: readonly SourceOption[] = [],
+): ArticleCard[] {
+  const sourceIds = opts.source
+    ? new Set(findSourceGroup(groupSources(sources), opts.source)?.ids ?? [opts.source])
+    : null;
   const filtered = articles.filter((a) => {
-    if (opts.source && a.source.id !== opts.source) return false;
+    if (sourceIds && !sourceIds.has(a.source.id)) return false;
     if (opts.tag && !a.tags.includes(opts.tag)) return false;
     if (opts.category && a.category !== opts.category) return false;
     return true;

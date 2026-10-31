@@ -7,7 +7,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { FilterSheet } from "@/components/mobile/FilterSheet";
 import { SearchInput } from "@/components/SearchInput";
 import { StoryIndex } from "@/components/StoryIndex";
-import { filterAndSortFeed, parseFeedOptions } from "@/lib/feedFilter";
+import { filterAndSortFeed, parseFeedOptions, type SourceOption } from "@/lib/feedFilter";
 import { buildSearchDocument, queryMatchingIds, type SearchDocument } from "@/lib/searchIndex";
 import type { SearchIndexEntry } from "@/lib/types";
 
@@ -23,13 +23,7 @@ const INDEX_URL = `${BASE_PATH}/search-index.json`;
  * 분야/매체/태그 필터·정렬을 적용한다. 결과는 피드와 같은 StoryEntry 색인으로 렌더한다.
  * 검색어가 없으면 인기 태그를 추천 검색어로 보여 준다.
  */
-export function SearchClient({
-  sources,
-  tags,
-}: {
-  sources: { id: string; name: string }[];
-  tags: string[];
-}) {
+export function SearchClient({ sources, tags }: { sources: SourceOption[]; tags: string[] }) {
   const searchParams = useSearchParams();
   const [entries, setEntries] = useState<SearchIndexEntry[] | null>(null);
   const [index, setIndex] = useState<SearchDocument | null>(null);
@@ -57,13 +51,13 @@ export function SearchClient({
   const hasQuery = Boolean(options.q);
   const loading = entries === null;
 
-  // 질의 매칭 → 소스/태그 필터·정렬(피드와 동일 의미).
+  // 질의 매칭 → 매체(축약명 묶음)/태그 필터·정렬(피드와 동일 의미).
   const results = useMemo(() => {
     if (!hasQuery || !index || !entries) return [];
     const matchedIds = new Set(queryMatchingIds(index, options.q ?? ""));
     const matched = entries.filter((e) => matchedIds.has(e.id));
-    return filterAndSortFeed(matched, options);
-  }, [hasQuery, index, entries, options]);
+    return filterAndSortFeed(matched, options, sources);
+  }, [hasQuery, index, entries, options, sources]);
 
   return (
     <>

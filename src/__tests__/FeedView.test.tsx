@@ -78,3 +78,31 @@ describe("FeedView — 발행 지연 안내 초기 상태", () => {
     container.remove();
   });
 });
+
+describe("FeedView — 같은 매체의 여러 피드", () => {
+  const front = { ...card(2), source: { id: "hn_front", name: "Hacker News Front Page" } };
+  const multi = {
+    ...base,
+    articles: [card(1), front, { ...card(3), source: { id: "tc", name: "TechCrunch AI" } }],
+    sources: [
+      { id: "hn", name: "Hacker News", count: 1 },
+      { id: "hn_front", name: "Hacker News Front Page", count: 1 },
+      { id: "tc", name: "TechCrunch AI", count: 1 },
+    ],
+  };
+
+  it("전체 기사 머리의 누적 매체 수는 축약명 단위로 센다", () => {
+    const html = renderToString(<FeedView {...multi} issueIds={[]} />);
+    expect(html).toContain("누적 3건 · 매체 2곳");
+  });
+
+  it("옛 링크의 비대표 id 로 걸러도 결과 머리는 매체명, 결과는 묶음 전체다", () => {
+    const html = renderToString(
+      <FeedView {...multi} issueIds={[]} options={{ source: "hn_front" }} />,
+    );
+    expect(html).toMatch(/<h1[^>]*>Hacker News<\/h1>/);
+    expect(html).toContain("기사1");
+    expect(html).toContain("기사2");
+    expect(html).not.toContain("기사3");
+  });
+});

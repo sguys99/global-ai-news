@@ -19,7 +19,7 @@
  * 부족하면 슬롯이 줄어들 뿐 다른 축이나 다른 호로 채우지 않는다: 뉴스가 7건 미만이면 브리핑(→서브)이,
  * 비뉴스가 4건 미만이면 레이더가 준다(0건이면 빈 배열 → UI 가 레이더 띠를 숨긴다). 남는 기사는 섹션 밴드로 간다.
  */
-import { CATEGORIES, FORMATS, type Format } from "@/lib/labels";
+import { CATEGORIES, FORMATS, type Format, shortSourceName } from "@/lib/labels";
 import type { ArticleCard } from "@/lib/types";
 
 export interface EditionSection {
@@ -234,7 +234,7 @@ export function frontArticles(
 export interface IssueStats {
   /** 이번 호 기사 수. */
   count: number;
-  /** 이번 호에 실린 서로 다른 매체 수. */
+  /** 이번 호에 실린 서로 다른 매체 수 — 축약명 단위(매체 필터 칩과 같은 단위, 같은 매체의 여러 피드는 1곳). */
   sources: number;
   /** 형식 구성(FORMATS 순서: 뉴스 → 오픈소스 → 모델 → 논문). 0건인 형식은 생략한다. */
   formats: { format: Format; count: number }[];
@@ -245,7 +245,7 @@ export function issueStats(issueArticles: Pick<ArticleCard, "format" | "source">
   for (const a of issueArticles) byFormat.set(a.format, (byFormat.get(a.format) ?? 0) + 1);
   return {
     count: issueArticles.length,
-    sources: new Set(issueArticles.map((a) => a.source.id)).size,
+    sources: new Set(issueArticles.map((a) => shortSourceName(a.source.name))).size,
     formats: FORMATS.filter((f) => byFormat.has(f)).map((f) => ({
       format: f,
       count: byFormat.get(f)!,

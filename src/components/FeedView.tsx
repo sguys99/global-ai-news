@@ -6,8 +6,14 @@ import { StoryIndex } from "@/components/StoryIndex";
 import { FilterSheet } from "@/components/mobile/FilterSheet";
 import type { EditionInfo, FeedOptions } from "@/lib/db";
 import { buildEdition, issueStats } from "@/lib/edition";
-import { filterAndSortFeed, hasActiveFilter } from "@/lib/feedFilter";
-import { categoryLabel, kstDateKey, shortSourceName } from "@/lib/labels";
+import {
+  filterAndSortFeed,
+  findSourceGroup,
+  groupSources,
+  hasActiveFilter,
+  type SourceOption,
+} from "@/lib/feedFilter";
+import { categoryLabel, kstDateKey } from "@/lib/labels";
 import type { ArticleCard } from "@/lib/types";
 
 /**
@@ -35,15 +41,17 @@ export function FeedView({
   articles: ArticleCard[];
   /** 이번 호(그날 수집분) 기사 id — 1면·섹션 밴드는 이 기사로만 구성한다. */
   issueIds: number[];
-  sources: { id: string; name: string }[];
+  sources: SourceOption[];
   tags: string[];
   options: FeedOptions;
   editionInfo: EditionInfo;
   /** 빌드 시점(서버 page)이 계산한 발행 지연 일수. 정적 HTML 의 안내 줄 초기 상태. */
   initialDelayGap?: number;
 }) {
-  const visible = filterAndSortFeed(articles, options);
+  const visible = filterAndSortFeed(articles, options, sources);
   const filtered = hasActiveFilter(options);
+  // 매체 = 축약명 단위 묶음(칩·결과 머리·누적 매체 수가 같은 단위를 쓴다).
+  const outlets = groupSources(sources);
 
   if (articles.length === 0) {
     return (
@@ -56,10 +64,9 @@ export function FeedView({
   }
 
   if (filtered) {
-    const sourceName = sources.find((s) => s.id === options.source)?.name;
     const parts = [
       options.category && categoryLabel(options.category),
-      sourceName && shortSourceName(sourceName),
+      findSourceGroup(outlets, options.source)?.label,
       options.tag && `#${options.tag}`,
     ].filter(Boolean);
 
@@ -116,7 +123,7 @@ export function FeedView({
           tags={tags}
           options={options}
           heading="전체 기사"
-          cumulative={{ articles: visible.length, sources: sources.length }}
+          cumulative={{ articles: visible.length, sources: outlets.length }}
         />
       </main>
     </>
@@ -133,7 +140,7 @@ function AllStories({
   cumulative,
 }: {
   visible: ArticleCard[];
-  sources: { id: string; name: string }[];
+  sources: SourceOption[];
   tags: string[];
   options: FeedOptions;
   heading: string | null;

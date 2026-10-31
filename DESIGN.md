@@ -205,6 +205,8 @@ v1 화면에 대한 피드백(2026-10-04)은 네 가지로 수렴한다.
 | 소스 `source.name`     | 매체           | 메타 행 첫 요소                                              | 칩·메타에서는 축약명 맵(`shortSourceName`). 묶인 보도는 "외 N곳"                       |
 | 날짜 `publishedAt`     | ISO            | 홈 1면·섹션 상대 시각 / `MM.DD`(색인) / `YYYY.MM.DD`(상세)   | 마스트헤드는 `YYYY년 M월 D일 요일`. 레이더 카드는 날짜 생략                            |
 
+**매체 = 축약명 단위.** 수집은 한 매체를 여러 피드로 받는다(Hacker News 두 피드, Google News 질의별 피드, HuggingFace 논문·모델, GitHub 토픽 검색). 독자가 아는 매체는 바이라인에 찍힌 이름이므로, 매체 필터 칩과 "매체 N곳"(귀·전체 기사 머리)은 축약명이 같은 소스를 하나로 센다(`groupSources`, [src/lib/feedFilter.ts](src/lib/feedFilter.ts)). 칩은 매체당 하나이고, 누르면 그 매체의 모든 피드가 걸린다. URL `?source=`에는 기사가 가장 많은 피드의 id를 싣고, 묶음의 다른 id로 들어온 옛 링크도 같은 칩으로 풀린다. 논문·모델 같은 형식 구분은 매체 칩이 아니라 형식 배지가 맡는다.
+
 **분야 표시명 맵** (저장값은 안정 키, 표시만 변환 — 단일 출처 [src/lib/labels.ts](src/lib/labels.ts) `CATEGORIES`·`CATEGORY_LABELS`·`CATEGORY_CODES`, 표 순서 = 섹션·내비·칩 순서):
 
 | 저장 키    | 한글 표시명   | 코드 |

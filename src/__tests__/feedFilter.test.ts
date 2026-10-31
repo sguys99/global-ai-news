@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { filterAndSortFeed, hasActiveFilter, parseFeedOptions } from "@/lib/feedFilter";
+import {
+  filterAndSortFeed,
+  findSourceGroup,
+  groupSources,
+  hasActiveFilter,
+  parseFeedOptions,
+} from "@/lib/feedFilter";
 import type { ArticleCard } from "@/lib/types";
 
 /**
@@ -86,6 +92,105 @@ describe("filterAndSortFeed — 필터", () => {
     const before = [...ALL];
     filterAndSortFeed(ALL, { sort: "importance" });
     expect(ALL).toEqual(before);
+  });
+});
+
+/** 실제 sources.json 이름 — 축약명이 겹치는 피드(HN 2개·HF 2개·Google News 질의). count 내림차순(getSourcesWithCounts). */
+const SOURCES = [
+  { id: "techcrunch_ai", name: "TechCrunch AI", count: 119 },
+  { id: "hf_daily_papers", name: "HuggingFace Daily Papers", count: 46 },
+  { id: "hackernews", name: "Hacker News", count: 35 },
+  { id: "hf_models", name: "HuggingFace 트렌딩 모델", count: 12 },
+  { id: "gnews_physical_ai", name: "Google News: physical/embodied AI", count: 9 },
+  { id: "hnrss_frontpage", name: "Hacker News Front Page", count: 7 },
+  { id: "gnews_humanoid", name: "Google News: humanoid robot", count: 2 },
+  { id: "hf_blog", name: "Hugging Face Blog", count: 9 },
+];
+
+describe("groupSources — 매체 칩은 축약명 단위로 하나", () => {
+  it("축약명이 같은 피드를 한 묶음으로 모으고, 묶음 기사 수 합계 내림차순으로 둔다", () => {
+    expect(groupSources(SOURCES)).toEqual([
+      { id: "techcrunch_ai", label: "TechCrunch", ids: ["techcrunch_ai"], count: 119 },
+      {
+        id: "hf_daily_papers",
+        label: "HuggingFace",
+        ids: ["hf_daily_papers", "hf_models"],
+        count: 58,
+      },
+      {
+        id: "hackernews",
+        label: "Hacker News",
+        ids: ["hackernews", "hnrss_frontpage"],
+        count: 42,
+      },
+      {
+        id: "gnews_physical_ai",
+        label: "Google News",
+        ids: ["gnews_physical_ai", "gnews_humanoid"],
+        count: 11,
+      },
+      // 축약명이 다른 매체(회사 블로그)는 따로 둔다.
+      { id: "hf_blog", label: "Hugging Face Blog", ids: ["hf_blog"], count: 9 },
+    ]);
+  });
+
+  it("대표 id 는 묶음에서 기사가 가장 많은 소스다(입력 순서와 무관)", () => {
+    const [hn] = groupSources([
+      { id: "hnrss_frontpage", name: "Hacker News Front Page", count: 3 },
+      { id: "hackernews", name: "Hacker News", count: 30 },
+    ]);
+    expect(hn).toMatchObject({ id: "hackernews", ids: ["hnrss_frontpage", "hackernews"] });
+  });
+
+  it("count 가 없으면 입력 순서를 지키고 먼저 나온 id 를 대표로 둔다", () => {
+    const groups = groupSources([
+      { id: "a", name: "Alpha" },
+      { id: "hnrss_frontpage", name: "Hacker News Front Page" },
+      { id: "hackernews", name: "Hacker News" },
+    ]);
+    expect(groups.map((g) => [g.id, g.label])).toEqual([
+      ["a", "Alpha"],
+      ["hnrss_frontpage", "Hacker News"],
+    ]);
+  });
+
+  it("findSourceGroup: 묶음의 어느 id 로도 같은 묶음을 찾고, 모르는 id·빈 값은 undefined", () => {
+    const groups = groupSources(SOURCES);
+    expect(findSourceGroup(groups, "hnrss_frontpage")?.label).toBe("Hacker News");
+    expect(findSourceGroup(groups, "hackernews")?.label).toBe("Hacker News");
+    expect(findSourceGroup(groups, "nope")).toBeUndefined();
+    expect(findSourceGroup(groups, undefined)).toBeUndefined();
+  });
+});
+
+describe("filterAndSortFeed — 매체 묶음 필터", () => {
+  const hn1 = card({ id: 11, titleOriginal: "HN1", trendingScore: 30 });
+  const hn2 = card({
+    id: 12,
+    titleOriginal: "HN2",
+    trendingScore: 20,
+    source: { id: "hnrss_frontpage", name: "Hacker News Front Page" },
+  });
+  const tc = card({ id: 13, titleOriginal: "TC", source: B.source, trendingScore: 10 });
+  const rows = [hn1, hn2, tc];
+
+  it("매체 목록을 주면 대표 id 로 묶음 전체(같은 매체의 모든 피드)를 거른다", () => {
+    expect(titles(filterAndSortFeed(rows, { source: "hackernews" }, SOURCES))).toEqual([
+      "HN1",
+      "HN2",
+    ]);
+  });
+
+  it("옛 링크의 비대표 id(?source=hnrss_frontpage)도 같은 묶음으로 풀린다", () => {
+    expect(titles(filterAndSortFeed(rows, { source: "hnrss_frontpage" }, SOURCES))).toEqual([
+      "HN1",
+      "HN2",
+    ]);
+  });
+
+  it("매체 목록이 없거나 목록에 없는 id 면 id 정확 일치(getFeed 와 같은 의미)", () => {
+    expect(titles(filterAndSortFeed(rows, { source: "hnrss_frontpage" }))).toEqual(["HN2"]);
+    expect(filterAndSortFeed(rows, { source: "gone" }, SOURCES)).toEqual([]);
   });
 });
 

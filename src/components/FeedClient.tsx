@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { FeedView } from "@/components/FeedView";
 import type { EditionInfo } from "@/lib/db";
-import { parseFeedOptions } from "@/lib/feedFilter";
+import { parseFeedOptions, type SourceOption } from "@/lib/feedFilter";
 import type { ArticleCard as ArticleCardType } from "@/lib/types";
 
 /**
@@ -25,7 +25,7 @@ export function FeedClient({
 }: {
   articles: ArticleCardType[];
   issueIds: number[];
-  sources: { id: string; name: string }[];
+  sources: SourceOption[];
   tags: string[];
   editionInfo: EditionInfo;
   initialDelayGap?: number;

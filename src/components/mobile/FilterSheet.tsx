@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { FilterBar } from "@/components/FilterBar";
 import type { SearchOptions } from "@/lib/db";
+import type { SourceOption } from "@/lib/feedFilter";
 
 /**
  * 모바일 필터 바텀시트 (mobile-plan Phase 4).
@@ -23,7 +24,7 @@ export function FilterSheet({
   anchor = "",
 }: {
   current: SearchOptions;
-  sources: { id: string; name: string }[];
+  sources: readonly SourceOption[];
   tags: string[];
   basePath?: string;
   anchor?: string;

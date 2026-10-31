@@ -66,6 +66,16 @@ describe("issueStats — 마스트헤드 귀의 호 기준 통계", () => {
     });
   });
 
+  it("같은 매체의 여러 피드(축약명이 같은 소스)는 매체 1곳으로 센다", () => {
+    const stats = issueStats([
+      { format: "news", source: { id: "hackernews", name: "Hacker News" } },
+      { format: "news", source: { id: "hnrss_frontpage", name: "Hacker News Front Page" } },
+      { format: "paper", source: { id: "hf_daily_papers", name: "HuggingFace Daily Papers" } },
+      { format: "model", source: { id: "hf_models", name: "HuggingFace 트렌딩 모델" } },
+    ]);
+    expect(stats.sources).toBe(2);
+  });
+
   it("빈 호는 0건·형식 없음", () => {
     expect(issueStats([])).toEqual({ count: 0, sources: 0, formats: [] });
   });
