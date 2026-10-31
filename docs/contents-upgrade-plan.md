@@ -541,7 +541,8 @@
   - 현재 DB(10-12~10-25, 개편 전 회차)의 issue 모드: 1면 오늘 호 비율 **100%**(117/117), 1면 본문 평균 8.4건(7~11, 레이더 평균 1.4), 지금 화제 오늘 호 100%(20/20). 비뉴스·비용·중복 등 나머지 지표는 기준선과 같다. 1면이 11건에 못 미치는 것은 개편 전 회차에 비뉴스가 적어 레이더가 줄기 때문이다.
   - **legacy 모드는 기준선 숫자를 재현하지 못한다:** 지금의 5슬롯 `buildEdition`에 누적 입력을 넣는 근사라 1면 오늘 호 비율이 23%(36/154)로 나온다(기록값 52%는 4슬롯 시절). 측정 방식만 같으므로 "기준선 기록" 표는 Phase 1 이전 측정값으로 그대로 둔다.
   - 게이트: vitest 50파일·597건(baseline 22건) 통과(Node 24), typecheck 통과, lint 오류 0건, prettier 통과. `data/app.db`는 실행 전후 sha256이 같다.
-- [ ] `npm run lint && npm run typecheck && npm test`가 통과한다. DB 테스트는 Node 24 PATH에서 실행한다.
+- [x] `npm run lint && npm run typecheck && npm test`가 통과한다. DB 테스트는 Node 24 PATH에서 실행한다.
+  - ✅ 2026-10-31 최종 코드(203b401: 재보도 검사 수정·브리핑 상한·매체 칩 포함) 기준으로 vitest 52파일·641건 통과(Node 24.13), typecheck 통과, lint 오류 0건(경고 1건 `_contentRaw`는 이전부터 있던 것)이다. `format:check`는 코드(`src`·`scripts`·`configs`)에서 실패 0건이다. 문서·시안 HTML 10개(이 문서, `PRD-github-pages.md`, `docs/design/mockups/*` 등)는 처음 커밋할 때부터 prettier 형식이 아니었고, 이번 작업과는 무관하다. CI(`deploy.yml`)는 Node 22와 새 `npm ci`로 빌드한다.
 - [x] 로컬에서 `npm run collect`를 1회 실행해 비용, 형식·분야 분포, 할당 경고를 확인한다.
   - ✅ 2026-10-31 **방식(사용자 결정):** 배포 브랜치를 병합해 최신 DB를 받고(`app.db`는 배포 쪽 채택), 마이그레이션을 다시 적용한 뒤 `collect --no-save`를 **Batches API**로 1회 돌렸다. DB 쓰기 없이 실제 배치 비용과 분포를 본다.
   - **병합 + 마이그레이션 재적용:** 배포 DB의 1,146건이 모두 구 분야값이었다. 이 브랜치에서 이미 재분류한 997건은 id·dedup_key·url이 일치해 분야만 복사했다. 새 회차분(10-26~10-31 호) 149건만 `db:reclassify --only-legacy`로 다시 분류했다. 비용은 **$0.022**(배치)이고, 규칙 매핑과 다른 분류는 47건, Physical AI로 옮겨진 것은 13건이다(Digit/GXO, Bedrock Robotics, PDRVLA 등). `db:init`이 `sources.format`을 추가했고 소스를 동기화했다(추가 10, 갱신 8, `reddit_*` 8개 삭제). 확인 결과 `integrity_check`는 ok이고, 공개 기사의 분야는 6개 키뿐이다(industry 359, agent 227, oss 169, research 146, llm 145, physical 100). FTS는 1,146행이다.
@@ -555,7 +556,11 @@
     - ② **브리핑 한 분야 쏠림:** 실제 결과에서는 브리핑 3건이 모두 Physical AI였다. 오탐 5건을 살린 반사실 시뮬레이션에서는 3건이 모두 산업·정책이었고, 그중 1건은 리드와 같은 사건의 두 번째 보도였다. Phase 5 "한계"가 예고한 문제다.
     - 그 밖에 선별이 같은 사건(OpenAI 투자 유치의 HN 보도와 일반 기사)을 묶지 못했다.
   - 참고 `kpi -- baseline 7`(옛 파이프라인 10-25~10-31 호, 배포 직전 기준선): 1면 오늘 호 100%, 1면 본문 평균 7.9건, 레이더 0.9건, 비뉴스 0.9건, Physical AI(가공 분야) 2.0건, 이틀 연속 중복 1쌍, 회차 비용 평균 $0.0261. 스냅숏은 `data/eval/run-2026-10-31T11-58-28-809Z.json`(git 제외)이다.
-- [ ] `npm run build`(정적 export) 후 `basePath` 아래 홈, `/edition/<오늘>`, 지난 호, `?category=physical`, 검색이 정상인지 확인한다.
+- [x] `npm run build`(정적 export) 후 `basePath` 아래 홈, `/edition/<오늘>`, 지난 호, `?category=physical`, 검색이 정상인지 확인한다.
+  - ✅ 2026-10-31 병합·마이그레이션한 DB(최신 호 10-31, 제137호)로 빌드에 성공했다. `out/`에는 HTML 1,179개(기사 1,146, 호 29), OG 이미지(기사 176, 호 29, 기본 1)가 생겼고 `admin/`·`api/`는 없다. prebuild의 `initDb --existing`은 "변경 없음"이었고 `data/app.db`의 sha256은 빌드 전후 같다.
+    - 경로(`/global-ai-news/` 아래 로컬 서빙): 홈, `/edition/2026-10-31/`, 지난 호(`10-27`, `06-07`), `?category=physical`(필터 결과 100건 = DB 100건), `/search/?q=휴머노이드`(20건 = DB LIKE 20건), REPO·PAPER 기사 상세, OG 3종, `search-index.json`·`latest.json`·파비콘이 모두 200이다. `/admin/`과 `/api/health/`는 404다(의도대로).
+    - 브라우저(7개 페이지 × 360·1280px × 라이트·다크): 콘솔 오류·하이드레이션 경고·실패 요청이 0건이고 가로 스크롤도 0이다. 매체 칩 중복은 없다(28개). 매체 필터와 모바일 필터 시트도 동작한다. 10-31 호는 옛 파이프라인이 만든 호라 비뉴스가 1건뿐이어서, 레이더 1장·지금 화제 2건으로 그려진다.
+    - 디자인 점검에서 나온 지적은 아래 "(추가) 배포 전 지면 다듬기"에서 처리한다.
 - [ ] 배포 후 3일간 KPI를 관찰해 하단 "목표 지표" 표에 기록한다.
 - [ ] 문서를 갱신한다: `CLAUDE.md`(카테고리, 형식, 1면 구성), `docs/PRD.md` 카테고리 절, `DESIGN.md`, 이 문서의 체크박스.
   - ✅ 2026-10-31 1차(코드 대조): **CLAUDE.md**는 낡은 "(전환 후)/(예정)" 배너를 실제 배포 구조(`PHASE_PRODUCTION_BUILD`·`*.local.ts(x)` 게이팅)로 바꾸고, 디렉터리 트리를 실제 파일로 다시 그렸다. 호·1면 구성(리드·서브·브리핑·레이더·화제·'이 호의 지면'), 분야 6개 표·경계 우선순위·형식 축, 선별 할당·이미 보도함·재보도 검사, 새 명령(`collect --dry-run/--no-save/--db`, `triage:compare`, `db:reclassify`, `kpi -- baseline`)을 반영했다. 쓰지 않는 `STATIC_EXPORT`와 `npm run start`(정적 export에서는 동작하지 않음)는 뺐다. **docs/PRD.md**는 v1.1로 올려 §3.3 분야·형식, §3.5 호 단위 1면, §5 `sources.format`, §7.3 분류 체계를 고쳤다. **DESIGN.md**는 v2.1이 코드와 일치해 변경하지 않았다.
