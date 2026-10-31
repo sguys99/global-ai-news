@@ -26,6 +26,7 @@ export function Masthead({
   stats,
   categories,
   indexLabel = "전체 기사",
+  weekly = false,
   delayNoticeIssueDate,
   delayNoticeInitialGap,
 }: {
@@ -37,6 +38,8 @@ export function Masthead({
   categories: string[];
   /** 섹션 내비 마지막 항목(#all) 라벨. 호 고정 링크 지면은 "이 호의 기사". */
   indexLabel?: string;
+  /** 주간 레이더(일요일 특집)가 실린 호 — 내비 "1면" 다음에 "주간 레이더"(#weekly)를 넣는다(지면 순서와 같다). */
+  weekly?: boolean;
   /** 지정하면 그 호 날짜(KST)가 오늘보다 낡았을 때 발행 지연 안내 줄을 띄운다(홈 전용). */
   delayNoticeIssueDate?: string;
   /** 빌드 시점에 계산한 지연 일수 — 정적 HTML 에 안내를 미리 담아 레이아웃 밀림을 막는다. */
@@ -90,6 +93,7 @@ export function Masthead({
       >
         {[
           { href: "#front", label: "1면" },
+          ...(weekly ? [{ href: "#weekly", label: "주간 레이더" }] : []),
           ...categories.map((c) => ({
             href: `#section-${categorySlug(c)}`,
             label: categoryLabel(c),

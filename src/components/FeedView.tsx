@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FrontPage, SectionBands } from "@/components/Edition";
+import { FrontPage, SectionBands, WeeklyRadarBand } from "@/components/Edition";
 import { FilterBar } from "@/components/FilterBar";
 import { Masthead } from "@/components/Masthead";
 import { StoryIndex } from "@/components/StoryIndex";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/feedFilter";
 import { categoryLabel, kstDateKey } from "@/lib/labels";
 import type { ArticleCard } from "@/lib/types";
+import type { WeeklyRadar } from "@/lib/weeklyRadar";
 
 /**
  * 피드 프레젠테이션(서버·클라 공용, 훅 없음).
@@ -36,6 +37,7 @@ export function FeedView({
   options,
   editionInfo,
   initialDelayGap,
+  weekly,
 }: {
   /** 누적 기사 전체 — 전체 기사 색인·필터 결과용. */
   articles: ArticleCard[];
@@ -47,6 +49,8 @@ export function FeedView({
   editionInfo: EditionInfo;
   /** 빌드 시점(서버 page)이 계산한 발행 지연 일수. 정적 HTML 의 안내 줄 초기 상태. */
   initialDelayGap?: number;
+  /** 주간 레이더(일요일 호만, 서버 page 가 계산). null·없음이면 밴드를 그리지 않는다. */
+  weekly?: WeeklyRadar | null;
 }) {
   const visible = filterAndSortFeed(articles, options, sources);
   const filtered = hasActiveFilter(options);
@@ -111,11 +115,13 @@ export function FeedView({
         publishedAt={editionInfo.publishedAt}
         stats={issueStats(issueArticles)}
         categories={edition.sections.map((s) => s.category)}
+        weekly={Boolean(weekly)}
         delayNoticeIssueDate={issueDate}
         delayNoticeInitialGap={initialDelayGap}
       />
       <main className="mx-auto flex max-w-[1240px] flex-col gap-14 px-4 pb-16 md:gap-16 md:px-8">
         <FrontPage edition={edition} timeBase={timeBase} />
+        {weekly && <WeeklyRadarBand weekly={weekly} />}
         <SectionBands sections={edition.sections} timeBase={timeBase} />
         <AllStories
           visible={visible}

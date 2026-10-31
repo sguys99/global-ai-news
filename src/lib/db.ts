@@ -14,6 +14,7 @@ import type {
   RelatedCoverage,
   RunRow,
 } from "@/lib/types";
+import { weekWindow, type WeeklyCandidate } from "@/lib/weeklyRadar";
 
 /**
  * 읽기 전용 SQLite 커넥션 싱글톤.
@@ -466,6 +467,34 @@ export function getIssueArticles(dateKey: string, conn: DatabaseType = getDb()):
     )
     .all(start, end) as ArticleRow[];
   return rows.map(toArticleCard);
+}
+
+/**
+ * 주간 레이더 후보(src/lib/weeklyRadar.ts): 일요일 dateKey 로 끝나는 KST 월~일 7일 동안 **수집된** 공개 비뉴스
+ * (저장소·모델·논문)와 각 기사의 호 날짜(created_at 의 KST 날짜). 형식은 sources.format 이라
+ * 컬럼이 없는 옛 DB(전부 뉴스로 읽힌다)에서는 빈 목록이다. 일요일이 아니면 빈 목록.
+ * 순서는 고정만 해 둔다 — 선정·정렬은 buildWeeklyRadar 몫.
+ */
+export function getWeekRadarCandidates(
+  sundayKey: string,
+  conn: DatabaseType = getDb(),
+): WeeklyCandidate[] {
+  const week = weekWindow(sundayKey);
+  if (!week || !hasSourceFormat(conn)) return [];
+  const start = kstDayBounds(week.start).start;
+  const end = kstDayBounds(week.end).end;
+  const rows = conn
+    .prepare(
+      `${articleSelect(conn)} WHERE ${PUBLISHED} AND s.format IN ('oss', 'model', 'paper')
+          AND julianday(a.created_at) >= julianday(?) AND julianday(a.created_at) < julianday(?)
+        ORDER BY a.id`,
+    )
+    .all(start, end) as ArticleRow[];
+  return rows.map((row) => ({
+    article: toArticleCard(row),
+    // 호 날짜 = 수집 시각의 KST 날짜(getEditionRefs·getIssueArticles 와 같은 기준).
+    issueDate: kstDateKey(row.collected_at),
+  }));
 }
 
 /** 호 재구성용: cutoff(UTC ISO) 전에 수집된 공개 기사(getFeed 기본 정렬). */
