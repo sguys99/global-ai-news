@@ -26,6 +26,15 @@ export const SITE_TAGLINE = "세계와 한국의 AI 소식을 매일 아침, 한
 /** 배포 절대 URL(basePath 포함). 프로덕션 빌드에만 next.config 가 주입하고 dev 는 로컬. */
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+/**
+ * 방문자 집계(GoatCounter, 쿠키 없음 → 동의 배너 불필요). 대시보드는 로그인 사용자만 본다.
+ * 사이트 설정 "Allow adding visitor counts on your website"가 켜져 있어야 `/counter/TOTAL.json`이 열린다.
+ */
+export const GOATCOUNTER_URL = "https://sguys99.goatcounter.com";
+
+/** 푸터 누적 방문 표시 하한 — 이보다 적으면 숨긴다(작은 숫자가 공개되면 오히려 신뢰를 깎는다). */
+export const VISITOR_COUNT_MIN = 100;
+
 /** 2:1 — 카카오톡이 크롭 없이 쓰는 비율이자 X(트위터) large card 비율. */
 export const OG_IMAGE_SIZE = { width: 1200, height: 600 } as const;
 

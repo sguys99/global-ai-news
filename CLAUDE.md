@@ -65,6 +65,8 @@
 │   │   ├── EditionPager.tsx      # 지난 호 이전/다음
 │   │   ├── HeaderWordmark.tsx    # 헤더 워드마크(홈에선 제호를 지나면 등장)
 │   │   ├── SearchInput.tsx       # 라이브 검색 입력 (디바운스)
+│   │   ├── Analytics.tsx         # 방문 집계(GoatCounter count.js, 쿠키 없음) — 경로 전환마다 직접 집계
+│   │   ├── VisitorCount.tsx      # 푸터 "누적 방문 N회"(GoatCounter TOTAL.json, VISITOR_COUNT_MIN 미만이면 숨김)
 │   │   ├── mobile/               # 모바일 앱 셸(MobileTopBar·BottomTabBar·FilterSheet)
 │   │   ├── admin/                # Admin 전용 컴포넌트 (KpiPanel·SourceHealthPanel·SourceManager 등)
 │   │   └── ui/                   # shadcn/ui 프리미티브
