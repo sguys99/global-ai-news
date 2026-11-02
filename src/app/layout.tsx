@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Hahmlet } from "next/font/google";
 import localFont from "next/font/local";
+import { Analytics } from "@/components/Analytics";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -73,6 +74,7 @@ export default function RootLayout({
           <Footer />
           <BottomTabBar />
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );

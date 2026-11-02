@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VisitorCount } from "@/components/VisitorCount";
 import { SITE_TAGLINE } from "@/lib/site";
 
 /**
@@ -24,6 +25,7 @@ export function Footer() {
           <p className="text-label text-muted-foreground">
             © {new Date().getFullYear()} Nasica Inc. All rights reserved.
           </p>
+          <VisitorCount />
         </div>
 
         <nav className="text-caption flex gap-6 font-semibold">
