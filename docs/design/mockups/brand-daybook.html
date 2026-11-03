@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>시안 · AI Daybook 브랜드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+/* 로컬 폴백: 저장소의 자체 호스팅 Pretendard(사이트와 같은 파일) */
+@font-face {
+  font-family: "Pretendard Variable";
+  src: url("../../../public/fonts/PretendardVariable.woff2") format("woff2");
+  font-weight: 45 920; font-display: swap;
+}
+
+/* 사이트 토큰(src/app/globals.css 값 그대로) */
+:root {
+  --paper: #f4f4f1; --ink: #141519; --ink-2: #3a3c43; --muted: #66686f;
+  --brand: #2140e8; --hair: #d8d8d2; --rule: #141519;
+  --serif: "Hahmlet", Georgia, serif;
+  --sans: "Pretendard Variable", Pretendard, system-ui, sans-serif;
+}
+html[data-theme="dark"] {
+  --paper: #0f1118; --ink: #eceae4; --ink-2: #bcbbb5; --muted: #8d8f9a;
+  --brand: #93a3ff; --hair: #2a2d39; --rule: #eceae4;
+}
+
+/* 시안 크롬(디자인 토큰과 무관) */
+* { box-sizing: border-box; }
+html { background: #e4e4df; }
+html[data-theme="dark"] { background: #07080c; }
+body { margin: 0; font: 400 14px/1.55 var(--sans); color: #1b1c20; word-break: keep-all; overflow-wrap: anywhere; }
+html[data-theme="dark"] body { color: #d9dae0; }
+.bar { position: sticky; top: 0; z-index: 9; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 16px; background: #111216; color: #a9abb3; font: 500 12px/1.2 system-ui, sans-serif; }
+.bar b { color: #fff; }
+.seg { display: inline-flex; background: #24262d; border-radius: 99px; padding: 2px; }
+.seg button { border: 0; background: transparent; color: #a9abb3; font: inherit; padding: 6px 10px; border-radius: 99px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: #fff; color: #111; }
+.intro { max-width: 1180px; margin: 24px auto 0; padding: 0 16px; }
+.intro h1 { font: 800 24px/1.2 var(--serif); margin: 0 0 6px; }
+.intro p { margin: 0; color: #55575f; max-width: 60em; }
+html[data-theme="dark"] .intro p { color: #9a9ca6; }
+
+.opt { max-width: 1180px; margin: 28px auto; padding: 0 16px; }
+.opt-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 10px; }
+.opt-head h2 { font: 800 19px/1.2 var(--serif); margin: 0; }
+.opt-head .tag { font: 700 11px/1 system-ui; padding: 4px 7px; border-radius: 4px; background: #111216; color: #fff; }
+.opt-head .tag.rec { background: #2140e8; }
+.opt-head p { flex-basis: 100%; margin: 0; color: #55575f; }
+html[data-theme="dark"] .opt-head p { color: #9a9ca6; }
+
+/* ===== 지면(시안 본체) ===== */
+.page { background: var(--paper); color: var(--ink); outline: 1px solid rgb(0 0 0 / .12); }
+.hdr { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--hair); }
+.hdr nav { display: flex; gap: 18px; font-weight: 600; font-size: 14px; }
+.hdr nav a { color: inherit; text-decoration: none; }
+.hdr nav a.on { box-shadow: inset 0 -2px var(--brand); }
+.mast { padding: 18px 24px 0; }
+.folio { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); }
+.folio .r { margin-left: auto; }
+.np-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 32px; margin-top: 10px; }
+.ear { font-size: 12px; color: var(--muted); border-left: 1px solid var(--hair); padding-left: 18px; }
+.ear b { display: block; font: 800 34px/1.05 var(--serif); color: var(--ink); letter-spacing: -.04em; }
+.rules { margin-top: 14px; height: 6px; border-top: 4px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.secnav { display: flex; gap: 18px; padding: 10px 0 14px; font-size: 13px; font-weight: 600; overflow-x: auto; }
+.secnav span { flex: none; white-space: nowrap; }
+.secnav span:first-child { color: var(--brand); }
+.lead { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; padding: 4px 24px 28px; }
+.kick { font-size: 12px; font-weight: 700; color: var(--brand); }
+.lead h3 { font: 800 30px/1.18 var(--serif); letter-spacing: -.035em; margin: 6px 0 8px; }
+.lead p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.lead aside { border-left: 1px solid var(--hair); padding-left: 20px; font-size: 13px; color: var(--ink-2); }
+.lead aside b { display: block; font: 700 13px/1.4 var(--sans); color: var(--ink); margin-bottom: 6px; }
+.foot { border-top: 4px solid var(--rule); padding: 22px 24px 26px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-end; }
+.foot p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+
+/* 보조 패널: 모바일 바·파비콘·검색 결과·공유 썸네일 */
+.extras { display: grid; grid-template-columns: 300px 1fr; gap: 18px; margin-top: 14px; }
+.panel { background: var(--paper); color: var(--ink); outline: 1px solid rgb(0 0 0 / .12); padding: 14px; }
+.panel h4 { margin: 0 0 10px; font: 700 11px/1 system-ui; color: var(--muted); letter-spacing: .02em; }
+.mbar { display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 14px; border: 1px solid var(--hair); }
+.mbar .ic { display: flex; gap: 14px; color: var(--muted); font-size: 16px; }
+.favs { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-top: 14px; }
+.favs small { display: block; text-align: center; font-size: 10px; color: var(--muted); margin-top: 4px; }
+.tab { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 7px 12px 7px 10px; border-radius: 8px 8px 0 0; background: #dedfe3; color: #1b1c20; font: 12px system-ui; }
+html[data-theme="dark"] .tab { background: #2b2d34; color: #e2e3e8; }
+.serp { margin-top: 14px; font-family: Arial, sans-serif; }
+.serp .site { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.serp .site em { display: block; font-style: normal; color: var(--muted); font-size: 11px; }
+.serp .t { color: #1a0dab; font-size: 18px; line-height: 1.3; margin-top: 4px; }
+html[data-theme="dark"] .serp .t { color: #99c3ff; }
+.serp .d { font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+.og { aspect-ratio: 2 / 1; background: var(--paper); color: var(--ink); border: 1px solid var(--hair); padding: 4.5% 5%; display: flex; flex-direction: column; justify-content: space-between; container-type: inline-size; }
+.og .top { display: flex; justify-content: space-between; align-items: flex-end; font-size: 2.2cqw; color: var(--muted); }
+.og .r { border-top: .9cqw solid var(--rule); border-bottom: .25cqw solid var(--rule); height: 1.6cqw; }
+.og h5 { margin: 0; font: 800 5.4cqw/1.2 var(--serif); letter-spacing: -.035em; }
+.og .bot { font-size: 2cqw; color: var(--muted); }
+
+/* ----- 제호 변형 ----- */
+.np { font-family: var(--serif); font-weight: 800; letter-spacing: -.045em; line-height: .95; white-space: nowrap; color: var(--ink); }
+.np .ai { color: var(--brand); }
+
+/* A. 계승 — 현행 제호 문법(AI 만 코발트) */
+.A .np-big { font-size: clamp(48px, 8.4vw, 104px); }
+
+/* B. 장부 — 작은 AI 키커 + 큰 Daybook, 아래 장부 괘선 */
+.B .np-big { display: inline-flex; align-items: flex-start; gap: .12em; font-size: clamp(52px, 9vw, 112px); }
+.B .np-big .ai { font: 800 .2em/1 var(--sans); letter-spacing: .08em; margin-top: .3em; padding: .28em .35em .24em; border: .08em solid var(--brand); }
+.B .ledger { margin-top: 8px; display: grid; grid-template-columns: 7ch 1fr 7ch; gap: 0 10px; font: 600 11px/1 var(--sans); color: var(--muted); letter-spacing: .04em; }
+.B .ledger span { padding: 6px 0; border-top: 1px solid var(--hair); }
+.B .ledger span:nth-child(2) { text-align: center; }
+.B .ledger span:last-child { text-align: right; }
+
+/* C. 낙관 — AI 를 도장(사각 인장)으로, Daybook 은 세리프 */
+.seal { display: inline-grid; place-items: center; background: var(--brand); color: var(--paper); font-family: var(--sans); font-weight: 800; letter-spacing: -.02em; line-height: 1; border-radius: .08em; }
+html[data-theme="dark"] .seal { color: #0f1118; }
+.C .np-big { display: inline-flex; align-items: center; gap: .16em; font-size: clamp(48px, 8.4vw, 104px); }
+.C .np-big .seal { font-size: .44em; width: 2.05em; height: 2.05em; }
+
+/* 파비콘 */
+.fav { display: grid; place-items: center; background: #141519; color: #f4f4f1; font: 800 0/1 var(--serif); position: relative; }
+.fav.d::after { content: ""; position: absolute; width: 18%; height: 18%; right: 6%; bottom: 14%; border-radius: 50%; background: #93a3ff; }
+.fav.d span { font-size: inherit; }
+.fav.seal-f { background: #2140e8; color: #fff; font-family: var(--sans); letter-spacing: -.03em; border-radius: 12%; }
+
+@media (max-width: 760px) {
+  .lead { grid-template-columns: 1fr; }
+  .lead aside { border-left: 0; padding-left: 0; border-top: 1px solid var(--hair); padding-top: 12px; }
+  .ear { border-left: 0; padding-left: 0; }
+  .extras { grid-template-columns: 1fr; }
+  .hdr, .mast, .lead, .foot { padding-left: 16px; padding-right: 16px; }
+  .folio .r { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>AI Daybook · 브랜드 시안</b>
+  <span class="seg" role="group" aria-label="테마">
+    <button type="button" data-theme-btn="light" aria-pressed="true">라이트</button>
+    <button type="button" data-theme-btn="dark" aria-pressed="false">다크</button>
+  </span>
+  <span>지면 레이아웃·토큰은 그대로, 제호·파비콘·공유 썸네일만 바뀝니다.</span>
+</div>
+
+<div class="intro">
+  <h1>AI Daybook — 제호 시안 3종</h1>
+  <p>세 시안 모두 DESIGN.md v2.1 문법(뉴스프린트 종이·잉크·코발트 강조 하나·굵은 괘선)을 지킵니다. 차이는 "AI"를 어떻게 세우느냐입니다. 각 시안 아래에 모바일 상단 바, 파비콘(브라우저 탭·검색 결과), 공유 썸네일을 함께 놓았습니다. 검색 결과에서는 파비콘과 사이트 이름이 제목 위에 함께 보이므로, 작은 크기에서 알아볼 수 있는지가 SEO 클릭률에도 영향을 줍니다.</p>
+</div>
+
+<!-- 시안 템플릿 -->
+<template id="tpl">
+  <div class="page">
+    <header class="hdr"><span data-slot="wm-sm"></span><nav><a class="on" href="#">오늘의 지면</a><a href="#">검색</a></nav></header>
+    <section class="mast">
+      <div class="folio"><span>2026년 11월 3일 화요일</span><span>제140호</span><span class="r">매일 06:00 KST 발행</span></div>
+      <div class="np-row"><div data-slot="wm-big"></div><div class="ear">이번 호<b>31건</b>매체 18곳 · 뉴스 24 · 저장소 3 · 모델 2 · 논문 2</div></div>
+      <div data-slot="ledger"></div>
+      <div class="rules"></div>
+      <nav class="secnav"><span>1면</span><span>LLM</span><span>에이전트</span><span>Physical AI</span><span>오픈소스·도구</span><span>연구·논문</span><span>산업·정책</span></nav>
+    </section>
+    <section class="lead">
+      <div><span class="kick">에이전트</span><h3>딥시크, 코딩 작업 자동화하는 슈퍼 에이전트 공개</h3><p>저장소 단위 작업을 계획·실행·검증까지 혼자 처리하는 에이전트를 오픈 웨이트로 내놨다.</p></div>
+      <aside><b>오늘의 세 줄</b>1. 딥시크가 코딩 슈퍼 에이전트를 공개했다.<br />2. 엔비디아가 휴머노이드용 새 VLA 모델을 냈다.<br />3. EU가 범용 AI 행동강령 2차 초안을 발표했다.</aside>
+    </section>
+    <footer class="foot"><div><span data-slot="wm-foot"></span><p>세계와 한국의 AI 소식을 매일 아침, 한국어로 요약해 전합니다.</p></div><p>누적 방문 1,234회</p></footer>
+  </div>
+  <div class="extras">
+    <div class="panel">
+      <h4>모바일 상단 바 · 파비콘</h4>
+      <div class="mbar"><span data-slot="wm-m"></span><span class="ic">⌕ ☾</span></div>
+      <div class="favs" data-slot="favs"></div>
+      <div class="tab" data-slot="tab"></div>
+    </div>
+    <div class="panel">
+      <h4>검색 결과(구글) · 공유 썸네일(카카오톡·X, 2:1)</h4>
+      <div class="serp"><div class="site" data-slot="serp-site"></div><div class="t">AI Daybook — 오늘의 AI 뉴스 요약 · Daily AI News Briefing</div><div class="d">글로벌·한국 AI 뉴스·오픈소스·모델·논문을 매일 아침 한국어로 요약하는 데일리 브리핑. Daily AI news, open source, models and papers…</div></div>
+      <div style="margin-top:14px" class="og"><div class="top"><span data-slot="og-wm"></span><span>11월 3일(화) 제140호</span></div><div class="r"></div><h5>딥시크, 코딩 작업 자동화하는 슈퍼 에이전트 공개</h5><div class="bot">에이전트 · 이번 호 31건</div></div>
+    </div>
+  </div>
+</template>
+
+<section class="opt A" data-variant="A">
+  <div class="opt-head"><span class="tag rec">A · 채택(2026-11-03)</span><h2>계승 — <span style="color:#2140e8">AI</span> Daybook</h2><p>지금 배포본에 넣은 형태입니다. 현행 "Daily AI Brief" 제호 문법(세리프 800, "AI"만 코발트)을 그대로 옮겨 바뀌는 것이 가장 적습니다. 파비콘은 기존 "D."를 유지합니다(Daybook의 D). 다만 "D."만 보고 AI Daybook을 떠올리기는 어렵습니다.</p></div>
+</section>
+
+<section class="opt B" data-variant="B">
+  <div class="opt-head"><span class="tag">B</span><h2>장부 — 작은 AI 라벨 + 큰 Daybook</h2><p>"Daybook(일지·장부)"의 뜻을 살렸습니다. Daybook을 크게 세우고 "AI"는 코발트 테두리 라벨로 붙였으며, 제호 아래 장부 괘선에 권·호·날짜를 적습니다. 가장 신문답고 고급스럽지만, 작은 크기(헤더·모바일)에서는 "AI"가 잘 읽히지 않습니다.</p></div>
+</section>
+
+<section class="opt C" data-variant="C">
+  <div class="opt-head"><span class="tag">C</span><h2>낙관 — 도장 속 AI + Daybook</h2><p>"AI"를 동양 서화의 낙관(사각 인장)처럼 코발트 도장에 넣었습니다. 한국에서 만든 매체라는 신호를 해외 독자에게도 말없이 전하고, 도장 하나가 그대로 파비콘·앱 아이콘이 돼 16px에서도 알아볼 수 있습니다. 검색 결과와 브라우저 탭에서 가장 눈에 띕니다. 예외가 하나 있습니다. DESIGN.md는 코발트로 면을 채우지 않는다고 정해 두었는데, 로고에 한해 허용하는 조항이 필요합니다.</p></div>
+</section>
+
+<script>
+const wm = {
+  A: (s, cls = "") => `<span class="np ${cls}" style="font-size:${s}px"><span class="ai">AI</span> Daybook</span>`,
+  B: (s, cls = "") => `<span class="np ${cls}" style="font-size:${s}px;display:inline-flex;align-items:flex-start;gap:.12em"><span class="ai" style="font:800 .36em/1 var(--sans);letter-spacing:.06em;margin-top:.12em;padding:.2em .28em;border:.07em solid var(--brand)">AI</span>Daybook</span>`,
+  C: (s, cls = "") => `<span class="np ${cls}" style="font-size:${s}px;display:inline-flex;align-items:center;gap:.16em"><span class="seal" style="font-size:.44em;width:2.05em;height:2.05em">AI</span>Daybook</span>`,
+};
+const big = {
+  A: `<h2 class="np np-big" style="margin:0"><span class="ai">AI</span> Daybook</h2>`,
+  B: `<h2 class="np np-big" style="margin:0"><span class="ai">AI</span>Daybook</h2>`,
+  C: `<h2 class="np np-big" style="margin:0"><span class="seal">AI</span>Daybook</h2>`,
+};
+const fav = {
+  A: (n) => `<div><div class="fav d" style="width:${n}px;height:${n}px;font-size:${n * 0.72}px"><span>D</span></div><small>${n}px</small></div>`,
+  B: (n) => `<div><div class="fav d" style="width:${n}px;height:${n}px;font-size:${n * 0.72}px"><span>D</span></div><small>${n}px</small></div>`,
+  C: (n) => `<div><div class="fav seal-f" style="width:${n}px;height:${n}px;font-size:${n * 0.5}px">AI</div><small>${n}px</small></div>`,
+};
+const tpl = document.getElementById("tpl");
+document.querySelectorAll("[data-variant]").forEach((sec) => {
+  const v = sec.dataset.variant;
+  const node = tpl.content.cloneNode(true);
+  const set = (slot, html) => node.querySelectorAll(`[data-slot="${slot}"]`).forEach((el) => (el.innerHTML = html));
+  set("wm-sm", wm[v](20));
+  set("wm-big", big[v]);
+  set("wm-foot", wm[v](34));
+  set("wm-m", wm[v](19));
+  set("og-wm", wm[v](22).replace("font-size:22px", "font-size:3.4cqw"));
+  set("favs", [16, 32, 48, 96].map((n) => fav[v](n)).join(""));
+  set("tab", `${fav[v](16).replace(/<small>.*<\/small>/, "")} AI Daybook — 오늘의 AI 뉴스…`);
+  set("serp-site", `${fav[v](26).replace(/<small>.*<\/small>/, "")}<span>AI Daybook<em>sguys99.github.io › global-ai-news</em></span>`);
+  set("ledger", v === "B" ? `<div class="ledger"><span>VOL. 1</span><span>THE DAILY AI LEDGER · 2026.11.03</span><span>NO. 140</span></div>` : "");
+  sec.appendChild(node);
+});
+document.querySelectorAll("[data-theme-btn]").forEach((b) =>
+  b.addEventListener("click", () => {
+    document.documentElement.dataset.theme = b.dataset.themeBtn;
+    document.querySelectorAll("[data-theme-btn]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }),
+);
+</script>
+</body>
+</html>

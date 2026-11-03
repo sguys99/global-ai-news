@@ -17,9 +17,13 @@ import type { EditionInfo } from "@/lib/db";
 import type { Edition, IssueBriefLine } from "@/lib/edition";
 import { formatMonthDay, kstDateKey } from "@/lib/labels";
 
-export const SITE_NAME = "Daily AI Brief";
+export const SITE_NAME = "AI Daybook";
+/** 한국어 브랜드 표기 — 검색엔진 대체 이름(WebSite alternateName). */
+export const SITE_NAME_KO = "AI 데이북";
+/** 홈 <title>(검색 결과 제목): 브랜드 + 한국어·영어 검색어 — 한국·글로벌 동시 타게팅. */
+export const SITE_TITLE = `${SITE_NAME} — 오늘의 AI 뉴스 요약 · Daily AI News Briefing`;
 export const SITE_DESCRIPTION =
-  "글로벌·한국 AI/IT 뉴스를 매일 한국어 요약으로 제공하는 데일리 브리핑";
+  "글로벌·한국 AI 뉴스·오픈소스·모델·논문을 매일 아침 한국어로 요약하는 데일리 브리핑. Daily AI news, open source, models and papers, summarized every morning.";
 /** 소개 문구 — 푸터·기본 공유 썸네일(og/default). 마스트헤드 제호 옆 자리는 이번 호 통계(귀)가 쓴다. */
 export const SITE_TAGLINE = "세계와 한국의 AI 소식을 매일 아침, 한국어로 요약해 전합니다.";
 
@@ -34,6 +38,16 @@ export const GOATCOUNTER_URL = "https://sguys99.goatcounter.com";
 
 /** 푸터 누적 방문 표시 하한 — 이보다 적으면 숨긴다(작은 숫자가 공개되면 오히려 신뢰를 깎는다). */
 export const VISITOR_COUNT_MIN = 100;
+
+/**
+ * 검색엔진 소유 확인 — Google Search Console·네이버 서치어드바이저 "HTML 태그" 방식의 content 값.
+ * 빈 값이면 태그를 넣지 않는다(layout metadata.verification).
+ */
+export const GOOGLE_SITE_VERIFICATION = "";
+export const NAVER_SITE_VERIFICATION = "";
+
+/** RSS 피드 경로(basePath 제외, src/app/feed.xml) — 네이버 서치어드바이저 제출·구독용. */
+export const FEED_PATH = "/feed.xml";
 
 /** 2:1 — 카카오톡이 크롭 없이 쓰는 비율이자 X(트위터) large card 비율. */
 export const OG_IMAGE_SIZE = { width: 1200, height: 600 } as const;
@@ -84,9 +98,12 @@ export interface ShareOptions {
   article?: { publishedTime: string; section?: string; tags?: string[] };
 }
 
+type ShareMetadata = Pick<Metadata, "openGraph" | "twitter" | "alternates">;
+
 /**
- * 페이지별 openGraph·twitter 메타. Next 메타데이터는 최상위 키 단위로 얕게 병합되어
- * 페이지가 openGraph 를 정의하면 레이아웃 값이 통째로 대체되므로 공통 필드를 매번 채운다.
+ * 페이지별 openGraph·twitter·alternates 메타. Next 메타데이터는 최상위 키 단위로 얕게 병합되어
+ * 페이지가 openGraph·alternates 를 정의하면 레이아웃 값이 통째로 대체되므로 공통 필드를 매번 채운다.
+ * canonical = og:url 과 같은 경로(필터 쿼리 `?category=` 등은 정규 주소로 모인다), RSS 링크는 모든 페이지에.
  * 상대 URL은 레이아웃의 metadataBase(SITE_URL) 기준으로 절대화된다.
  */
 export function shareMetadata({
@@ -95,7 +112,7 @@ export function shareMetadata({
   path,
   image = DEFAULT_IMAGE,
   article,
-}: ShareOptions): Pick<Metadata, "openGraph" | "twitter"> {
+}: ShareOptions): ShareMetadata {
   const imageUrl = image.version
     ? `${image.path}?v=${encodeURIComponent(image.version)}`
     : image.path;
@@ -112,6 +129,10 @@ export function shareMetadata({
       ? { ...common, type: "article", ...article }
       : { ...common, type: "website" },
     twitter: { card: "summary_large_image", title, description, images: [imageUrl] },
+    alternates: {
+      canonical: path,
+      types: { "application/rss+xml": [{ url: FEED_PATH, title: SITE_NAME }] },
+    },
   };
 }
 
@@ -157,7 +178,7 @@ export function editionMetadata(
   info: EditionInfo,
   path: string,
   brief: readonly IssueBriefLine[] = [],
-): Pick<Metadata, "openGraph" | "twitter"> {
+): ShareMetadata {
   const { title, description, version } = editionShare(edition, info, brief);
   if (!edition.lead || !info.publishedAt) return shareMetadata({ title, description, path });
   const date = kstDateKey(info.publishedAt);

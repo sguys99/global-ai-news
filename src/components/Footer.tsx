@@ -16,7 +16,7 @@ export function Footer() {
       <div className="mx-auto grid max-w-[1240px] gap-6 px-4 pt-7 pb-10 md:grid-cols-[1fr_auto] md:items-end md:px-8">
         <div className="flex flex-col gap-2">
           <span className="font-serif text-[2.5rem] leading-none font-extrabold tracking-[-0.045em]">
-            Daily <span className="text-brand">AI</span> Brief
+            <span className="text-brand">AI</span> Daybook
           </span>
           <p className="text-caption text-foreground-soft max-w-md">{SITE_TAGLINE}</p>
           <p className="text-meta text-muted-foreground max-w-md">

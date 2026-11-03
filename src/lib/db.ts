@@ -708,6 +708,18 @@ export function getFollowUpThread(
   }));
 }
 
+/** 사이트맵 항목: 공개 기사 id + 수집 시각(ISO8601 UTC — 우리 페이지가 생긴 시각, 사이트맵 lastmod). */
+export function getSitemapArticles(
+  conn: DatabaseType = getDb(),
+): { id: number; collectedAt: string }[] {
+  return conn
+    .prepare(
+      `SELECT a.id, strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at) AS collectedAt
+         FROM articles a WHERE ${PUBLISHED} ORDER BY a.id`,
+    )
+    .all() as { id: number; collectedAt: string }[];
+}
+
 /**
  * 전 기사 id 열거(readonly). 정적 export의 `generateStaticParams`에서
  * 상세 페이지 전수 사전 생성용으로만 쓴다(정렬 불필요).

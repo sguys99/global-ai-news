@@ -51,7 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!data) return {};
   const { ref, edition, brief } = data;
   return {
-    title: `${formatLongDate(ref.publishedAt)} 제${ref.issueNo}호 — ${SITE_NAME}`,
+    title: `${formatLongDate(ref.publishedAt)} AI 뉴스 브리핑 제${ref.issueNo}호 — ${SITE_NAME}`,
     ...editionMetadata(edition, ref, editionPath(ref.date), brief),
   };
 }

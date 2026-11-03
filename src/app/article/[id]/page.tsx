@@ -10,6 +10,7 @@ import {
   TrendBar,
 } from "@/components/ArticleMeta";
 import { FollowUpThread } from "@/components/FollowUpThread";
+import { JsonLd } from "@/components/JsonLd";
 import { StoryEntry } from "@/components/Story";
 import {
   getAllArticleIds,
@@ -19,6 +20,7 @@ import {
   getLatestPublishedAt,
 } from "@/lib/db";
 import { categoryLabel, formatDate, shortSourceName } from "@/lib/labels";
+import { articleJsonLd } from "@/lib/seo";
 import {
   SITE_DESCRIPTION,
   SITE_NAME,
@@ -26,6 +28,7 @@ import {
   ogArticleImagePath,
   shareMetadata,
 } from "@/lib/site";
+import type { ArticleCard } from "@/lib/types";
 
 /** 정적 export: 전 기사 상세를 빌드타임에 전수 사전 생성한다. */
 export function generateStaticParams() {
@@ -34,6 +37,13 @@ export function generateStaticParams() {
 
 /** 목록 밖 id는 산출물에 없어 정적 404(generateStaticParams로만 생성). */
 export const dynamicParams = false;
+
+/** 공유·구조화 데이터 이미지: 최근 기사만 전용 썸네일(og/article/[file]), 그 밖은 undefined(기본 썸네일). */
+function articleThumbnail(article: ArticleCard): string | undefined {
+  return hasArticleThumbnail(article.publishedAt, getLatestPublishedAt())
+    ? ogArticleImagePath(article.id)
+    : undefined;
+}
 
 export async function generateMetadata({
   params,
@@ -45,6 +55,7 @@ export async function generateMetadata({
   if (!article) return {};
   const title = article.titleKo || article.titleOriginal;
   const description = article.summaryKo || SITE_DESCRIPTION;
+  const thumbnail = articleThumbnail(article);
   return {
     title: `${title} — ${SITE_NAME}`,
     description: article.summaryKo || undefined,
@@ -52,10 +63,7 @@ export async function generateMetadata({
       title,
       description,
       path: `/article/${article.id}/`,
-      // 최근 기사만 전용 썸네일(og/article/[file]), 그 밖은 기본 썸네일.
-      image: hasArticleThumbnail(article.publishedAt, getLatestPublishedAt())
-        ? { path: ogArticleImagePath(article.id), alt: title }
-        : undefined,
+      image: thumbnail ? { path: thumbnail, alt: title } : undefined,
       article: {
         publishedTime: article.publishedAt,
         section: categoryLabel(article.category) || undefined,
@@ -84,6 +92,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
 
   return (
     <main className="mx-auto flex max-w-[720px] flex-col px-4 pt-2 pb-32 md:px-6 md:pt-10 md:pb-20">
+      <JsonLd data={articleJsonLd(article, articleThumbnail(article))} />
       <Link
         href="/"
         className="text-caption text-muted-foreground hover:text-foreground focus-visible:ring-ring bg-background/90 border-border sticky top-13 z-10 -mx-4 inline-flex items-center gap-1.5 border-b px-4 py-3 font-medium backdrop-blur-md outline-none focus-visible:ring-2 md:static md:mx-0 md:w-fit md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"

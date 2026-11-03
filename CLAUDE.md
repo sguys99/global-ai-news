@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-**Daily AI Brief** — 글로벌·한국의 AI/IT 뉴스·오픈소스·모델·논문을 매일 1회 자동 수집하고 LLM으로 한국어 요약·분류·중요도 평가하여, 매일 발행되는 한 호(號)의 편집 지면으로 제공하는, 토큰 비용을 최소화한 큐레이션 웹서비스입니다.
+**AI Daybook**(한국어 표기 "AI 데이북", 2026-11 구 Daily AI Brief에서 이름 변경) — 글로벌·한국의 AI/IT 뉴스·오픈소스·모델·논문을 매일 1회 자동 수집하고 LLM으로 한국어 요약·분류·중요도 평가하여, 매일 발행되는 한 호(號)의 편집 지면으로 제공하는, 토큰 비용을 최소화한 큐레이션 웹서비스입니다.
 
 운영비 ≈ 0을 목표로 **SQLite 파일 DB + GitHub Actions cron + GitHub Pages 정적 배포** 위에서 동작하며, LLM이 하루치 후보에서 35건 이하만 골라(같은 사건 묶기) 묶음 가공하고 Message Batches API(50% 할인)로 보내 1회 수집 비용을 $0.1 이하로 묶습니다.
 
-- 요구사항 원천: [docs/PRD.md](docs/PRD.md) (Daily AI Brief PRD — v1.1에서 분야·형식·1면 반영)
+- 요구사항 원천: [docs/PRD.md](docs/PRD.md) (구 Daily AI Brief PRD — v1.1에서 분야·형식·1면 반영)
 - 개발 계획·진행 현황: [docs/WORK-PLAN.md](docs/WORK-PLAN.md)
 - 배포 전환: [docs/PRD-github-pages.md](docs/PRD-github-pages.md) · [docs/WORK-PLAN-github-pages.md](docs/WORK-PLAN-github-pages.md) (Phase 0~5 완료)
 - 콘텐츠·1면 개편: [docs/contents-upgrade-plan.md](docs/contents-upgrade-plan.md) (분야 6개·형식 축·호 단위 1면·소스 확장·선별 개편 결정 기록)
@@ -44,6 +44,8 @@
 │   │   ├── search/page.tsx       # 검색(/search) — 정적 셸 + SearchClient
 │   │   ├── edition/[date]/page.tsx # 호 고정 링크(/edition/YYYY-MM-DD) — 그날 수집분(호) 지면 SSG
 │   │   ├── og/                   # 공유 썸네일(og:image) — 빌드타임 PNG: edition/<날짜>·article/<id>(최근 기사만)·default
+│   │   ├── sitemap.ts            # 사이트맵(/sitemap.xml) — 홈·검색·호 전체·기사 전체, 빌드타임 정적
+│   │   ├── feed.xml/route.ts     # RSS(/feed.xml) — 최신 호 기준 3일 수집분 60건, 빌드타임 정적
 │   │   ├── admin/                # 운영 콘솔 — 로컬 전용(page.local.tsx, login/page.local.tsx)
 │   │   └── api/                  # Route Handler — 로컬 전용(route.local.ts)
 │   │       ├── health/
@@ -67,6 +69,7 @@
 │   │   ├── SearchInput.tsx       # 라이브 검색 입력 (디바운스)
 │   │   ├── Analytics.tsx         # 방문 집계(GoatCounter count.js, 쿠키 없음) — 경로 전환마다 직접 집계
 │   │   ├── VisitorCount.tsx      # 푸터 "누적 방문 N회"(GoatCounter TOTAL.json, VISITOR_COUNT_MIN 미만이면 숨김)
+│   │   ├── JsonLd.tsx            # 구조화 데이터(JSON-LD) 스크립트 — 홈 WebSite·상세 NewsArticle
 │   │   ├── mobile/               # 모바일 앱 셸(MobileTopBar·BottomTabBar·FilterSheet)
 │   │   ├── admin/                # Admin 전용 컴포넌트 (KpiPanel·SourceHealthPanel·SourceManager 등)
 │   │   └── ui/                   # shadcn/ui 프리미티브
@@ -81,7 +84,8 @@
 │   │   ├── feedFilter.ts         # 클라 필터·정렬 + URL 옵션 파싱(구 분야값 URL 호환)
 │   │   ├── feedIndex.ts          # 홈 색인 분할: IndexCard 변환·첫 페이지/전체 합치기·feed-index.json fetch(1회 캐시)
 │   │   ├── searchIndex.ts        # FlexSearch 문서 빌드·질의
-│   │   ├── site.ts               # 사이트 정체성·공유 메타(OG/카카오톡 미리보기) 단일 출처
+│   │   ├── site.ts               # 사이트 정체성(이름·검색 제목·설명)·공유 메타(OG/카카오톡)·canonical·검색엔진 소유 확인 값 단일 출처
+│   │   ├── seo.ts                # 사이트맵·RSS·JSON-LD 빌더(순수 함수)
 │   │   ├── ogImage.tsx           # 공유 썸네일 렌더러(next/og + Google Fonts 정적 TTF)
 │   │   ├── paths.ts              # 프로젝트 경로 상수 (DB_PATH·EVAL_DIR 등)
 │   │   ├── auth.ts               # HMAC 서명 쿠키 인증
@@ -174,6 +178,7 @@
 | `/search`                                                           | 검색                      | 정적 셸 + 클라이언트 검색 · 공개 | ✅           |
 | `/edition/[date]`                                                   | 호 고정 링크(지난 호)     | SSG(generateStaticParams) · 공개 | ✅           |
 | `/og/edition/[date].png`, `/og/article/[id].png`, `/og/default.png` | 공유 썸네일(og:image)     | 빌드타임 정적 PNG · 공개         | ✅           |
+| `/sitemap.xml`, `/feed.xml`                                         | 사이트맵 / RSS            | 빌드타임 정적 XML · 공개         | ✅           |
 | `/admin`                                                            | 운영 콘솔                 | 로컬 전용(`next dev`) · 인증     | ❌ 배포 제외 |
 | `/api/admin/sources`, `/api/admin/collect`                          | 소스 커밋 / 재수집 트리거 | 로컬 전용                        | ❌ 배포 제외 |
 | `/api/health`                                                       | 헬스체크                  | 로컬 전용                        | ❌ 배포 제외 |
