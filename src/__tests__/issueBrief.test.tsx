@@ -166,7 +166,7 @@ describe("editionShare — 세 줄 요약을 공유 설명으로", () => {
     const share = editionShare({ lead, seconds: [sub] }, info, brief);
     expect(share.title).toBe("리드 기사");
     expect(share.description).toBe(
-      "Daily AI Brief 10월 30일(금) 제42호 — 서브를 요약한 줄 · 셋째 줄",
+      "AI Daybook 10월 30일(금) 제42호 — 서브를 요약한 줄 · 셋째 줄",
     );
   });
 
@@ -174,7 +174,7 @@ describe("editionShare — 세 줄 요약을 공유 설명으로", () => {
     const lead = card({ titleKo: "리드 기사" });
     const sub = card({ titleKo: "서브 기사" });
     const plain = editionShare({ lead, seconds: [sub] }, info);
-    expect(plain.description).toBe("Daily AI Brief 10월 30일(금) 제42호 — 서브 기사");
+    expect(plain.description).toBe("AI Daybook 10월 30일(금) 제42호 — 서브 기사");
     expect(editionShare({ lead, seconds: [sub] }, info, [line(lead.id)]).description).toBe(
       plain.description,
     );
@@ -186,8 +186,8 @@ describe("editionShare — 세 줄 요약을 공유 설명으로", () => {
       line(lead.id),
       line(77, "둘째 줄 요약"),
     ]);
-    expect(meta.openGraph?.description).toBe("Daily AI Brief 10월 30일(금) 제42호 — 둘째 줄 요약");
-    expect(meta.twitter?.description).toBe("Daily AI Brief 10월 30일(금) 제42호 — 둘째 줄 요약");
+    expect(meta.openGraph?.description).toBe("AI Daybook 10월 30일(금) 제42호 — 둘째 줄 요약");
+    expect(meta.twitter?.description).toBe("AI Daybook 10월 30일(금) 제42호 — 둘째 줄 요약");
   });
 });
 

@@ -123,7 +123,7 @@ layout:
   tabbar-h: 56px
 ---
 
-# Daily AI Brief — DESIGN v2
+# AI Daybook — DESIGN v2 (2026-11 이름 변경: 구 Daily AI Brief)
 
 > **v2.1 (2026-10-30)** — 콘텐츠 개편(Phase 6) 반영: 분야 6종 개편(PHY·OSS 신설, DEV·OPS 폐지), 형식 배지, 1면 11건(리드·서브·브리핑·레이더) + 지금 화제 5·'이 호의 지면', 마스트헤드 '귀'·발행 지연 줄, `cn()` 글자 크기 토큰 수정. 시안 [docs/design/mockups/front-v3.html](docs/design/mockups/front-v3.html), 결정 기록 [docs/contents-upgrade-plan.md](docs/contents-upgrade-plan.md) Phase 6.
 > **SSOT:** 토큰의 실제 값은 [src/app/globals.css](src/app/globals.css)가 단일 출처이며 본 문서는 그것을 서술한다.
@@ -160,7 +160,7 @@ v1 화면에 대한 피드백(2026-10-04)은 네 가지로 수렴한다.
 ┌ Masthead ──────────────────────────────────────────────────┐
 │ 폴리오: 발행일 · 제N호 · 매일 06:00 KST 발행 · 공유             │
 │ (지연 시) 발행 전 / 발행 지연 안내 줄 — 헤어라인 사이 한 줄      │
-│ 제호 Daily AI Brief              │ 귀: 이번 호 N건 · 매체 M곳   │
+│ 제호 AI Daybook                  │ 귀: 이번 호 N건 · 매체 M곳   │
 │                                  │     뉴스 22 · 저장소 3 …     │
 │ 섹션 내비: 1면 · LLM · 에이전트 · … · 전체 기사                  │
 ├ 1면 #front (8) ─────────────────────┬ 사이드바 (4) ───────────┤

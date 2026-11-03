@@ -80,7 +80,7 @@ async function render(node: React.ReactElement): Promise<ImageResponse> {
 
 const headline = (a: ArticleCard) => a.titleKo || a.titleOriginal;
 
-/** 제호 "Daily AI Brief" — AI 만 코발트(Masthead 와 동일). */
+/** 제호 "AI Daybook" — AI 만 코발트(Masthead 와 동일). */
 function Nameplate({ size }: { size: number }) {
   return (
     <div
@@ -94,9 +94,8 @@ function Nameplate({ size }: { size: number }) {
         letterSpacing: size * -0.03,
       }}
     >
-      <span>Daily</span>
       <span style={{ color: BRAND }}>AI</span>
-      <span>Brief</span>
+      <span>Daybook</span>
     </div>
   );
 }

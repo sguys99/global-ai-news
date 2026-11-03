@@ -77,7 +77,7 @@ export function Masthead({
 
       <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between md:gap-8">
         <h1 className="text-nameplate animate-rise font-serif font-extrabold whitespace-nowrap">
-          Daily <span className="text-brand">AI</span> Brief
+          <span className="text-brand">AI</span> Daybook
         </h1>
         <IssueEar stats={stats} />
       </div>

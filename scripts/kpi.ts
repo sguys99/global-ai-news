@@ -49,7 +49,7 @@ function row(label: string, value: string, target: string, pass: boolean | null)
 function main(): void {
   const k = getKpiSummary(days);
 
-  console.log(`\nDaily AI Brief — KPI (최근 ${k.days}일, 실행 ${k.runs}회)\n`);
+  console.log(`\nAI Daybook — KPI (최근 ${k.days}일, 실행 ${k.runs}회)\n`);
 
   if (k.runs === 0) {
     console.log("실행 이력이 없습니다. `npm run collect` 후 다시 확인하세요.\n");

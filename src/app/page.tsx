@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { FeedClient } from "@/components/FeedClient";
 import { FeedView } from "@/components/FeedView";
+import { JsonLd } from "@/components/JsonLd";
 import {
   getActiveTags,
   getFeed,
@@ -15,6 +16,7 @@ import {
 import { buildEdition, selectIssueBrief } from "@/lib/edition";
 import { INDEX_PAGE_SIZE, buildFeedIndex, feedIndexVersion } from "@/lib/feedIndex";
 import { issueDelayDays } from "@/lib/labels";
+import { websiteJsonLd } from "@/lib/seo";
 import { editionMetadata } from "@/lib/site";
 import { buildWeeklyRadar } from "@/lib/weeklyRadar";
 
@@ -54,10 +56,13 @@ export default function Home() {
    * 정적 HTML에 지면이 담기도록 한다(LCP·SEO). 기본 URL에선 fallback==클라 결과라 무깜빡임.
    */
   return (
-    <Suspense
-      fallback={<FeedView {...props} index={indexHead} indexTotal={indexTotal} options={{}} />}
-    >
-      <FeedClient {...props} {...index} />
-    </Suspense>
+    <>
+      <JsonLd data={websiteJsonLd()} />
+      <Suspense
+        fallback={<FeedView {...props} index={indexHead} indexTotal={indexTotal} options={{}} />}
+      >
+        <FeedClient {...props} {...index} />
+      </Suspense>
+    </>
   );
 }

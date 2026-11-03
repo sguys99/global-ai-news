@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Daily AI Brief 디자인 토큰 — DESIGN.md v2 "Edition" (에디토리얼 매거진).
+ * AI Daybook 디자인 토큰 — DESIGN.md v2 "Edition" (에디토리얼 매거진).
  * shadcn 변수 "이름"은 유지하고 "값"만 교체한다 → 기존 프리미티브 호환.
  * 핵심: 뉴스프린트 종이 + 잉크, 코발트 단일 강조(brand), 굵은 잉크 괘선(rule), 세리프 헤드라인.
  */

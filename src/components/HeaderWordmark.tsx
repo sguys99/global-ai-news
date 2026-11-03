@@ -46,7 +46,7 @@ export function HeaderWordmark({ className }: { className?: string }) {
   return (
     <Link
       href="/"
-      aria-label="Daily AI Brief 홈"
+      aria-label="AI Daybook 홈"
       tabIndex={visible ? undefined : -1}
       aria-hidden={visible ? undefined : true}
       className={cn(
@@ -56,7 +56,7 @@ export function HeaderWordmark({ className }: { className?: string }) {
         className,
       )}
     >
-      Daily <span className="text-brand">AI</span> Brief
+      <span className="text-brand">AI</span> Daybook
     </Link>
   );
 }

@@ -1,4 +1,4 @@
--- Daily AI Brief — SQLite 스키마 (PRD §5)
+-- AI Daybook — SQLite 스키마 (PRD §5)
 -- initDb.ts 가 이 파일을 읽어 db.exec() 한다.
 
 PRAGMA foreign_keys = ON;
