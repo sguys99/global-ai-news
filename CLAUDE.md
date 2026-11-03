@@ -8,6 +8,7 @@
 - 개발 계획·진행 현황: [docs/WORK-PLAN.md](docs/WORK-PLAN.md)
 - 배포 전환: [docs/PRD-github-pages.md](docs/PRD-github-pages.md) · [docs/WORK-PLAN-github-pages.md](docs/WORK-PLAN-github-pages.md) (Phase 0~5 완료)
 - 콘텐츠·1면 개편: [docs/contents-upgrade-plan.md](docs/contents-upgrade-plan.md) (분야 6개·형식 축·호 단위 1면·소스 확장·선별 개편 결정 기록)
+- 영어판: [docs/english-version-plan.md](docs/english-version-plan.md) (같은 호 영어 발행 `/en/`·Korea Desk·백필·다국어 구조·용량 대책·영어 SEO 단계 계획)
 - 디자인 토큰/원칙: [DESIGN.md](DESIGN.md) (v2.1)
 
 > **현재 구현 단계:** WORK-PLAN Phase 0~6, GitHub Pages 전환(클린 컷오버), 콘텐츠·1면 개편 Phase 1~6 완료, Phase 7 통합 검증 후 2026-10-31 배포(배포 후 3일 KPI 관찰은 11-03 예약 루틴이 기록), Phase 8 추가 아이디어(세 줄 요약·후속 보도·소스 헬스·주간 레이더·같은 사건 합치기·홈 페이로드·정리) 2026-11-01 배포. 상세 체크리스트는 각 계획 문서가 단일 출처입니다.
