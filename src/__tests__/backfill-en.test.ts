@@ -7,11 +7,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   applyBackfill,
   assertWithinBudget,
+  attentionOf,
   buildRequests,
   buildSystemPrompt,
   checkOutputs,
   englishCoverage,
   estimateRequestsCost,
+  exitCodeOf,
   formatConsoleReport,
   formatMarkdownSummary,
   glossaryStats,
@@ -591,5 +593,65 @@ describe("보고", () => {
       reason: "batch: no result",
     }));
     expect(formatMarkdownSummary(many)).toContain("<details><summary><b>누락</b> (12건)</summary>");
+  });
+
+  it("확인 필요: 누락·건너뛴 한국어 수정은 머리에 띄우고 --apply 면 exit 2, 기각만이면 0", () => {
+    const r = report();
+    const attention = attentionOf(r);
+    expect(attention).toHaveLength(1);
+    expect(attention[0]).toContain("영어 누락 1건");
+    expect(exitCodeOf(r)).toBe(2);
+    expect(formatMarkdownSummary(r)).toContain("**확인 필요**\n\n- 영어 누락 1건");
+    expect(formatConsoleReport(r)).toContain("확인 필요\n  ! 영어 누락 1건");
+
+    // 기각(#2)만 남으면 정상 종료 — 검사가 의도대로 동작한 결과다.
+    const onlyRejected = report();
+    onlyRejected.totals = { ...onlyRejected.totals!, missing: 0 };
+    expect(attentionOf(onlyRejected)).toEqual([]);
+    expect(exitCodeOf(onlyRejected)).toBe(0);
+    expect(formatMarkdownSummary(onlyRejected)).not.toContain("확인 필요");
+
+    const stale = {
+      ...onlyRejected,
+      koFixes: planKoFixes(db, [{ id: 1, field: "title_ko", from: "없는 문구", to: "x" }]).results,
+    };
+    expect(attentionOf(stale)[0]).toContain("한국어 수정 1건 건너뜀(#1 건너뜀(원문 없음))");
+    expect(exitCodeOf(stale)).toBe(2);
+  });
+
+  it("dry-run 은 확인할 것이 있어도 exit 0, 한국어 수정은 '적용 예정', 건수를 두 번 쓰지 않는다", () => {
+    const r: BackfillReport = {
+      ...report(),
+      mode: "dry-run",
+      totals: undefined,
+      usage: undefined,
+      articles: [],
+      estimate: { requests: 1, inputTokens: 1, outputTokens: 1, usd: 2, measured: false },
+    };
+    expect(attentionOf(r)[0]).toContain("예상 비용 $2.0000 이 상한 $1 을 넘습니다");
+    expect(exitCodeOf(r)).toBe(0);
+    const md = formatMarkdownSummary(r);
+    expect(md).toMatch(/^## 영어 백필 미리보기 \(dry-run\)/);
+    expect(md).toContain("**한국어 수정 1건 — 적용 예정 1**");
+    expect(md).toContain("#2 `title_ko` 적용 예정: «200억 원» → «20억 원»");
+    const many = { ...r, koreanWarnings: [{ id: 9, numbers: ["3"] }] };
+    expect(formatMarkdownSummary(many)).toContain(
+      "<details><summary><b>한국어 숫자 경고 1건 (게재 그대로, 검토용)</b></summary>",
+    );
+  });
+
+  it("호출 전 거부(aborted)는 exit 1, 제목·사유를 요약에 남긴다", () => {
+    const r: BackfillReport = {
+      ...report(),
+      totals: undefined,
+      usage: undefined,
+      articles: [],
+      aborted: "예상 비용 $2 이 상한 $1 을 넘습니다",
+    };
+    expect(exitCodeOf(r)).toBe(1);
+    const md = formatMarkdownSummary(r);
+    expect(md).toMatch(/^## 영어 백필 — 시작하지 않음/);
+    expect(md).toContain("**확인 필요**\n\n- 예상 비용 $2 이 상한 $1 을 넘습니다");
+    expect(md).toContain("적용 예정: «200억 원»");
   });
 });

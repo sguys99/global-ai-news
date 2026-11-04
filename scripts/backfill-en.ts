@@ -32,6 +32,12 @@
  *   --ko-fixes PATH    한국어 숫자 수정 목록(configs/backfill/ko-number-fixes.json 형식).
  *   --count-tokens     (dry-run) ANTHROPIC_API_KEY 가 있으면 무료 count_tokens 로 요청마다 입력 토큰을 잰다.
  * 환경변수 LLM_MODEL·LLM_USE_BATCH·BATCH_TIMEOUT_MIN 은 수집과 같은 뜻이다(BATCH_TIMEOUT_MIN 기본만 60분 — 요청이 많다).
+ *
+ * 종료 코드(.github/workflows/backfill-en.yml 이 잡 상태로 쓴다)
+ *   0  정상. dry-run 은 확인할 것(attentionOf)이 있어도 0 — 미리보기다. 영어 기각은 예상된 결과라 0.
+ *   1  오류·거부 — 옵션 오류, 비용 상한 초과, API 키 없음 등. 호출 전 거부는 DB 를 쓰지 않고 보고서·요약만 남긴다.
+ *   2  (--apply) DB 는 썼지만 확인할 것이 있다 — 누락(배치 실패·시간 초과, `--ids` 로 재시도)이나
+ *      적용되지 않은 한국어 수정(목록이 지금 DB 와 맞지 않음).
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -828,6 +834,8 @@ export interface BackfillReport {
   coverage: { kr: Coverage; other: Coverage };
   usage?: LlmUsage;
   notes: string[];
+  /** --apply 가 호출 전에 멈춘 사유(비용 상한·API 키 없음). 이때 DB 는 쓰지 않았다. */
+  aborted?: string;
 }
 
 export function emptyRejects(): Record<RejectReason, number> {
@@ -900,6 +908,41 @@ const KO_FIX_LABELS: Record<KoFixStatus, string> = {
 const pct = (n: number, d: number) => (d ? `${((n / d) * 100).toFixed(1)}%` : "-");
 const usd = (n: number) => `$${n.toFixed(4)}`;
 const short = (s: string, n = 70) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+
+/** 한국어 수정 중 적용되지 않은 것(이미 적용된 것은 제외 — 재실행). */
+const skippedKoFixes = (r: BackfillReport) =>
+  r.koFixes.filter((f) => f.status !== "applied" && f.status !== "already");
+
+/**
+ * 사람이 확인할 것 — Markdown 요약 머리에 띄우고, --apply 면 종료 코드 2(exitCodeOf).
+ * 영어 기각은 넣지 않는다(검사가 의도대로 동작한 결과 — 2-3 "100% − 기각").
+ */
+export function attentionOf(r: BackfillReport): string[] {
+  const out: string[] = [];
+  if (r.aborted) out.push(r.aborted);
+  else if (r.estimate.usd > r.options.maxCostUsd)
+    out.push(
+      `예상 비용 ${usd(r.estimate.usd)} 이 상한 $${r.options.maxCostUsd} 을 넘습니다 — --apply 는 시작하지 않습니다`,
+    );
+  if (r.totals?.missing)
+    out.push(`영어 누락 ${r.totals.missing}건(결과 없음) — 아래 재시도 명령으로 다시 돌리세요`);
+  const skipped = skippedKoFixes(r);
+  if (skipped.length)
+    out.push(
+      `한국어 수정 ${skipped.length}건 건너뜀(${skipped.map((f) => `#${f.id} ${KO_FIX_LABELS[f.status]}`).join(", ")}) — 수정 목록이 지금 DB 와 맞지 않습니다`,
+    );
+  const notFound = r.targets.skippedIds.filter((s) => s.reason !== "has-english");
+  if (notFound.length)
+    out.push(`--ids 중 게재 기사가 아닌 것 ${notFound.map((s) => `#${s.id}`).join(" ")}`);
+  return out;
+}
+
+/** 종료 코드(헤더 "종료 코드"). 호출 전 거부는 main 이 throw 해 1. */
+export function exitCodeOf(r: BackfillReport): 0 | 1 | 2 {
+  if (r.aborted) return 1;
+  if (r.mode !== "apply") return 0;
+  return attentionOf(r).length ? 2 : 0;
+}
 
 /** 보고서 → 터미널 보고문(reclassify 의 정렬 표 문법). */
 export function formatConsoleReport(r: BackfillReport): string {
@@ -992,16 +1035,19 @@ export function formatConsoleReport(r: BackfillReport): string {
     );
     row("비용", usd(u.costUsd));
   }
+
+  const attention = attentionOf(r);
+  if (attention.length) lines.push("", "확인 필요", ...attention.map((a) => `  ! ${a}`));
   return lines.join("\n");
 }
 
-/** id 목록을 Markdown 으로 — 길면 접는다. */
-function idList(title: string, items: string[], open = 10): string[] {
+/** id 목록을 Markdown 으로 — 길면 접는다. 제목에 이미 건수가 있으면 count=false. */
+function idList(title: string, items: string[], open = 10, count = true): string[] {
   if (items.length === 0) return [];
   const body = items.map((s) => `- ${s}`);
   if (items.length <= open) return [`**${title}**`, "", ...body, ""];
   return [
-    `<details><summary><b>${title}</b> (${items.length}건)</summary>`,
+    `<details><summary><b>${title}</b>${count ? ` (${items.length}건)` : ""}</summary>`,
     "",
     ...body,
     "",
@@ -1016,7 +1062,11 @@ const mdCell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
 export function formatMarkdownSummary(r: BackfillReport): string {
   const t = r.targets;
   const lines: string[] = [];
-  const title = r.mode === "apply" ? "영어 백필 결과" : "영어 백필 미리보기 (dry-run)";
+  const title = r.aborted
+    ? "영어 백필 — 시작하지 않음"
+    : r.mode === "apply"
+      ? "영어 백필 결과"
+      : "영어 백필 미리보기 (dry-run)";
   lines.push(`## ${title}`, "");
 
   const cost = r.usage
@@ -1034,6 +1084,11 @@ export function formatMarkdownSummary(r: BackfillReport): string {
     );
   }
   lines.push("");
+
+  const attention = attentionOf(r);
+  if (attention.length) {
+    lines.push("**확인 필요**", "", ...attention.map((a) => `- ${mdCell(a)}`), "");
+  }
 
   lines.push("| | 대상 | 영어 저장 | 보유율(게재 기사 전체) |", "|---|---:|---:|---:|");
   const byRegion = (kr: boolean) =>
@@ -1082,7 +1137,7 @@ export function formatMarkdownSummary(r: BackfillReport): string {
   );
   if (missing.length) {
     lines.push(
-      "재시도:",
+      "재시도 — Actions `backfill-en` 을 mode `apply`, ids 아래 목록으로 다시 실행하거나 로컬에서:",
       "",
       "```",
       `npm run db:backfill-en -- --apply --ids ${missing.map((a) => a.id).join(",")}`,
@@ -1091,22 +1146,33 @@ export function formatMarkdownSummary(r: BackfillReport): string {
     );
   }
   if (r.koFixes.length) {
+    // dry-run·거부된 실행은 쓰지 않았다 — "적용"이 아니라 "적용 예정".
+    const label = (s: KoFixStatus) =>
+      s === "applied" && (r.mode !== "apply" || r.aborted) ? "적용 예정" : KO_FIX_LABELS[s];
+    const counts = (Object.keys(KO_FIX_LABELS) as KoFixStatus[])
+      .map((s) => [s, r.koFixes.filter((f) => f.status === s).length] as const)
+      .filter(([, n]) => n > 0)
+      .map(([s, n]) => `${label(s)} ${n}`)
+      .join(" · ");
     lines.push(
       ...idList(
-        `한국어 수정 ${r.koFixes.filter((f) => f.status === "applied").length}/${r.koFixes.length}건 적용`,
+        `한국어 수정 ${r.koFixes.length}건 — ${counts}`,
         r.koFixes.map(
           (f) =>
-            `#${f.id} \`${f.field}\` ${KO_FIX_LABELS[f.status]}: «${mdCell(f.from)}» → «${mdCell(f.to)}»`,
+            `#${f.id} \`${f.field}\` ${label(f.status)}: «${mdCell(f.from)}» → «${mdCell(f.to)}»`,
         ),
+        10,
+        false,
       ),
     );
   }
   if (r.koreanWarnings.length) {
     lines.push(
       ...idList(
-        `한국어 숫자 경고 ${r.koreanWarnings.length}건`,
+        `한국어 숫자 경고 ${r.koreanWarnings.length}건 (게재 그대로, 검토용)`,
         r.koreanWarnings.map((w) => `#${w.id} ${mdCell(w.numbers.join(" · "))}`),
         0,
+        false,
       ),
     );
   }
@@ -1246,7 +1312,7 @@ async function countRequestTokens(
   return out;
 }
 
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   const args = parseArgs(process.argv.slice(2));
   const model = envString("LLM_MODEL", "claude-haiku-4-5");
   const useBatch = envFlag("LLM_USE_BATCH", true);
@@ -1335,19 +1401,26 @@ async function main(): Promise<void> {
       );
       finish();
       log(`dry-run — LLM 호출·DB 쓰기 없음. ${report.notes[0]}. 반영하려면 --apply`);
-      return;
+      return exitCodeOf(report);
     }
 
     if (rows.length === 0 && fixPlan.updated.size === 0) {
       finish();
       log("쓸 것이 없습니다(대상 0건·적용할 한국어 수정 0건).");
-      return;
+      return exitCodeOf(report);
     }
     if (rows.length > 0) {
-      if (!process.env.ANTHROPIC_API_KEY?.trim()) {
-        throw new Error(`ANTHROPIC_API_KEY 미설정 — ${rows.length}건을 만들 수 없습니다`);
+      // 호출 전 거부: DB 는 그대로 두고 보고서·요약만 남긴다(Actions 잡 요약에 사유가 보이게) → exit 1.
+      try {
+        if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+          throw new Error(`ANTHROPIC_API_KEY 미설정 — ${rows.length}건을 만들 수 없습니다`);
+        }
+        assertWithinBudget(estimate, args.maxCost);
+      } catch (err) {
+        report.aborted = (err as Error).message;
+        finish();
+        throw err;
       }
-      assertWithinBudget(estimate, args.maxCost);
     }
 
     const runner = new LlmRunner({
@@ -1382,6 +1455,9 @@ async function main(): Promise<void> {
     log(`영어 ${written.english}건 · 한국어 수정 ${written.korean}건 UPDATE`);
     report.coverage = englishCoverage(db, regionOf);
     finish();
+    const code = exitCodeOf(report);
+    if (code) log(`확인할 것이 있어 exit ${code}: ${attentionOf(report).join(" / ")}`);
+    return code;
   } finally {
     db.close();
   }
@@ -1413,7 +1489,7 @@ export function koreanWarningsOf(rows: BackfillRow[]): { id: number; numbers: st
 // tsx 로 직접 실행될 때만 동작. SDK 소켓이 이벤트 루프를 붙잡지 않도록 명시적으로 종료한다.
 if (import.meta.url === `file://${process.argv[1]}`) {
   main()
-    .then(() => process.exit())
+    .then((code) => process.exit(code))
     .catch((err) => {
       console.error(`[backfill-en] ${(err as Error).message}`);
       process.exit(1);

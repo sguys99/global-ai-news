@@ -1,0 +1,229 @@
+name: backfill-en
+
+# 지난 기사 영어 백필(docs/english-version-plan.md Phase 2-2) — 수동 실행(workflow_dispatch) 전용.
+# scripts/backfill-en.ts(npm run db:backfill-en)를 deploy/github-pages 의 data/app.db 에 돌린다.
+#   - dry-run(기본): LLM 호출·DB 쓰기 없이 대상 수·예상 비용·한국어 수정 미리보기를 잡 요약에 남긴다.
+#   - apply: Message Batch 1개로 영어를 만들고 data/app.db 를 커밋·푸시한 뒤 deploy.yml 을 dispatch 한다
+#     (빌트인 GITHUB_TOKEN 의 push 는 다른 워크플로를 트리거하지 못한다 — collect.yml 과 같은 이유).
+#
+# 일일 수집과 부딪히지 않게:
+#   - collect.yml 과 같은 concurrency 그룹이라 두 워크플로가 동시에 data/app.db 를 쓰지 않는다(대기, 취소 없음).
+#     잡이 시작될 때 checkout 하므로 앞선 수집 커밋 위에서 돈다 — 바이너리 DB 는 rebase 로 합칠 수 없어 이 순서가 중요하다.
+#   - 대기 중인 실행은 그룹당 1개뿐이라, 백필이 06:00 을 넘겨 돌면 외부 크론(06:00)의 수집이 06:47 schedule 백업에
+#     밀려 취소되고 그만큼 아침 발행이 늦는다. 그래서 apply 는 잡이 최대로 길어져도(timeout-minutes) 05:30 전에 끝나거나
+#     07:30 뒤에 시작할 때만 받는다(guard 스텝). dry-run 은 수 분이라 언제든 된다.
+#
+# 이어 받기가 없다: 배치를 기다리다 잡이 죽으면 비용만 나간다 → 타임아웃을 넉넉히 두고, 배치 id 를 로그에
+# 남기며(`[llm] batch msgbatch_… submitted`), 푸시가 실패하면 DB 를 아티팩트로 올린다.
+# 백필은 collection_runs.notes 를 쓰지 않는다 — 기각·누락 id 의 기록은 이 잡의 보고서 아티팩트뿐이다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run(미리보기, LLM·DB 쓰기 없음) | apply(영어 생성 → app.db 커밋 → 배포)"
+        type: choice
+        options: [dry-run, apply]
+        default: dry-run
+      ids:
+        description: "기사 id 쉼표 목록(재시도 — 보고서의 누락·기각 id). 비우면 영어 없는 게재 기사 전체"
+        type: string
+        required: false
+      limit:
+        description: "앞에서부터(id 순) N건만. 비우면 제한 없음"
+        type: string
+        required: false
+      since:
+        description: "그 호(YYYY-MM-DD, KST) 이후 기사만. 비우면 전체"
+        type: string
+        required: false
+      overwrite:
+        description: "ids 와 함께: 영어가 있어도 다시 만든다"
+        type: boolean
+        default: false
+      max_cost:
+        description: "예상 비용 상한 USD. 비우면 vars.BACKFILL_MAX_COST_USD → 스크립트 기본 $1"
+        type: string
+        required: false
+      ko_fixes:
+        description: "한국어 숫자 수정 목록(configs/backfill/ko-number-fixes.json)을 함께 적용(재실행 안전)"
+        type: boolean
+        default: true
+
+# collect.yml 과 같은 그룹 — 수집과 백필이 동시에 app.db 를 쓰지 않도록 직렬화(취소하지 않고 대기).
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+permissions:
+  contents: write # data/app.db 커밋/푸시 (빌트인 GITHUB_TOKEN)
+  actions: write # deploy.yml 을 workflow_dispatch 로 트리거
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    # 배치 대기 기본 60분(BATCH_TIMEOUT_MIN) + 취소 유예 2분 + 설치·결과 수신·커밋. 잡이 죽으면 낸 비용이 버려지므로
+    # 넉넉히 둔다. 이 값을 바꾸면 guard 스텝의 JOB_MAX_MIN 도 함께 고친다.
+    timeout-minutes: 100
+    env:
+      MODE: ${{ inputs.mode }}
+    steps:
+      - name: Guard — apply outside the morning collect window
+        # 06:00 KST 외부 크론 수집과 06:47 schedule 백업(collect.yml)이 05:30~07:30 KST 에 돈다. apply 가 이 창에
+        # 걸치면 수집이 concurrency 대기로 밀린다 → 잡 최대 길이(JOB_MAX_MIN)를 더해 창과 겹칠 수 있으면 바로 실패한다.
+        # 배치 대기가 잡 타임아웃을 넘으면 결과를 받기 전에 죽으므로 그것도 여기서 막는다.
+        env:
+          QUIET_START: "05:30" # KST
+          QUIET_END: "07:30" # KST
+          JOB_MAX_MIN: "100" # = timeout-minutes
+          BATCH_TIMEOUT_MIN: ${{ vars.BACKFILL_BATCH_TIMEOUT_MIN }}
+        run: |
+          now_hm=$(TZ=Asia/Seoul date +%H:%M)
+          echo "mode=${MODE} now=${now_hm} KST"
+          if [ "${MODE}" != "apply" ]; then
+            echo "dry-run — 시각 제한 없음"
+            exit 0
+          fi
+          batch_min=${BATCH_TIMEOUT_MIN:-60}
+          if [ $((batch_min + 15)) -gt "${JOB_MAX_MIN}" ]; then
+            echo "::error::BACKFILL_BATCH_TIMEOUT_MIN=${batch_min} 이 잡 타임아웃 ${JOB_MAX_MIN}분에 비해 깁니다(여유 15분 필요) — timeout-minutes 를 늘리세요."
+            exit 1
+          fi
+          to_min() { echo $((10#${1%:*} * 60 + 10#${1#*:})); }
+          now=$(to_min "${now_hm}")
+          start=$(to_min "${QUIET_START}")
+          end=$(to_min "${QUIET_END}")
+          # [start - JOB_MAX_MIN, end) 안에 시작하면 잡이 창과 겹칠 수 있다(자정을 넘지 않는 창이라 단순 비교).
+          if [ "${now}" -ge $((start - JOB_MAX_MIN)) ] && [ "${now}" -lt "${end}" ]; then
+            earliest=$(printf '%02d:%02d' $(((start - JOB_MAX_MIN) / 60)) $(((start - JOB_MAX_MIN) % 60)))
+            echo "::error::apply 는 ${earliest}~${QUIET_END} KST 에 시작하지 않습니다 — 아침 수집(06:00·06:47)을 늦출 수 있습니다. ${QUIET_END} 뒤에 다시 실행하세요(dry-run 은 언제든 가능)."
+            exit 1
+          fi
+          echo "apply 허용 — 잡이 최대 ${JOB_MAX_MIN}분 돌아도 ${QUIET_START}~${QUIET_END} KST 와 겹치지 않음"
+
+      # collect.yml 과 같은 브랜치에 커밋·push 한다. concurrency 대기 뒤에 checkout 하므로 앞선 수집 커밋을 포함한다.
+      - uses: actions/checkout@v4
+        with:
+          ref: deploy/github-pages
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run backfill (record exit code, never fail here)
+        id: backfill
+        # 종료 코드(scripts/backfill-en.ts 헤더): 0 정상 · 1 오류/호출 전 거부(DB 안 씀) · 2 DB 는 썼지만 누락·
+        # 건너뛴 한국어 수정이 있음. 2 여도 쓴 영어는 커밋·배포해야 하므로 여기서 잡을 죽이지 않고 마지막 스텝에 반영한다.
+        env:
+          # 비밀은 이 스텝의 env 로만 주입(로그 echo 금지).
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # 아래 vars 는 미설정 시 빈 문자열 → 코드 기본값(scripts/lib/env.ts)을 쓴다.
+          LLM_MODEL: ${{ vars.LLM_MODEL }} # 기본 claude-haiku-4-5 — 수집과 같은 모델
+          LLM_USE_BATCH: ${{ vars.LLM_USE_BATCH }} # 기본 true. false 면 표준 단가라 예상 비용이 2배로 잡힌다
+          # 수집의 BATCH_TIMEOUT_MIN(기본 25)과 따로 둔다 — 수집용으로 줄이면 백필(기본 60분, 63요청)이 결과를 못 받는다.
+          BATCH_TIMEOUT_MIN: ${{ vars.BACKFILL_BATCH_TIMEOUT_MIN }}
+          BACKFILL_MAX_COST_USD: ${{ vars.BACKFILL_MAX_COST_USD }} # 기본 1
+          # 입력은 셸에 직접 끼우지 않고 env 로 받아 인자 배열로 만든다(따옴표·명령 주입 방지). 값 검증은 스크립트가 한다.
+          IN_IDS: ${{ inputs.ids }}
+          IN_LIMIT: ${{ inputs.limit }}
+          IN_SINCE: ${{ inputs.since }}
+          IN_OVERWRITE: ${{ inputs.overwrite }}
+          IN_MAX_COST: ${{ inputs.max_cost }}
+          IN_KO_FIXES: ${{ inputs.ko_fixes }}
+        run: |
+          set +e
+          args=("--${MODE}" --report "${RUNNER_TEMP}/backfill-en.json" --summary-md "${RUNNER_TEMP}/backfill-en.md")
+          [ -n "${IN_IDS// /}" ] && args+=(--ids "${IN_IDS// /}")
+          [ -n "${IN_LIMIT}" ] && args+=(--limit "${IN_LIMIT}")
+          [ -n "${IN_SINCE}" ] && args+=(--since "${IN_SINCE}")
+          [ "${IN_OVERWRITE}" = "true" ] && args+=(--overwrite)
+          [ -n "${IN_MAX_COST}" ] && args+=(--max-cost "${IN_MAX_COST}")
+          [ "${IN_KO_FIXES}" = "true" ] && args+=(--ko-fixes configs/backfill/ko-number-fixes.json)
+          # dry-run 은 무료 count_tokens 로 입력 토큰을 실측한다(키가 없으면 스크립트가 근사치로 넘어간다).
+          [ "${MODE}" = "dry-run" ] && args+=(--count-tokens)
+          echo "npm run db:backfill-en -- ${args[*]}"
+          npm run db:backfill-en -- "${args[@]}"
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Job summary
+        # 스크립트가 쓴 Markdown 요약(대상·비용·기각·누락 재시도 명령·한국어 수정)을 잡 요약에 붙인다.
+        # 옵션 오류처럼 요약을 쓰기 전에 멈췄으면 로그를 보라고만 남긴다. guard 에서 멈췄으면(스텝 skipped) 건너뛴다.
+        if: ${{ always() && steps.backfill.conclusion != 'skipped' }}
+        run: |
+          if [ -s "${RUNNER_TEMP}/backfill-en.md" ]; then
+            cat "${RUNNER_TEMP}/backfill-en.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "백필 요약이 없습니다 — 'Run backfill' 로그를 확인하세요 (exit ${{ steps.backfill.outputs.code || '?' }})." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload report
+        # 보고서 JSON 은 기사별 결과(기각 사유·누락 id·한국어 수정 전후)의 유일한 기록이다(collection_runs.notes 없음).
+        if: ${{ always() && steps.backfill.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backfill-en-${{ inputs.mode }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/backfill-en.json
+            ${{ runner.temp }}/backfill-en.md
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Commit & push DB if changed
+        id: commit
+        # apply 만. 스크립트가 남긴 data/app.db.bak-* 백업은 .gitignore 대상이고, data/app.db 만 add 한다.
+        # 푸시가 끝내 실패하면 스텝을 실패시켜 배포를 dispatch 하지 않는다(아래 아티팩트로 DB 를 건진다).
+        # 백필 스텝이 돌지 않았으면(guard·설치 실패) 건너뛴다 — 스크립트가 실패해도(set +e) 그 스텝은 success 다.
+        if: ${{ !cancelled() && inputs.mode == 'apply' && steps.backfill.outcome == 'success' }}
+        env:
+          DEPLOY_BRANCH: deploy/github-pages
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data/app.db; then
+            echo "no DB change — nothing to commit"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git add data/app.db
+          git commit -m "chore(data): backfill english $(TZ=Asia/Seoul date +%Y-%m-%d)"
+          # 푸시 경쟁(다른 커밋이 먼저 들어온 경우) 대비 rebase 후 재시도 — collect.yml 과 같다.
+          pushed=false
+          for i in 1 2 3; do
+            if git pull --rebase --autostash origin "${DEPLOY_BRANCH}" \
+              && git push origin "HEAD:${DEPLOY_BRANCH}"; then
+              pushed=true
+              break
+            fi
+            echo "push attempt $i failed — retrying"
+            sleep 5
+          done
+          if [ "${pushed}" != "true" ]; then
+            echo "::error::data/app.db 푸시 실패 — 아티팩트 backfill-en-db-${{ github.run_id }} 의 DB 를 손으로 커밋하세요."
+            exit 1
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload DB on push failure
+        # 이어 받기가 없어 DB 를 잃으면 백필 비용을 다시 내야 한다 — 푸시가 실패했을 때만 결과 DB 를 남긴다.
+        if: ${{ failure() && steps.commit.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backfill-en-db-${{ github.run_id }}
+          path: data/app.db
+          retention-days: 7
+
+      - name: Trigger Pages deploy
+        # GITHUB_TOKEN push 는 워크플로를 트리거하지 못하므로 deploy.yml 을 명시적으로 dispatch.
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy.yml --ref deploy/github-pages
+
+      - name: Reflect backfill result in run status
+        # 커밋·배포는 이미 끝났다. 1(오류·거부)·2(누락·건너뛴 수정 — 잡 요약의 "확인 필요")를 잡 실패로 보인다.
+        if: always()
+        run: exit ${{ steps.backfill.outputs.code || 0 }}

@@ -149,6 +149,7 @@
 │       └── enrich.fewshot.json   # 가공 few-shot 6건 (뉴스·Physical AI·리포·모델·논문)
 ├── .github/workflows/
 │   ├── collect.yml               # 외부 크론 dispatch + schedule 백업 → 수집 → app.db 커밋 → deploy dispatch → 소스 헬스 요약
+│   ├── backfill-en.yml           # 수동: 영어 백필 dry-run/apply(collect 와 같은 concurrency, 03:50~07:30 KST apply 거부) → app.db 커밋 → deploy dispatch
 │   └── deploy.yml                # 정적 빌드 → GitHub Pages 배포
 ├── data/
 │   ├── app.db                    # SQLite DB (db:init/collect로 생성)
@@ -262,20 +263,20 @@ docker compose up --build   # http://localhost:8080/global-ai-news/ (/ 는 여�
 
 `.env.local`에 설정하며 git에 커밋하지 않습니다 (`.env.example` 참조).
 
-| 변수                                           | 용도                                                                                                                                     | 필수 여부              |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| `ANTHROPIC_API_KEY`                            | LLM 선별·가공·재보도 검사 (수집 `collect.yml`·`db:reclassify`·`triage:compare`)                                                          | 필수                   |
-| `LLM_MODEL`                                    | 모델 전환 (기본 `claude-haiku-4-5`)                                                                                                      | 선택                   |
-| `MAX_PICKS_PER_RUN` / `TRIAGE_POOL_SIZE`       | 1회 게재(가공) 상한 35 / 선별 후보 상한 180 (Actions `vars`로 조정, 비면 코드 기본값)                                                    | 선택                   |
-| `MAX_COST_USD_PER_RUN`                         | 1회 LLM 비용 상한 (기본 0.1)                                                                                                             | 선택                   |
-| `LLM_USE_BATCH` / `BATCH_TIMEOUT_MIN`          | Batches API 사용(기본 1) / 배치 대기 상한(기본 25분)                                                                                     | 선택                   |
-| `SEMANTIC_SCHOLAR_API_KEY` / `OPENALEX_MAILTO` | arXiv "유명 논문" 게이트의 인용·소속 조회 보강                                                                                           | 선택                   |
-| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`    | Reddit OAuth2 `client_credentials` (현재 Reddit 소스 없음)                                                                               | 선택                   |
-| `GITHUB_PAT`                                   | 수집: GitHub API 인증(레이트리밋 완화, CI는 `GH_SEARCH_PAT` 또는 `GITHUB_TOKEN`) / 로컬 admin: `sources.json` 커밋 + `workflow_dispatch` | 선택                   |
-| `GITHUB_REPO` / `GITHUB_BRANCH`                | admin GitHub 연동 대상 `owner/repo` / 브랜치 — **로컬 admin 전용**                                                                       | 선택 (GitHub 연동 시)  |
-| `ADMIN_PASSWORD`                               | 운영자 인증 — **로컬 admin 전용**                                                                                                        | 필수 (로컬 Admin 사용) |
-| `RECLASSIFY_MAX_COST_USD`                      | `db:reclassify` 예상 비용 상한 (기본 0.5)                                                                                                | 선택                   |
-| `BACKFILL_MAX_COST_USD`                        | `db:backfill-en` 예상 비용 상한 (기본 1)                                                                                                 | 선택                   |
+| 변수                                           | 용도                                                                                                                                              | 필수 여부              |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `ANTHROPIC_API_KEY`                            | LLM 선별·가공·재보도 검사 (수집 `collect.yml`·`db:reclassify`·`triage:compare`)                                                                   | 필수                   |
+| `LLM_MODEL`                                    | 모델 전환 (기본 `claude-haiku-4-5`)                                                                                                               | 선택                   |
+| `MAX_PICKS_PER_RUN` / `TRIAGE_POOL_SIZE`       | 1회 게재(가공) 상한 35 / 선별 후보 상한 180 (Actions `vars`로 조정, 비면 코드 기본값)                                                             | 선택                   |
+| `MAX_COST_USD_PER_RUN`                         | 1회 LLM 비용 상한 (기본 0.1)                                                                                                                      | 선택                   |
+| `LLM_USE_BATCH` / `BATCH_TIMEOUT_MIN`          | Batches API 사용(기본 1) / 배치 대기 상한(기본 25분)                                                                                              | 선택                   |
+| `SEMANTIC_SCHOLAR_API_KEY` / `OPENALEX_MAILTO` | arXiv "유명 논문" 게이트의 인용·소속 조회 보강                                                                                                    | 선택                   |
+| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`    | Reddit OAuth2 `client_credentials` (현재 Reddit 소스 없음)                                                                                        | 선택                   |
+| `GITHUB_PAT`                                   | 수집: GitHub API 인증(레이트리밋 완화, CI는 `GH_SEARCH_PAT` 또는 `GITHUB_TOKEN`) / 로컬 admin: `sources.json` 커밋 + `workflow_dispatch`          | 선택                   |
+| `GITHUB_REPO` / `GITHUB_BRANCH`                | admin GitHub 연동 대상 `owner/repo` / 브랜치 — **로컬 admin 전용**                                                                                | 선택 (GitHub 연동 시)  |
+| `ADMIN_PASSWORD`                               | 운영자 인증 — **로컬 admin 전용**                                                                                                                 | 필수 (로컬 Admin 사용) |
+| `RECLASSIFY_MAX_COST_USD`                      | `db:reclassify` 예상 비용 상한 (기본 0.5)                                                                                                         | 선택                   |
+| `BACKFILL_MAX_COST_USD`                        | `db:backfill-en` 예상 비용 상한 (기본 1). Actions `backfill-en.yml` 은 같은 이름 `vars`, 배치 대기는 `vars.BACKFILL_BATCH_TIMEOUT_MIN`(기본 60분) | 선택                   |
 
 ## 데이터 모델
 
