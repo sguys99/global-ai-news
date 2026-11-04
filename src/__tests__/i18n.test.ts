@@ -1,6 +1,6 @@
 import { readdirSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   DEFAULT_LOCALE,
   defineMessages,
@@ -185,11 +185,21 @@ describe("i18n — 문구 도우미", () => {
  */
 const MESSAGES_DIR = path.join(__dirname, "../lib/messages");
 
-async function loadNamespaces(): Promise<
-  { file: string; name: string; ns: MessageNamespace<MessageTree> }[]
-> {
+type LoadedNamespace = { file: string; name: string; ns: MessageNamespace<MessageTree> };
+
+/**
+ * 첫 동적 import 는 전체 스위트가 병렬로 돌 때 5초를 넘길 수 있다(이름공간 17개 + labels 변환) — 한 번만 읽어 캐시하고,
+ * 그 첫 호출은 `beforeAll`(제한 30초)에서 한다.
+ */
+let namespacesCache: Promise<LoadedNamespace[]> | undefined;
+function loadNamespaces(): Promise<LoadedNamespace[]> {
+  namespacesCache ??= readNamespaces();
+  return namespacesCache;
+}
+
+async function readNamespaces(): Promise<LoadedNamespace[]> {
   const files = readdirSync(MESSAGES_DIR).filter((f) => /\.tsx?$/.test(f) && !/\.test\./.test(f));
-  const out: { file: string; name: string; ns: MessageNamespace<MessageTree> }[] = [];
+  const out: LoadedNamespace[] = [];
   for (const file of files) {
     const mod = (await import(path.join(MESSAGES_DIR, file))) as Record<string, unknown>;
     const found = Object.entries(mod).filter(([, v]) => isMessageNamespace(v));
@@ -253,6 +263,8 @@ function identicalLeaves(ko: unknown, en: unknown, prefix = ""): [string, string
 }
 
 describe("문구 사전 — 모든 이름공간", () => {
+  beforeAll(() => loadNamespaces(), 30_000);
+
   it("이름공간이 하나 이상 있고 common 이 포함된다", async () => {
     const all = await loadNamespaces();
     expect(all.map((x) => x.name)).toContain("commonMessages");
