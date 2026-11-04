@@ -67,6 +67,8 @@ const enrichment = (title: string): ArticleEnrichment => ({
   summary_ko: `${title} 요약.`,
   category: "industry",
   tags: ["x"],
+  title_en: "",
+  summary_en: "",
 });
 
 describe("firstSentence", () => {

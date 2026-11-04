@@ -1,4 +1,7 @@
-Korean → English names. Use these spellings exactly (casing included). Short forms on the left (과기정통부) map to the same name as the full form.
+Korean → English names for the English edition (title_en·summary_en). Maintainer notes (text outside `- ` bullets is never sent to the model):
+each bullet holds one or more entries joined by ` · `, as `key · short form → English`, and every key left of `→` is the same name (과기정통부 = 과학기술정보통신부).
+The enrich step sends only the entries whose keys appear in a request's articles, as a `[용어집]` block (scripts/lib/glossary.ts). Keys match as substrings, ignoring spaces, so write keys as the press writes them.
+A bullet that starts with an English label and a colon (Military ranks, Family names) is a table sent with every request.
 
 ### Government, public bodies and law
 

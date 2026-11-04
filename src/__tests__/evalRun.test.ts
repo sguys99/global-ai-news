@@ -102,6 +102,8 @@ const enrichment = (category: ArticleEnrichment["category"]): ArticleEnrichment 
   summary_ko: "요약",
   category,
   tags: [],
+  title_en: "",
+  summary_en: "",
 });
 
 describe("summarizePicks · pickRows", () => {

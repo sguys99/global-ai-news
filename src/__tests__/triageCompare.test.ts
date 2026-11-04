@@ -156,7 +156,14 @@ describe("compareTable", () => {
     const oldS = summarizePicks(pickRows(pool, picks.slice(0, 1)));
     const newS = summarizePicks(
       pickRows(pool, picks, {
-        1: { title_ko: "t", summary_ko: "s", category: "physical", tags: [] },
+        1: {
+          title_ko: "t",
+          summary_ko: "s",
+          category: "physical",
+          tags: [],
+          title_en: "",
+          summary_en: "",
+        },
       }),
     );
     const table = compareTable(oldS, newS, { old: 0, new: 1 }, "096de4e");

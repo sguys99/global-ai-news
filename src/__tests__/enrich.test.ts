@@ -1,20 +1,28 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import {
   articleFields,
   buildEnrichRequests,
   CHUNK_SIZE,
+  enrichEvidence,
   enrichFormat,
   estimateEnrichTokens,
-  resolveEnrichments,
+  inputExcerpt,
+  MAX_INPUT_CHARS,
   readCategoryGuide,
+  readEnglishGuide,
   readFewShot,
+  resolveEnglish,
+  resolveEnrichments,
   splitTopics,
   type EnrichInput,
 } from "../../scripts/lib/enrich";
 import { approxTokens, outputFormatTokens } from "../../scripts/lib/cost";
 import { articleEnrichmentSchema, CATEGORIES } from "../../scripts/lib/schema";
 import { FORMAT_LABELS, FORMATS, type Format } from "../../src/lib/labels";
+import { PROMPTS_DIR } from "../../src/lib/paths";
 
 const input = (id: number, format: Format = "news"): EnrichInput => ({
   id,
@@ -34,6 +42,8 @@ const enrichment = {
   summary_ko: "요약입니다.",
   category: "agent" as const,
   tags: ["agent", "llm"],
+  title_en: "Sample headline for the English edition",
+  summary_en: "A sample English summary.",
 };
 
 describe("buildEnrichRequests", () => {
@@ -63,13 +73,15 @@ describe("buildEnrichRequests", () => {
     expect(user).toContain("### id=3\n[형식] 뉴스\n");
   });
 
-  it("출력 상한은 기사 수에 비례한다", () => {
+  it("출력 상한은 기사 수에 비례한다 — 영어 필드 몫까지 10건 묶음 5,700토큰", () => {
     const [one] = buildEnrichRequests([input(1)], "m");
     const [ten] = buildEnrichRequests(
       Array.from({ length: 10 }, (_, i) => input(i)),
       "m",
     );
     expect(ten.request.params.max_tokens).toBeGreaterThan(one.request.params.max_tokens);
+    expect(one.request.params.max_tokens).toBe(200 + 550);
+    expect(ten.request.params.max_tokens).toBe(200 + 10 * 550);
   });
 
   it("시스템 프롬프트는 요청당 한 번 — 기사 수가 늘어도 입력 추정치는 기사 몫만 는다", () => {
@@ -95,6 +107,99 @@ describe("buildEnrichRequests", () => {
   });
 });
 
+describe("영어 규칙·용어집", () => {
+  const korean = (id: number, title: string, body: string): EnrichInput => ({
+    ...input(id),
+    sourceName: "AI타임스",
+    item: { ...input(id).item, title, contentRaw: body },
+  });
+
+  it("시스템 프롬프트에 영어 규칙(english.md)과 성씨·계급 고정 표가 실리고, 용어집 항목 전체는 싣지 않는다", () => {
+    const [chunk] = buildEnrichRequests([input(1)], "m");
+    const system = chunk.request.params.system as string;
+    expect(system).not.toContain("{{ENGLISH}}");
+    expect(system).toContain("## 영어 제목·요약 (title_en·summary_en)");
+    expect(system).toContain(readEnglishGuide());
+    const rules = readFileSync(path.join(PROMPTS_DIR, "english.md"), "utf-8").trim();
+    expect(readEnglishGuide().startsWith(rules)).toBe(true);
+    expect(system).toContain("- Military ranks: 대장 → General");
+    expect(system).toContain("- Family names (usual spellings): 김 Kim");
+    expect(system).not.toContain("앤트로픽 → Anthropic");
+    // 문자열 치환 패턴(`$&` 등)에 금액이 깨지지 않는다.
+    expect(system).toContain("$900 billion");
+  });
+
+  it("english.md 는 용어집이 유저 메시지 [용어집] 블록에 있다고 가리킨다", () => {
+    const guide = readEnglishGuide();
+    expect(guide).toContain("[용어집]");
+    expect(guide).not.toContain("glossary below");
+  });
+
+  it("시스템 프롬프트는 묶음 내용과 무관하게 같다", () => {
+    const [a] = buildEnrichRequests([input(1)], "m");
+    const [b] = buildEnrichRequests([korean(2, "앤트로픽, 새 모델", "국감에서 방통위가")], "m");
+    expect(a.request.params.system).toBe(b.request.params.system);
+  });
+
+  it("묶음 입력에 키가 나온 용어집 항목만 유저 메시지 끝 [용어집] 블록으로 붙는다", () => {
+    const [chunk] = buildEnrichRequests(
+      [input(1), korean(2, "앤트로픽, 클로드 신모델 공개", "과기정통부는 3일 밝혔다.")],
+      "m",
+    );
+    const user = chunk.request.params.messages[0].content as string;
+    const block = user.slice(user.indexOf("### [용어집]"));
+    expect(user.indexOf("### [용어집]")).toBeGreaterThan(user.indexOf("### id=2"));
+    expect(block).toContain("- 앤트로픽 → Anthropic");
+    expect(block).toContain("- 클로드 → Claude");
+    expect(block).toContain(
+      "- 과학기술정보통신부 · 과기정통부 → Ministry of Science and ICT (MSIT)",
+    );
+    expect(block).not.toContain("오픈AI");
+    expect(chunk.glossaryEntries).toBe(block.split("\n- ").length - 1);
+  });
+
+  it("출처 매체명은 용어집 대조에 쓰지 않고, 고른 항목이 없으면 블록이 없다", () => {
+    const [chunk] = buildEnrichRequests([{ ...input(1), sourceName: "네이버 블로그" }], "m");
+    expect(chunk.request.params.messages[0].content as string).not.toContain("[용어집]");
+    expect(chunk.glossaryEntries).toBe(0);
+  });
+
+  it("용어집 블록도 입력 추정치에 든다", () => {
+    const plain = buildEnrichRequests([korean(1, "새 모델", "본문")], "m")[0];
+    const named = buildEnrichRequests([korean(1, "앤트로픽 새 모델", "본문")], "m")[0];
+    expect(estimateEnrichTokens(named).input).toBeGreaterThan(estimateEnrichTokens(plain).input);
+  });
+});
+
+describe("영어 근거·저장값", () => {
+  it("enrichEvidence: 원문 제목 + 모델에 준 발췌(MAX_INPUT_CHARS 로 자름, 토픽 꼬리 포함)", () => {
+    const long = { ...input(1).item, contentRaw: "x".repeat(MAX_INPUT_CHARS + 50) };
+    expect(enrichEvidence(long)).toEqual({
+      title: "Title 1",
+      content: "x".repeat(MAX_INPUT_CHARS),
+    });
+    expect(inputExcerpt({ ...long, contentRaw: undefined })).toBe("");
+    const repo = { ...input(1).item, contentRaw: "Desc · topics: llm, gpt-4" };
+    expect(enrichEvidence(repo).content).toBe("Desc · topics: llm, gpt-4");
+  });
+
+  it("resolveEnglish: 앞뒤 공백을 다듬고, 제목·요약 중 하나라도 비면 둘 다 null", () => {
+    const evidence = { title: "T", content: "" };
+    const out = resolveEnglish([
+      {
+        id: 1,
+        enrichment: { ...enrichment, title_en: "  A headline ", summary_en: "Body. " },
+        evidence,
+      },
+      { id: 2, enrichment: { ...enrichment, title_en: "A headline", summary_en: "  " }, evidence },
+      { id: 3, enrichment: { ...enrichment, title_en: "", summary_en: "Body." }, evidence },
+    ]);
+    expect(out.get(1)).toEqual({ titleEn: "A headline", summaryEn: "Body." });
+    expect(out.get(2)).toEqual({ titleEn: null, summaryEn: null });
+    expect(out.get(3)).toEqual({ titleEn: null, summaryEn: null });
+  });
+});
+
 describe("resolveEnrichments", () => {
   it("요청한 id 만, id 당 첫 결과만 취하고 id 필드는 떼어 낸다", () => {
     const out = resolveEnrichments(
@@ -113,6 +218,22 @@ describe("resolveEnrichments", () => {
 });
 
 describe("스키마 검증", () => {
+  it("영어 필드는 필수지만 길이·한글을 스키마로 막지 않는다(묶음 전체가 버려지지 않게 — 코드 검사가 기사별로 거른다)", () => {
+    expect(articleEnrichmentSchema.safeParse({ ...enrichment, title_en: undefined }).success).toBe(
+      false,
+    );
+    expect(
+      articleEnrichmentSchema.safeParse({ ...enrichment, title_en: "x".repeat(300) }).success,
+    ).toBe(true);
+    expect(
+      articleEnrichmentSchema.safeParse({ ...enrichment, summary_en: "한글 요약" }).success,
+    ).toBe(true);
+    const required = (
+      enrichFormat.schema as { properties: { articles: { items: { required: string[] } } } }
+    ).properties.articles.items.required;
+    expect(required).toEqual(expect.arrayContaining(["title_en", "summary_en"]));
+  });
+
   it("enrichFormat.parse 는 구조화 출력 JSON 을 검증한다", () => {
     const ok = JSON.stringify({ articles: [{ id: 3, ...enrichment }] });
     expect(enrichFormat.parse(ok).articles[0].id).toBe(3);
@@ -188,6 +309,27 @@ describe("few-shot 예시", () => {
       expect(ex.output.title_ko.length).toBeLessThanOrEqual(60);
       expect(articleEnrichmentSchema.safeParse(ex.output).success).toBe(true);
     }
+  });
+
+  it("모든 예시에 영어 제목·요약이 있고 english.md 형식을 따른다(한글 없음·제목 100자 이내·마침표 없음)", () => {
+    for (const ex of fewshot) {
+      const { title_en, summary_en } = ex.output;
+      expect(title_en.length).toBeGreaterThan(20);
+      expect(title_en.length).toBeLessThanOrEqual(100);
+      expect(title_en).not.toMatch(/[.!?]$/);
+      expect(title_en + summary_en).not.toMatch(/[\u1100-\u11ff\u3130-\u318f\uac00-\ud7a3]/);
+      expect(summary_en.split(/\s+/).length).toBeLessThanOrEqual(60);
+    }
+  });
+
+  it("한국 매체 예시가 1건 이상 있고, 원화는 KRW + scale 단어로 쓴다", () => {
+    const korean = fewshot.filter((ex) => /[가-힣]/.test(ex.input.title));
+    expect(korean.length).toBeGreaterThanOrEqual(1);
+    expect(
+      korean.some((ex) =>
+        /KRW \d+(\.\d+)? (thousand|million|billion|trillion)/.test(ex.output.summary_en),
+      ),
+    ).toBe(true);
   });
 
   it("Physical AI 뉴스·GitHub 저장소·HF 모델 예시가 있다", () => {

@@ -337,6 +337,8 @@ const enrichment = (title: string, summary: string): ArticleEnrichment => ({
   summary_ko: summary,
   category: "industry",
   tags: ["openai"],
+  title_en: "",
+  summary_en: "",
 });
 
 const candidate = (

@@ -9,14 +9,26 @@ import { CATEGORIES } from "../../src/lib/labels";
 export { CATEGORIES, LEGACY_CATEGORY_MAP, type Category } from "../../src/lib/labels";
 
 /**
- * 기사 1건의 한국어 가공 결과. 중요도는 선별 단계(triage)가 그날 후보 전체를 비교해
+ * 기사 1건의 가공 결과(한국어 + 영어판 title_en·summary_en). 중요도는 선별 단계(triage)가 그날 후보 전체를 비교해
  * 상대 평가하므로 여기에는 없다.
+ *
+ * 영어 필드는 한국어 필드 뒤에 둔다 — 구조화 출력은 속성 순서대로 생성되므로 한국어 가공은 영어 필드가 생기기 전과
+ * 같은 흐름으로 나오고, 영어는 english.md 규칙대로 원문에서 쓴다. 영어 필드에는 길이·한글 제약을 스키마로 걸지 않는다:
+ * zod 검증이 실패하면 그 묶음(10건)의 한국어 가공까지 통째로 버려진다(parseStructured → null). 영어 길이·한글·숫자는
+ * 코드 검사(Phase 1-3 englishCheck)가 기사별로 확인해 영어만 비운다(fail-closed, 한국어 게재 무영향).
+ * 필드 자체는 필수다 — 구조화 출력이 늘 채우게 하고, 빈 문자열은 저장 단계에서 "영어 없음"으로 다룬다.
  */
 export const articleEnrichmentSchema = z.object({
   title_ko: z.string().max(60).describe("한국어 제목 (간결, 낚시성 금지)"),
   summary_ko: z.string().describe("한국어 요약 2~3줄, 핵심 사실 중심"),
   category: z.enum(CATEGORIES),
   tags: z.array(z.string()).min(1).max(5).describe("소문자 영문 또는 한글 키워드"),
+  title_en: z
+    .string()
+    .describe("English headline from the original, sentence case, at most 100 characters"),
+  summary_en: z
+    .string()
+    .describe("English summary from the original, 2-3 sentences (40-60 words), no Hangul"),
 });
 
 export type ArticleEnrichment = z.infer<typeof articleEnrichmentSchema>;

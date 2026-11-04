@@ -1,9 +1,11 @@
 /**
- * LLM 가공(③단계). 선별(triage)을 통과한 기사만 한국어 제목·요약·카테고리·태그를 만든다.
+ * LLM 가공(③단계). 선별(triage)을 통과한 기사만 한국어 제목·요약·카테고리·태그와 영어판 제목·요약(title_en·summary_en,
+ * 영어판 Phase 1-2)을 만든다.
  *
- * 기사 CHUNK_SIZE 건을 한 요청에 묶는다. 기사 1건당 1호출이면 시스템 프롬프트(+few-shot,
- * 약 2.7k토큰)와 출력 스키마를 매번 다시 보내 입력의 대부분이 반복 지시문이 된다
- * (Haiku 4.5 는 4,096토큰 미만 프리픽스를 캐시하지 않아 프롬프트 캐싱으로도 못 줄인다).
+ * 기사 CHUNK_SIZE 건을 한 요청에 묶는다. 기사 1건당 1호출이면 시스템 프롬프트(+few-shot·영어 규칙,
+ * count_tokens 약 7.0k토큰)와 출력 스키마를 매번 다시 보내 입력의 대부분이 반복 지시문이 된다.
+ * 영어 용어집은 시스템 프롬프트에 통째로 넣지 않고 묶음 입력에 나온 항목만 유저 메시지 끝 `[용어집]` 블록으로 붙인다
+ * (lib/glossary.ts — 통째면 약 +3.2k토큰 × 4호출).
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -12,17 +14,22 @@ import { FORMAT_LABELS, type Format } from "../../src/lib/labels";
 import { PROMPTS_DIR } from "../../src/lib/paths";
 import type { RawItem } from "../../src/lib/types";
 import { approxTokens, outputFormatTokens } from "./cost";
+import { glossaryBlock, glossaryTables, readGlossary, selectGlossary } from "./glossary";
 import type { LlmRequest } from "./llm";
 import { enrichBatchSchema, type ArticleEnrichment, type EnrichBatch } from "./schema";
 
 /** 한 요청에 묶는 기사 수. 한 요청이 실패해도 잃는 기사가 이 수를 넘지 않는다. */
 export const CHUNK_SIZE = 10;
-/** 기사 1건 본문 입력 상한(글자). */
-const MAX_INPUT_CHARS = 2000;
-/** 기사 1건당 출력 토큰 상한(요약 2~3줄 + JSON). 실측 평균 약 180토큰. */
-const MAX_OUTPUT_TOKENS_PER_ARTICLE = 350;
-/** 기사 1건당 출력 토큰 근사치. 비용 가드 추정용. */
-const EST_OUTPUT_TOKENS_PER_ARTICLE = 250;
+/** 기사 1건 본문 입력 상한(글자). 영어 숫자 검사의 근거도 이만큼 자른 발췌다(enrichEvidence). */
+export const MAX_INPUT_CHARS = 2000;
+/**
+ * 기사 1건당 출력 토큰 상한(한국어 요약 2~3줄 + 영어 제목·요약 + JSON). 한국어만일 때 실측 평균 약 180토큰
+ * (0-1), 영어가 약 +90토큰(0-3) → 약 270. 묶음 상한은 200 + 건수 × 이것(10건 5,700) — 넘으면 stop_reason
+ * max_tokens 로 묶음 10건이 통째로 버려지므로 평균의 2배 넘게 둔다.
+ */
+const MAX_OUTPUT_TOKENS_PER_ARTICLE = 550;
+/** 기사 1건당 출력 토큰 근사치(비용 가드 추정용). 실측 예상 약 270에 약 20% 여유. */
+const EST_OUTPUT_TOKENS_PER_ARTICLE = 320;
 
 export const enrichFormat = zodOutputFormat(enrichBatchSchema);
 
@@ -40,6 +47,8 @@ export interface FewShotExample {
 
 /** 시스템 프롬프트에서 분야 정의(categories.md)가 들어갈 자리. */
 const CATEGORIES_PLACEHOLDER = "{{CATEGORIES}}";
+/** 시스템 프롬프트에서 영어 작성 규칙(english.md + 용어집 고정 표)이 들어갈 자리. */
+const ENGLISH_PLACEHOLDER = "{{ENGLISH}}";
 
 /**
  * 분야 정의 블록(6개 키·포함 범위·경계 규칙). 가공과 재분류(scripts/reclassify.ts)가 같은 기준으로
@@ -49,14 +58,26 @@ export function readCategoryGuide(): string {
   return readFileSync(path.join(PROMPTS_DIR, "categories.md"), "utf-8").trim();
 }
 
+/**
+ * 영어 작성 규칙 블록: configs/prompts/english.md + 용어집의 고정 표(성씨·계급 — 키로 고르지 않고 늘 싣는다).
+ * 용어집의 나머지 항목은 묶음마다 걸러 유저 메시지 `[용어집]` 블록으로 간다(english.md "Names" 줄이 그 자리를 가리킨다).
+ * 가공과 영어 백필(Phase 2)이 같은 규칙으로 쓰도록 한 곳에서 조립한다.
+ */
+export function readEnglishGuide(): string {
+  const rules = readFileSync(path.join(PROMPTS_DIR, "english.md"), "utf-8").trim();
+  const tables = glossaryTables(GLOSSARY);
+  return tables ? `${rules}\n\n### Name tables\n\n${tables}` : rules;
+}
+
 /** 프롬프트 파일은 모듈 로드 시 1회만 읽는다. */
+const GLOSSARY = readGlossary();
 const SYSTEM_PROMPT = buildSystemPrompt();
 
 function buildSystemPrompt(): string {
-  const system = readFileSync(path.join(PROMPTS_DIR, "enrich.system.md"), "utf-8").replace(
-    CATEGORIES_PLACEHOLDER,
-    readCategoryGuide(),
-  );
+  const system = readFileSync(path.join(PROMPTS_DIR, "enrich.system.md"), "utf-8")
+    // 치환 함수로 넣는다 — 문자열 치환은 `$&`·`$'` 같은 패턴을 해석하는데 영어 규칙에는 `$` 금액이 많다.
+    .replace(CATEGORIES_PLACEHOLDER, () => readCategoryGuide())
+    .replace(ENGLISH_PLACEHOLDER, () => readEnglishGuide());
   const examples = readFewShot()
     .map((ex, i) => {
       const input = articleFields(
@@ -115,8 +136,21 @@ export interface EnrichInput {
   format: Format;
 }
 
+/** 모델에 주는 본문 발췌: 원문 본문을 MAX_INPUT_CHARS 로 자른 것(토픽 꼬리 포함 — [토픽] 줄로 나뉘어 실린다). */
+export function inputExcerpt(item: RawItem): string {
+  return (item.contentRaw ?? "").slice(0, MAX_INPUT_CHARS);
+}
+
+/**
+ * 영어 숫자 검사(Phase 1-3 englishCheck `ArticleEvidence`)의 근거: 원문 제목 + 모델에 준 발췌 그대로.
+ * 한국어 요약은 넣지 않는다 — 같은 호출의 출력이라 같은 단위 오류를 공유한다(0-3).
+ */
+export function enrichEvidence(item: RawItem): { title: string; content: string } {
+  return { title: item.title, content: inputExcerpt(item) };
+}
+
 function articleBlock({ id, item, sourceName, format }: EnrichInput): string {
-  const content = (item.contentRaw ?? "").slice(0, MAX_INPUT_CHARS);
+  const content = inputExcerpt(item);
   return `### id=${id}\n${articleFields(format, sourceName, item.title, content || "(본문 없음)")}`;
 }
 
@@ -124,6 +158,8 @@ function articleBlock({ id, item, sourceName, format }: EnrichInput): string {
 export interface EnrichChunk {
   request: LlmRequest;
   ids: number[];
+  /** 유저 메시지 `[용어집]` 블록에 실린 항목 수(0 이면 블록 없음). */
+  glossaryEntries: number;
 }
 
 /** 선정 기사 → CHUNK_SIZE 건씩 묶은 요청들. 입력 순서(중요도 순)를 유지한다. */
@@ -131,6 +167,13 @@ export function buildEnrichRequests(inputs: EnrichInput[], model: string): Enric
   const chunks: EnrichChunk[] = [];
   for (let i = 0; i < inputs.length; i += CHUNK_SIZE) {
     const chunk = inputs.slice(i, i + CHUNK_SIZE);
+    const blocks = chunk.map(articleBlock).join("\n\n");
+    // 용어집은 이 묶음 입력(원문 제목·발췌)에 키가 나온 항목만 — 출처 줄의 매체명은 대조에서 뺀다.
+    const glossary = selectGlossary(
+      GLOSSARY,
+      chunk.map((c) => `${c.item.title}\n${inputExcerpt(c.item)}`).join("\n"),
+    );
+    const block = glossaryBlock(glossary);
     const request: LlmRequest = {
       id: `enrich-${i / CHUNK_SIZE}`,
       params: {
@@ -142,13 +185,15 @@ export function buildEnrichRequests(inputs: EnrichInput[], model: string): Enric
             role: "user",
             content:
               `기사 ${chunk.length}건을 각각 가공하세요. articles 배열에 기사마다 하나씩, 입력의 id 를 그대로 담으세요.\n\n` +
-              chunk.map(articleBlock).join("\n\n"),
+              blocks +
+              // 기사 블록과 같은 `###` 머리로 따로 세운다 — 마지막 기사의 [본문]에 이어 읽히지 않게.
+              (block ? `\n\n### ${block}` : ""),
           },
         ],
         output_config: { format: enrichFormat },
       },
     };
-    chunks.push({ request, ids: chunk.map((c) => c.id) });
+    chunks.push({ request, ids: chunk.map((c) => c.id), glossaryEntries: glossary.length });
   }
   return chunks;
 }
@@ -171,6 +216,39 @@ export function resolveEnrichments(
   const out = new Map<number, ArticleEnrichment>();
   for (const { id, ...enrichment } of batch.articles) {
     if (wanted.has(id) && !out.has(id)) out.set(id, enrichment);
+  }
+  return out;
+}
+
+/** 저장할 영어 필드(articles.title_en·summary_en). null = 영어 없음 — 한국어 게재에는 영향이 없다. */
+export interface EnglishFields {
+  titleEn: string | null;
+  summaryEn: string | null;
+}
+
+/** resolveEnglish 입력 1건: 게재되는 가공 기사와 그 영어의 근거. */
+export interface EnglishCandidate {
+  /** 풀 번호(Pick.index). */
+  id: number;
+  enrichment: ArticleEnrichment;
+  /** 원문 제목 + 모델에 준 발췌(enrichEvidence). 영어 숫자 검사의 근거. */
+  evidence: { title: string; content: string };
+}
+
+/**
+ * 게재되는 가공 기사 → 저장할 영어 필드(풀 번호별). 저장(collect.ts persist)과 no-save 스냅숏은 이 결과만 읽는다.
+ *
+ * **영어 품질 검사(Phase 1-3)가 들어올 단일 자리다.** 기사마다 evidence 를 근거로 englishCheck.checkEnglish 를 돌려
+ * 기각하면 그 기사의 영어만 null 로 두고(fail-closed), 사유 집계는 notes(`영어 가공 N/M건`·`영어 기각 K건(…)`)로 낸다.
+ * 지금은 검사 없이 앞뒤 공백을 다듬고 빈 문자열만 null 로 둔다 — 제목·요약 중 하나라도 비면 둘 다 없음으로 본다
+ * (1-3 기각과 같이 제목·요약을 한 쌍으로 다룬다).
+ */
+export function resolveEnglish(candidates: Iterable<EnglishCandidate>): Map<number, EnglishFields> {
+  const out = new Map<number, EnglishFields>();
+  for (const { id, enrichment } of candidates) {
+    const titleEn = enrichment.title_en.trim();
+    const summaryEn = enrichment.summary_en.trim();
+    out.set(id, titleEn && summaryEn ? { titleEn, summaryEn } : { titleEn: null, summaryEn: null });
   }
   return out;
 }

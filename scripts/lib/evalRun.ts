@@ -19,6 +19,7 @@ import {
 import { EVAL_DIR } from "../../src/lib/paths";
 import type { ResolvedBriefLine } from "./brief";
 import { estimateCost } from "./cost";
+import type { EnglishFields } from "./enrich";
 import type { LlmUsage } from "./llm";
 import type { FollowUpLink, RejectedRepeat, RepeatMatch } from "./repeatCheck";
 import type { SameEventMerge } from "./sameEvent";
@@ -91,8 +92,16 @@ export interface EvalSnapshot {
   /** 선별 원출력(resolvePicks 이전). 선별 실패면 null. already_reported 가 생기기 전 스냅숏에는 그 필드가 없다. */
   triage: TriageOutput | null;
   picks: Pick[];
-  /** 풀 번호 → 가공 결과. picks·enrichments 는 재보도 검사 전 값이다(게재 = 여기서 repeatCheck.repeats 를 뺀 것). */
+  /**
+   * 풀 번호 → 가공 결과. picks·enrichments 는 재보도 검사 전 값이다(게재 = 여기서 repeatCheck.repeats 를 뺀 것).
+   * 영어판 Phase 1-2 부터 모델이 낸 title_en·summary_en 원출력도 여기 든다(그 전 스냅숏에는 없다).
+   */
   enrichments: Record<number, ArticleEnrichment>;
+  /**
+   * 풀 번호 → 저장할 영어 필드(collect.ts resolveEnglish 결과, 게재분만). enrichments 의 원출력과 다르면 품질 검사
+   * (Phase 1-3)가 비운 것이다. 이 단계가 생기기 전 스냅숏이나 게재분이 정해지기 전에 끝난 회차에는 없다.
+   */
+  english?: Record<number, EnglishFields>;
   /**
    * 재보도 검사 결과(검사를 건너뛰었거나 이 단계가 생기기 전 스냅숏이면 없음). repeats 는 코드 확인을 통과한 판정,
    * rejected 는 기각한 판정이다 — rejected·rejectNote 는 코드 확인이 생기기 전 스냅숏에 없다(그때 repeats 는 모델 판정 그대로).

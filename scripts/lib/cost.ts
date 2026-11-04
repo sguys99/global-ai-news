@@ -86,7 +86,7 @@ export function approxTokens(text: string): number {
 
 /**
  * 구조화 출력(output_config.format)이 입력에 더하는 토큰 근사치. API 가 JSON 스키마와 지시문을 입력 앞에
- * 붙이므로 요청마다 든다(실측: 선별 스키마 367, 가공 스키마 639토큰). 스키마 JSON 에 approxTokens 를 쓴다.
+ * 붙이므로 요청마다 든다(실측: 선별 스키마 367, 가공 스키마 639토큰 → 영어 필드를 더한 뒤 743토큰). 스키마 JSON 에 approxTokens 를 쓴다.
  */
 export function outputFormatTokens(format: { schema: unknown }): number {
   return approxTokens(JSON.stringify(format.schema));

@@ -12,13 +12,15 @@
  * ② 선별 풀: 신규 후보 + 최근 가공 실패분을 소스별 라운드로빈으로 TRIAGE_POOL_SIZE 건(비뉴스·Physical AI 최소 할당)
  * ③ LLM 선별 1회: 최대 MAX_PICKS_PER_RUN 건 선정·같은 사건 묶기·중요도 상대 평가(형식 안에서)
  *    — 오늘 할당(비뉴스·Physical AI)과 최근 3개 호 게재 제목("이미 보도함")을 함께 넣고, 할당 미달은 notes 에 경고
- * ④ LLM 가공: 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그 (비용 가드 적용)
+ * ④ LLM 가공: 선정 기사만 10건씩 묶어 한국어 제목·요약·카테고리·태그 + 영어판 제목·요약 (비용 가드 적용)
  * ④-2 LLM 재보도 검사 1회: 가공된 한국어 제목·요약 첫 문장을 이미 보도함과 대조해 새 전개 없는 재보도를 게재에서 뺀다
  *    (실패하면 전부 게재). 새 전개가 있는 후속 보도는 코드 확인을 거쳐 이전 보도에 잇는다(follow_up_of).
  * ④-3 같은 사건 합치기(코드만): 오늘 게재분끼리 같은 내용어로 대조해, 선별이 묶지 못한 같은 사건 보도를 대표의
  *    related 로 합친다(뉴스끼리, 실패하면 그대로 게재). 할당 미달·초과·논문 분야 쏠림 경고는 이 뒤의 최종 게재분으로 센다
  * ④-4 세 줄 요약: 선별 출력의 brief 중 실제로 게재된 선정의 줄만 남겨 collection_runs.brief_json 에 기사 id 로 저장
  *    (lib/brief.ts — 합쳐진 선정을 가리키는 줄은 대표로 옮긴다. 남은 줄이 모자라거나 무엇이 잘못돼도 요약 없이 발행한다)
+ * ④-5 영어 필드 확정(lib/enrich.ts resolveEnglish): 게재분의 title_en·summary_en 을 저장할 값으로 정한다 — 영어 품질 검사
+ *    (Phase 1-3)가 들어올 자리. 기각되면 영어만 비고 한국어 게재는 그대로다
  * ⑤ SQLite 저장: 선정 → articles, 미선정 → seen_items(키만) + collection_runs 기록
  *
  * LLM 호출은 기본적으로 Message Batches API(50% 할인)로 보낸다(lib/llm.ts).
@@ -38,10 +40,14 @@ import { estimateCost } from "./lib/cost";
 import { dedupKey } from "./lib/dedup";
 import {
   buildEnrichRequests,
+  enrichEvidence,
   enrichFormat,
   estimateEnrichTokens,
+  resolveEnglish,
   resolveEnrichments,
+  type EnglishFields,
   type EnrichChunk,
+  type EnrichInput,
 } from "./lib/enrich";
 import { envFlag, envNonNegativeInt, envNonNegativeNumber, envString } from "./lib/env";
 import {
@@ -250,7 +256,28 @@ function loadBackfill(db: DatabaseType, sourcesConfig: SourceConfig[]): Candidat
   }));
 }
 
-/** ④ 비용 가드: 이미 쓴 비용 + 예상 비용이 한도를 넘는 가공 요청은 뒤에서부터 뺀다. */
+/** 후보 → 가공 입력(id = 풀 번호). */
+const enrichInput = (c: Candidate, id: number): EnrichInput => ({
+  id,
+  item: c.item,
+  sourceName: c.sourceName,
+  format: c.format,
+});
+
+/** 가공 요청들의 토큰 추정 합계(비용 가드와 같은 근사). */
+function sumEnrichTokens(chunks: EnrichChunk[]): { input: number; output: number } {
+  return chunks
+    .map(estimateEnrichTokens)
+    .reduce((a, b) => ({ input: a.input + b.input, output: a.output + b.output }), {
+      input: 0,
+      output: 0,
+    });
+}
+
+/**
+ * ④ 비용 가드: 이미 쓴 비용 + 예상 비용이 한도를 넘는 가공 요청은 뒤에서부터 뺀다. 뺀 묶음의 기사는 미가공으로 저장돼
+ * (공개 안 됨) BACKFILL_DAYS 동안 다음 회차에 재심사된다 — 회차는 partial 로 남고 그날 호는 가공된 기사만으로 발행된다.
+ */
 function withinBudget(chunks: EnrichChunk[], spent: number, stats: RunStats): EnrichChunk[] {
   let remaining = MAX_COST_USD_PER_RUN - spent;
   const allowed: EnrichChunk[] = [];
@@ -272,6 +299,8 @@ function withinBudget(chunks: EnrichChunk[], spent: number, stats: RunStats): En
 
 /**
  * ⑤ 선별·가공 결과 저장. 한 트랜잭션으로 묶는다.
+ * english(풀 번호 → 영어 필드)는 resolveEnglish 가 확정한 값이다 — 가공 결과(enriched)의 title_en·summary_en 을 직접
+ * 쓰지 않는다(영어 품질 검사를 거치지 않은 값이 저장되지 않게). 없거나 null 이면 영어 없이 저장한다.
  * followUpOf(풀 번호 → 이전 보도 articles.id)는 재보도 검사가 확인한 후속 보도 연결이다. 저장한 연결 수를 돌려준다.
  * articleIdOf 를 넘기면 이번 회차에 게재한(가공을 마친) 선정의 풀 번호 → articles.id 를 채운다 — 세 줄 요약이
  * 줄마다 기사를 가리키는 데 쓴다.
@@ -282,6 +311,7 @@ function persist(
   overflow: Candidate[],
   picks: Pick[],
   enriched: Map<number, ArticleEnrichment>,
+  english: ReadonlyMap<number, EnglishFields>,
   stats: RunStats,
   followUpOf: ReadonlyMap<number, number> = new Map(),
   articleIdOf?: Map<number, number>,
@@ -290,17 +320,18 @@ function persist(
     `INSERT OR IGNORE INTO articles
        (dedup_key, source_id, url, title_original, content_raw,
         published_at, engagement_json, trending_score,
-        title_ko, summary_ko, category, importance, related_json)
+        title_ko, summary_ko, title_en, summary_en, category, importance, related_json)
      VALUES
        (@dedup_key, @source_id, @url, @title_original, @content_raw,
         @published_at, @engagement_json, @trending_score,
-        @title_ko, @summary_ko, @category, @importance, @related_json)`,
+        @title_ko, @summary_ko, @title_en, @summary_en, @category, @importance, @related_json)`,
   );
   // 재심사 행을 이번 회차가 게재하면 created_at 도 지금으로 옮긴다. 호 경계는 created_at(= 게재한 회차)이라,
   // 옛 수집 시각을 두면 오늘 고른 기사가 지난 호로 소급돼 오늘 1면에 오르지 못한다.
   const updateArticle = db.prepare(
     `UPDATE articles
-        SET title_ko = @title_ko, summary_ko = @summary_ko, category = @category,
+        SET title_ko = @title_ko, summary_ko = @summary_ko, title_en = @title_en,
+            summary_en = @summary_en, category = @category,
             importance = @importance, related_json = @related_json,
             created_at = datetime('now')
       WHERE id = @id`,
@@ -326,6 +357,7 @@ function persist(
 
       const c = pool[pick.index];
       const e = enriched.get(pick.index);
+      const en = e ? english.get(pick.index) : undefined;
       const related = pick.duplicates.map((d) => ({
         source: pool[d].sourceName,
         url: pool[d].item.url,
@@ -334,6 +366,8 @@ function persist(
       const fields = {
         title_ko: e?.title_ko ?? null,
         summary_ko: e?.summary_ko ?? null,
+        title_en: en?.titleEn ?? null,
+        summary_en: en?.summaryEn ?? null,
         category: e?.category ?? null,
         importance: pick.importance,
         related_json: related.length ? JSON.stringify(related) : null,
@@ -414,6 +448,23 @@ function printPoolPreview(pool: Candidate[], triageReq: LlmRequest): void {
   console.log(
     `[collect] dry-run 선별 요청 추정: 입력 ${est.input}·출력 ${est.output}토큰(근사), $${cost.toFixed(4)}`,
   );
+  // 가공 추정: 선정 전이라 풀 앞쪽 MAX_PICKS_PER_RUN 건(소스별 라운드로빈 순)을 선정으로 가정한다.
+  const chunks = buildEnrichRequests(
+    pool.slice(0, MAX_PICKS_PER_RUN).map((c, i) => enrichInput(c, i)),
+    MODEL,
+  );
+  const enrichEst = sumEnrichTokens(chunks);
+  const enrichCost = estimateCost(enrichEst.input, enrichEst.output, MODEL, { batch: USE_BATCH });
+  const picked = chunks.reduce((n, c) => n + c.ids.length, 0);
+  console.log(
+    `[collect] dry-run 가공 요청 추정(풀 앞 ${picked}건을 선정으로 가정, ${chunks.length}회): ` +
+      `입력 ${enrichEst.input}·출력 ${enrichEst.output}토큰(근사), ` +
+      `용어집 ${chunks.map((c) => c.glossaryEntries).join("·")}항목, $${enrichCost.toFixed(4)}`,
+  );
+  console.log(
+    `[collect] dry-run 회차 추정(선별 + 가공, 재보도 검사 1회 별도): ` +
+      `$${(cost + enrichCost).toFixed(4)} / 한도 $${MAX_COST_USD_PER_RUN}`,
+  );
   console.log(`[collect] dry-run 선별 풀 앞 ${DRY_RUN_PREVIEW_LINES}줄:`);
   pool.slice(0, DRY_RUN_PREVIEW_LINES).forEach((c, i) => console.log(`  ${triageLine(c, i)}`));
 }
@@ -426,6 +477,7 @@ function printNoSaveResult(
   pool: Candidate[],
   picks: Pick[],
   enriched: Map<number, ArticleEnrichment>,
+  english: ReadonlyMap<number, EnglishFields>,
   repeat: { outcome: RepeatCheckOutcome; dropped: Pick[]; all: Map<number, ArticleEnrichment> },
   reported: ReportedHeadline[],
   merges: SameEventMerge[],
@@ -494,15 +546,23 @@ function printNoSaveResult(
       );
     }
   }
-  console.log(`[collect] no-save 게재 ${picks.length}건 (중요도 | 형식 | 분야 | 매체 | 제목):`);
+  console.log(
+    `[collect] no-save 게재 ${picks.length}건 (중요도 | 형식 | 분야 | 매체 | 제목 / EN 영어 제목):`,
+  );
   for (const p of picks) {
     const c = pool[p.index];
     const e = enriched.get(p.index);
+    const en = e ? english.get(p.index) : undefined;
     console.log(
       `  ${p.importance} | ${FORMAT_LABELS[c.format]} | ${e ? CATEGORY_LABELS[e.category] : "-"} | ` +
-        `${c.sourceName} | ${e?.title_ko ?? `(미가공) ${c.item.title}`}`,
+        `${c.sourceName} | ${e?.title_ko ?? `(미가공) ${c.item.title}`}` +
+        (e ? `\n    EN ${en?.titleEn ?? "(영어 없음)"}` : ""),
     );
   }
+  const withEnglish = picks.filter((p) => english.get(p.index)?.titleEn).length;
+  console.log(
+    `[collect] no-save 영어 저장 ${withEnglish}/${enriched.size}건 (요약은 스냅숏 english)`,
+  );
   const s = summarizePicks(pickRows(pool, picks, enriched));
   console.log(`[collect] no-save 형식별: ${formatCounts(s)} (비뉴스 ${s.nonNews})`);
   console.log(`[collect] no-save 분야별(가공): ${categoryCounts(s)}`);
@@ -604,7 +664,7 @@ async function main(): Promise<void> {
     }
 
     if (pool.length === 0) {
-      if (!NO_SAVE) persist(db, pool, overflow, [], new Map(), stats);
+      if (!NO_SAVE) persist(db, pool, overflow, [], new Map(), new Map(), stats);
       return;
     }
 
@@ -636,12 +696,7 @@ async function main(): Promise<void> {
     // ── ④ 가공 ──
     const chunks = withinBudget(
       buildEnrichRequests(
-        picks.map((p) => ({
-          id: p.index,
-          item: pool[p.index].item,
-          sourceName: pool[p.index].sourceName,
-          format: pool[p.index].format,
-        })),
+        picks.map((p) => enrichInput(pool[p.index], p.index)),
         MODEL,
       ),
       llm.usage.costUsd,
@@ -713,6 +768,17 @@ async function main(): Promise<void> {
     // 이 아래(할당 경고·저장·mix)는 모두 합친 뒤의 최종 게재분을 쓴다.
     const published = { ...afterRepeat, picks: sameEvent.picks, enriched: sameEvent.enriched };
 
+    // ── ④-5 영어 필드 확정 ── 게재분의 title_en·summary_en 을 저장할 값으로 정한다. persist·스냅숏은 이 결과만 쓴다.
+    // 영어 품질 검사(Phase 1-3)는 resolveEnglish 안에서 돈다 — 근거는 원문 제목 + 모델에 준 발췌(enrichEvidence).
+    const english = resolveEnglish(
+      [...published.enriched].map(([id, enrichment]) => ({
+        id,
+        enrichment,
+        evidence: enrichEvidence(pool[id].item),
+      })),
+    );
+    if (snapshot) snapshot.english = Object.fromEntries(english);
+
     // 할당 미달·초과·논문 분야 쏠림 경고(강제로 채우거나 덜어 내지 않는다) — 재보도를 빼고 같은 사건을 합친 최종 게재분으로 센다.
     // Physical AI 는 가공된 기사의 분야로 센다 — 소스 topic 은 일반 매체의 로봇 기사를 놓친다. 가공되지 않은 선정만
     // 소스 topic 으로 대신한다.
@@ -762,6 +828,7 @@ async function main(): Promise<void> {
         pool,
         published.picks,
         published.enriched,
+        english,
         { outcome: repeat, dropped: published.dropped, all: enriched },
         reportedFull,
         sameEvent.merges,
@@ -775,6 +842,7 @@ async function main(): Promise<void> {
         overflow,
         published.picks,
         published.enriched,
+        english,
         stats,
         followUpOf,
         articleIdOf,

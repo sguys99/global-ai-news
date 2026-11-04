@@ -26,9 +26,9 @@ Also write an English headline (`title_en`) and summary (`summary_en`) for inter
 ### Language
 
 - English only: no Hangul characters anywhere in title_en or summary_en.
-- Names: use the glossary below exactly. Foreign names written in Korean (앤트로픽, 오픈AI) go back to their original spelling (Anthropic, OpenAI). If the input gives a Latin spelling in parentheses, e.g. 제브(Jev), use it.
-- A Korean organization not in the glossary and without a Latin spelling in the input: romanize it (Revised Romanization). Do not invent an English translation of a brand name.
-- Korean people: family name first, then the given name hyphenated, every syllable kept — a three-syllable name is a one-syllable family name plus a two-syllable given name (계동경 → Gye Dong-gyeong, 현대진 → Hyun Dae-jin, 박춘식 → Park Chun-sik). Use the usual family-name spellings in the glossary. Give their role as the input states it; translate military ranks with the glossary table.
+- Names: the user message ends with a [용어집] (glossary) block that lists the Korean names found in that request's articles, as `Korean name · short form → English`. Use those English spellings exactly, casing included; a short form on the left is the same name as the full form. Foreign names written in Korean (앤트로픽, 오픈AI) go back to their original spelling (Anthropic, OpenAI). If the input gives a Latin spelling in parentheses, e.g. 제브(Jev), use it.
+- A Korean organization not in the [용어집] block and without a Latin spelling in the input: romanize it (Revised Romanization). Do not invent an English translation of a brand name.
+- Korean people: family name first, then the given name hyphenated, every syllable kept — a three-syllable name is a one-syllable family name plus a two-syllable given name (계동경 → Gye Dong-gyeong, 현대진 → Hyun Dae-jin, 박춘식 → Park Chun-sik). Use the usual family-name spellings in the name tables below. Give their role as the input states it; translate military ranks with the rank table below.
 - Korea-specific bodies and terms: give a short English description instead of a bare romanization (국감 → "the National Assembly's annual audit"). Write "South Korea" or "Korean", never "ROK" alone.
 - Do not mention the Korean outlet that published the story.
 
