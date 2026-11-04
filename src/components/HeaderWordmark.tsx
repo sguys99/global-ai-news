@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLocale, useMessages } from "@/components/LocaleProvider";
+import { localePath, splitLocalePath } from "@/lib/i18n";
+import { commonMessages } from "@/lib/messages/common";
 import { cn } from "@/lib/utils";
 
 /** 헤더 높이(px) — 제호가 이 선 위로 완전히 지나가면 워드마크를 보인다. */
@@ -13,11 +16,16 @@ const HEADER_OFFSET = 56;
  * 제호가 두 번 보이지 않게 하고, 스크롤로 지나가면 페이드인한다(신문 사이트의 축약 로고 패턴).
  * 마스트헤드가 없는 화면(상세·검색·필터 결과)에서는 항상 보인다.
  * SSR 초기값: 마스트헤드가 있는 홈·호 고정 링크는 숨김(최상단 = 제호 노출), 그 외 표시
- * → 하이드레이션 깜빡임 없음.
+ * → 하이드레이션 깜빡임 없음. 영어판(`/en/…`)은 언어 접두어를 뗀 경로로 같은 판정을 한다.
  */
 export function HeaderWordmark({ className }: { className?: string }) {
+  const locale = useLocale();
+  const t = useMessages(commonMessages);
   const pathname = usePathname();
-  const [visible, setVisible] = useState(pathname !== "/" && !pathname.startsWith("/edition/"));
+  const [visible, setVisible] = useState(() => {
+    const path = splitLocalePath(pathname).path;
+    return path !== "/" && !path.startsWith("/edition/");
+  });
 
   useEffect(() => {
     let frame = 0;
@@ -45,8 +53,8 @@ export function HeaderWordmark({ className }: { className?: string }) {
 
   return (
     <Link
-      href="/"
-      aria-label="AI Daybook 홈"
+      href={localePath(locale, "/")}
+      aria-label={t.homeLabel}
       tabIndex={visible ? undefined : -1}
       aria-hidden={visible ? undefined : true}
       className={cn(

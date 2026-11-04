@@ -7,8 +7,14 @@
  *
  * 값은 articles.engagement_json(수집 시점 메트릭)과 기사 URL 에서 꺼낸다. 없는 값은 항목째 빠진다.
  * 숫자 표기는 Intl·toLocaleString 없이 직접 만든다 — 빌드(Node ICU)와 브라우저의 출력이 갈리지 않게.
+ * 스크린리더 label·값 앞 낱말은 언어판 문구(src/lib/messages/radar.ts)에서 고른다(마지막 인자 locale, 기본 ko).
  */
+import { getMessages, type Locale, type MessagesOf } from "@/lib/i18n";
+import { radarMessages } from "@/lib/messages/radar";
 import type { ArticleCard, Engagement } from "@/lib/types";
+
+/** 메타 줄 문구 한 벌(언어별). 주간 레이더는 증가분 문구만 바꾼 벌을 넘긴다(weeklyRadar.weeklyMetaBlock). */
+export type RadarMetaMessages = MessagesOf<typeof radarMessages>["meta"];
 
 /** 메타 항목 종류. 렌더 쪽이 React key·스타일(식별자 vs 수치) 분기에 쓴다. */
 export type RadarMetaKey =
@@ -37,7 +43,7 @@ export interface RadarMetaItem {
   value: string;
   /** 화면 표기 = icon · prefix · value 를 빈칸으로 이은 것(예: "★ 7,406", "오늘 +1,190"). */
   text: string;
-  /** 스크린리더·title 용 한국어 문구(예: "스타 12,400개"). */
+  /** 스크린리더·title 용 문구(예: ko "스타 12,400개", en "Stars: 12,400"). */
   label: string;
   /** 수치 항목 여부(tabular-nums 적용 대상). 식별자·언어·태스크는 false. */
   numeric: boolean;
@@ -138,6 +144,17 @@ function koreanApprox(n: number): string {
   const v = n / div < 10 ? Math.round((n * 10) / div) / 10 : Math.round(n / div);
   return `약 ${v >= 1000 ? groupDigits(v) : v}${unit}`;
 }
+
+/** 파라미터 수의 영어 읽기(스크린리더용): 8.03e9 → "about 8 billion", 3.5e8 → "about 350 million". */
+function englishApprox(n: number): string {
+  const [div, unit] =
+    n >= 1e12 ? [1e12, "trillion"] : n >= 1e9 ? [1e9, "billion"] : [1e6, "million"];
+  const v = n / div < 10 ? Math.round((n * 10) / div) / 10 : Math.round(n / div);
+  return `about ${v >= 1000 ? groupDigits(v) : v} ${unit}`;
+}
+
+const approxOf = (n: number, locale: Locale) =>
+  locale === "en" ? englishApprox(n) : koreanApprox(n);
 
 /** 증가분: 1만 미만은 쉼표 정수("+1,203"), 이상은 축약("+12.4k"). */
 function formatDelta(n: number): string {
@@ -270,13 +287,13 @@ function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
 }
 
-function repoMeta(url: string, e: Engagement): RadarMetaItem[] {
+function repoMeta(url: string, e: Engagement, t: RadarMetaMessages): RadarMetaItem[] {
   const out: RadarMetaItem[] = [];
   const repo = parseGithubRepo(url);
-  if (repo) out.push(item("repo", repo, `저장소 ${repo}`, false));
+  if (repo) out.push(item("repo", repo, t.repo(repo), false));
   const stars = toCount(e.stars);
   if (stars) {
-    out.push(item("stars", displayCount(stars), `스타 ${groupDigits(stars)}개`, true, "★"));
+    out.push(item("stars", displayCount(stars), t.stars(groupDigits(stars)), true, "★"));
   }
   const today = toCount(e.stars_today);
   if (today) {
@@ -284,64 +301,63 @@ function repoMeta(url: string, e: Engagement): RadarMetaItem[] {
       item(
         "starsToday",
         formatDelta(today),
-        `오늘 스타 ${groupDigits(today)}개 증가`,
+        t.starsToday(groupDigits(today)),
         true,
         undefined,
-        "오늘",
+        t.starsTodayPrefix,
       ),
     );
   }
   const language = str(e.language);
-  if (language) out.push(item("language", language, `주 언어 ${language}`, false));
+  if (language) out.push(item("language", language, t.language(language), false));
   return out;
 }
 
-function modelMeta(url: string, e: Engagement): RadarMetaItem[] {
+function modelMeta(
+  url: string,
+  e: Engagement,
+  t: RadarMetaMessages,
+  locale: Locale,
+): RadarMetaItem[] {
   const out: RadarMetaItem[] = [];
   const id = parseHfModelId(url);
-  if (id) out.push(item("model", id, `모델 ${id}`, false));
+  if (id) out.push(item("model", id, t.model(id), false));
   const params = toCount(e.params);
   const paramText = formatParamCount(params);
   if (params && paramText) {
-    out.push(item("params", paramText, `파라미터 ${koreanApprox(params)} 개`, true));
+    out.push(item("params", paramText, t.params(approxOf(params, locale)), true));
   }
   const task = str(e.pipeline_tag);
-  if (task) out.push(item("task", task, `태스크 ${task}`, false));
+  if (task) out.push(item("task", task, t.task(task), false));
   const likes = toCount(e.likes);
   if (likes) {
-    out.push(item("likes", displayCount(likes), `좋아요 ${groupDigits(likes)}개`, true, "♥"));
+    out.push(item("likes", displayCount(likes), t.likes(groupDigits(likes)), true, "♥"));
   }
   const downloads = toCount(e.downloads);
   if (downloads) {
     out.push(
-      item(
-        "downloads",
-        displayCount(downloads),
-        `최근 30일 다운로드 ${groupDigits(downloads)}회`,
-        true,
-        "↓",
-      ),
+      item("downloads", displayCount(downloads), t.downloads(groupDigits(downloads)), true, "↓"),
     );
   }
   return out;
 }
 
-function paperMeta(url: string, e: Engagement): RadarMetaItem[] {
+function paperMeta(url: string, e: Engagement, t: RadarMetaMessages): RadarMetaItem[] {
   const out: RadarMetaItem[] = [];
   const id = parseArxivId(url);
   if (id) out.push(item("arxiv", `arXiv ${id}`, `arXiv ${id}`, false));
   const ups = toCount(e.ups);
-  if (ups) out.push(item("upvotes", displayCount(ups), `추천 ${groupDigits(ups)}개`, true, "▲"));
+  if (ups) out.push(item("upvotes", displayCount(ups), t.upvotes(groupDigits(ups)), true, "▲"));
   const citations = toCount(e.citations);
   if (citations) {
     out.push(
       item(
         "citations",
         displayCount(citations),
-        `인용 ${groupDigits(citations)}회`,
+        t.citations(groupDigits(citations)),
         true,
         undefined,
-        "인용",
+        t.citationsPrefix,
       ),
     );
   }
@@ -356,17 +372,25 @@ function paperMeta(url: string, e: Engagement): RadarMetaItem[] {
  * @example
  * radarMeta({ format: "oss", url: "https://github.com/vllm-project/vllm",
  *   engagement: { stars: 48836, stars_today: 1203, language: "Python" } }).map((m) => m.text)
- * // → ["vllm-project/vllm", "★ 48.8k", "오늘 +1,203", "Python"]
+ * // → ["vllm-project/vllm", "★ 48.8k", "오늘 +1,203", "Python"]  (en: "Today +1,203")
  */
-export function radarMeta(article: RadarMetaInput): RadarMetaItem[] {
+export function radarMeta(article: RadarMetaInput, locale: Locale = "ko"): RadarMetaItem[] {
+  return radarMetaWith(article, getMessages(radarMessages, locale).meta, locale);
+}
+
+function radarMetaWith(
+  article: RadarMetaInput,
+  t: RadarMetaMessages,
+  locale: Locale,
+): RadarMetaItem[] {
   const e: Engagement = article.engagement ?? {};
   switch (article.format) {
     case "oss":
-      return repoMeta(article.url, e);
+      return repoMeta(article.url, e, t);
     case "model":
-      return modelMeta(article.url, e);
+      return modelMeta(article.url, e, t, locale);
     case "paper":
-      return paperMeta(article.url, e);
+      return paperMeta(article.url, e, t);
     default:
       return [];
   }
@@ -388,12 +412,23 @@ export interface RadarMetaBlock {
 export function radarMetaBlock(
   article: RadarMetaInput & { source: { name: string } },
   sourceName: string = article.source.name,
+  locale: Locale = "ko",
 ): RadarMetaBlock {
-  const items = radarMeta(article);
+  return radarMetaBlockWith(article, sourceName, getMessages(radarMessages, locale).meta, locale);
+}
+
+/** radarMetaBlock 의 문구 한 벌 지정판 — 주간 레이더가 증가분 문구("당일")만 바꾼 벌로 부른다. */
+export function radarMetaBlockWith(
+  article: RadarMetaInput,
+  sourceName: string,
+  t: RadarMetaMessages,
+  locale: Locale,
+): RadarMetaBlock {
+  const items = radarMetaWith(article, t, locale);
   const id = items.find((m) => ID_KEYS.has(m.key));
   const stats = items.filter((m) => !ID_KEYS.has(m.key));
   if (!id && stats.length === 0) {
-    return { id: item("source", sourceName, `출처 ${sourceName}`, false), stats };
+    return { id: item("source", sourceName, t.source(sourceName), false), stats };
   }
   return id ? { id, stats } : { stats };
 }

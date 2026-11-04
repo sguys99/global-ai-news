@@ -20,8 +20,10 @@
  * 중요도는 그날 선별에서 같은 형식 후보끼리 매긴 상대값(Phase 4)이라 요일 사이 비교가 완전하지는 않다 —
  * 그래서 동점이 잦고, 화제 지수·반응 신호가 실제 순서를 가른다.
  */
-import { FORMAT_DISPLAY_LABELS, type Format } from "@/lib/labels";
-import { parseArxivId, parseGithubRepo, parseHfModelId, radarMetaBlock } from "@/lib/radarMeta";
+import { getMessages, type Locale } from "@/lib/i18n";
+import { formatCountLabel, type Format } from "@/lib/labels";
+import { radarMessages } from "@/lib/messages/radar";
+import { parseArxivId, parseGithubRepo, parseHfModelId, radarMetaBlockWith } from "@/lib/radarMeta";
 import type { RadarMetaBlock } from "@/lib/radarMeta";
 import type { ArticleCard } from "@/lib/types";
 
@@ -53,9 +55,12 @@ export interface WeeklyItem {
   id: number;
   /** 한국어 제목(가공 전이면 원제). */
   title: string;
+  /** 영어 제목(영어판 — 있을 때만 싣는다). */
+  titleEn?: string;
   format: WeeklyFormat;
   category: string;
-  source: { name: string };
+  /** 매체 — 영문명(nameEn)은 있을 때만(영어판 매체 표시, labels.sourceDisplayName). */
+  source: { name: string; nameEn?: string };
   url: string;
   engagement?: ArticleCard["engagement"];
   /** 실린 호 날짜(KST 'YYYY-MM-DD'). */
@@ -111,19 +116,18 @@ export function weekWindow(
   return { start: dates[0], end: sundayKey, dates };
 }
 
-const WEEKDAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
-
-/** 실린 호 표기: "화요일 호". */
-export function issueDayLabel(dateKey: string): string {
+/** 실린 호 표기: "화요일 호"(en "Tuesday issue"). 잘못된 키는 빈 문자열. */
+export function issueDayLabel(dateKey: string, locale: Locale = "ko"): string {
   const w = weekdayOfKey(dateKey);
-  return w < 0 ? "" : `${WEEKDAY_NAMES[w]}요일 호`;
+  return w < 0 ? "" : getMessages(radarMessages, locale).weekly.issueDay(w);
 }
 
-/** 밴드 머리의 기간: "10월 26일 – 11월 1일". */
-export function weekRangeLabel(start: string, end: string): string {
+/** 밴드 머리의 기간: "10월 26일 – 11월 1일"(en "Oct 26 – Nov 1"). */
+export function weekRangeLabel(start: string, end: string, locale: Locale = "ko"): string {
+  const t = getMessages(radarMessages, locale).weekly;
   const md = (k: string) => {
     const m = DATE_KEY.exec(k);
-    return m ? `${Number(m[2])}월 ${Number(m[3])}일` : "";
+    return m ? t.monthDay(Number(m[2]), Number(m[3])) : "";
   };
   return `${md(start)} – ${md(end)}`;
 }
@@ -242,10 +246,13 @@ function toItem({ article: a, issueDate }: WeeklyCandidate): WeeklyItem {
     title: a.titleKo || a.titleOriginal,
     format: a.format as WeeklyFormat,
     category: a.category,
-    source: { name: a.source.name },
+    source: a.source.nameEn
+      ? { name: a.source.name, nameEn: a.source.nameEn }
+      : { name: a.source.name },
     url: a.url,
     issueDate,
   };
+  if (a.titleEn) item.titleEn = a.titleEn;
   if (a.engagement) item.engagement = a.engagement;
   return item;
 }
@@ -313,28 +320,25 @@ export function buildWeeklyRadar(
   };
 }
 
-/** 머리 보조 문구의 형식 구성: "저장소 3 · 모델 2 · 논문 5"(화면 표시명). */
-export function weeklyFormatMix(formats: WeeklyRadar["formats"]): string {
-  return formats.map((f) => `${FORMAT_DISPLAY_LABELS[f.format]} ${f.count}`).join(" · ");
+/** 머리 보조 문구의 형식 구성: "저장소 3 · 모델 2 · 논문 5"(화면 표시명, en "3 repos · 2 models · 5 papers"). */
+export function weeklyFormatMix(formats: WeeklyRadar["formats"], locale: Locale = "ko"): string {
+  return formats.map((f) => formatCountLabel(f.format, f.count, locale)).join(" · ");
 }
 
 /**
- * 주간 행의 메타 블록 — 레이더 카드와 같은 radarMetaBlock 에서 "오늘 +N"(그날 트렌딩 스타 증가분)만
- * "당일 +N"으로 바꾼다. 일요일 지면에서 화요일 호 저장소의 증가분을 "오늘"이라 쓰면 틀린 말이다.
+ * 주간 행의 메타 블록 — 레이더 카드와 같은 메타 블록에서 "오늘 +N"(그날 트렌딩 스타 증가분)만
+ * "당일 +N"으로 바꾼다(en "Today" → "That day"). 일요일 지면에서 화요일 호 저장소의 증가분을 "오늘"이라 쓰면 틀린 말이다.
  */
-export function weeklyMetaBlock(item: WeeklyItem, sourceName: string): RadarMetaBlock {
-  const block = radarMetaBlock(item, sourceName);
-  return {
-    ...block,
-    stats: block.stats.map((m) =>
-      m.key === "starsToday"
-        ? {
-            ...m,
-            prefix: "당일",
-            text: m.text.replace(/^오늘/, "당일"),
-            label: m.label.replace(/^오늘/, "그 호 당일"),
-          }
-        : m,
-    ),
-  };
+export function weeklyMetaBlock(
+  item: WeeklyItem,
+  sourceName: string,
+  locale: Locale = "ko",
+): RadarMetaBlock {
+  const t = getMessages(radarMessages, locale).meta;
+  return radarMetaBlockWith(
+    item,
+    sourceName,
+    { ...t, starsTodayPrefix: t.starsSameDayPrefix, starsToday: t.starsSameDay },
+    locale,
+  );
 }

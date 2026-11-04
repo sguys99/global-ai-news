@@ -6,34 +6,39 @@
  * - ImportanceMeter: 5칸 원형 도트 미터(4–5는 코발트)
  * - Byline: (형식 배지) 소스 · 날짜 · 중요도 (+ 선택 화제 지수)
  * - TrendBar: 0–100 고정 스케일 수평 바
- * - TagChips: pill 태그 칩
+ * - TagChips: pill 태그 칩(영어판은 라틴 문자 태그만)
+ * 언어판(영어판 Phase 3-3): 각 컴포넌트가 `locale`(기본 ko)을 받아 표시명·문구를 고른다. 이 파일은 서버·클라이언트
+ * 어느 쪽에서도 그려지므로 컨텍스트가 아니라 prop 으로 받는다(클라이언트 부모는 useLocale() 값을 넘긴다).
  */
 import { RelativeTime } from "@/components/RelativeTime";
 import type { ReactNode } from "react";
 import {
   FORMAT_BADGES,
-  FORMAT_DISPLAY_LABELS,
   REGION_BADGES,
-  REGION_LABELS,
   categoryLabel,
   formatDate,
-  shortSourceName,
+  formatLabel,
+  hasHangul,
+  regionLabel,
   type Format,
   type Region,
 } from "@/lib/labels";
+import { sourceNameOf } from "@/lib/articleText";
 import { relatedCountOf } from "@/lib/feedIndex";
+import { getMessages, type Locale } from "@/lib/i18n";
+import { metaMessages } from "@/lib/messages/meta";
 import { cn } from "@/lib/utils";
 import type { ArticleCard, IndexCard } from "@/lib/types";
-import type { Locale } from "@/lib/i18n";
 
 /** 카테고리 키커. category 가 비어 있으면 렌더하지 않는다. */
 export function CategoryKicker({
   category,
   className,
+  locale = "ko",
 }: {
   category: string;
   className?: string;
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko). */
   locale?: Locale;
 }) {
   if (!category) return null;
@@ -44,7 +49,7 @@ export function CategoryKicker({
         className,
       )}
     >
-      {categoryLabel(category)}
+      {categoryLabel(category, locale)}
     </span>
   );
 }
@@ -56,17 +61,18 @@ const OUTLINE_BADGE =
 /**
  * 형식 배지 REPO·MODEL·PAPER (시안 결정 ⑪). 10.5px 굵은 대문자, 잉크 1px 테두리, 각진 면 — 코발트는 쓰지 않는다
  * (단일 강조색 원칙: 코발트는 옆의 분야 키커 몫). 뉴스는 배지가 없다.
- * 대문자는 aria-hidden(읽기 어색하고 뜻도 좁다), 스크린리더에는 화면 표시명(FORMAT_DISPLAY_LABELS — 저장소·모델·논문)을
- * sr-only 로 읽힌다.
+ * 대문자는 aria-hidden(읽기 어색하고 뜻도 좁다), 스크린리더에는 화면 표시명(formatLabel — 저장소·모델·논문 /
+ * Repo·Model·Paper)을 sr-only 로 읽힌다.
  * relative 는 sr-only(absolute)의 기준 상자 — 가로 스크롤러 안에서 클립을 벗어나 페이지 폭을 늘리지 않게.
  */
 export function FormatBadge({
   format,
   className,
+  locale = "ko",
 }: {
   format: Format;
   className?: string;
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko). */
   locale?: Locale;
 }) {
   const badge = FORMAT_BADGES[format];
@@ -74,7 +80,7 @@ export function FormatBadge({
   return (
     <span className={cn(OUTLINE_BADGE, className)}>
       <span aria-hidden>{badge}</span>
-      <span className="sr-only">{FORMAT_DISPLAY_LABELS[format]}</span>
+      <span className="sr-only">{formatLabel(format, locale)}</span>
     </span>
   );
 }
@@ -83,12 +89,21 @@ export function FormatBadge({
  * 지역 배지 KOREA — 한국 매체(sources.region = kr). 형식 배지와 같은 문법(잉크 아웃라인·대문자, 스크린리더엔 "한국 매체").
  * 지금은 운영 콘솔 소스 목록만 쓴다(영어판 Phase 5 의 KOREA 표시가 같은 컴포넌트를 쓸 수 있게 여기 둔다).
  */
-export function RegionBadge({ region, className }: { region?: Region; className?: string }) {
+export function RegionBadge({
+  region,
+  className,
+  locale = "ko",
+}: {
+  region?: Region;
+  className?: string;
+  /** 언어판(기본 ko) — 스크린리더 표시명. */
+  locale?: Locale;
+}) {
   if (!region) return null;
   return (
     <span className={cn(OUTLINE_BADGE, className)}>
       <span aria-hidden>{REGION_BADGES[region]}</span>
-      <span className="sr-only">{REGION_LABELS[region]}</span>
+      <span className="sr-only">{regionLabel(region, locale)}</span>
     </span>
   );
 }
@@ -96,9 +111,10 @@ export function RegionBadge({ region, className }: { region?: Region; className?
 /** 중요도 1–5 도트 미터. 0(미가공)이면 렌더하지 않는다. 색만이 아니라 칸 수·라벨로도 전달. */
 export function ImportanceMeter({
   value,
+  locale = "ko",
 }: {
   value: number;
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko). */
   locale?: Locale;
 }) {
   if (value <= 0) return null;
@@ -106,7 +122,7 @@ export function ImportanceMeter({
   return (
     <span
       role="img"
-      aria-label={`중요도 ${value}/5`}
+      aria-label={getMessages(metaMessages, locale).importance(value)}
       className="inline-flex items-center gap-[3px]"
     >
       {[1, 2, 3, 4, 5].map((i) => (
@@ -151,6 +167,7 @@ export function Byline({
   timeBase,
   prefix,
   className,
+  locale = "ko",
 }: {
   /** 카드(ArticleCard) 또는 색인 카드(IndexCard — 묶인 보도는 개수 relatedCount 만 있다). */
   article: Pick<ArticleCard, "source" | "publishedAt" | "importance" | "trendingScore" | "format"> &
@@ -174,7 +191,10 @@ export function Byline({
    */
   timeBase?: string;
   className?: string;
+  /** 언어판(기본 ko) — 매체 표시명·날짜·배지·미터 문구. 상대 시각(RelativeTime)은 컨텍스트로 언어를 읽는다. */
+  locale?: Locale;
 }) {
+  const t = getMessages(metaMessages, locale);
   const source = (
     <span
       className={cn(
@@ -184,17 +204,17 @@ export function Byline({
         showFormat && "inline-flex items-center gap-[7px]",
       )}
     >
-      {showFormat && <FormatBadge format={article.format} />}
+      {showFormat && <FormatBadge format={article.format} locale={locale} />}
       <span className={cn(compact && "min-w-0 truncate")}>
-        {fullSource ? article.source.name : shortSourceName(article.source.name)}
-        <OtherSources count={relatedCountOf(article)} />
+        {sourceNameOf(article, locale, { full: fullSource })}
+        <OtherSources count={relatedCountOf(article)} locale={locale} />
       </span>
     </span>
   );
   const when = timeBase ? (
     <RelativeTime iso={article.publishedAt} base={timeBase} />
   ) : (
-    <span className="tabular-nums">{formatDate(article.publishedAt)}</span>
+    <span className="tabular-nums">{formatDate(article.publishedAt, locale)}</span>
   );
   if (compact) {
     return (
@@ -209,7 +229,7 @@ export function Byline({
         <Dot className="md:hidden" />
         <span className="flex items-center gap-2.5">
           {when}
-          {article.importance > 0 && <ImportanceMeter value={article.importance} />}
+          {article.importance > 0 && <ImportanceMeter value={article.importance} locale={locale} />}
         </span>
       </div>
     );
@@ -232,23 +252,27 @@ export function Byline({
       {article.importance > 0 && (
         <>
           <Dot />
-          <ImportanceMeter value={article.importance} />
+          <ImportanceMeter value={article.importance} locale={locale} />
         </>
       )}
       {showTrend && article.trendingScore > 0 && (
         <>
           <Dot />
-          <span className="tabular-nums">화제 {article.trendingScore}</span>
+          <span className="tabular-nums">{t.trending(article.trendingScore)}</span>
         </>
       )}
     </div>
   );
 }
 
-/** 같은 사건을 다룬 다른 매체 수 — "외 N곳". 대표 기사 하나로 묶인 보도의 폭을 보여 준다. */
-function OtherSources({ count }: { count?: number }) {
+/** 같은 사건을 다룬 다른 매체 수 — "외 N곳"(en "+N more"). 대표 기사 하나로 묶인 보도의 폭을 보여 준다. */
+function OtherSources({ count, locale }: { count?: number; locale: Locale }) {
   if (!count) return null;
-  return <span className="text-muted-foreground font-normal"> 외 {count}곳</span>;
+  return (
+    <span className="text-muted-foreground font-normal">
+      {getMessages(metaMessages, locale).otherSources(count)}
+    </span>
+  );
 }
 
 /** 화제 지수 0–100 바. 길이 = 값/100 (고정 스케일). */
@@ -264,16 +288,20 @@ export function TrendBar({ value }: { value: number }) {
 /**
  * 태그 칩 목록. 비어 있으면 렌더하지 않는다.
  * max 를 주면 그 개수만 노출하고 나머지는 "+N" 으로 요약한다(미지정 시 전량 표시).
+ * 영어판은 라틴 문자 태그만 보인다 — 한글 태그는 숨긴다(english-version-plan 기본값, 태그 정규화는 Phase 9).
+ * 다 걸러져 비면 렌더하지 않는다. ko 는 그대로 전량.
  */
 export function TagChips({
-  tags,
+  tags: allTags,
   max,
+  locale = "ko",
 }: {
   tags: string[];
   max?: number;
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko). */
   locale?: Locale;
 }) {
+  const tags = visibleTags(allTags, locale);
   if (tags.length === 0) return null;
   const shown = typeof max === "number" ? tags.slice(0, max) : tags;
   const overflow = tags.length - shown.length;
@@ -294,4 +322,9 @@ export function TagChips({
       )}
     </div>
   );
+}
+
+/** 언어판에 보일 태그 — en 은 한글이 섞인 태그를 뺀다, ko 는 그대로. 칩을 감싸는 쪽이 빈 칸을 가릴 때 쓴다. */
+export function visibleTags(tags: string[], locale: Locale = "ko"): string[] {
+  return locale === "en" ? tags.filter((tag) => !hasHangul(tag)) : tags;
 }

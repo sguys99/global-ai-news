@@ -7,7 +7,8 @@
  * 1:1 이전한 것이다(동점 보조 키까지 동일). 서버/클라 동작 일치는 단위 테스트로 고정한다.
  */
 import type { FeedOptions, SearchOptions } from "@/lib/db";
-import { normalizeCategory, shortSourceName } from "@/lib/labels";
+import type { Locale } from "@/lib/i18n";
+import { normalizeCategory, shortSourceName, sourceDisplayName } from "@/lib/labels";
 import type { IndexCard } from "@/lib/types";
 
 /** ISO8601 문자열 내림차순 비교(사전식 비교 = 시간 내림차순과 호환). */
@@ -35,6 +36,8 @@ function comparatorFor(sort: FeedOptions["sort"]): (a: IndexCard, b: IndexCard) 
 export interface SourceOption {
   id: string;
   name: string;
+  /** 영문 매체명(sources.name_en, 한글 이름 매체만) — 영어판 칩 표시명(`sourceDisplayName`). 한국어판은 싣지 않는다. */
+  nameEn?: string;
   count?: number;
 }
 
@@ -53,24 +56,31 @@ export interface SourceGroup {
   count: number;
 }
 
-/** 소스 목록을 축약명 단위로 묶는다. 묶음 기사 수 합계 내림차순(동률은 입력 순서 유지). */
-export function groupSources(sources: readonly SourceOption[]): SourceGroup[] {
+/**
+ * 소스 목록을 축약명 단위로 묶는다. 묶음 기사 수 합계 내림차순(동률은 입력 순서 유지).
+ * 묶는 기준은 언어와 무관하게 한국어 축약명(`shortSourceName`)이다 — 두 언어판의 칩·`?source=` 가 같은 묶음이 된다.
+ * 칩 표시명(`label`)만 `locale` 로 고른다(묶음 첫 소스의 `sourceDisplayName`, ko 는 축약명 그대로).
+ */
+export function groupSources(
+  sources: readonly SourceOption[],
+  locale: Locale = "ko",
+): SourceGroup[] {
   const groups = new Map<string, SourceGroup>();
   const repCount = new Map<string, number>(); // 묶음별 대표 id 의 기사 수
   for (const s of sources) {
-    const label = shortSourceName(s.name);
+    const key = shortSourceName(s.name);
     const count = s.count ?? 0;
-    const g = groups.get(label);
+    const g = groups.get(key);
     if (!g) {
-      groups.set(label, { id: s.id, label, ids: [s.id], count });
-      repCount.set(label, count);
+      groups.set(key, { id: s.id, label: sourceDisplayName(s, locale), ids: [s.id], count });
+      repCount.set(key, count);
       continue;
     }
     g.ids.push(s.id);
     g.count += count;
-    if (count > repCount.get(label)!) {
+    if (count > repCount.get(key)!) {
       g.id = s.id;
-      repCount.set(label, count);
+      repCount.set(key, count);
     }
   }
   return [...groups.values()].sort((a, b) => b.count - a.count);

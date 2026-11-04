@@ -165,9 +165,7 @@ describe("editionShare — 세 줄 요약을 공유 설명으로", () => {
     ];
     const share = editionShare({ lead, seconds: [sub] }, info, brief);
     expect(share.title).toBe("리드 기사");
-    expect(share.description).toBe(
-      "AI Daybook 10월 30일(금) 제42호 — 서브를 요약한 줄 · 셋째 줄",
-    );
+    expect(share.description).toBe("AI Daybook 10월 30일(금) 제42호 — 서브를 요약한 줄 · 셋째 줄");
   });
 
   it("요약이 없거나 리드 줄뿐이면 예전처럼 서브 헤드라인", () => {

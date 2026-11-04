@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useMessages } from "@/components/LocaleProvider";
 import { StoryEntry } from "@/components/Story";
 import { INDEX_PAGE_SIZE } from "@/lib/feedIndex";
+import { storyIndexMessages } from "@/lib/messages/storyIndex";
 import type { IndexCard } from "@/lib/types";
 
 /** 색인 데이터를 더 받는 중이거나 받지 못한 상태(부모가 fetch 를 맡는다). */
@@ -19,6 +21,7 @@ const pill =
  * 홈은 정적 HTML 에 색인 첫 페이지만 싣는다(`articles` = 앞부분, `total` = 누적 건수). 받은 것보다 더 펼치려 하면
  * `onLoadMore`로 부모에게 나머지(feed-index.json)를 청하고, 그동안 버튼 자리에 "불러오는 중" 한 줄을 둔다.
  * 실패하면 이미 보인 기사는 그대로 두고 같은 자리에 다시 시도 버튼을 둔다.
+ * 언어는 LocaleProvider 컨텍스트로 읽어 StoryEntry 에 넘긴다(서버 부모가 prop 으로 넘기지 않는다).
  */
 export function StoryIndex({
   articles,
@@ -36,6 +39,8 @@ export function StoryIndex({
   onLoadMore?: () => void;
   loadState?: IndexLoadState;
 }) {
+  const locale = useLocale();
+  const t = useMessages(storyIndexMessages);
   const [shown, setShown] = useState(INDEX_PAGE_SIZE);
   const available = articles.length;
   const all = Math.max(total ?? available, available);
@@ -53,7 +58,12 @@ export function StoryIndex({
     <>
       <div className="grid grid-cols-1 gap-x-10 lg:grid-cols-2">
         {articles.slice(0, shown).map((article) => (
-          <StoryEntry key={article.id} article={article} hideCategory={hideCategory} />
+          <StoryEntry
+            key={article.id}
+            article={article}
+            hideCategory={hideCategory}
+            locale={locale}
+          />
         ))}
       </div>
       {waiting ? (
@@ -64,8 +74,12 @@ export function StoryIndex({
         remaining > 0 && (
           <div className="mt-8 flex justify-center">
             <button type="button" onClick={more} className={pill}>
-              기사 더 보기
-              <span className="font-normal tabular-nums opacity-60">남은 {remaining}건</span>
+              {t.more}
+              <span className="font-normal tabular-nums opacity-60">
+                {t.remaining.before}
+                {t.remaining.num(remaining)}
+                {t.remaining.after}
+              </span>
             </button>
           </div>
         )
@@ -85,16 +99,17 @@ export function IndexLoadStatus({
   state: IndexLoadState;
   onRetry?: () => void;
 }) {
+  const t = useMessages(storyIndexMessages);
   if (state === "error") {
     return (
       <div
         role="alert"
         className="text-caption text-muted-foreground flex flex-wrap items-center justify-center gap-x-4 gap-y-2"
       >
-        <span>기사 목록을 불러오지 못했습니다.</span>
+        <span>{t.loadError}</span>
         {onRetry && (
           <button type="button" onClick={onRetry} className={pill}>
-            다시 시도
+            {t.retry}
           </button>
         )}
       </div>
@@ -102,7 +117,7 @@ export function IndexLoadStatus({
   }
   return (
     <p role="status" className="text-caption text-muted-foreground">
-      기사 목록을 불러오는 중…
+      {t.loading}
     </p>
   );
 }

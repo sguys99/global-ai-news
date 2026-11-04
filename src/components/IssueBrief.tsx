@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { ISSUE_BRIEF_LIMITS, type IssueBriefLine } from "@/lib/edition";
 import { cn } from "@/lib/utils";
-import type { Locale } from "@/lib/i18n";
+import { getMessages, localePath, type Locale } from "@/lib/i18n";
+import { issueBriefMessages } from "@/lib/messages/issueBrief";
 
-/** 줄 수 → 머리 문구. 2줄만 남은 호에 "세 줄"이라 쓰면 틀린 말이 된다. */
-const COUNT_WORDS = ["", "한", "두", "세"] as const;
-
-export function issueBriefHeading(count: number): string {
-  return `${COUNT_WORDS[count] ?? "세"} 줄 요약`;
+/** 줄 수 → 머리 문구("세 줄 요약", en "Three things to know"). 2줄만 남은 호에 "세 줄"이라 쓰면 틀린 말이 된다. */
+export function issueBriefHeading(count: number, locale: Locale = "ko"): string {
+  return getMessages(issueBriefMessages, locale).heading(count);
 }
 
 /**
@@ -22,13 +21,15 @@ export function issueBriefHeading(count: number): string {
 export function IssueBrief({
   lines,
   className,
+  locale = "ko",
 }: {
   lines: readonly IssueBriefLine[];
   className?: string;
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko) — 머리 문구·기사 링크. 줄(text)은 데이터라 그대로 싣는다. */
   locale?: Locale;
 }) {
   if (lines.length < ISSUE_BRIEF_LIMITS.min) return null;
+  const t = getMessages(issueBriefMessages, locale);
 
   return (
     <section
@@ -42,19 +43,19 @@ export function IssueBrief({
             id="issue-brief-heading"
             className="font-serif text-[1.0625rem] leading-none font-extrabold tracking-[-0.03em]"
           >
-            {issueBriefHeading(lines.length)}
+            {t.heading(lines.length)}
           </h2>
           <span aria-hidden className="text-label text-muted-foreground md:hidden">
             ·
           </span>
-          <span className="text-label text-muted-foreground">이번 호 핵심</span>
+          <span className="text-label text-muted-foreground">{t.subtitle}</span>
         </div>
 
         <ol className="divide-border mt-1.5 divide-y md:mt-0 md:flex md:flex-col md:gap-y-2 md:divide-y-0">
           {lines.map((line, i) => (
             <li key={line.id}>
               <Link
-                href={`/article/${line.id}`}
+                href={localePath(locale, `/article/${line.id}`)}
                 className="story-link focus-visible:ring-ring focus-visible:ring-offset-background grid min-h-11 grid-cols-[1.375rem_minmax(0,1fr)] items-baseline gap-x-2.5 py-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-4 md:min-h-0 md:grid-cols-[1.75rem_minmax(0,1fr)] md:py-0"
               >
                 <span

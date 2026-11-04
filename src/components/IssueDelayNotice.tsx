@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale } from "@/components/LocaleProvider";
 import { issueDelayCopy, issueDelayDays } from "@/lib/labels";
 
 /**
@@ -10,6 +11,7 @@ import { issueDelayCopy, issueDelayDays } from "@/lib/labels";
  *  2) 마운트 후 브라우저의 현재 KST 시각으로 다시 계산(조건: labels.issueDelayDays). 클라 시각 ≥ 빌드 시각이라 값은 커지기만 한다.
  * 정상 발행이면 숨기고, 늦으면 폴리오 아래 헤어라인 사이 한 줄. 라벨이 상태를 바로 말한다 —
  * 1일 "발행 전", 2일 이상 "발행 지연"(강조색은 라벨 하나만). 좁은 화면은 짧은 문구로 라벨과 한 줄에 맞춘다.
+ * 언어는 LocaleProvider 컨텍스트(영어 레이아웃만 감싼다 — 없으면 ko)에서 읽는다.
  */
 export function IssueDelayNotice({
   issueDate,
@@ -22,6 +24,7 @@ export function IssueDelayNotice({
   /** 빌드 시점에 계산한 issueDelayDays 값(0 = 안내 없음). */
   initialGap?: number;
 }) {
+  const locale = useLocale();
   const [gap, setGap] = useState(initialGap);
 
   useEffect(() => {
@@ -39,7 +42,7 @@ export function IssueDelayNotice({
     };
   }, [issueDate]);
 
-  const copy = issueDelayCopy(issueDate, gap, issueNo);
+  const copy = issueDelayCopy(issueDate, gap, issueNo, locale);
   if (!copy) return null;
   return (
     <p

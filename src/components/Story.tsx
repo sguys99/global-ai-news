@@ -9,48 +9,70 @@
  * - StoryRadar:     레이더 카드(비뉴스) — 형식 배지·키커 · 세리프 제목 · 요약 2줄 · 메타 레일(날짜 생략)
  * - StoryWeekly:    주간 레이더 한 행(일요일 특집) — 순위 · 형식 배지·키커·실린 호 요일 · 세리프 제목 · 매체·메타
  * - StoryEntry:     전체 기사 색인 한 줄 — 날짜 · 키커·형식 배지 · 제목 · 바이라인
+ *
+ * 모두 `locale`(기본 ko)을 받아 제목·요약·매체(articleText)·키커·배지·바이라인·링크를 그 언어로 그린다.
+ * 서버·클라이언트 공용(훅 없음) — 클라이언트 부모(StoryIndex)는 useLocale() 값을 넘긴다.
  */
 import Link from "next/link";
 import { Byline, CategoryKicker, Dot, FormatBadge } from "@/components/ArticleMeta";
-import { formatShortDate, shortSourceName } from "@/lib/labels";
+import { headlineOf, sourceNameOf, summaryOf } from "@/lib/articleText";
+import { localePath, type Locale } from "@/lib/i18n";
+import { formatShortDate } from "@/lib/labels";
 import { radarMetaBlock, type RadarMetaItem } from "@/lib/radarMeta";
 import { issueDayLabel, weeklyMetaBlock, type WeeklyItem } from "@/lib/weeklyRadar";
 import { cn } from "@/lib/utils";
 import type { ArticleCard, IndexCard } from "@/lib/types";
-import type { Locale } from "@/lib/i18n";
 
 // 색인 카드(IndexCard)는 원제가 없다 — 만들 때 원제 폴백을 titleKo 에 이미 넣었다(src/lib/feedIndex.ts).
-const titleOf = (a: Pick<ArticleCard, "titleKo"> & Partial<Pick<ArticleCard, "titleOriginal">>) =>
-  a.titleKo || a.titleOriginal;
-const hrefOf = (a: Pick<ArticleCard, "id">) => `/article/${a.id}`;
+const hrefOf = (a: Pick<ArticleCard, "id">, locale: Locale) =>
+  localePath(locale, `/article/${a.id}`);
 const focus =
   "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background";
 
-export function StoryLead({ article, timeBase }: { article: ArticleCard; timeBase?: string }) {
+/** 스토리 변형 공통 prop. */
+interface StoryProps {
+  article: ArticleCard;
+  timeBase?: string;
+  /** 언어판(기본 ko). */
+  locale?: Locale;
+}
+
+export function StoryLead({ article, timeBase, locale = "ko" }: StoryProps) {
+  const summary = summaryOf(article, locale);
   return (
-    <Link href={hrefOf(article)} className={cn("story-link flex flex-col gap-4", focus)}>
-      <CategoryKicker category={article.category} />
-      <h2 className="headline text-display-xl font-serif font-bold">{titleOf(article)}</h2>
-      {article.summaryKo && (
+    <Link href={hrefOf(article, locale)} className={cn("story-link flex flex-col gap-4", focus)}>
+      <CategoryKicker category={article.category} locale={locale} />
+      <h2 className="headline text-display-xl font-serif font-bold">
+        {headlineOf(article, locale)}
+      </h2>
+      {summary && (
         // 모바일 17px → md 이상 19px(text-dek) — 시안 front-v3 `.lead p`. 좁은 화면에서 리드문이 첫 화면을 다 차지하지 않게.
         <p className="text-foreground-soft md:text-dek max-w-[40em] text-[1.0625rem] leading-[1.7]">
-          {article.summaryKo}
+          {summary}
         </p>
       )}
-      <Byline article={article} showTrend timeBase={timeBase} />
+      <Byline article={article} showTrend timeBase={timeBase} locale={locale} />
     </Link>
   );
 }
 
-export function StorySecondary({ article, timeBase }: { article: ArticleCard; timeBase?: string }) {
+export function StorySecondary({ article, timeBase, locale = "ko" }: StoryProps) {
+  const summary = summaryOf(article, locale);
   return (
-    <Link href={hrefOf(article)} className={cn("story-link flex h-full flex-col gap-2.5", focus)}>
-      <CategoryKicker category={article.category} />
-      <h3 className="headline text-headline font-serif font-bold">{titleOf(article)}</h3>
-      {article.summaryKo && (
-        <p className="text-caption text-muted-foreground line-clamp-3">{article.summaryKo}</p>
-      )}
-      <Byline article={article} compact timeBase={timeBase} className="mt-auto pt-1" />
+    <Link
+      href={hrefOf(article, locale)}
+      className={cn("story-link flex h-full flex-col gap-2.5", focus)}
+    >
+      <CategoryKicker category={article.category} locale={locale} />
+      <h3 className="headline text-headline font-serif font-bold">{headlineOf(article, locale)}</h3>
+      {summary && <p className="text-caption text-muted-foreground line-clamp-3">{summary}</p>}
+      <Byline
+        article={article}
+        compact
+        timeBase={timeBase}
+        className="mt-auto pt-1"
+        locale={locale}
+      />
     </Link>
   );
 }
@@ -60,6 +82,7 @@ export function StorySectionItem({
   featured = false,
   wide = false,
   timeBase,
+  locale = "ko",
 }: {
   article: ArticleCard;
   featured?: boolean;
@@ -70,10 +93,13 @@ export function StorySectionItem({
   wide?: boolean;
   /** 홈 전용 — 바이라인을 상대 시각으로(Byline timeBase 참조). */
   timeBase?: string;
+  /** 언어판(기본 ko). */
+  locale?: Locale;
 }) {
+  const summary = summaryOf(article, locale);
   return (
     <Link
-      href={hrefOf(article)}
+      href={hrefOf(article, locale)}
       className={cn(
         "story-link flex h-full flex-col gap-2",
         // gap-x 30px: 1fr:2fr 둘째 칸 시작 = W/3 + 20px — 2·3·4건 밴드의 둘째 칸 본문(pl-5)과 같은 x.
@@ -91,9 +117,9 @@ export function StorySectionItem({
           wide && "md:row-span-2",
         )}
       >
-        {titleOf(article)}
+        {headlineOf(article, locale)}
       </h3>
-      {article.summaryKo && (
+      {summary && (
         <p
           className={cn(
             "text-caption text-muted-foreground line-clamp-3",
@@ -103,7 +129,7 @@ export function StorySectionItem({
             wide && "md:pt-1",
           )}
         >
-          {article.summaryKo}
+          {summary}
         </p>
       )}
       <Byline
@@ -112,6 +138,7 @@ export function StorySectionItem({
         showFormat
         timeBase={timeBase}
         className={wide ? "pt-1" : "mt-auto pt-1"}
+        locale={locale}
       />
     </Link>
   );
@@ -124,19 +151,19 @@ export function StorySectionItem({
  *   말줄임으로 줄어든다 — 키커·시각·중요도 도트는 온전히 남는다.
  *   행 약 83px(44px 터치 타깃 이상).
  */
-export function StoryBrief({ article, timeBase }: { article: ArticleCard; timeBase?: string }) {
+export function StoryBrief({ article, timeBase, locale = "ko" }: StoryProps) {
   return (
     <Link
-      href={hrefOf(article)}
+      href={hrefOf(article, locale)}
       className={cn(
         "story-link grid min-h-11 grid-cols-1 gap-y-[3px] py-2.5",
         "md:grid-cols-[7.5rem_minmax(0,1fr)_auto] md:items-baseline md:gap-x-4 md:py-[13px]",
         focus,
       )}
     >
-      <CategoryKicker category={article.category} className="max-md:hidden" />
+      <CategoryKicker category={article.category} className="max-md:hidden" locale={locale} />
       <h3 className="headline md:text-title line-clamp-2 font-serif text-[0.9375rem] leading-[1.4] font-bold tracking-[-0.03em] md:line-clamp-1 md:leading-[1.5]">
-        {titleOf(article)}
+        {headlineOf(article, locale)}
       </h3>
       <Byline
         article={article}
@@ -145,12 +172,13 @@ export function StoryBrief({ article, timeBase }: { article: ArticleCard; timeBa
         prefix={
           article.category ? (
             <span className="contents md:hidden">
-              <CategoryKicker category={article.category} className="shrink-0" />
+              <CategoryKicker category={article.category} className="shrink-0" locale={locale} />
               <Dot />
             </span>
           ) : undefined
         }
         className="min-w-0 flex-nowrap gap-x-2 overflow-hidden whitespace-nowrap"
+        locale={locale}
       />
     </Link>
   );
@@ -161,10 +189,20 @@ export function StoryBrief({ article, timeBase }: { article: ArticleCard; timeBa
  * 헤어라인을 깐 메타 레일 — 띠의 subgrid 2행(본문 | 레일)에 얹혀 네 카드가 같은 높이에서 메타를 맞춘다(데이터 표처럼).
  * 날짜는 생략한다: 논문·저장소의 게시일은 수집일보다 며칠씩 앞서 1면에서 낡아 보인다(계획서 Phase 1 참고).
  */
-export function StoryRadar({ article, wide = false }: { article: ArticleCard; wide?: boolean }) {
+export function StoryRadar({
+  article,
+  wide = false,
+  locale = "ko",
+}: {
+  article: ArticleCard;
+  wide?: boolean;
+  /** 언어판(기본 ko). */
+  locale?: Locale;
+}) {
+  const summary = summaryOf(article, locale);
   return (
     <Link
-      href={hrefOf(article)}
+      href={hrefOf(article, locale)}
       className={cn(
         "story-link",
         wide
@@ -185,8 +223,12 @@ export function StoryRadar({ article, wide = false }: { article: ArticleCard; wi
         )}
       >
         <span className={cn("flex min-w-0 items-center gap-2", wide && "md:col-start-1")}>
-          <FormatBadge format={article.format} />
-          <CategoryKicker category={article.category} className="min-w-0 truncate" />
+          <FormatBadge format={article.format} locale={locale} />
+          <CategoryKicker
+            category={article.category}
+            className="min-w-0 truncate"
+            locale={locale}
+          />
         </span>
         <h3
           className={cn(
@@ -195,20 +237,20 @@ export function StoryRadar({ article, wide = false }: { article: ArticleCard; wi
             wide && "md:col-start-1 md:row-start-2 md:self-start lg:text-[1.1875rem]",
           )}
         >
-          {titleOf(article)}
+          {headlineOf(article, locale)}
         </h3>
-        {article.summaryKo && (
+        {summary && (
           <p
             className={cn(
               "text-caption text-muted-foreground line-clamp-2",
               wide && "md:col-start-2 md:row-start-2 md:line-clamp-3 md:self-start md:pt-0.5",
             )}
           >
-            {article.summaryKo}
+            {summary}
           </p>
         )}
       </div>
-      <RadarMetaRail article={article} wide={wide} />
+      <RadarMetaRail article={article} wide={wide} locale={locale} />
     </Link>
   );
 }
@@ -217,8 +259,16 @@ export function StoryRadar({ article, wide = false }: { article: ArticleCard; wi
  * 레이더 메타 레일 — 식별자 한 줄(owner/repo · org/model · arXiv ID) + 수치 줄(radarMetaBlock).
  * 빠진 값은 그 조각만 빠지고(시안 결정 ⑩), 헤어라인은 늘 남는다 — 카드는 위 가로선, 가로 한 줄(wide)은 왼쪽 세로선.
  */
-function RadarMetaRail({ article, wide = false }: { article: ArticleCard; wide?: boolean }) {
-  const { id, stats } = radarMetaBlock(article, shortSourceName(article.source.name));
+function RadarMetaRail({
+  article,
+  wide = false,
+  locale,
+}: {
+  article: ArticleCard;
+  wide?: boolean;
+  locale: Locale;
+}) {
+  const { id, stats } = radarMetaBlock(article, sourceNameOf(article, locale), locale);
   return (
     <span
       className={cn(
@@ -249,14 +299,23 @@ function RadarMetaRail({ article, wide = false }: { article: ArticleCard; wide?:
  * [형식 배지 · 분야 키커 … 실린 호 요일] → 세리프 제목 2줄 → 매체 · 식별자 · 수치(레이더 메타와 같은 표기, "오늘"은 "당일").
  * 요약은 싣지 않는다 — 열 줄 순위표의 밀도를 지키고, 요약은 그날 레이더 카드와 상세가 맡는다.
  */
-export function StoryWeekly({ item, rank }: { item: WeeklyItem; rank: number }) {
-  const source = shortSourceName(item.source.name);
-  const { id, stats } = weeklyMetaBlock(item, source);
+export function StoryWeekly({
+  item,
+  rank,
+  locale = "ko",
+}: {
+  item: WeeklyItem;
+  rank: number;
+  /** 언어판(기본 ko). */
+  locale?: Locale;
+}) {
+  const source = sourceNameOf(item, locale);
+  const { id, stats } = weeklyMetaBlock(item, source, locale);
   // 식별자가 없어 매체명이 식별자 자리에 왔으면(radarMetaBlock 강등) 매체를 두 번 쓰지 않는다.
   const showSource = id?.key !== "source";
   return (
     <Link
-      href={`/article/${item.id}`}
+      href={hrefOf(item, locale)}
       className={cn(
         "story-link grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 gap-y-1 py-3.5 md:grid-cols-[2.75rem_minmax(0,1fr)]",
         focus,
@@ -271,14 +330,15 @@ export function StoryWeekly({ item, rank }: { item: WeeklyItem; rank: number }) 
         {rank}
       </span>
       <span className="flex min-w-0 items-center gap-2">
-        <FormatBadge format={item.format} />
-        <CategoryKicker category={item.category} className="min-w-0 truncate" />
+        <FormatBadge format={item.format} locale={locale} />
+        <CategoryKicker category={item.category} className="min-w-0 truncate" locale={locale} />
         <span className="text-label text-muted-foreground ml-auto shrink-0 pl-1 whitespace-nowrap">
-          {issueDayLabel(item.issueDate)}
+          {issueDayLabel(item.issueDate, locale)}
         </span>
       </span>
       <h3 className="headline md:text-title line-clamp-2 font-serif text-[0.9375rem] leading-[1.45] font-bold tracking-[-0.03em]">
-        {item.title}
+        {/* item.title 은 한국어 제목(없으면 원제)이라 ko 는 그대로, en 은 titleEn 만 쓴다(한국어 폴백 금지). */}
+        {headlineOf({ titleKo: item.title, titleEn: item.titleEn }, locale)}
       </h3>
       {/* relative: 안쪽 sr-only(absolute) 문구의 기준 상자(레이더 메타 레일과 같은 이유). */}
       <span className="text-meta text-muted-foreground relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums">
@@ -344,17 +404,19 @@ function MetaIcon({ icon }: { icon: string }) {
 export function StoryEntry({
   article,
   hideCategory = false,
+  locale = "ko",
 }: {
   /** 색인 카드 — ArticleCard·검색 인덱스 항목도 그대로 받는다. */
   article: IndexCard;
   /** 이미 분야가 정해진 목록(상세의 "같은 분야 기사")에서는 키커를 생략한다. */
   hideCategory?: boolean;
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko) — 클라이언트 부모(StoryIndex)는 useLocale() 값을 넘긴다. */
   locale?: Locale;
 }) {
+  const summary = summaryOf(article, locale);
   return (
     <Link
-      href={hrefOf(article)}
+      href={hrefOf(article, locale)}
       className={cn(
         // grid-rows-[1fr_auto]: 2열 색인에서 옆 항목에 맞춰 늘어난 높이를 본문 행이 받는다 — 바이라인이 바닥에 붙어
         // 좌우 항목의 바이라인이 같은 높이에 선다(auto 행 두 개면 여분이 반씩 나뉘어 어긋났다).
@@ -363,23 +425,31 @@ export function StoryEntry({
       )}
     >
       <span className="text-muted-foreground pt-0.5 font-serif text-[0.9375rem] font-semibold tabular-nums">
-        {formatShortDate(article.publishedAt)}
+        {formatShortDate(article.publishedAt, locale)}
       </span>
       <div className="flex min-w-0 flex-col gap-[3px]">
         {((!hideCategory && article.category) || article.format !== "news") && (
           <span className="flex min-w-0 items-center gap-2">
-            {!hideCategory && <CategoryKicker category={article.category} className="text-label" />}
-            <FormatBadge format={article.format} />
+            {!hideCategory && (
+              <CategoryKicker category={article.category} className="text-label" locale={locale} />
+            )}
+            <FormatBadge format={article.format} locale={locale} />
           </span>
         )}
-        <h3 className="headline text-title font-semibold tracking-[-0.02em]">{titleOf(article)}</h3>
-        {article.summaryKo && (
-          <p className="text-caption text-muted-foreground mt-0.5 line-clamp-2">
-            {article.summaryKo}
-          </p>
+        <h3 className="headline text-title font-semibold tracking-[-0.02em]">
+          {headlineOf(article, locale)}
+        </h3>
+        {summary && (
+          <p className="text-caption text-muted-foreground mt-0.5 line-clamp-2">{summary}</p>
         )}
       </div>
-      <Byline article={article} showTrend showDate={false} className="col-start-2 mt-1" />
+      <Byline
+        article={article}
+        showTrend
+        showDate={false}
+        className="col-start-2 mt-1"
+        locale={locale}
+      />
     </Link>
   );
 }

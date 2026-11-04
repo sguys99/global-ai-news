@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useMessages } from "@/components/LocaleProvider";
 import { Button } from "@/components/ui/button";
+import { commonMessages } from "@/lib/messages/common";
 
 /**
  * 라이트 ↔ 다크 토글. 현재 표시(resolvedTheme) 기준으로 반대 테마로 전환한다.
@@ -12,12 +14,13 @@ import { Button } from "@/components/ui/button";
 export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
+  const t = useMessages(commonMessages).theme;
 
   useEffect(() => setMounted(true), []);
 
   // 서버는 테마를 모르므로 마운트 전에는 중립 라벨을 써야 aria-label 하이드레이션 불일치가 없다.
   const isDark = mounted && resolvedTheme === "dark";
-  const label = !mounted ? "테마 전환" : isDark ? "라이트 모드로 전환" : "다크 모드로 전환";
+  const label = !mounted ? t.toggle : isDark ? t.toLight : t.toDark;
 
   return (
     <Button

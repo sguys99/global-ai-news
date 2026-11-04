@@ -1,21 +1,32 @@
 import Link from "next/link";
-import { formatDate, formatShortDate, kstDateKey, kstDayDiff, shortSourceName } from "@/lib/labels";
+import { headlineOf } from "@/lib/articleText";
+import { getMessages, localePath, type Locale } from "@/lib/i18n";
+import {
+  formatDate,
+  formatShortDate,
+  kstDateKey,
+  kstDayDiff,
+  sourceDisplayName,
+} from "@/lib/labels";
+import { followUpMessages } from "@/lib/messages/followUp";
 import type { FollowUpEntry } from "@/lib/types";
-import type { Locale } from "@/lib/i18n";
 
 /**
  * 상세 페이지 사건 타임라인(`getFollowUpThread`). 후속 보도 연결로 이어진 같은 사건의 기사를 호 날짜 순으로 한 줄씩 —
  * [호 날짜 | 관계 · 매체 · 이 기사와의 날짜 차 / 제목]. 보고 있는 기사는 제목 없이 "지금 보는 기사" 표지 한 줄만 둔다
  * (제목은 바로 위 h1 이다). 머리는 연결된 쪽에 따라 "이전 보도" / "후속 보도" / "사건 흐름".
  * 박스 없이 헤어라인으로만 가르고, 코발트는 hover 제목(story-link)에만 쓴다.
+ * 제목·매체명은 articleText·labels 헬퍼로 고른다 — ko 는 예전 식 그대로(`titleKo || titleOriginal`·축약명).
  */
 export function FollowUpThread({
   entries,
+  locale = "ko",
 }: {
   entries: FollowUpEntry[];
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko). */
   locale?: Locale;
 }) {
+  const t = getMessages(followUpMessages, locale);
   const current = entries.find((e) => e.relation === "current");
   const earlier = entries.filter((e) => e.relation === "earlier").length;
   const later = entries.filter((e) => e.relation === "later").length;
@@ -23,14 +34,14 @@ export function FollowUpThread({
 
   const heading =
     earlier > 0 && later > 0
-      ? `사건 흐름 · ${entries.length}건`
+      ? t.heading.flow(entries.length)
       : earlier > 0
         ? earlier > 1
-          ? `이전 보도 · ${earlier}건`
-          : "이전 보도"
+          ? t.heading.earlierCount(earlier)
+          : t.heading.earlier
         : later > 1
-          ? `후속 보도 · ${later}건`
-          : "후속 보도";
+          ? t.heading.laterCount(later)
+          : t.heading.later;
   const currentDay = kstDateKey(current.issuedAt);
 
   return (
@@ -49,26 +60,33 @@ export function FollowUpThread({
           <li key={e.id} className="border-border border-b last:border-b-0">
             {e.relation === "current" ? (
               <div aria-current="page" className={ROW}>
-                <IssueDate iso={e.issuedAt} />
+                <IssueDate iso={e.issuedAt} locale={locale} />
                 <span className="text-label text-foreground self-center font-bold">
-                  지금 보는 기사
+                  {t.current}
                 </span>
               </div>
             ) : (
-              <Link href={`/article/${e.id}`} className={`story-link ${ROW} ${FOCUS}`}>
-                <IssueDate iso={e.issuedAt} />
+              <Link
+                href={localePath(locale, `/article/${e.id}`)}
+                className={`story-link ${ROW} ${FOCUS}`}
+              >
+                <IssueDate iso={e.issuedAt} locale={locale} />
                 <span className="flex min-w-0 flex-col gap-1">
                   <span className="text-label text-muted-foreground flex min-w-0 gap-1.5 font-semibold">
                     <span className="shrink-0">
-                      {e.relation === "earlier" ? "이전 보도" : "후속 보도"}
+                      {e.relation === "earlier" ? t.relation.earlier : t.relation.later}
                     </span>
                     <span aria-hidden>·</span>
-                    <span className="min-w-0 truncate">{shortSourceName(e.sourceName)}</span>
+                    <span className="min-w-0 truncate">
+                      {sourceDisplayName({ name: e.sourceName }, locale)}
+                    </span>
                     <span aria-hidden>·</span>
-                    <span className="shrink-0 tabular-nums">{dayGap(currentDay, e.issuedAt)}</span>
+                    <span className="shrink-0 tabular-nums">
+                      {dayGap(currentDay, e.issuedAt, locale)}
+                    </span>
                   </span>
                   <span className="headline text-title font-serif font-bold tracking-[-0.02em]">
-                    {e.titleKo || e.titleOriginal}
+                    {headlineOf(e, locale)}
                   </span>
                 </span>
               </Link>
@@ -85,22 +103,26 @@ const ROW = "grid min-h-11 grid-cols-[3.25rem_minmax(0,1fr)] items-baseline gap-
 const FOCUS =
   "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
-/** 호 날짜 'MM.DD'(KST). 연도는 툴팁·datetime 으로. */
-function IssueDate({ iso }: { iso: string }) {
+/** 호 날짜 'MM.DD'(KST, en 'Nov 3'). 연도는 툴팁·datetime 으로. */
+function IssueDate({ iso, locale }: { iso: string; locale: Locale }) {
   return (
     <time
       dateTime={iso}
-      title={`${formatDate(iso)} 호`}
+      title={getMessages(followUpMessages, locale).issueTitle(formatDate(iso, locale))}
       className="text-muted-foreground font-serif text-[0.9375rem] font-semibold tabular-nums"
     >
-      {formatShortDate(iso)}
+      {formatShortDate(iso, locale)}
     </time>
   );
 }
 
-/** 보고 있는 기사의 호 날짜와의 차: "같은 날" / "N일 전" / "N일 뒤"(KST 달력 기준). */
-export function dayGap(currentDay: string, iso: string): string {
+/**
+ * 보고 있는 기사의 호 날짜와의 차: "같은 날" / "N일 전" / "N일 뒤"(KST 달력 기준).
+ * en "Same day" / "N days earlier" / "N days later".
+ */
+export function dayGap(currentDay: string, iso: string, locale: Locale = "ko"): string {
+  const { gap } = getMessages(followUpMessages, locale);
   const diff = kstDayDiff(currentDay, kstDateKey(iso));
-  if (diff === 0) return "같은 날";
-  return diff < 0 ? `${-diff}일 전` : `${diff}일 뒤`;
+  if (diff === 0) return gap.sameDay;
+  return diff < 0 ? gap.before(-diff) : gap.after(diff);
 }

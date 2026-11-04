@@ -15,6 +15,7 @@
 import type { Metadata } from "next";
 import type { EditionInfo } from "@/lib/db";
 import type { Edition, IssueBriefLine } from "@/lib/edition";
+import { localePath, type Locale } from "@/lib/i18n";
 import { formatMonthDay, kstDateKey } from "@/lib/labels";
 
 export const SITE_NAME = "AI Daybook";
@@ -26,6 +27,13 @@ export const SITE_DESCRIPTION =
   "글로벌·한국 AI 뉴스·오픈소스·모델·논문을 매일 아침 한국어로 요약하는 데일리 브리핑. Daily AI news, open source, models and papers, summarized every morning.";
 /** 소개 문구 — 푸터·기본 공유 썸네일(og/default). 마스트헤드 제호 옆 자리는 이번 호 통계(귀)가 쓴다. */
 export const SITE_TAGLINE = "세계와 한국의 AI 소식을 매일 아침, 한국어로 요약해 전합니다.";
+/** 영어판 태그라인(english-version-plan 0-5 확정) — 영어 푸터·영어 기본 공유 썸네일. */
+export const SITE_TAGLINE_EN = "The world's AI news, and Korea's, edited every morning in Seoul.";
+
+/** 언어판 태그라인(ko 는 SITE_TAGLINE 그대로). */
+export function siteTagline(locale: Locale = "ko"): string {
+  return locale === "en" ? SITE_TAGLINE_EN : SITE_TAGLINE;
+}
 
 /** 배포 절대 URL(basePath 포함). 프로덕션 빌드에만 next.config 가 주입하고 dev 는 로컬. */
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -71,8 +79,9 @@ export const OG_IMAGE_SIZE = { width: 1200, height: 600 } as const;
 /** 호 고정 링크 경로(basePath 제외, trailingSlash 와 맞춘 끝 슬래시). */
 export const editionPath = (date: string) => `/edition/${date}/`;
 
-/** 공유용 호 고정 링크 절대 URL. 홈 주소 대신 이것을 퍼뜨려 카카오톡 캐시를 피한다(위 설명). */
-export const editionShareUrl = (date: string) => `${SITE_URL}${editionPath(date)}`;
+/** 공유용 호 고정 링크 절대 URL. 홈 주소 대신 이것을 퍼뜨려 카카오톡 캐시를 피한다(위 설명). en 은 `/en` 고정 링크. */
+export const editionShareUrl = (date: string, locale: Locale = "ko") =>
+  `${SITE_URL}${localePath(locale, editionPath(date))}`;
 
 /*
  * 공유 이미지 경로(basePath 제외). 정적 export 가 `out/og/**.png` 로 내보내며,

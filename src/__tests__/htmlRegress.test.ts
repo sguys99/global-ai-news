@@ -186,6 +186,12 @@ describe("normalizeHtml — 시각 의존", () => {
     expect(
       normalizeHtml(page("", `<header>제호</header>${notice("발행 지연")}<main>a</main>`)),
     ).toBe(none);
+    // 영어판 라벨(issueDelayCopy en)도 같은 처리.
+    for (const label of ["Not out yet", "Delayed"]) {
+      expect(normalizeHtml(page("", `<header>제호</header>${notice(label)}<main>a</main>`))).toBe(
+        none,
+      );
+    }
   });
 
   it("다른 role=status 문구(검색 결과 수 등)는 남긴다", () => {

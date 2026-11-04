@@ -7,6 +7,7 @@ import {
   ImportanceMeter,
   TagChips,
   TrendBar,
+  visibleTags,
 } from "@/components/ArticleMeta";
 import { FollowUpThread } from "@/components/FollowUpThread";
 import { JsonLd } from "@/components/JsonLd";
@@ -163,7 +164,8 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
           </section>
         )}
 
-        {article.tags.length > 0 && (
+        {/* 영어판은 라틴 문자 태그만 보이므로 보일 태그로 판정한다(빈 래퍼 방지). */}
+        {visibleTags(article.tags, locale).length > 0 && (
           <div className="mt-8">
             <TagChips tags={article.tags} locale={locale} />
           </div>

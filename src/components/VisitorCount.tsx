@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMessages } from "@/components/LocaleProvider";
+import { commonMessages } from "@/lib/messages/common";
 import { GOATCOUNTER_URL, VISITOR_COUNT_MIN } from "@/lib/site";
 
 /** GoatCounter `/counter/TOTAL.json` 응답(`{"count": "1,234"}` — 천 단위 쉼표 문자열) → 숫자. 형식이 다르면 null. */
@@ -19,6 +21,7 @@ export function parseVisitorCount(json: unknown): number | null {
  */
 export function VisitorCount() {
   const [count, setCount] = useState<number | null>(null);
+  const t = useMessages(commonMessages);
 
   useEffect(() => {
     let alive = true;
@@ -34,9 +37,5 @@ export function VisitorCount() {
   }, []);
 
   if (count === null || count < VISITOR_COUNT_MIN) return null;
-  return (
-    <p className="text-label text-muted-foreground tabular-nums">
-      누적 방문 {count.toLocaleString("ko-KR")}회
-    </p>
-  );
+  return <p className="text-label text-muted-foreground tabular-nums">{t.visits(count)}</p>;
 }

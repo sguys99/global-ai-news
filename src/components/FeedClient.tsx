@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { FeedView } from "@/components/FeedView";
+import { useLocale } from "@/components/LocaleProvider";
 import type { IndexLoadState } from "@/components/StoryIndex";
 import type { EditionInfo } from "@/lib/db";
 import type { IssueBriefLine } from "@/lib/edition";
@@ -21,6 +22,8 @@ import type { WeeklyRadar } from "@/lib/weeklyRadar";
  *
  * 전체 기사 색인: 처음엔 page.tsx 가 실은 첫 페이지(`indexHead`)만 있다. 필터·정렬이 걸리면 곧바로,
  * 기본 지면에선 "더 보기"로 첫 페이지를 넘길 때 누적 전체(feed-index.json)를 1회 받아 합친다(src/lib/feedIndex.ts).
+ *
+ * 언어는 prop 이 아니라 LocaleProvider 컨텍스트로 읽어(props 는 RSC 페이로드에 실린다) FeedView 에 넘긴다.
  */
 export function FeedClient({
   issueArticles,
@@ -46,6 +49,7 @@ export function FeedClient({
   weekly?: WeeklyRadar | null;
   brief?: IssueBriefLine[];
 }) {
+  const locale = useLocale();
   const searchParams = useSearchParams();
   // 피드는 검색어를 쓰지 않으므로 q 는 버린다.
   const options = useMemo(
@@ -103,6 +107,7 @@ export function FeedClient({
       initialDelayGap={initialDelayGap}
       weekly={weekly}
       brief={brief}
+      locale={locale}
     />
   );
 }

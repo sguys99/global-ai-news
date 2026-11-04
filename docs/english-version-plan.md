@@ -339,8 +339,15 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
   - 데이터는 `src/views/data.ts` 로더(`loadHome`·`loadEdition`·`loadWeeklyRadar`·`loadArticle(Page)`·`loadSearch`)가 읽고, 뷰와 메타데이터가 같은 로더를 쓴다. **모든 기사 목록이 `localeArticles(locale, …)` 한 곳을 지난다**(호 기사·홈 색인·주간 레이더 후보·관련 기사·기사 자신, 호 목록은 `localeEditionRefs`) — 1면·섹션·세 줄 요약·귀 통계·이전/다음 호가 자동으로 따라온다. 지금은 ko를 그대로 통과시키고 **en이면 예외를 던진다**: Phase 5에서 `hasEnglish` 거르기를 넣기 전에는 영어 페이지를 빌드할 수 없게 막아 둔 것이다. 거르기는 영어 필드를 떼는 `toListCards` 전에 한다.
   - 뷰 본문 문구는 `messages/{article,edition,search}.ts`로 옮겼다. 내부 링크는 `localePath`를 거친다. JSON-LD는 마크업 위치를 지키려고 뷰 안에 두었고 값은 한국어 그대로다(Phase 6).
   - 회귀 비교: 한국어 11페이지·sitemap·feed 같음. 산출물 145.84MB(−0.03MB — 한 문자열로 합친 숫자·단위에서 `<!-- -->` 구분자가 빠졌다).
-- [ ] 컴포넌트(25개 파일)의 하드코딩 문구를 사전 참조로 바꾼다. 서버 컴포넌트는 `locale` prop, 클라이언트 컴포넌트는 레이아웃의 `LocaleProvider` 컨텍스트를 쓴다.
-- [ ] 내부 링크(`Link href`)를 `localePath`로 바꾼다.
+- [x] 컴포넌트(25개 파일)의 하드코딩 문구를 사전 참조로 바꾼다. 서버 컴포넌트는 `locale` prop, 클라이언트 컴포넌트는 레이아웃의 `LocaleProvider` 컨텍스트를 쓴다. (2026-11-04)
+  - 묶음 셋을 병렬로 했다: 1면·호(Edition·Story·Masthead·IssueBrief·IssueDelayNotice, `radarMeta`·`weeklyRadar` 문구), 피드·검색·필터(FeedView·FeedClient·FilterBar·FilterSheet·StoryIndex·SearchClient·SearchInput·EditionPager·ShareButton), 기사 신호·셸(ArticleMeta·FollowUpThread·RelativeTime·헤더·푸터·모바일 바·ThemeToggle·VisitorCount).
+  - 이름공간 16개: `common`·`notFound`·`article`·`edition`·`search`·`masthead`·`frontPage`·`radar`·`issueBrief`·`feed`·`filter`·`storyIndex`·`pager`·`share`·`meta`·`followUp`·`footer`. 클라이언트 컴포넌트에는 locale prop을 주지 않는다(RSC 페이로드에 실린다) — 컨텍스트로 읽는다.
+  - 영어판 규칙을 미리 넣었다: 태그는 라틴 문자만(`visibleTags`), 매체명은 `sourceDisplayName`, 푸터 태그라인은 0-5 확정 문구(`SITE_TAGLINE_EN`), 호 공유 URL은 언어판 고정 링크(`editionShareUrl(date, locale)`), 검색 색인 파일은 `searchIndexUrl(locale)` 한 곳에서 고른다(지금은 두 언어 모두 `search-index.json`).
+  - **재발 방지:** `noHardcodedHangul.test.ts`가 `src/components`·`src/views`·`src/app/*.tsx`(admin·ui 제외)에서 주석을 뺀 코드에 한글이 있으면 실패한다. 문구는 사전에만 둔다.
+  - 영어 문구 중 0-5에서 정하지 않고 이번에 고른 것(Phase 5 시안 때 함께 본다): `Today's briefing`·`Open source & papers radar`·`Trending now`·`Community buzz, 0–100`·`In this issue`·`Three things to know`·`Story timeline`·`Earlier coverage`/`Follow-up coverage`, 하단 탭 `Today`.
+  - Phase 5로 넘기는 틈: `FollowUpEntry`에 `titleEn`·영문 매체명이 없다. `getSourcesWithCounts`가 `nameEn`을 주지 않는다(한국어 RSC 페이로드가 바뀌므로 영어 로더에만 넣는다). `feed-index.json`·`search-index.json`은 한국어 카드라 영어판 색인이 따로 필요하다.
+- [x] 내부 링크(`Link href`)를 `localePath`로 바꾼다. (2026-11-04) 필터 쿼리(`/en/?category=…#all`)·검색 이동(`router.push`)·후속 보도·이전/다음 호·404 링크까지 바꿨다. 활성 메뉴 판정은 `splitLocalePath(usePathname()).path`라 `/en/` 아래에서도 맞다.
+  - 회귀 비교(C단계 후): 한국어 11페이지·sitemap·feed 같음, 404만 허용 차이. 산출물 145.78MB. 테스트 87파일 1,192건.
 
 ### 3-4. 확인
 

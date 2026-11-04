@@ -9,14 +9,16 @@
 import Link from "next/link";
 import type { SearchOptions } from "@/lib/db";
 import { groupSources, type SourceOption } from "@/lib/feedFilter";
-import { CATEGORIES, CATEGORY_LABELS } from "@/lib/labels";
+import { getMessages, localePath, type Locale } from "@/lib/i18n";
+import { CATEGORIES, categoryLabel } from "@/lib/labels";
+import { filterMessages } from "@/lib/messages/filter";
 import { cn } from "@/lib/utils";
 
-/** 기본 정렬(sort 미지정)은 트렌딩 점수순 — feedFilter/db 의 기본 정렬과 동일. */
-const SORTS: { value: SearchOptions["sort"]; label: string }[] = [
-  { value: undefined, label: "화제순" },
-  { value: "latest", label: "최신순" },
-  { value: "importance", label: "중요도순" },
+/** 기본 정렬(sort 미지정)은 트렌딩 점수순 — feedFilter/db 의 기본 정렬과 동일. 표시명은 filter 이름공간 `sort`. */
+const SORTS: { value: SearchOptions["sort"]; key: "trending" | "latest" | "importance" }[] = [
+  { value: undefined, key: "trending" },
+  { value: "latest", key: "latest" },
+  { value: "importance", key: "importance" },
 ];
 
 /**
@@ -87,29 +89,38 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+/**
+ * 훅이 없는 공용 프레젠테이션이라 서버(FeedView fallback)·클라(FilterSheet·SearchClient) 어디서나 그린다 —
+ * 언어는 `locale` prop 으로 받는다(클라 부모가 `useLocale()` 을 넘긴다). 링크는 언어판 경로(`localePath`)로 만든다.
+ */
 export function FilterBar({
   current,
   sources,
   tags,
   basePath = "/",
   anchor = "",
+  locale = "ko",
 }: {
   current: SearchOptions;
   sources: readonly SourceOption[];
   tags: string[];
+  /** 언어 접두어 없는 경로("/"·"/search") — 영어판은 여기에 `/en` 을 붙인다. */
   basePath?: string;
   anchor?: string;
+  locale?: Locale;
 }) {
-  const href = (patch: Partial<SearchOptions>) => buildHref(basePath, current, patch, anchor);
-  const outlets = groupSources(sources);
+  const t = getMessages(filterMessages, locale);
+  const base = localePath(locale, basePath);
+  const href = (patch: Partial<SearchOptions>) => buildHref(base, current, patch, anchor);
+  const outlets = groupSources(sources, locale);
   return (
     <div className="flex flex-col gap-3">
-      <div role="group" aria-label="정렬" className="flex gap-5">
+      <div role="group" aria-label={t.sortLabel} className="flex gap-5">
         {SORTS.map((s) => {
           const active = current.sort === s.value;
           return (
             <Link
-              key={s.label}
+              key={s.key}
               href={href({ sort: s.value })}
               aria-current={active ? "true" : undefined}
               className={cn(
@@ -122,25 +133,25 @@ export function FilterBar({
                 focus,
               )}
             >
-              {s.label}
+              {t.sort[s.key]}
             </Link>
           );
         })}
       </div>
 
-      <Row label="분야">
+      <Row label={t.rows.category}>
         {CATEGORIES.map((c) => {
           const active = current.category === c;
           return (
             <Chip key={c} href={href({ category: active ? undefined : c })} active={active}>
-              {CATEGORY_LABELS[c]}
+              {categoryLabel(c, locale)}
             </Chip>
           );
         })}
       </Row>
 
       {outlets.length > 0 && (
-        <Row label="매체">
+        <Row label={t.rows.source}>
           {outlets.map((o) => {
             const active = Boolean(current.source && o.ids.includes(current.source));
             return (
@@ -153,7 +164,7 @@ export function FilterBar({
       )}
 
       {tags.length > 0 && (
-        <Row label="태그">
+        <Row label={t.rows.tag}>
           {tags.map((t) => {
             const active = current.tag === t;
             return (

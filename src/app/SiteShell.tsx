@@ -34,7 +34,10 @@ export function SiteShell({
   head,
   children,
 }: Readonly<{
-  /** 문서 언어 — `<html lang>`. 헤더·푸터 문구는 Phase 3-3 C단계에서 이 값을 받는다. */
+  /**
+   * 문서 언어 — `<html lang>`. 서버 컴포넌트인 모바일 상단 바·푸터는 prop 으로 받고, 클라이언트 셸(헤더 내비·워드마크·
+   * 테마 토글·하단 탭 바·방문 줄)은 아래 LocaleProvider 컨텍스트로 읽는다(Header 자체는 문구가 없다).
+   */
   locale: Locale;
   /** `<head>`에 직접 넣을 요소(global-not-found 의 언어 판정 스크립트). 없으면 `<head>`를 쓰지 않는다 — Next 가 채운다. */
   head?: ReactNode;
@@ -43,9 +46,9 @@ export function SiteShell({
   const shell = (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
       <Header />
-      <MobileTopBar />
+      <MobileTopBar locale={locale} />
       <div className="flex-1">{children}</div>
-      <Footer />
+      <Footer locale={locale} />
       <BottomTabBar />
     </ThemeProvider>
   );

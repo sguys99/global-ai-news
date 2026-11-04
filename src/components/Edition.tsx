@@ -7,6 +7,9 @@
  * - IssueContents: 이 호의 지면 — 분야별 건수·1면 게재 수 차례(lg 이상 사이드바)
  * - WeeklyRadarBand: 주간 레이더(일요일 특집) — 한 주 저장소·모델·논문 상위 ≤10 순위표. 1면(레이더) 아래·섹션 밴드 위
  * - SectionBands: 카테고리별 섹션 밴드(≤4건, 칸 수에 맞춘 열 — 대표 칸은 늘 1/3)
+ *
+ * 내보내는 밴드는 `locale`(기본 ko)을 받아 문구(messages/frontPage)·표시명·링크를 그 언어로 그리고 안쪽 칸에 넘긴다.
+ * 홈은 클라이언트 FeedView 가 useLocale() 값을, 호 고정 링크는 서버 뷰가 prop 으로 넘긴다.
  */
 import Link from "next/link";
 import { FormatBadge, TrendBar } from "@/components/ArticleMeta";
@@ -18,38 +21,35 @@ import {
   StorySectionItem,
   StoryWeekly,
 } from "@/components/Story";
+import { headlineOf, sourceNameOf } from "@/lib/articleText";
 import { frontArticles, type Edition, type EditionSection } from "@/lib/edition";
+import { getMessages, localePath, type Locale } from "@/lib/i18n";
+import { frontPageMessages } from "@/lib/messages/frontPage";
 import { weekRangeLabel, weeklyFormatMix, type WeeklyRadar } from "@/lib/weeklyRadar";
-import {
-  CATEGORIES,
-  FORMATS,
-  FORMAT_DISPLAY_LABELS,
-  categoryLabel,
-  categorySlug,
-  shortSourceName,
-} from "@/lib/labels";
+import { CATEGORIES, FORMATS, categoryLabel, categorySlug } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { ArticleCard } from "@/lib/types";
-import type { Locale } from "@/lib/i18n";
 
 export function FrontPage({
   edition,
   timeBase,
+  locale = "ko",
 }: {
   edition: Edition;
   timeBase?: string;
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko). */
   locale?: Locale;
 }) {
   const { lead, seconds, briefs, radar, trending } = edition;
   if (!lead) return null;
+  const t = getMessages(frontPageMessages, locale);
 
   return (
-    <section id="front" aria-label="1면" className="flex scroll-mt-20 flex-col pt-6 md:pt-8">
+    <section id="front" aria-label={t.front} className="flex scroll-mt-20 flex-col pt-6 md:pt-8">
       <div className="grid grid-cols-1 gap-x-10 lg:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
         <div className="min-w-0">
           <div className="animate-rise border-border border-b pb-7 [animation-delay:80ms]">
-            <StoryLead article={lead} timeBase={timeBase} />
+            <StoryLead article={lead} timeBase={timeBase} locale={locale} />
           </div>
           {seconds.length > 0 && (
             <div className="animate-rise grid grid-cols-1 [animation-delay:160ms] md:grid-cols-3">
@@ -58,7 +58,7 @@ export function FrontPage({
                   key={a.id}
                   className="border-border border-b py-5 md:border-b-0 md:border-l md:px-5 md:pt-6 md:pb-2 md:first:border-l-0 md:first:pl-0 md:last:pr-0"
                 >
-                  <StorySecondary article={a} timeBase={timeBase} />
+                  <StorySecondary article={a} timeBase={timeBase} locale={locale} />
                 </div>
               ))}
             </div>
@@ -67,6 +67,7 @@ export function FrontPage({
             <BriefList
               articles={briefs}
               timeBase={timeBase}
+              locale={locale}
               // 모바일은 직전 항목(서브·리드)의 하단 헤어라인이 구분선 역할 — md 이상에서만 위 괘선을 긋는다.
               className={cn(
                 "animate-rise pt-4 [animation-delay:200ms]",
@@ -80,11 +81,13 @@ export function FrontPage({
           {trending.length > 0 && (
             <TrendingList
               articles={trending}
+              locale={locale}
               className="animate-rise mt-10 [animation-delay:240ms] lg:mt-0 lg:border-l lg:pl-8"
             />
           )}
           <IssueContents
             edition={edition}
+            locale={locale}
             className={cn(
               "animate-rise hidden [animation-delay:280ms] lg:block",
               trending.length > 0 && "mt-9",
@@ -96,6 +99,7 @@ export function FrontPage({
       {radar.length > 0 && (
         <RadarBand
           articles={radar}
+          locale={locale}
           className="animate-rise mt-12 [animation-delay:320ms] md:mt-14"
         />
       )}
@@ -107,10 +111,12 @@ function BriefList({
   articles,
   timeBase,
   className,
+  locale,
 }: {
   articles: ArticleCard[];
   timeBase?: string;
   className?: string;
+  locale: Locale;
 }) {
   return (
     <section aria-labelledby="briefs-heading" className={className}>
@@ -118,12 +124,12 @@ function BriefList({
         id="briefs-heading"
         className="text-meta text-foreground pb-1 font-bold tracking-[0.02em] md:pb-0.5"
       >
-        오늘의 브리핑
+        {getMessages(frontPageMessages, locale).briefs}
       </h2>
       <ul className="divide-border divide-y">
         {articles.map((a) => (
           <li key={a.id}>
-            <StoryBrief article={a} timeBase={timeBase} />
+            <StoryBrief article={a} timeBase={timeBase} locale={locale} />
           </li>
         ))}
       </ul>
@@ -145,12 +151,13 @@ const RADAR_DIVIDERS: Record<number, string> = {
   4: "md:[&:nth-child(2n)]:border-l md:[&:nth-child(2n)]:pl-5 lg:last:pr-0 lg:[&:nth-child(n+2)]:border-l lg:[&:nth-child(n+2)]:pl-5",
 };
 
-/** 레이더 띠 보조 문구 — 실린 형식만 화면 표시명으로("이번 호의 저장소·논문"). */
-export function radarSubtitle(articles: Pick<ArticleCard, "format">[]): string {
+/** 레이더 띠 보조 문구 — 실린 형식만 화면 표시명으로("이번 호의 저장소·논문", en "Repos and papers in this issue"). */
+export function radarSubtitle(
+  articles: Pick<ArticleCard, "format">[],
+  locale: Locale = "ko",
+): string {
   const formats = FORMATS.filter((f) => f !== "news" && articles.some((a) => a.format === f));
-  return formats.length > 0
-    ? `이번 호의 ${formats.map((f) => FORMAT_DISPLAY_LABELS[f]).join("·")}`
-    : "";
+  return getMessages(frontPageMessages, locale).radar.subtitle(formats);
 }
 
 /**
@@ -162,9 +169,17 @@ export function radarSubtitle(articles: Pick<ArticleCard, "format">[]): string {
  * - 1건: 카드 한 장을 띠 전폭 가로 한 줄로 펼친다(StoryRadar wide — 1면과 같은 8:4, 메타 레일이 '지금 화제' 칼럼 아래).
  *   모바일은 전폭 카드 한 장(스크롤러 없음).
  */
-function RadarBand({ articles, className }: { articles: ArticleCard[]; className?: string }) {
+function RadarBand({
+  articles,
+  className,
+  locale,
+}: {
+  articles: ArticleCard[];
+  className?: string;
+  locale: Locale;
+}) {
   const n = Math.min(articles.length, 4);
-  const subtitle = radarSubtitle(articles);
+  const subtitle = radarSubtitle(articles, locale);
   return (
     <section aria-labelledby="radar-heading" className={cn("min-w-0", className)}>
       <div className="border-rule mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t-2 pt-3">
@@ -172,7 +187,7 @@ function RadarBand({ articles, className }: { articles: ArticleCard[]; className
           id="radar-heading"
           className="text-display-md font-serif font-extrabold whitespace-nowrap"
         >
-          오픈소스·논문 레이더
+          {getMessages(frontPageMessages, locale).radar.heading}
         </h2>
         {subtitle && <span className="text-meta text-muted-foreground">{subtitle}</span>}
       </div>
@@ -180,7 +195,7 @@ function RadarBand({ articles, className }: { articles: ArticleCard[]; className
         // relative: 카드 안 sr-only(absolute) 문구의 기준 상자.
         <ul className="relative">
           <li className="min-w-0">
-            <StoryRadar article={articles[0]} wide />
+            <StoryRadar article={articles[0]} wide locale={locale} />
           </li>
         </ul>
       ) : (
@@ -207,7 +222,7 @@ function RadarBand({ articles, className }: { articles: ArticleCard[]; className
                 RADAR_DIVIDERS[n],
               )}
             >
-              <StoryRadar article={a} />
+              <StoryRadar article={a} locale={locale} />
             </li>
           ))}
         </ul>
@@ -219,10 +234,14 @@ function RadarBand({ articles, className }: { articles: ArticleCard[]; className
 export function TrendingList({
   articles,
   className,
+  locale = "ko",
 }: {
   articles: ArticleCard[];
   className?: string;
+  /** 언어판(기본 ko). */
+  locale?: Locale;
 }) {
+  const t = getMessages(frontPageMessages, locale).trending;
   return (
     <aside aria-labelledby="trending-heading" className={cn("border-border min-w-0", className)}>
       <div className="border-rule flex items-baseline justify-between border-b-2 pb-2.5">
@@ -230,15 +249,15 @@ export function TrendingList({
           id="trending-heading"
           className="font-serif text-2xl leading-[1.2] font-extrabold tracking-[-0.04em]"
         >
-          지금 화제
+          {t.heading}
         </h2>
-        <span className="text-label text-muted-foreground">커뮤니티 반응 지수 0–100</span>
+        <span className="text-label text-muted-foreground">{t.scale}</span>
       </div>
       <ol>
         {articles.map((a, i) => (
           <li key={a.id}>
             <Link
-              href={`/article/${a.id}`}
+              href={localePath(locale, `/article/${a.id}`)}
               className="story-link border-border focus-visible:ring-ring grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 gap-y-1.5 border-b py-3.5 outline-none focus-visible:ring-2"
             >
               <span
@@ -250,14 +269,14 @@ export function TrendingList({
                 {i + 1}
               </span>
               <span className="headline line-clamp-2 text-[0.9375rem] leading-[1.45] font-semibold">
-                {a.titleKo || a.titleOriginal}
+                {headlineOf(a, locale)}
               </span>
               <span className="text-label text-muted-foreground flex items-center gap-2">
                 {/* 비뉴스(저장소·모델·논문)는 매체명(GitHub·Hugging Face) 대신 형식 배지 — 시안 결정 ⑥ */}
                 {a.format === "news" ? (
-                  <span className="shrink-0">{shortSourceName(a.source.name)}</span>
+                  <span className="shrink-0">{sourceNameOf(a, locale)}</span>
                 ) : (
-                  <FormatBadge format={a.format} />
+                  <FormatBadge format={a.format} locale={locale} />
                 )}
                 <TrendBar value={a.trendingScore} />
                 <span className="text-foreground-soft min-w-[2ch] text-right font-semibold tabular-nums">
@@ -304,9 +323,18 @@ export function issueContents(edition: Edition): IssueContentsRow[] {
  * 행을 누르면 해당 섹션 밴드로 이동한다. 1면 본문이 화제 5건보다 긴 데스크톱 빈자리를 채우는 용도라 lg 미만은 숨긴다
  * (모바일은 섹션 내비가 대신한다 — 표시 여부는 호출자의 className).
  */
-function IssueContents({ edition, className }: { edition: Edition; className?: string }) {
+function IssueContents({
+  edition,
+  className,
+  locale,
+}: {
+  edition: Edition;
+  className?: string;
+  locale: Locale;
+}) {
   const rows = issueContents(edition);
   if (rows.length === 0) return null;
+  const t = getMessages(frontPageMessages, locale).contents;
   return (
     <nav aria-labelledby="contents-heading" className={className}>
       <div className="border-rule flex items-baseline justify-between border-b-2 pb-2">
@@ -314,9 +342,9 @@ function IssueContents({ edition, className }: { edition: Edition; className?: s
           id="contents-heading"
           className="font-serif text-xl leading-[1.2] font-extrabold tracking-[-0.04em]"
         >
-          이 호의 지면
+          {t.heading}
         </h2>
-        <span className="text-label text-muted-foreground">건수 · 1면</span>
+        <span className="text-label text-muted-foreground">{t.columns}</span>
       </div>
       <ul>
         {rows.map((r) => (
@@ -325,14 +353,14 @@ function IssueContents({ edition, className }: { edition: Edition; className?: s
               href={r.href}
               className="story-link border-border text-caption focus-visible:ring-ring flex items-baseline gap-2 border-b py-[9px] leading-[1.4] outline-none focus-visible:ring-2"
             >
-              <span className="headline font-semibold">{categoryLabel(r.category)}</span>
+              <span className="headline font-semibold">{categoryLabel(r.category, locale)}</span>
               <span
                 aria-hidden
                 className="border-input flex-1 translate-y-[3px] self-center border-b border-dotted"
               />
-              <span className="font-semibold tabular-nums">{r.count}건</span>
+              <span className="font-semibold tabular-nums">{t.count(r.count)}</span>
               <span className="text-label text-muted-foreground w-[4.2em] text-right tabular-nums">
-                {r.onFront > 0 && `1면 ${r.onFront}`}
+                {r.onFront > 0 && t.onFront(r.onFront)}
               </span>
             </a>
           </li>
@@ -358,27 +386,29 @@ const WEEKLY_ROWS: Record<number, string> = {
  */
 export function WeeklyRadarBand({
   weekly,
+  locale = "ko",
 }: {
   weekly: WeeklyRadar;
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko). */
   locale?: Locale;
 }) {
   const n = Math.min(weekly.items.length, 10);
   const rows = Math.ceil(n / 2);
-  const mix = weeklyFormatMix(weekly.formats);
+  const mix = weeklyFormatMix(weekly.formats, locale);
+  const t = getMessages(frontPageMessages, locale).weekly;
   return (
     <section id="weekly" aria-labelledby="weekly-heading" className="min-w-0 scroll-mt-20">
       <div className="border-rule border-t-2 pt-[3px]">
         <div className="border-rule mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t pt-3">
-          <span className="text-meta text-brand font-bold whitespace-nowrap">일요일 특집</span>
+          <span className="text-meta text-brand font-bold whitespace-nowrap">{t.kicker}</span>
           <h2
             id="weekly-heading"
             className="text-display-md font-serif font-extrabold whitespace-nowrap"
           >
-            주간 레이더
+            {t.heading}
           </h2>
           <span className="text-meta text-muted-foreground tabular-nums">
-            {weekRangeLabel(weekly.start, weekly.end)}
+            {weekRangeLabel(weekly.start, weekly.end, locale)}
             {mix && ` · ${mix}`}
           </span>
         </div>
@@ -392,14 +422,12 @@ export function WeeklyRadarBand({
               i < rows ? "md:pr-8" : "md:border-l md:pl-8",
             )}
           >
-            <StoryWeekly item={item} rank={i + 1} />
+            <StoryWeekly item={item} rank={i + 1} locale={locale} />
           </li>
         ))}
       </ol>
       <p className="text-label text-muted-foreground mt-3 max-w-[60em]">
-        월~일 7개 호에 실린 저장소·모델·논문 {weekly.candidates}건에서 골랐습니다. 순서는 중요도 →
-        화제 지수 → 반응(스타·좋아요·추천) 순이고, 한 형식이 자리를 독차지하지 않도록 형식마다 2건씩
-        먼저 싣습니다.
+        {t.footnote(weekly.candidates)}
       </p>
     </section>
   );
@@ -430,7 +458,16 @@ const SECTION_CELLS: Record<number, string[]> = {
   ],
 };
 
-function SectionBand({ section, timeBase }: { section: EditionSection; timeBase?: string }) {
+function SectionBand({
+  section,
+  timeBase,
+  locale,
+}: {
+  section: EditionSection;
+  timeBase?: string;
+  locale: Locale;
+}) {
+  const t = getMessages(frontPageMessages, locale).section;
   const slug = categorySlug(section.category);
   const headingId = `section-${slug}-heading`;
   const items = section.items.slice(0, 4);
@@ -440,16 +477,17 @@ function SectionBand({ section, timeBase }: { section: EditionSection; timeBase?
       {/* 긴 분야명("오픈소스·도구")이 좁은 화면에서 링크와 겹치지 않게 — 링크가 다음 줄로 내려간다. */}
       <div className="border-rule mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t-2 pt-3">
         <h2 id={headingId} className="text-display-md font-serif font-extrabold whitespace-nowrap">
-          {categoryLabel(section.category)}
+          {categoryLabel(section.category, locale)}
         </h2>
         <span className="text-meta text-muted-foreground tabular-nums">
-          {section.count}건{section.onFront > 0 && ` · 1면 ${section.onFront}건`}
+          {t.count(section.count)}
+          {section.onFront > 0 && t.onFront(section.onFront)}
         </span>
         <Link
-          href={`/?category=${encodeURIComponent(section.category)}`}
+          href={localePath(locale, `/?category=${encodeURIComponent(section.category)}`)}
           className="text-meta text-brand focus-visible:ring-ring -my-3 ml-auto inline-flex min-h-11 items-center font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-2 md:my-0 md:min-h-0"
         >
-          이 분야 전체 기사 →
+          {t.seeAll}
         </Link>
       </div>
       <div className={cn("grid grid-cols-1", SECTION_GRID[n])}>
@@ -461,7 +499,13 @@ function SectionBand({ section, timeBase }: { section: EditionSection; timeBase?
               SECTION_CELLS[n]?.[i],
             )}
           >
-            <StorySectionItem article={a} featured={i === 0} wide={n === 1} timeBase={timeBase} />
+            <StorySectionItem
+              article={a}
+              featured={i === 0}
+              wide={n === 1}
+              timeBase={timeBase}
+              locale={locale}
+            />
           </div>
         ))}
       </div>
@@ -472,16 +516,17 @@ function SectionBand({ section, timeBase }: { section: EditionSection; timeBase?
 export function SectionBands({
   sections,
   timeBase,
+  locale = "ko",
 }: {
   sections: EditionSection[];
   timeBase?: string;
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko). */
   locale?: Locale;
 }) {
   return (
     <div className="flex flex-col gap-12 md:gap-14">
       {sections.map((s) => (
-        <SectionBand key={s.category} section={s} timeBase={timeBase} />
+        <SectionBand key={s.category} section={s} timeBase={timeBase} locale={locale} />
       ))}
     </div>
   );

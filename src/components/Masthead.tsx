@@ -1,16 +1,20 @@
 import Link from "next/link";
 import {
-  FORMAT_DISPLAY_LABELS,
   categoryLabel,
   categorySlug,
+  formatCountLabel,
+  formatLabel,
   formatLongDate,
+  issueNoLabel,
   kstDateKey,
 } from "@/lib/labels";
 import type { IssueStats } from "@/lib/edition";
 import { IssueDelayNotice } from "@/components/IssueDelayNotice";
 import { ShareButton } from "@/components/ShareButton";
 import { SITE_NAME, editionPath, editionShareUrl } from "@/lib/site";
-import type { Locale } from "@/lib/i18n";
+import { getMessages, localePath, plural, type Locale } from "@/lib/i18n";
+import { commonMessages } from "@/lib/messages/common";
+import { mastheadMessages } from "@/lib/messages/masthead";
 
 /**
  * 홈 마스트헤드 (DESIGN.md §5 masthead, 시안 docs/design/mockups/front-v3.html).
@@ -26,10 +30,11 @@ export function Masthead({
   publishedAt,
   stats,
   categories,
-  indexLabel = "전체 기사",
+  indexLabel,
   weekly = false,
   delayNoticeIssueDate,
   delayNoticeInitialGap,
+  locale = "ko",
 }: {
   issueNo: number;
   publishedAt: string | null;
@@ -37,7 +42,7 @@ export function Masthead({
   stats: IssueStats;
   /** 밴드가 있는 분야(CATEGORIES 순서) — 오늘 밴드가 없는 분야는 내비에서도 빠진다. */
   categories: string[];
-  /** 섹션 내비 마지막 항목(#all) 라벨. 호 고정 링크 지면은 "이 호의 기사". */
+  /** 섹션 내비 마지막 항목(#all) 라벨(기본 "전체 기사"). 호 고정 링크 지면은 "이 호의 기사". */
   indexLabel?: string;
   /** 주간 레이더(일요일 특집)가 실린 호 — 내비 "1면" 다음에 "주간 레이더"(#weekly)를 넣는다(지면 순서와 같다). */
   weekly?: boolean;
@@ -45,27 +50,29 @@ export function Masthead({
   delayNoticeIssueDate?: string;
   /** 빌드 시점에 계산한 지연 일수 — 정적 HTML 에 안내를 미리 담아 레이아웃 밀림을 막는다. */
   delayNoticeInitialGap?: number;
-  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  /** 언어판(기본 ko) — 문구·날짜·내부 링크. 지연 안내 줄(클라이언트)은 LocaleProvider 로 언어를 읽는다. */
   locale?: Locale;
 }) {
+  const t = getMessages(mastheadMessages, locale);
+  const common = getMessages(commonMessages, locale);
   return (
     <header id="masthead" className="mx-auto max-w-[1240px] px-4 pt-5 md:px-8 md:pt-7">
       <div className="text-meta text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
         {publishedAt && (
           <Link
-            href={editionPath(kstDateKey(publishedAt))}
-            title="이 호의 고정 링크"
+            href={localePath(locale, editionPath(kstDateKey(publishedAt)))}
+            title={t.permalinkTitle}
             className="text-foreground focus-visible:ring-ring -my-3 inline-flex min-h-11 items-center font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2 md:my-0 md:min-h-0"
           >
-            <time dateTime={publishedAt}>{formatLongDate(publishedAt)}</time>
+            <time dateTime={publishedAt}>{formatLongDate(publishedAt, locale)}</time>
           </Link>
         )}
-        {issueNo > 0 && <span className="tabular-nums">제{issueNo}호</span>}
-        <span className="ml-auto hidden md:inline">매일 06:00 KST 발행</span>
+        {issueNo > 0 && <span className="tabular-nums">{issueNoLabel(issueNo, locale)}</span>}
+        <span className="ml-auto hidden md:inline">{common.publishedDaily}</span>
         {publishedAt && (
           <ShareButton
-            url={editionShareUrl(kstDateKey(publishedAt))}
-            title={`${SITE_NAME} ${formatLongDate(publishedAt)}${issueNo > 0 ? ` 제${issueNo}호` : ""}`}
+            url={editionShareUrl(kstDateKey(publishedAt), locale)}
+            title={t.shareTitle(SITE_NAME, formatLongDate(publishedAt, locale), issueNo)}
             className="ml-auto md:ml-0"
           />
         )}
@@ -82,7 +89,7 @@ export function Masthead({
         <h1 className="text-nameplate animate-rise font-serif font-extrabold whitespace-nowrap">
           <span className="text-brand">AI</span> Daybook
         </h1>
-        <IssueEar stats={stats} />
+        <IssueEar stats={stats} locale={locale} />
       </div>
 
       <div
@@ -91,17 +98,17 @@ export function Masthead({
       />
 
       <nav
-        aria-label="지면 섹션"
+        aria-label={t.sectionsLabel}
         className="-mx-4 flex gap-1 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden"
       >
         {[
-          { href: "#front", label: "1면" },
-          ...(weekly ? [{ href: "#weekly", label: "주간 레이더" }] : []),
+          { href: "#front", label: t.nav.front },
+          ...(weekly ? [{ href: "#weekly", label: t.nav.weekly }] : []),
           ...categories.map((c) => ({
             href: `#section-${categorySlug(c)}`,
-            label: categoryLabel(c),
+            label: categoryLabel(c, locale),
           })),
-          { href: "#all", label: indexLabel },
+          { href: "#all", label: indexLabel ?? t.nav.all },
         ].map((item, i) => (
           <a
             key={item.href}
@@ -127,22 +134,23 @@ export function Masthead({
  * md 이상: 제호 오른쪽 세로 칸(왼쪽 헤어라인, 세리프 큰 숫자). 모바일: 제호 아래 두 줄.
  * "오늘"이 아니라 "이번 호" — 발행이 지연되면 보고 있는 호가 어제 것이라 "오늘"은 거짓이 된다.
  */
-function IssueEar({ stats }: { stats: IssueStats }) {
+function IssueEar({ stats, locale }: { stats: IssueStats; locale: Locale }) {
+  const t = getMessages(mastheadMessages, locale).ear;
   return (
     <div
       data-testid="issue-ear"
       className="text-meta text-muted-foreground border-border flex flex-col gap-0.5 md:flex-none md:border-l md:pt-0.5 md:pb-1.5 md:pl-5"
     >
-      <span className="text-label hidden font-semibold md:block">이번 호</span>
+      <span className="text-label hidden font-semibold md:block">{t.heading}</span>
       <span>
-        <span className="text-foreground font-bold md:hidden">{"이번 호 "}</span>
+        <span className="text-foreground font-bold md:hidden">{t.prefix}</span>
         <b className="text-foreground font-bold tabular-nums md:mr-0.5 md:font-serif md:text-[2.125rem] md:leading-[1.05] md:font-extrabold md:tracking-[-0.04em]">
           {stats.count}
         </b>
         <span className="md:text-foreground md:mr-1.5 md:font-serif md:text-[1.0625rem] md:leading-none md:font-bold">
-          건
+          {plural(stats.count, t.unit.one, t.unit.other)}
         </span>{" "}
-        <span className="tabular-nums">· 매체 {stats.sources}곳</span>
+        <span className="tabular-nums">{t.outlets(stats.sources)}</span>
       </span>
       {stats.formats.length > 0 && (
         <span className="flex flex-wrap gap-x-1 md:mt-0.5">
@@ -153,10 +161,18 @@ function IssueEar({ stats }: { stats: IssueStats }) {
                   ·
                 </span>
               )}
-              <span>
-                {FORMAT_DISPLAY_LABELS[format]}{" "}
-                <b className="text-foreground-soft font-semibold tabular-nums">{count}</b>
-              </span>
+              {locale === "en" ? (
+                // en 은 수가 앞("4 repos") — 굵은 수 뒤에 formatCountLabel 의 명사 부분을 잇는다.
+                <span>
+                  <b className="text-foreground-soft font-semibold tabular-nums">{count}</b>
+                  {formatCountLabel(format, count, locale).slice(String(count).length)}
+                </span>
+              ) : (
+                <span>
+                  {formatLabel(format, locale)}{" "}
+                  <b className="text-foreground-soft font-semibold tabular-nums">{count}</b>
+                </span>
+              )}
             </span>
           ))}
         </span>

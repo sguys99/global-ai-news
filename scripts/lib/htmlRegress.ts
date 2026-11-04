@@ -63,9 +63,9 @@ const DROPPED_LINK_RELS = new Set(["preload", "modulepreload", "stylesheet", "pr
  * 시각에 따라 정적 HTML 에 들어갔다 빠지는 "발행 지연" 안내(IssueDelayNotice, 홈 전용)의 라벨.
  * 홈은 빌드 시각(Date.now)으로 initialDelayGap 을 계산해 넣으므로, 같은 커밋·같은 DB 라도
  * 08:00 KST(다음 날) 이후에 빌드하면 안내 줄이 생긴다 → 비교에서 뺀다. 문구는 src/lib/labels.ts issueDelayCopy.
- * 영어판(Phase 5)이 생기면 영어 라벨을 여기에 더한다.
+ * 영어판 라벨(같은 issueDelayCopy 의 en)도 함께 둔다 — Phase 5 영어 페이지 비교에 쓴다.
  */
-export const VOLATILE_STATUS_LABELS = ["발행 전", "발행 지연"] as const;
+export const VOLATILE_STATUS_LABELS = ["발행 전", "발행 지연", "Not out yet", "Delayed"] as const;
 
 /** next/font 가 호출 위치마다 붙이는 해시 클래스(`__variable_1a2b3c`, `__className_1a2b3c`). */
 const FONT_CLASS_RE = /^(__variable|__className)_[0-9a-f]+$/;
