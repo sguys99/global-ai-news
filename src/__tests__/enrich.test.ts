@@ -20,6 +20,10 @@ import {
   type EnrichInput,
 } from "../../scripts/lib/enrich";
 import { approxTokens, outputFormatTokens } from "../../scripts/lib/cost";
+import { dropRepeats } from "../../scripts/lib/repeatCheck";
+import { applySameEventMerges } from "../../scripts/lib/sameEvent";
+import type { Pick } from "../../scripts/lib/triage";
+import { parseEnglishNotes } from "../../src/lib/englishKpi";
 import { articleEnrichmentSchema, CATEGORIES } from "../../scripts/lib/schema";
 import { FORMAT_LABELS, FORMATS, type Format } from "../../src/lib/labels";
 import { PROMPTS_DIR } from "../../src/lib/paths";
@@ -182,21 +186,137 @@ describe("영어 근거·저장값", () => {
     const repo = { ...input(1).item, contentRaw: "Desc · topics: llm, gpt-4" };
     expect(enrichEvidence(repo).content).toBe("Desc · topics: llm, gpt-4");
   });
+});
 
-  it("resolveEnglish: 앞뒤 공백을 다듬고, 제목·요약 중 하나라도 비면 둘 다 null", () => {
-    const evidence = { title: "T", content: "" };
+describe("resolveEnglish — 영어 품질 검사(Phase 1-3) 연결", () => {
+  const OK_TITLE = "OpenAI raises $11 billion of its $30 billion target";
+  const OK_SUMMARY =
+    "OpenAI raised $11 billion, short of its $30 billion goal. The company plans to spend it on compute.";
+  const evidence = { title: OK_TITLE, content: "OpenAI raised $11 billion, short of $30 billion." };
+  const article = (id: number, over: Partial<typeof enrichment> = {}) => ({
+    id,
+    enrichment: {
+      ...enrichment,
+      title_ko: "오픈AI, 300억 달러 목표 중 110억 달러 조달",
+      summary_ko: "오픈AI가 110억 달러를 조달했다.",
+      title_en: OK_TITLE,
+      summary_en: OK_SUMMARY,
+      ...over,
+    },
+    evidence,
+  });
+
+  it("통과하면 앞뒤 공백만 다듬어 저장하고, 기각하면 그 기사의 영어만 둘 다 null", () => {
     const out = resolveEnglish([
-      {
-        id: 1,
-        enrichment: { ...enrichment, title_en: "  A headline ", summary_en: "Body. " },
-        evidence,
-      },
-      { id: 2, enrichment: { ...enrichment, title_en: "A headline", summary_en: "  " }, evidence },
-      { id: 3, enrichment: { ...enrichment, title_en: "", summary_en: "Body." }, evidence },
+      article(1, { title_en: `  ${OK_TITLE} `, summary_en: `${OK_SUMMARY}\n` }),
+      article(2, { title_en: "OpenAI raises funds from 소프트뱅크 group" }),
+      article(3, { title_en: "OpenAI raises $11 million of its $30 billion target" }),
+      article(4, { summary_en: "  " }),
+      article(5, { title_en: "" }),
     ]);
-    expect(out.get(1)).toEqual({ titleEn: "A headline", summaryEn: "Body." });
-    expect(out.get(2)).toEqual({ titleEn: null, summaryEn: null });
-    expect(out.get(3)).toEqual({ titleEn: null, summaryEn: null });
+    expect(out.status).toBe("ok");
+    expect(out.fields.get(1)).toEqual({ titleEn: OK_TITLE, summaryEn: OK_SUMMARY });
+    for (const id of [2, 3, 4, 5]) {
+      expect(out.fields.get(id)).toEqual({ titleEn: null, summaryEn: null });
+    }
+    expect(out.checks.get(1)?.english).toEqual({ ok: true });
+    expect(out.checks.get(2)?.english).toEqual({ ok: false, reason: "hangul", detail: ["title"] });
+    expect(out.checks.get(3)?.english).toEqual({
+      ok: false,
+      reason: "number",
+      detail: ["11 million"],
+    });
+    expect(out.checks.get(4)?.english).toMatchObject({ ok: false, reason: "length" });
+    expect(out.checks.get(5)?.english).toMatchObject({ ok: false, reason: "length" });
+    expect(out.tally).toMatchObject({
+      checked: 5,
+      passed: 1,
+      rejected: { hangul: 1, number: 1, length: 2 },
+    });
+    expect(out.notes).toEqual(["영어 가공 1/5건", "영어 기각 4건(한글 1·숫자 1·길이 2)"]);
+  });
+
+  it("한국어 숫자 불일치는 경고만 — 한국어·영어 저장값은 그대로이고 notes 에 센다", () => {
+    const out = resolveEnglish([
+      article(1),
+      article(2, { summary_ko: "오픈AI가 11억 달러를 조달했다." }),
+    ]);
+    expect(out.fields.get(2)).toEqual({ titleEn: OK_TITLE, summaryEn: OK_SUMMARY });
+    expect(out.checks.get(1)?.koreanNumbers).toEqual([]);
+    expect(out.checks.get(2)?.koreanNumbers).toEqual(["11억"]);
+    expect(out.notes).toEqual(["영어 가공 2/2건", "한국어 숫자 불일치 1건(11억)"]);
+  });
+
+  it("notes 는 KPI 파서(englishKpi)가 그대로 읽고, 항목 안에 notes 구분자 `;`가 없다", () => {
+    const out = resolveEnglish([
+      article(1),
+      article(2, { title_en: "Short" }),
+      article(3, { summary_ko: "오픈AI가 11억 달러를; 조달했다." }),
+    ]);
+    for (const note of out.notes) expect(note).not.toContain(";");
+    expect(parseEnglishNotes(["선정 3건", ...out.notes, "LLM batch 호출 6회"].join("; "))).toEqual({
+      checked: 3,
+      passed: 2,
+      rejected: { hangul: 0, number: 0, length: 1 },
+      koreanMismatch: 1,
+    });
+  });
+
+  it("검사 대상 M = 최종 게재분 — 재보도로 뺀 기사·같은 사건으로 합쳐진 기사는 세지 않는다(collect.ts ④-5 입력)", () => {
+    const picks: Pick[] = [0, 1, 2, 3].map((index) => ({ index, importance: 3, duplicates: [] }));
+    const enriched = new Map([0, 1, 2, 3].map((i) => [i, article(i).enrichment]));
+    // 3 은 재보도, 1 은 0 에 합쳐진다.
+    const afterRepeat = dropRepeats(picks, enriched, [3]);
+    const merged = applySameEventMerges(afterRepeat.picks, afterRepeat.enriched, [
+      {
+        representative: 0,
+        merged: 1,
+        shared: [],
+        theme: [],
+        score: 9,
+        overlap: 1,
+        titleShared: [],
+        titleScore: 9,
+      },
+    ]);
+    const out = resolveEnglish(
+      [...merged.enriched].map(([id, e]) => ({ id, enrichment: e, evidence })),
+    );
+    expect([...out.fields.keys()]).toEqual([0, 2]);
+    expect(out.tally?.checked).toBe(2);
+    expect(out.notes[0]).toBe("영어 가공 2/2건");
+  });
+
+  it("게재분이 없으면 notes 도 없다", () => {
+    const out = resolveEnglish([]);
+    expect(out).toMatchObject({ status: "ok", notes: [] });
+    expect(out.fields.size).toBe(0);
+  });
+
+  it("영어 검사가 예외를 내면 throw 하지 않고 전부 영어 없이 — `영어 검사 실패(영어 비움): …`", () => {
+    const out = resolveEnglish([
+      article(1),
+      // 구조화 출력을 벗어난 값(문자열이 아님)
+      article(2, { title_en: 42 as unknown as string }),
+    ]);
+    expect(out.status).toBe("failed");
+    expect(out.fields.get(1)).toEqual({ titleEn: null, summaryEn: null });
+    expect(out.fields.get(2)).toEqual({ titleEn: null, summaryEn: null });
+    expect(out.tally).toBeNull();
+    expect(out.checks.size).toBe(0);
+    expect(out.notes).toHaveLength(1);
+    expect(out.notes[0]).toMatch(/^영어 검사 실패\(영어 비움\): \S/);
+    expect(out.notes[0]).not.toContain(";");
+    expect(parseEnglishNotes(out.notes.join("; "))).toBeNull();
+  });
+
+  it("한국어 숫자 검사가 예외를 내도 영어 검사 결과는 그대로다(경고만 생략)", () => {
+    const out = resolveEnglish([article(1), article(2, { summary_ko: 7 as unknown as string })]);
+    expect(out.status).toBe("ok");
+    expect(out.fields.get(2)).toEqual({ titleEn: OK_TITLE, summaryEn: OK_SUMMARY });
+    expect(out.checks.get(2)?.koreanNumbers).toEqual([]);
+    expect(out.notes[0]).toBe("영어 가공 2/2건");
+    expect(out.notes[1]).toMatch(/^한국어 숫자 검사 실패: /);
   });
 });
 

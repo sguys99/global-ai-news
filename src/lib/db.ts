@@ -7,6 +7,12 @@ import {
   normalizeCategory,
   toFormat,
 } from "@/lib/labels";
+import {
+  parseEnglishNotes,
+  sumEnglishNotes,
+  type EnglishCoverage,
+  type EnglishKpi,
+} from "@/lib/englishKpi";
 import { DB_PATH } from "@/lib/paths";
 import {
   assessSourceHealth,
@@ -424,6 +430,120 @@ export function getKpiSummary(days = 30, conn: DatabaseType = getDb()): KpiSumma
     maxDailyCost,
     avgDailyNew,
     duplicateKeys: dup.n,
+  };
+}
+
+/** 영어판 KPI 의 최근 회차 줄 수(admin 패널·`npm run kpi`). */
+export const ENGLISH_KPI_RECENT_RUNS = 7;
+
+/** SQLite datetime() 키('YYYY-MM-DD HH:MM:SS', UTC) → ISO8601 UTC. */
+const sqliteKeyToIso = (key: string) => `${key.replace(" ", "T")}Z`;
+
+/**
+ * 영어판 KPI(docs/english-version-plan.md Phase 1-4) — 게재 대비 영어 보유 비율(전체·한국 매체·해외)과 회차 notes 의
+ * 기각 사유·한국어 숫자 경고. 정의·"영어판 이전" 규칙은 src/lib/englishKpi.ts 머리 주석.
+ * - 커버리지는 지금 DB 상태다(백필이 채우면 오른다). 회차 notes 값은 그 회차 당시 검사 결과다.
+ * - 회차의 게재 기사 = created_at 이 그 회차 시작 이상·다음 회차 시작 미만(재심사 게재도 created_at 을 옮긴다).
+ * - 영어 컬럼이 없는 옛 DB(마이그레이션 전)는 hasColumns=false·영어판 이전으로 돌려준다. 시각 비교는 datetime() 으로
+ *   형식(`…T…Z` vs `YYYY-MM-DD HH:MM:SS`)을 맞춘다.
+ */
+export function getEnglishKpi(
+  recentRuns = ENGLISH_KPI_RECENT_RUNS,
+  conn: DatabaseType = getDb(),
+): EnglishKpi {
+  const articleCols = tableColumns(conn, "articles");
+  const hasColumns = articleCols.has("title_en") && articleCols.has("summary_en");
+  const region = tableColumns(conn, "sources").has("region") ? "s.region" : "NULL";
+  const hasEnglish = `COALESCE(a.title_en, '') <> '' AND COALESCE(a.summary_en, '') <> ''`;
+
+  const { n: allPublished } = conn
+    .prepare(`SELECT COUNT(*) AS n FROM articles a WHERE ${PUBLISHED}`)
+    .get() as { n: number };
+
+  const runs = (
+    conn
+      .prepare(
+        `SELECT id, started_at AS startedAt, datetime(started_at) AS startedKey, status, notes
+           FROM collection_runs ORDER BY datetime(started_at) ASC, id ASC`,
+      )
+      .all() as {
+      id: number;
+      startedAt: string;
+      startedKey: string | null;
+      status: string;
+      notes: string | null;
+    }[]
+  ).map((r) => ({ ...r, english: parseEnglishNotes(r.notes) }));
+
+  const empty = (): EnglishCoverage => ({ published: 0, english: 0 });
+  const firstRunKey = runs.find((r) => r.english && r.startedKey)?.startedKey ?? null;
+  const firstArticleKey = hasColumns
+    ? ((
+        conn
+          .prepare(
+            `SELECT MIN(datetime(a.created_at)) AS k FROM articles a WHERE ${PUBLISHED} AND ${hasEnglish}`,
+          )
+          .get() as { k: string | null }
+      ).k ?? null)
+    : null;
+  const keys = [firstRunKey, firstArticleKey].filter((k): k is string => k !== null).sort();
+  const sinceKey = keys[0] ?? null;
+
+  if (sinceKey === null) {
+    return {
+      hasColumns,
+      since: null,
+      allPublished,
+      overall: empty(),
+      korea: empty(),
+      overseas: empty(),
+      checks: sumEnglishNotes([]),
+      runs: [],
+    };
+  }
+
+  const articles = conn
+    .prepare(
+      `SELECT datetime(a.created_at) AS createdKey, ${region} AS region,
+              ${hasColumns ? `CASE WHEN ${hasEnglish} THEN 1 ELSE 0 END` : "0"} AS en
+         FROM articles a JOIN sources s ON s.id = a.source_id
+        WHERE ${PUBLISHED} AND datetime(a.created_at) >= ?`,
+    )
+    .all(sinceKey) as { createdKey: string; region: string | null; en: number }[];
+
+  const overall = empty();
+  const korea = empty();
+  const overseas = empty();
+  for (const a of articles) {
+    for (const c of [overall, a.region === "kr" ? korea : overseas]) {
+      c.published += 1;
+      c.english += a.en;
+    }
+  }
+
+  // 회차 창 = 시작 ~ 다음 회차 시작. 시작 시각이 든 창의 회차부터 영어판 회차로 친다(백필 기사가 시작을 정해도 그 회차 포함).
+  const timed = runs.filter((r): r is typeof r & { startedKey: string } => r.startedKey !== null);
+  const windows = timed.map((r, i) => ({ ...r, to: timed[i + 1]?.startedKey ?? null }));
+  const eraRuns = windows.filter((r) => r.to === null || r.to > sinceKey);
+  const recent = recentRuns > 0 ? eraRuns.slice(-recentRuns).reverse() : [];
+
+  return {
+    hasColumns,
+    since: sqliteKeyToIso(sinceKey),
+    allPublished,
+    overall,
+    korea,
+    overseas,
+    checks: sumEnglishNotes(eraRuns.map((r) => r.english)),
+    runs: recent.map((r) => {
+      const coverage = empty();
+      for (const a of articles) {
+        if (a.createdKey < r.startedKey || (r.to !== null && a.createdKey >= r.to)) continue;
+        coverage.published += 1;
+        coverage.english += a.en;
+      }
+      return { id: r.id, startedAt: r.startedAt, status: r.status, notes: r.english, coverage };
+    }),
   };
 }
 

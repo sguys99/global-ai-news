@@ -19,7 +19,8 @@ import {
 import { EVAL_DIR } from "../../src/lib/paths";
 import type { ResolvedBriefLine } from "./brief";
 import { estimateCost } from "./cost";
-import type { EnglishFields } from "./enrich";
+import type { EnglishArticleCheck, EnglishFields } from "./enrich";
+import type { EnglishCheckTally } from "./englishCheck";
 import type { LlmUsage } from "./llm";
 import type { FollowUpLink, RejectedRepeat, RepeatMatch } from "./repeatCheck";
 import type { SameEventMerge } from "./sameEvent";
@@ -102,6 +103,17 @@ export interface EvalSnapshot {
    * (Phase 1-3)가 비운 것이다. 이 단계가 생기기 전 스냅숏이나 게재분이 정해지기 전에 끝난 회차에는 없다.
    */
   english?: Record<number, EnglishFields>;
+  /**
+   * 영어 품질 검사(Phase 1-3, resolveEnglish) — 풀 번호 → 기사별 결과(english: 통과 `{ok:true}` / 기각 `{ok:false, reason,
+   * detail}`, koreanNumbers: 한국어 제목·요약에서 원문에 없는 숫자 경고), 회차 집계와 notes 줄. status failed 면 검사가
+   * 예외를 내 전부 영어 없이 저장되는 회차다(articles 비고 tally null). 이 단계가 생기기 전 스냅숏에는 없다.
+   */
+  englishCheck?: {
+    status: "ok" | "failed";
+    articles: Record<number, EnglishArticleCheck>;
+    tally: EnglishCheckTally | null;
+    notes: string[];
+  };
   /**
    * 재보도 검사 결과(검사를 건너뛰었거나 이 단계가 생기기 전 스냅숏이면 없음). repeats 는 코드 확인을 통과한 판정,
    * rejected 는 기각한 판정이다 — rejected·rejectNote 는 코드 확인이 생기기 전 스냅숏에 없다(그때 repeats 는 모델 판정 그대로).

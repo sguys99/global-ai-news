@@ -5,6 +5,8 @@
  * collection_runs/articles 에서 자동 산출 가능한 KPI(비용·성공률·신규 카드·중복)를
  * 최근 N일(기본 30) 집계해 목표 대비 PASS/FAIL 표로 출력한다.
  * LCP·한국어 요약 품질은 자동 측정 대상이 아니므로 수동 점검 안내만 표기한다.
+ * 이어서 영어판 절(english-version-plan Phase 1-4: 게재 대비 영어 커버리지 — 한국 매체·해외, notes 의 기각 사유·
+ * 한국어 숫자 경고, 최근 회차 — 집계 src/lib/db.ts getEnglishKpi, 출력 scripts/lib/englishReport.ts)과 소스 헬스 표.
  *
  * 하위 명령: npm run kpi -- baseline [days=14] [--front issue|legacy] [--since YYYY-MM-DD]
  *   콘텐츠·1면 개편 기준선(docs/contents-upgrade-plan.md Phase 0/7). 집계는 scripts/lib/baseline.ts,
@@ -22,7 +24,7 @@
  */
 import { appendFileSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { getDb, getKpiSummary, getSourceHealth } from "../src/lib/db";
+import { getDb, getEnglishKpi, getKpiSummary, getSourceHealth } from "../src/lib/db";
 import { FORMAT_LABELS, FORMATS, type Format } from "../src/lib/labels";
 import { CONFIGS_DIR } from "../src/lib/paths";
 import {
@@ -34,6 +36,7 @@ import {
   type RunWarnings,
   type Spread,
 } from "./lib/baseline";
+import { englishKpiText } from "./lib/englishReport";
 import { healthAnnotations, healthMarkdown } from "./lib/healthReport";
 
 const [, , first, ...rest] = process.argv;
@@ -83,6 +86,8 @@ function main(): void {
   console.log("  —   피드 LCP            ≤ 2.0s   (Vercel Analytics / Lighthouse)");
   console.log("  —   한국어 요약 품질    ≥ 90%    (주간 20건 샘플 리뷰)");
   console.log("  —   소스 변경→재배포    ≤ 10분   (Vercel 배포 타임스탬프)\n");
+
+  console.log(englishKpiText(getEnglishKpi()) + "\n");
 
   console.log(healthMarkdown(getSourceHealth(readSourcesConfig())) + "\n");
 }

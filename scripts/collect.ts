@@ -19,14 +19,16 @@
  *    related 로 합친다(뉴스끼리, 실패하면 그대로 게재). 할당 미달·초과·논문 분야 쏠림 경고는 이 뒤의 최종 게재분으로 센다
  * ④-4 세 줄 요약: 선별 출력의 brief 중 실제로 게재된 선정의 줄만 남겨 collection_runs.brief_json 에 기사 id 로 저장
  *    (lib/brief.ts — 합쳐진 선정을 가리키는 줄은 대표로 옮긴다. 남은 줄이 모자라거나 무엇이 잘못돼도 요약 없이 발행한다)
- * ④-5 영어 필드 확정(lib/enrich.ts resolveEnglish): 게재분의 title_en·summary_en 을 저장할 값으로 정한다 — 영어 품질 검사
- *    (Phase 1-3)가 들어올 자리. 기각되면 영어만 비고 한국어 게재는 그대로다
+ * ④-5 영어 필드 확정(lib/enrich.ts resolveEnglish): 게재분의 title_en·summary_en 을 영어 품질 검사(lib/englishCheck.ts —
+ *    한글·길이·원문에 없는 숫자)로 거른다. 기각되면 그 기사의 영어만 비고(fail-closed) 한국어 게재는 그대로다. 같은 근거로
+ *    한국어 제목·요약의 숫자도 대조해 notes 에 경고만 남긴다. 검사가 예외를 내도 영어만 비우고 회차는 계속한다
  * ⑤ SQLite 저장: 선정 → articles, 미선정 → seen_items(키만) + collection_runs 기록
  *
  * LLM 호출은 기본적으로 Message Batches API(50% 할인)로 보낸다(lib/llm.ts).
  * 소스별 try/catch 로 부분 실패를 격리한다(한 소스 실패가 전체를 막지 않음).
  */
 import Database, { type Database as DatabaseType } from "better-sqlite3";
+import { ENGLISH_REJECT_LABELS } from "../src/lib/englishKpi";
 import { CATEGORY_LABELS, FORMAT_LABELS, toFormat } from "../src/lib/labels";
 import { DB_PATH } from "../src/lib/paths";
 import type { RawItem } from "../src/lib/types";
@@ -45,7 +47,9 @@ import {
   estimateEnrichTokens,
   resolveEnglish,
   resolveEnrichments,
+  type EnglishArticleCheck,
   type EnglishFields,
+  type EnglishResolution,
   type EnrichChunk,
   type EnrichInput,
 } from "./lib/enrich";
@@ -481,6 +485,7 @@ function printNoSaveResult(
   repeat: { outcome: RepeatCheckOutcome; dropped: Pick[]; all: Map<number, ArticleEnrichment> },
   reported: ReportedHeadline[],
   merges: SameEventMerge[],
+  englishCheck: EnglishResolution,
 ): void {
   if (repeat.dropped.length > 0) {
     const pairOf = new Map(repeat.outcome.repeats.map((m) => [m.id, m.reported]));
@@ -547,25 +552,46 @@ function printNoSaveResult(
     }
   }
   console.log(
-    `[collect] no-save 게재 ${picks.length}건 (중요도 | 형식 | 분야 | 매체 | 제목 / EN 영어 제목):`,
+    `[collect] no-save 게재 ${picks.length}건 (중요도 | 형식 | 분야 | 매체 | 제목 / EN 검사·영어 제목 / KO 숫자 경고):`,
   );
   for (const p of picks) {
     const c = pool[p.index];
     const e = enriched.get(p.index);
     const en = e ? english.get(p.index) : undefined;
+    const check = englishCheck.checks.get(p.index);
     console.log(
       `  ${p.importance} | ${FORMAT_LABELS[c.format]} | ${e ? CATEGORY_LABELS[e.category] : "-"} | ` +
         `${c.sourceName} | ${e?.title_ko ?? `(미가공) ${c.item.title}`}` +
-        (e ? `\n    EN ${en?.titleEn ?? "(영어 없음)"}` : ""),
+        (e ? `\n    ${englishLine(check, en, e)}` : "") +
+        (check?.koreanNumbers.length
+          ? `\n    KO 숫자 불일치: ${check.koreanNumbers.join(", ")}`
+          : ""),
     );
   }
   const withEnglish = picks.filter((p) => english.get(p.index)?.titleEn).length;
   console.log(
-    `[collect] no-save 영어 저장 ${withEnglish}/${enriched.size}건 (요약은 스냅숏 english)`,
+    `[collect] no-save 영어 저장 ${withEnglish}/${enriched.size}건 (요약·검사 결과는 스냅숏 english·englishCheck)`,
   );
+  for (const note of englishCheck.notes) console.log(`[collect] no-save 영어 검사: ${note}`);
   const s = summarizePicks(pickRows(pool, picks, enriched));
   console.log(`[collect] no-save 형식별: ${formatCounts(s)} (비뉴스 ${s.nonNews})`);
   console.log(`[collect] no-save 분야별(가공): ${categoryCounts(s)}`);
+}
+
+/**
+ * no-save: 기사 1건의 영어 줄 — 통과 `EN ✓ 제목`, 기각 `EN ✗ 숫자: 11 million | 모델 제목`(기각돼 저장하지 않는 원출력),
+ * 검사 실패 `EN - (검사 실패) 모델 제목`.
+ */
+function englishLine(
+  check: EnglishArticleCheck | undefined,
+  en: EnglishFields | undefined,
+  e: ArticleEnrichment,
+): string {
+  if (!check) return `EN - (검사 실패) ${e.title_en}`;
+  const r = check.english;
+  if (r.ok) return `EN ✓ ${en?.titleEn ?? e.title_en}`;
+  const detail = r.detail.length ? `: ${r.detail.join(", ")}` : "";
+  return `EN ✗ ${ENGLISH_REJECT_LABELS[r.reason]}${detail} | ${e.title_en || "(빈 제목)"}`;
 }
 
 /** no-save: 세 줄 요약 원출력(5줄)과 게재에 맞춰 남은 줄. */
@@ -770,14 +796,22 @@ async function main(): Promise<void> {
 
     // ── ④-5 영어 필드 확정 ── 게재분의 title_en·summary_en 을 저장할 값으로 정한다. persist·스냅숏은 이 결과만 쓴다.
     // 영어 품질 검사(Phase 1-3)는 resolveEnglish 안에서 돈다 — 근거는 원문 제목 + 모델에 준 발췌(enrichEvidence).
-    const english = resolveEnglish(
+    // 검사 대상(notes `영어 가공 N/M건`의 M) = 최종 게재분: 재보도·합쳐진 기사는 없고, 이번에 가공한 재심사 행은 있다.
+    // resolveEnglish 는 throw 하지 않는다 — 검사가 실패해도 영어만 비우고(`영어 검사 실패(영어 비움): …`) 한국어는 싣는다.
+    const englishCheck = resolveEnglish(
       [...published.enriched].map(([id, enrichment]) => ({
         id,
         enrichment,
         evidence: enrichEvidence(pool[id].item),
       })),
     );
-    if (snapshot) snapshot.english = Object.fromEntries(english);
+    const english = englishCheck.fields;
+    stats.notes.push(...englishCheck.notes);
+    if (snapshot) {
+      snapshot.english = Object.fromEntries(english);
+      const { status, checks, tally, notes } = englishCheck;
+      snapshot.englishCheck = { status, articles: Object.fromEntries(checks), tally, notes };
+    }
 
     // 할당 미달·초과·논문 분야 쏠림 경고(강제로 채우거나 덜어 내지 않는다) — 재보도를 빼고 같은 사건을 합친 최종 게재분으로 센다.
     // Physical AI 는 가공된 기사의 분야로 센다 — 소스 topic 은 일반 매체의 로봇 기사를 놓친다. 가공되지 않은 선정만
@@ -832,6 +866,7 @@ async function main(): Promise<void> {
         { outcome: repeat, dropped: published.dropped, all: enriched },
         reportedFull,
         sameEvent.merges,
+        englishCheck,
       );
       printBrief(triage.brief, brief, published.enriched);
     } else {

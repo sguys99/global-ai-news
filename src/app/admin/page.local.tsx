@@ -4,7 +4,14 @@ import { LogoutButton } from "@/components/admin/LogoutButton";
 import { RunsTable } from "@/components/admin/RunsTable";
 import { SourceHealthPanel } from "@/components/admin/SourceHealthPanel";
 import { SourceManager } from "@/components/admin/SourceManager";
-import { getKpiSummary, getRecentRuns, getSourceHealth, type KpiSummary } from "@/lib/db";
+import {
+  getEnglishKpi,
+  getKpiSummary,
+  getRecentRuns,
+  getSourceHealth,
+  type KpiSummary,
+} from "@/lib/db";
+import type { EnglishKpi } from "@/lib/englishKpi";
 import type { SourceHealthReport } from "@/lib/sourceHealth";
 import { readSources } from "@/lib/sources";
 import type { RunRow, SourceConfig } from "@/lib/types";
@@ -34,6 +41,14 @@ export default async function AdminPage() {
   } catch {
     // DB 미생성 등 — KPI 섹션 숨김
     kpi = null;
+  }
+
+  let english: EnglishKpi | null = null;
+  try {
+    english = getEnglishKpi();
+  } catch {
+    // DB 미생성 등 — 영어판 지면 생략(KPI 요약은 그대로)
+    english = null;
   }
 
   let health: SourceHealthReport | null = null;
@@ -73,7 +88,7 @@ export default async function AdminPage() {
           <h2 className="border-rule border-t-2 pt-3 font-serif text-2xl font-extrabold tracking-[-0.04em]">
             KPI 요약
           </h2>
-          <KpiPanel kpi={kpi} />
+          <KpiPanel kpi={kpi} english={english} />
         </section>
       )}
 

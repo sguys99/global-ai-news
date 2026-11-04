@@ -1,10 +1,13 @@
+import { EnglishKpiPanel } from "@/components/admin/EnglishKpiPanel";
 import type { KpiSummary } from "@/lib/db";
+import type { EnglishKpi } from "@/lib/englishKpi";
 import { cn } from "@/lib/utils";
 
 /**
  * PRD §9 KPI 요약 패널. getKpiSummary() 자동 산출 지표를 목표 대비 충족/미달로 표시한다.
  * DESIGN.md v2: hairline 보더 카드, rounded.lg. 충족=잉크(primary), 미달=destructive.
  * LCP·한국어 품질 등 수동 측정 항목은 "수동 점검" 배지로 별도 표기한다.
+ * `english`(getEnglishKpi)를 주면 아래에 영어판 지면(EnglishKpiPanel)을 붙인다 — DB 를 못 읽으면 생략.
  */
 
 interface Metric {
@@ -32,7 +35,7 @@ function KpiCard({ m }: { m: Metric }) {
   );
 }
 
-export function KpiPanel({ kpi }: { kpi: KpiSummary }) {
+export function KpiPanel({ kpi, english }: { kpi: KpiSummary; english?: EnglishKpi | null }) {
   const auto: Metric[] = [
     {
       label: "일일 LLM 비용",
@@ -92,6 +95,8 @@ export function KpiPanel({ kpi }: { kpi: KpiSummary }) {
           ))}
         </ul>
       </div>
+
+      {english && <EnglishKpiPanel english={english} />}
     </div>
   );
 }

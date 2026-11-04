@@ -14,6 +14,14 @@ import { FORMAT_LABELS, type Format } from "../../src/lib/labels";
 import { PROMPTS_DIR } from "../../src/lib/paths";
 import type { RawItem } from "../../src/lib/types";
 import { approxTokens, outputFormatTokens } from "./cost";
+import {
+  checkEnglish,
+  checkKoreanNumbers,
+  englishCheckNotes,
+  tallyEnglishChecks,
+  type EnglishCheckResult,
+  type EnglishCheckTally,
+} from "./englishCheck";
 import { glossaryBlock, glossaryTables, readGlossary, selectGlossary } from "./glossary";
 import type { LlmRequest } from "./llm";
 import { enrichBatchSchema, type ArticleEnrichment, type EnrichBatch } from "./schema";
@@ -235,20 +243,97 @@ export interface EnglishCandidate {
   evidence: { title: string; content: string };
 }
 
+/** 기사 1건의 검사 결과(no-save 스냅숏·콘솔용). */
+export interface EnglishArticleCheck {
+  /** 영어 품질 검사(한글 → 길이 → 숫자). 기각이면 그 기사의 영어는 null 로 저장된다. */
+  english: EnglishCheckResult;
+  /** 한국어 title_ko·summary_ko 에서 근거에 없는 숫자·금액(경고 전용, 빈 배열 = 경고 없음). */
+  koreanNumbers: string[];
+}
+
+/** resolveEnglish 결과. */
+export interface EnglishResolution {
+  /** 풀 번호 → 저장할 영어 필드. 입력한 기사마다 하나씩 있다(기각·검사 실패면 둘 다 null). */
+  fields: Map<number, EnglishFields>;
+  /** 풀 번호 → 기사별 검사 결과. 검사가 실패한 회차(status failed)면 비어 있다. */
+  checks: Map<number, EnglishArticleCheck>;
+  /** 회차 집계(notes 재료). 검사가 실패한 회차면 null. */
+  tally: EnglishCheckTally | null;
+  /** status ok 면 영어 검사가 끝난 것, failed 면 예외로 전부 영어 없이 저장한다(한국어 게재는 그대로). */
+  status: "ok" | "failed";
+  /**
+   * collection_runs.notes 에 넣을 줄(`영어 가공 N/M건`·`영어 기각 K건(…)`·`한국어 숫자 불일치 N건(…)` /
+   * `영어 검사 실패(영어 비움): …`·`한국어 숫자 검사 실패: …`). notes 구분자 `;`는 들지 않는다.
+   */
+  notes: string[];
+}
+
+/** notes 한 줄에 싣는 예외 메시지 — notes 구분자 `;`·줄바꿈을 지우고 길이를 묶는다. */
+function noteMessage(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg
+    .replace(/[;\s]+/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
 /**
- * 게재되는 가공 기사 → 저장할 영어 필드(풀 번호별). 저장(collect.ts persist)과 no-save 스냅숏은 이 결과만 읽는다.
+ * 게재되는 가공 기사 → 저장할 영어 필드(풀 번호별) + 검사 결과. 저장(collect.ts persist)과 no-save 스냅숏은 이 결과의
+ * fields 만 읽는다 — 영어 품질 검사(Phase 1-3, lib/englishCheck.ts)의 단일 자리다.
  *
- * **영어 품질 검사(Phase 1-3)가 들어올 단일 자리다.** 기사마다 evidence 를 근거로 englishCheck.checkEnglish 를 돌려
- * 기각하면 그 기사의 영어만 null 로 두고(fail-closed), 사유 집계는 notes(`영어 가공 N/M건`·`영어 기각 K건(…)`)로 낸다.
- * 지금은 검사 없이 앞뒤 공백을 다듬고 빈 문자열만 null 로 둔다 — 제목·요약 중 하나라도 비면 둘 다 없음으로 본다
- * (1-3 기각과 같이 제목·요약을 한 쌍으로 다룬다).
+ * - 영어: 기사마다 evidence(원문 제목 + 모델에 준 발췌)로 checkEnglish 를 돌려, 기각하면 그 기사의 영어만 null 로 둔다
+ *   (fail-closed — 제목·요약을 한 쌍으로 다룬다. 빈 필드는 길이 기각). 통과하면 앞뒤 공백만 다듬어 저장한다.
+ * - 한국어: 같은 근거로 checkKoreanNumbers 를 돌려 notes 에 경고만 남긴다(게재·저장값은 바꾸지 않는다).
+ * - 실패: 이 함수는 throw 하지 않는다. 영어 검사가 예외를 내면 전부 영어 없이(null) 두고 `영어 검사 실패(영어 비움): …`
+ *   를 notes 에 남긴다 — 한국어 게재는 그대로다. 한국어 숫자 검사의 예외는 영어에 영향을 주지 않는다(경고 생략).
+ *
+ * M(검사한 기사 수)은 입력 건수다 — collect.ts 는 같은 사건 합치기 뒤 최종 게재분(가공을 마친 선정, 재심사 행 포함,
+ * 재보도·합쳐진 기사 제외)만 넘긴다.
  */
-export function resolveEnglish(candidates: Iterable<EnglishCandidate>): Map<number, EnglishFields> {
-  const out = new Map<number, EnglishFields>();
-  for (const { id, enrichment } of candidates) {
-    const titleEn = enrichment.title_en.trim();
-    const summaryEn = enrichment.summary_en.trim();
-    out.set(id, titleEn && summaryEn ? { titleEn, summaryEn } : { titleEn: null, summaryEn: null });
+export function resolveEnglish(candidates: Iterable<EnglishCandidate>): EnglishResolution {
+  const list = [...candidates];
+  const empty = (): EnglishFields => ({ titleEn: null, summaryEn: null });
+  const fields = new Map<number, EnglishFields>(list.map((c) => [c.id, empty()]));
+  const checks = new Map<number, EnglishArticleCheck>();
+  try {
+    const english = new Map<number, EnglishCheckResult>();
+    for (const { id, enrichment, evidence } of list) {
+      const output = { titleEn: enrichment.title_en, summaryEn: enrichment.summary_en };
+      const result = checkEnglish(output, evidence);
+      english.set(id, result);
+      if (result.ok) {
+        fields.set(id, {
+          titleEn: enrichment.title_en.trim(),
+          summaryEn: enrichment.summary_en.trim(),
+        });
+      }
+    }
+    const notes: string[] = [];
+    const korean = new Map<number, string[]>();
+    try {
+      for (const { id, enrichment: e, evidence } of list) {
+        korean.set(
+          id,
+          checkKoreanNumbers({ titleKo: e.title_ko, summaryKo: e.summary_ko }, evidence),
+        );
+      }
+    } catch (err) {
+      korean.clear();
+      notes.push(`한국어 숫자 검사 실패: ${noteMessage(err)}`);
+    }
+    for (const [id, result] of english) {
+      checks.set(id, { english: result, koreanNumbers: korean.get(id) ?? [] });
+    }
+    const tally = tallyEnglishChecks([...english.values()], [...korean.values()]);
+    return { fields, checks, tally, status: "ok", notes: [...englishCheckNotes(tally), ...notes] };
+  } catch (err) {
+    for (const c of list) fields.set(c.id, empty());
+    return {
+      fields,
+      checks: new Map(),
+      tally: null,
+      status: "failed",
+      notes: [`영어 검사 실패(영어 비움): ${noteMessage(err)}`],
+    };
   }
-  return out;
 }
