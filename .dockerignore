@@ -12,6 +12,7 @@ data/raw
 data/intermediate
 data/processed
 data/eval
+data/regress
 data/app.db-wal
 data/app.db-shm
 data/app.db.bak-*

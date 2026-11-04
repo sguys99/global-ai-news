@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "selectedFrom": {
+    "outDir": "data/regress/out-66198d3",
+    "db": "data/app.db",
+    "dbSha256": "7f3e4ee732706d8123614bddbfa1a29424265b7440210778c6824c1c25591229",
+    "at": "2026-11-04T09:25:46.017Z"
+  },
+  "pages": [
+    {
+      "path": "index.html",
+      "kind": "html",
+      "why": "홈 — 최신 호 2026-11-04 지면 + 색인"
+    },
+    {
+      "path": "edition/2026-11-04/index.html",
+      "kind": "html",
+      "why": "최신 호 고정 링크 (2026-11-04)"
+    },
+    {
+      "path": "edition/2026-11-01/index.html",
+      "kind": "html",
+      "why": "지난 호 — 일요일, 주간 레이더 (2026-11-01)"
+    },
+    {
+      "path": "article/1286/index.html",
+      "kind": "html",
+      "why": "뉴스·사건 타임라인 (2026-11-02, og 기사 썸네일)"
+    },
+    {
+      "path": "article/1352/index.html",
+      "kind": "html",
+      "why": "해외 뉴스·다른 매체 묶음 (2026-11-04, og 기사 썸네일)"
+    },
+    {
+      "path": "article/1166/index.html",
+      "kind": "html",
+      "why": "한국 매체 뉴스 (2026-10-28, og 기본 썸네일)"
+    },
+    {
+      "path": "article/1336/index.html",
+      "kind": "html",
+      "why": "오픈소스(REPO) (2026-11-04, og 기사 썸네일)"
+    },
+    {
+      "path": "article/1355/index.html",
+      "kind": "html",
+      "why": "논문(PAPER) (2026-11-04, og 기사 썸네일)"
+    },
+    {
+      "path": "search/index.html",
+      "kind": "html",
+      "why": "검색 셸"
+    },
+    {
+      "path": "404.html",
+      "kind": "html",
+      "why": "404 — Phase 3 global-not-found 로 의도적으로 바뀐다(허용 목록)"
+    },
+    {
+      "path": "sitemap.xml",
+      "kind": "xml",
+      "why": "사이트맵(SEO)"
+    },
+    {
+      "path": "feed.xml",
+      "kind": "xml",
+      "why": "RSS"
+    }
+  ]
+}

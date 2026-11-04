@@ -68,5 +68,8 @@ Thumbs.db
 # 수집 평가 실행(collect --no-save) 스냅숏과 선별 비교 결과(로컬 전용).
 /data/eval/
 
+# HTML 회귀 비교(scripts/html-regress.ts) 정적 export 산출물·기준선 스냅숏(로컬 전용, 수백 MB).
+/data/regress/
+
 # Claude Code 에이전트 워크트리
 .claude/worktrees/

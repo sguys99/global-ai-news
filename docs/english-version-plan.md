@@ -300,7 +300,14 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 3-1. 회귀 기준 만들기
 
-- [ ] 구조 변경 전 한국어 정적 산출물에서 대표 페이지 HTML을 저장한다(홈·호 2개·기사 5개·검색·404). 정규화 비교 스크립트를 `scripts/`에 둔다.
+- [x] 구조 변경 전 한국어 정적 산출물에서 대표 페이지 HTML을 저장한다(홈·호 2개·기사 5개·검색·404). 정규화 비교 스크립트를 `scripts/`에 둔다. (2026-11-04)
+  - 도구: `npm run regress:html -- <build|select|snapshot|compare>`(`scripts/html-regress.ts`, 순수 함수는 `scripts/lib/htmlRegress.ts`). `build <ref|WORKTREE> <dest>`는 임시 git worktree에 **지금 작업 트리의 `data/app.db`를 복사해** Docker로 정적 export를 만들고 `out/`을 꺼낸다(두 빌드가 같은 DB를 쓴다). 결정성을 볼 때는 `--no-cache`(같은 ref는 레이어 캐시를 그대로 탄다).
+  - 순서: `build 66198d3 data/regress/out-66198d3` → `snapshot data/regress/out-66198d3 data/regress/baseline` → `build WORKTREE data/regress/out-worktree` → `compare data/regress/baseline data/regress/out-worktree --allow 404.html`. Phase 4는 클래스 이름이 바뀌므로 `--text`(class·style 제외)를 쓴다. 종료 코드 0 = 허용 목록 밖 차이 없음.
+  - 대상 12개는 `configs/html-regress-pages.json`에 날짜·id로 고정했다(DB가 늘어나도 Phase 3-4·4·7이 같은 페이지를 비교한다): 홈, 호 2026-11-04·2026-11-01(일요일, 주간 레이더), 기사 1286(후속 보도)·1352(다른 매체 보도)·1166(한국 매체, 기본 og:image)·1336(저장소)·1355(논문), 검색, 404(이중 언어로 다시 만들 예정 → 허용 목록), `sitemap.xml`·`feed.xml`. 모델 형식 기사는 DB에 아직 없다.
+  - 정규화: RSC·청크 스크립트, preload·stylesheet 링크, `_next/static` 해시, next/font 클래스 해시, React useId, HTML 주석(빌드 ID가 여기 있다)을 지우고 속성·클래스를 정렬한다. `<html lang>`·title·meta·canonical·JSON-LD·본문 마크업·클래스·텍스트는 남긴다. 시각에 따라 바뀌는 두 가지는 명시적으로 처리한다: 빌드 시각으로 정하는 "발행 전/발행 지연" 줄(다음 날 08:00 이후 다시 빌드하면 생긴다 — Phase 5에서 영어 라벨 추가)과 푸터 연도.
+  - 원본 HTML은 `data/regress/`(git·Docker 빌드 컨텍스트 제외)에 두고 비교할 때 정규화한다. 기준선 빌드 `out/` 140.27MB(파일 2,915개), 262초.
+  - **결정성 확인:** 같은 커밋을 캐시 없이 다시 빌드 → 12페이지 같음(원본 바이트는 빌드 ID만 다르다, sitemap·feed는 바이트까지 같다). 3-2를 반영한 작업 트리 빌드도 12페이지 같음 — 3-2가 한국어 화면을 바꾸지 않았다.
+  - 주의: 커밋된 `data/app.db`의 `sources.region`은 모두 NULL이다(prebuild `initDb --existing`이 채운다). DB에서 지역을 직접 읽는 도구는 `configs/sources.json`을 봐야 한다.
 
 ### 3-2. 다국어 유틸
 

@@ -15,6 +15,10 @@ export const INTERMEDIATE_DATA_DIR = path.join(DATA_DIR, "intermediate");
 export const PROCESSED_DATA_DIR = path.join(DATA_DIR, "processed");
 // DB 에 쓰지 않는 수집 실행(collect --no-save)의 스냅숏 — 개편 전후 선별 비교용(gitignore, 로컬 전용)
 export const EVAL_DIR = path.join(DATA_DIR, "eval");
+// HTML 회귀 비교(scripts/html-regress.ts)의 정적 export 산출물·기준선 스냅숏 — 용량이 커서 git·Docker 컨텍스트에서 뺀다
+export const REGRESS_DIR = path.join(DATA_DIR, "regress");
+// HTML 회귀 비교 대표 페이지 목록(기준선·후보가 같은 페이지를 보도록 고정, 커밋)
+export const REGRESS_MANIFEST_PATH = path.join(CONFIGS_DIR, "html-regress-pages.json");
 
 // SQLite 데이터베이스 파일 경로 (수집 배치가 생성, 빌드/런타임은 readonly 조회)
 export const DB_PATH = path.join(DATA_DIR, "app.db");
