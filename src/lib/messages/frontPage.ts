@@ -1,19 +1,11 @@
 import { defineMessages, plural } from "@/lib/i18n";
-import { formatLabel, type Format } from "@/lib/labels";
+import { FORMAT_COUNT_NOUNS_EN, formatLabel, type Format } from "@/lib/labels";
 
 /**
  * 편집 지면(src/components/Edition.tsx) 문구 — 1면·오늘의 브리핑·오픈소스·논문 레이더·지금 화제·이 호의 지면·
  * 주간 레이더 밴드·분야 섹션 밴드. 분야·형식 표시명과 날짜는 labels.ts, 주간 레이더 기간·요일과 레이더 메타 줄은
  * radar 이름공간(src/lib/messages/radar.ts) 몫이다.
  */
-
-/** 레이더 보조 문구용 영어 복수 명사(형식 화면 표시명 "Repo"·"Paper"의 복수). */
-const EN_FORMAT_PLURALS: Record<Format, string> = {
-  news: "stories",
-  oss: "repos",
-  model: "models",
-  paper: "papers",
-};
 
 /** ["repos", "papers"] → "Repos and papers", 셋이면 "Repos, models and papers". */
 function enList(words: string[]): string {
@@ -64,7 +56,7 @@ export const frontPageMessages = defineMessages({
       heading: "Open source & papers radar",
       subtitle: (formats: Format[]) =>
         formats.length > 0
-          ? `${enList(formats.map((f) => EN_FORMAT_PLURALS[f]))} in this issue`
+          ? `${enList(formats.map((f) => FORMAT_COUNT_NOUNS_EN[f][1]))} in this issue`
           : "",
     },
     trending: {

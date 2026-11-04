@@ -11,7 +11,7 @@
 - 영어판: [docs/english-version-plan.md](docs/english-version-plan.md) (같은 호 영어 발행 `/en/`·Korea Desk·백필·다국어 구조·용량 대책·영어 SEO 단계 계획)
 - 디자인 토큰/원칙: [DESIGN.md](DESIGN.md) (v2.1)
 
-> **현재 구현 단계:** WORK-PLAN Phase 0~6, GitHub Pages 전환(클린 컷오버), 콘텐츠·1면 개편 Phase 1~6 완료, Phase 7 통합 검증 후 2026-10-31 배포(배포 후 3일 KPI 관찰은 11-03 예약 루틴이 기록), Phase 8 추가 아이디어(세 줄 요약·후속 보도·소스 헬스·주간 레이더·같은 사건 합치기·홈 페이로드·정리) 2026-11-01 배포. 영어판([english-version-plan.md](docs/english-version-plan.md)) Phase 0 기준선·검증, Phase 1 영어 가공 데이터(수집에서 `title_en`·`summary_en` 생성·검사, 화면 노출 없음) 2026-11-04 배포(3일 관찰은 11-07 예약 루틴이 기록). Phase 2 지난 기사 영어 백필(`db:backfill-en`·`backfill-en.yml`, 1,241/1,255건, $0.733 — 한국어 숫자·사실 오류 26건 수정 포함) 2026-11-04 완료. 상세 체크리스트는 각 계획 문서가 단일 출처입니다.
+> **현재 구현 단계:** WORK-PLAN Phase 0~6, GitHub Pages 전환(클린 컷오버), 콘텐츠·1면 개편 Phase 1~6 완료, Phase 7 통합 검증 후 2026-10-31 배포(배포 후 3일 KPI 관찰은 11-03 예약 루틴이 기록), Phase 8 추가 아이디어(세 줄 요약·후속 보도·소스 헬스·주간 레이더·같은 사건 합치기·홈 페이로드·정리) 2026-11-01 배포. 영어판([english-version-plan.md](docs/english-version-plan.md)) Phase 0 기준선·검증, Phase 1 영어 가공 데이터(수집에서 `title_en`·`summary_en` 생성·검사, 화면 노출 없음) 2026-11-04 배포(3일 관찰은 11-07 예약 루틴이 기록). Phase 2 지난 기사 영어 백필(`db:backfill-en`·`backfill-en.yml`, 1,241/1,255건, $0.733 — 한국어 숫자·사실 오류 26건 수정 포함) 2026-11-04 완료. Phase 3 다국어 기반 구조(`(ko)`·`(en)/en` 레이아웃, `src/views`, 문구 사전 `src/lib/messages`, 이중 언어 404 — 한국어 화면 무변화, 영어 페이지는 아직 없음) 2026-11-04 배포. 상세 체크리스트는 각 계획 문서가 단일 출처입니다.
 
 > **배포 구조 (`deploy/github-pages`):** Vercel/`standalone`은 폐기됐습니다. `npm run build`(= `PHASE_PRODUCTION_BUILD`)가 곧 `output:'export'` 정적 export(`out/`, `basePath:'/global-ai-news'`)이고 `deploy.yml`이 GitHub Pages로 배포합니다. admin/api/middleware는 `*.local.ts(x)` 파일로 두고 `pageExtensions` 게이팅으로 **로컬 `next dev`에서만** 라우트가 됩니다(프로덕션 빌드에서 제외). 개편 브랜치 `feat/contents-upgrade`는 `deploy/github-pages`에 병합됐고, 일일 수집 커밋(`data/app.db`)은 `deploy/github-pages`에 쌓입니다.
 
@@ -117,6 +117,7 @@
 │   ├── reclassify.ts             # 구 분야값 → 6개 키 LLM 재분류 (npm run db:reclassify, 기본 dry-run)
 │   ├── backfill-en.ts            # 지난 기사 영어 백필 + 한국어 숫자 수정(configs/backfill/) (npm run db:backfill-en, 기본 dry-run)
 │   ├── triage-compare.ts         # no-save 스냅숏으로 개편 전후 선별 비교 (npm run triage:compare)
+│   ├── html-regress.ts           # 한국어 HTML 회귀 비교(build·select·snapshot·compare, 대상 configs/html-regress-pages.json, 기준선 data/regress/ git 제외)
 │   ├── export-search-index.ts    # public/search-index.json 생성 (prebuild)
 │   ├── export-feed-index.ts      # public/feed-index.json — 홈 전체 기사 색인 누적분(IndexCard, prebuild)
 │   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터, prebuild)
@@ -234,6 +235,8 @@ npm run db:reclassify               # 구 분야값 재분류(기본 dry-run, --
 npm run db:backfill-en              # 지난 기사 영어 백필(기본 dry-run — LLM 없음, --apply 로 백업 후 적용, --ids 재시도, --ko-fixes)
 npm run db:reindex                  # FTS5 재색인
 npm run kpi                         # 최근 N일 KPI (기본 30) / npm run kpi -- baseline: 콘텐츠 개편 지표 / -- health: 소스 헬스
+npm run regress:html -- build <ref|WORKTREE> <dest>  # 같은 app.db 로 Docker 정적 빌드 → out/ 추출 (회귀 비교용)
+npm run regress:html -- compare data/regress/baseline <dest> --allow 404.html  # 한국어 대표 12페이지 정규화 비교(--text: 클래스 제외)
 ```
 
 > 커밋된 `data/app.db`를 바꾸면 배포 브랜치의 일일 수집 커밋과 충돌한다 — 소스·풀·프롬프트 검증은 `--dry-run`/`--no-save`로 한다.
@@ -401,6 +404,7 @@ npx shadcn@latest add card dialog input
 - 경로 별칭 `@/*` 사용 (상대 경로 지양). 단 `scripts/`는 상대 경로
 - 소스 정의는 `configs/sources.json`으로 관리 (코드 하드코딩 금지 — GitHub 검색 쿼리도 `url`에)
 - 분야·형식 키/표시명은 `src/lib/labels.ts`, 분야 정의는 `configs/prompts/categories.md`에서만 관리
+- 화면 문구는 `src/lib/messages/<영역>.ts`(`defineMessages({ ko, en })`)에만 둔다 — 컴포넌트·뷰에 한글을 직접 쓰면 `noHardcodedHangul.test.ts`가 실패한다. 서버 컴포넌트는 `locale` prop, 클라이언트 컴포넌트는 `useLocale()`·`useMessages()`, 내부 링크는 `localePath(locale, …)`
 - 런타임 경로 상수는 `src/lib/paths.ts`, 설정 파일은 `configs/`에서 관리
 - DB 조회는 `src/lib/db.ts`를 통해 readonly로 접근
 - 환경 변수는 `.env.local` 사용 (git에 커밋하지 않음)

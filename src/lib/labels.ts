@@ -154,8 +154,9 @@ export function formatLabel(format: Format, locale: Locale = "ko"): string {
 
 /**
  * 영어 건수 명사(단수·복수). 뉴스는 불가산 "news" 가 아니라 "stories" 로 센다(Phase 0-5: `31 stories · 18 outlets`).
+ * 레이더 보조 문구(messages/frontPage.ts "Repos and papers in this issue")도 이 복수형을 쓴다.
  */
-const FORMAT_COUNT_NOUNS_EN: Record<Format, readonly [one: string, other: string]> = {
+export const FORMAT_COUNT_NOUNS_EN: Record<Format, readonly [one: string, other: string]> = {
   news: ["story", "stories"],
   oss: ["repo", "repos"],
   model: ["model", "models"],
@@ -167,11 +168,20 @@ const FORMAT_COUNT_NOUNS_EN: Record<Format, readonly [one: string, other: string
  * ko "저장소 4"(표시명 + 공백 + 수, weeklyRadar·ogImage 와 같은 모양), en "4 repos"·"1 story"(수가 앞, 복수형).
  */
 export function formatCountLabel(format: Format, count: number, locale: Locale = "ko"): string {
+  const noun = formatCountNoun(format, count, locale);
+  return locale === "en" ? `${count} ${noun}` : `${noun} ${count}`;
+}
+
+/**
+ * 형식별 건수 문구의 명사 부분만(수 없음) — 수를 따로 꾸미는 자리(마스트헤드 귀의 굵은 수)용.
+ * ko 는 화면 표시명("저장소", 수와 무관), en 은 수에 맞춘 단·복수("repo"·"repos"). formatCountLabel 이 이것으로 조립한다.
+ */
+export function formatCountNoun(format: Format, count: number, locale: Locale = "ko"): string {
   if (locale === "en") {
     const [one, other] = FORMAT_COUNT_NOUNS_EN[format];
-    return `${count} ${count === 1 ? one : other}`;
+    return count === 1 ? one : other;
   }
-  return `${FORMAT_DISPLAY_LABELS[format]} ${count}`;
+  return FORMAT_DISPLAY_LABELS[format];
 }
 
 /** 형식 키 → 카드 배지 문구. 뉴스는 배지를 달지 않는다(빈 문자열). */
@@ -281,7 +291,8 @@ export function sourceDisplayName(
 }
 
 const TZ = "Asia/Seoul";
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+/** 요일 한 글자(0 = 일요일) — 날짜 표기와 주간 레이더 "화요일 호"(messages/radar.ts) 공용. */
+export const KO_WEEKDAYS: readonly string[] = ["일", "월", "화", "수", "목", "금", "토"];
 
 /** ISO → KST 기준 { y, m, d, w, hh, mm } 분해. 잘못된 입력이면 null. */
 function kstParts(
@@ -318,9 +329,18 @@ const pad = (n: number) => String(n).padStart(2, "0");
  * ICU 버전(Node·브라우저)마다 쉼표·공백(AM/PM 앞 U+202F 등)이 달라 빌드 HTML 과 하이드레이션이 어긋날 수 있다.
  * 시각은 24시간제(한국어판·"06:00 KST 발행"과 같은 표기)라 AM/PM 이 없다.
  */
-const EN_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+/** 영어 요일·월 이름(0 = 일요일, 0 = 1월) — 날짜 표기와 주간 레이더(messages/radar.ts) 공용. */
+export const EN_WEEKDAYS: readonly string[] = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 const EN_WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const EN_MONTHS = [
+export const EN_MONTHS: readonly string[] = [
   "January",
   "February",
   "March",
@@ -334,7 +354,8 @@ const EN_MONTHS = [
   "November",
   "December",
 ];
-const EN_MONTHS_SHORT = EN_MONTHS.map((m) => m.slice(0, 3));
+/** "Jan"…"Dec". */
+export const EN_MONTHS_SHORT: readonly string[] = EN_MONTHS.map((m) => m.slice(0, 3));
 
 /** 'Nov 3' */
 const enMonthDay = (p: { m: number; d: number }) => `${EN_MONTHS_SHORT[p.m - 1]} ${p.d}`;
@@ -373,7 +394,7 @@ export function formatMonthDay(iso: string, locale: Locale = "ko"): string {
   if (!p) return "";
   return locale === "en"
     ? `${EN_WEEKDAYS_SHORT[p.w]}, ${enDate(p)}`
-    : `${p.m}월 ${p.d}일(${WEEKDAYS[p.w]})`;
+    : `${p.m}월 ${p.d}일(${KO_WEEKDAYS[p.w]})`;
 }
 
 /** 'YYYY년 M월 D일 (요)요일' (마스트헤드) / en 'Tuesday, November 3, 2026'. */
@@ -382,7 +403,7 @@ export function formatLongDate(iso: string, locale: Locale = "ko"): string {
   if (!p) return "";
   return locale === "en"
     ? `${enLongMonthDay(p)}, ${p.y}`
-    : `${p.y}년 ${p.m}월 ${p.d}일 ${WEEKDAYS[p.w]}요일`;
+    : `${p.y}년 ${p.m}월 ${p.d}일 ${KO_WEEKDAYS[p.w]}요일`;
 }
 
 /**
@@ -500,8 +521,9 @@ export function issueDelayCopy(
   const issue = kstDateParts(issueDate);
   if (!issue || !(gap >= 1)) return null;
   if (locale === "en") return issueDelayCopyEn(issueDate, issue, gap, issueNo);
-  const long = (p: { m: number; d: number; w: number }) => `${p.m}월 ${p.d}일 ${WEEKDAYS[p.w]}요일`;
-  const short = (p: { m: number; d: number; w: number }) => `${p.m}.${p.d}(${WEEKDAYS[p.w]})`;
+  const long = (p: { m: number; d: number; w: number }) =>
+    `${p.m}월 ${p.d}일 ${KO_WEEKDAYS[p.w]}요일`;
+  const short = (p: { m: number; d: number; w: number }) => `${p.m}.${p.d}(${KO_WEEKDAYS[p.w]})`;
   const issueName = `${long(issue)} ${issueNo > 0 ? `제${issueNo}호` : "호"}`;
 
   if (gap >= 2) {

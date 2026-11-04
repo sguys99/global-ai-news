@@ -13,6 +13,7 @@ import {
   messageShapeErrors,
   plural,
   splitLocalePath,
+  switchLocalePath,
   type MessageNamespace,
   type MessageTree,
 } from "@/lib/i18n";
@@ -81,6 +82,37 @@ describe("i18n — localePath", () => {
     expect(splitLocalePath("/en/article/1/")).toEqual({ locale: "en", path: "/article/1/" });
     expect(splitLocalePath("/en?x=1")).toEqual({ locale: "en", path: "/?x=1" });
     expect(splitLocalePath("/english")).toEqual({ locale: "ko", path: "/english" });
+  });
+
+  it("switchLocalePath: 어느 언어 경로든 대상 언어판의 같은 페이지로", () => {
+    // ko → en
+    expect(switchLocalePath("/article/1", "en")).toBe("/en/article/1");
+    expect(switchLocalePath("/edition/2026-11-03/", "en")).toBe("/en/edition/2026-11-03/");
+    // en → ko(/en 을 뗀다 — localePath("ko", …) 는 입력을 그대로 둔다)
+    expect(switchLocalePath("/en/article/1", "ko")).toBe("/article/1");
+    expect(localePath("ko", "/en/article/1")).toBe("/en/article/1");
+    // 같은 언어로는 그대로
+    expect(switchLocalePath("/en/article/1", "en")).toBe("/en/article/1");
+    expect(switchLocalePath("/article/1", "ko")).toBe("/article/1");
+    // 홈
+    expect(switchLocalePath("/", "en")).toBe("/en/");
+    expect(switchLocalePath("/en", "ko")).toBe("/");
+    expect(switchLocalePath("/en/", "ko")).toBe("/");
+    // 쿼리·해시 보존
+    expect(switchLocalePath("/?category=physical&sort=hot", "en")).toBe(
+      "/en/?category=physical&sort=hot",
+    );
+    expect(switchLocalePath("/en/?category=physical", "ko")).toBe("/?category=physical");
+    expect(switchLocalePath("/en?sort=hot", "ko")).toBe("/?sort=hot");
+    expect(switchLocalePath("/search?q=mcp#results", "en")).toBe("/en/search?q=mcp#results");
+    expect(switchLocalePath("/en/search?q=mcp#results", "ko")).toBe("/search?q=mcp#results");
+    expect(switchLocalePath("/#all", "en")).toBe("/en/#all");
+    expect(switchLocalePath("/en/#all", "ko")).toBe("/#all");
+    expect(switchLocalePath("/en#all", "ko")).toBe("/#all");
+    // /english 는 en 접두어가 아니다(ko 경로)
+    expect(switchLocalePath("/english", "ko")).toBe("/english");
+    expect(switchLocalePath("/english", "en")).toBe("/en/english");
+    expect(switchLocalePath("/en/english", "ko")).toBe("/english");
   });
 
   it("localePath ↔ splitLocalePath 왕복", () => {
@@ -180,6 +212,46 @@ function callableLeaves(tree: unknown, prefix = ""): [string, (...a: unknown[]) 
   return out;
 }
 
+/**
+ * ko 와 같은 en 값(번역을 빠뜨리고 복사한 문구일 가능성) 중 원래 같아야 하는 것 — `이름공간 경로`.
+ * 새 항목은 정말 두 언어에서 같은 표기일 때만 더한다(숫자만·문장부호만·고유명사·코드).
+ */
+const IDENTICAL_ALLOWLIST = new Set([
+  // 검색 결과 머리 여는 따옴표 — 두 언어 같은 문장부호.
+  "searchMessages results.open",
+  // 결과 건수의 수 부분 — 표본 인자(2)에서는 같은 숫자(천 단위 이상에서 en 만 쉼표).
+  "feedMessages resultCount.num",
+  "storyIndexMessages remaining.num",
+]);
+
+/**
+ * ko·en 트리에서 값이 같은 잎을 찾는다. 문자열은 그대로, 함수는 표본 인자 2 로 불러 결과를 비교한다
+ * (숫자가 아닌 인자를 받는 함수가 던지면 건너뛴다). 둘 다 빈 문자열이면 번역할 글이 없으므로 제외.
+ */
+function identicalLeaves(ko: unknown, en: unknown, prefix = ""): [string, string][] {
+  const out: [string, string][] = [];
+  const a = ko as Record<string, unknown>;
+  const b = en as Record<string, unknown>;
+  for (const [k, v] of Object.entries(a)) {
+    const at = prefix ? `${prefix}.${k}` : k;
+    const w = b[k];
+    if (typeof v === "string") {
+      if (v !== "" && v === w) out.push([at, v]);
+    } else if (typeof v === "function" && typeof w === "function") {
+      let x: unknown;
+      let y: unknown;
+      try {
+        x = (v as (n: number) => unknown)(2);
+        y = (w as (n: number) => unknown)(2);
+      } catch {
+        continue;
+      }
+      if (x !== "" && x === y) out.push([`${at}`, String(x)]);
+    } else if (v && typeof v === "object") out.push(...identicalLeaves(v, w, at));
+  }
+  return out;
+}
+
 describe("문구 사전 — 모든 이름공간", () => {
   it("이름공간이 하나 이상 있고 common 이 포함된다", async () => {
     const all = await loadNamespaces();
@@ -209,6 +281,49 @@ describe("문구 사전 — 모든 이름공간", () => {
       const strings = JSON.stringify(ns.en);
       expect(hangul.test(strings), `${file} ${name} en 문자열에 한글`).toBe(false);
     }
+  });
+
+  it("en 값이 ko 와 같으면 허용 목록에 있어야 한다(번역 누락 방지)", async () => {
+    const found = new Set<string>();
+    const unexpected: string[] = [];
+    for (const { file, name, ns } of await loadNamespaces()) {
+      for (const [at, value] of identicalLeaves(ns.ko, ns.en)) {
+        const key = `${name} ${at}`;
+        found.add(key);
+        if (!IDENTICAL_ALLOWLIST.has(key))
+          unexpected.push(`${file} ${key} = ${JSON.stringify(value)}`);
+      }
+    }
+    expect(unexpected).toEqual([]);
+    // 허용 목록이 낡지 않게 — 더는 같지 않은 항목은 지운다.
+    expect([...IDENTICAL_ALLOWLIST].filter((k) => !found.has(k))).toEqual([]);
+  });
+
+  it("같은 값 검사 도우미: 문자열·함수 결과·빈 값", () => {
+    expect(
+      identicalLeaves(
+        {
+          a: "LLM",
+          b: "가",
+          e: "",
+          f: (n: number) => `${n}`,
+          g: (n: number) => `${n}건`,
+          t: { x: "“" },
+        },
+        {
+          a: "LLM",
+          b: "B",
+          e: "",
+          f: (n: number) => `${n}`,
+          g: (n: number) => `${n}`,
+          t: { x: "“" },
+        },
+      ),
+    ).toEqual([
+      ["a", "LLM"],
+      ["f", "2"],
+      ["t.x", "“"],
+    ]);
   });
 });
 

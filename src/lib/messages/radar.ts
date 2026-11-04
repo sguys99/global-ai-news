@@ -1,36 +1,13 @@
 import { defineMessages } from "@/lib/i18n";
+import { EN_MONTHS_SHORT, EN_WEEKDAYS, KO_WEEKDAYS } from "@/lib/labels";
 
 /**
  * 레이더 메타 줄(src/lib/radarMeta.ts)과 주간 레이더 표기(src/lib/weeklyRadar.ts) 문구 — 순수 함수가 locale 인자로 쓴다.
  * - meta.*: 스크린리더·title 용 label(값은 호출자가 쉼표 정수·근사치로 만들어 넘긴다)과 값 앞 낱말(prefix).
  * - weekly.*: 실린 호 요일("화요일 호"), 기간의 월·일("10월 26일"). 기간 사이 " – " 는 두 언어 공통이라 코드에 둔다.
  * 영어 label 은 "Stars: 1,203" 처럼 이름: 값 — 수가 문자열로 들어와 단·복수를 가르지 않아도 된다.
+ * 요일·월 이름 표는 labels.ts 가 단일 출처다.
  */
-const KO_WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
-const EN_WEEKDAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-] as const;
-const EN_MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-] as const;
-
 export const radarMessages = defineMessages({
   ko: {
     meta: {
@@ -83,7 +60,7 @@ export const radarMessages = defineMessages({
     weekly: {
       issueDay: (weekday: number) =>
         weekday >= 0 && weekday < 7 ? `${EN_WEEKDAYS[weekday]} issue` : "",
-      monthDay: (month: number, day: number) => `${EN_MONTHS[month - 1] ?? ""} ${day}`,
+      monthDay: (month: number, day: number) => `${EN_MONTHS_SHORT[month - 1] ?? ""} ${day}`,
     },
   },
 });

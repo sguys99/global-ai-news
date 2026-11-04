@@ -27,6 +27,7 @@ import {
   CATEGORY_LABELS_EN,
   FORMAT_DISPLAY_LABELS_EN,
   formatCountLabel,
+  formatCountNoun,
   formatLabel,
   hasHangul,
   issueNoLabel,
@@ -329,6 +330,22 @@ describe("labels — 영어판 표시명 (locale 인자, 기본 ko)", () => {
     expect(formatCountLabel("news", 31, "en")).toBe("31 stories");
     expect(formatCountLabel("news", 1, "en")).toBe("1 story");
     expect(formatCountLabel("news", 0, "en")).toBe("0 stories");
+  });
+
+  it("formatCountNoun: 건수 문구의 명사 부분만(마스트헤드 귀의 굵은 수 뒤)", () => {
+    expect(formatCountNoun("oss", 4)).toBe("저장소");
+    expect(formatCountNoun("news", 1, "ko")).toBe("뉴스");
+    expect(formatCountNoun("oss", 4, "en")).toBe("repos");
+    expect(formatCountNoun("oss", 1, "en")).toBe("repo");
+    expect(formatCountNoun("news", 1, "en")).toBe("story");
+    expect(formatCountNoun("news", 0, "en")).toBe("stories");
+    expect(formatCountNoun("paper", 1234, "en")).toBe("papers");
+    // formatCountLabel 은 이 명사와 수로 조립된다(천 단위 이상에서도 명사가 잘리지 않는다).
+    for (const f of FORMATS)
+      for (const n of [0, 1, 2, 1234]) {
+        expect(formatCountLabel(f, n, "en")).toBe(`${n} ${formatCountNoun(f, n, "en")}`);
+        expect(formatCountLabel(f, n, "ko")).toBe(`${formatCountNoun(f, n, "ko")} ${n}`);
+      }
   });
 
   it("지역 표시명 — 배지 KOREA 는 두 언어 같고 스크린리더 이름만 바뀐다", () => {

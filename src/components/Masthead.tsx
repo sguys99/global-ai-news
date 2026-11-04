@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   categoryLabel,
   categorySlug,
-  formatCountLabel,
+  formatCountNoun,
   formatLabel,
   formatLongDate,
   issueNoLabel,
@@ -162,10 +162,10 @@ function IssueEar({ stats, locale }: { stats: IssueStats; locale: Locale }) {
                 </span>
               )}
               {locale === "en" ? (
-                // en 은 수가 앞("4 repos") — 굵은 수 뒤에 formatCountLabel 의 명사 부분을 잇는다.
+                // en 은 수가 앞("4 repos") — 굵은 수 뒤에 공백 + 단·복수 명사를 잇는다.
                 <span>
                   <b className="text-foreground-soft font-semibold tabular-nums">{count}</b>
-                  {formatCountLabel(format, count, locale).slice(String(count).length)}
+                  {` ${formatCountNoun(format, count, locale)}`}
                 </span>
               ) : (
                 <span>

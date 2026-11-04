@@ -59,6 +59,16 @@ export function splitLocalePath(path: string): { locale: Locale; path: string } 
   return { locale: DEFAULT_LOCALE, path };
 }
 
+/**
+ * 언어 전환 링크(Phase 5): 지금 경로(어느 언어든)를 `target` 언어판의 같은 페이지로 바꾼다.
+ * `splitLocalePath` 로 `/en` 접두어를 뗀 뒤 `localePath(target, …)` — 쿼리·해시는 그대로 남는다.
+ * `/en/article/1` → ko `/article/1`, `/article/1` → en `/en/article/1`, `/en` → ko `/`, `/english` 는 ko 경로로 본다.
+ * (`localePath("ko", p)` 는 계약상 입력을 그대로 돌려주므로 `/en` 을 떼지 않는다 — 전환에는 이 함수를 쓴다.)
+ */
+export function switchLocalePath(path: string, target: Locale): string {
+  return localePath(target, splitLocalePath(path).path);
+}
+
 // ─── 문구 사전 ────────────────────────────────────────────────────────────────
 
 /** 문구 값: 문자열, 또는 보간·복수형 함수(예: `(n: number) => string`). 함수는 문자열을 돌려줘야 한다. */
