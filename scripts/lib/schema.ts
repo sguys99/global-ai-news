@@ -107,6 +107,27 @@ export const triageSchema = z.object({
 export type Triage = z.infer<typeof triageSchema>;
 
 /**
+ * 선별 출력의 파싱 스키마 — 형태(필드·타입·필수)만 본다. 모델에 보내는 JSON 스키마는 위 triageSchema 그대로다
+ * (triage.ts triageFormat). SDK 변환은 정수 범위(중요도 `{minimum: 1, maximum: 5}`, 번호의 안전 정수 범위)를 설명
+ * 문구로만 옮기고 zod 로 검증하므로, 엄격한 스키마로 파싱하면 중요도 하나가 0·6이어도 선별 출력 전체가 버려져
+ * 회차가 실패한다(parseStructured → null). 그래서 숫자는 number 로만 받고, 중요도 보정·번호 검증은 triage.ts
+ * resolvePicks(+ triageCorrectionNote)가 값 하나씩 한다.
+ */
+export const triageParseSchema = z.object({
+  already_reported: z.array(z.number()),
+  picks: z.array(
+    z.object({
+      id: z.number(),
+      importance: z.number(),
+      duplicates: z.array(z.number()),
+    }),
+  ),
+  brief: z.array(z.object({ id: z.number(), text: z.string() })),
+});
+
+export type RawTriage = z.infer<typeof triageParseSchema>;
+
+/**
  * 재보도 검사의 짝 1건: 오늘 기사 번호(id), 이미 보도함 번호(reported — R 없이 정수), 두 기사의 공통 사건(event).
  * event 는 판정 근거를 한 구절로 적게 해 주제만 비슷한 기사를 짝짓지 않게 한다(4-3 검증: 없을 때 오탐 3/6). 코드는 출력·기록에만 쓴다.
  */
@@ -131,3 +152,14 @@ export const repeatCheckSchema = z.object({
 });
 
 export type RepeatCheck = z.infer<typeof repeatCheckSchema>;
+
+/**
+ * 재보도 검사 출력의 파싱 스키마 — triageParseSchema 와 같은 이유로 번호를 number 로만 받는다(안전 정수 범위 밖
+ * 번호 하나가 판정 전체를 버리지 않게). 범위·정수 확인은 repeatCheck.ts resolveRepeats 가 짝마다 한다.
+ */
+const repeatPairParseSchema = z.object({ id: z.number(), reported: z.number(), event: z.string() });
+
+export const repeatCheckParseSchema = z.object({
+  repeats: z.array(repeatPairParseSchema),
+  followups: z.array(repeatPairParseSchema),
+});

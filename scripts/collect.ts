@@ -97,6 +97,7 @@ import {
   quotaShortfallNote,
   REPORTED_ISSUES,
   resolvePicks,
+  triageCorrectionNote,
   triageFormat,
   triageLine,
   type Candidate,
@@ -715,6 +716,8 @@ async function main(): Promise<void> {
     stats.notes.push(`선정 ${picks.length}건(같은 사건으로 묶인 기사 ${grouped}건)`);
     const reportedNote = alreadyReportedNote(triage, pool.length);
     if (reportedNote) stats.notes.push(reportedNote);
+    const correctionNote = triageCorrectionNote(triage, pool.length);
+    if (correctionNote) stats.notes.push(correctionNote);
     if (snapshot) snapshot.picks = picks;
     for (const p of picks) {
       const c = pool[p.index];

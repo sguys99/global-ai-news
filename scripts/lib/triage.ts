@@ -21,7 +21,7 @@ import type { RawItem } from "../../src/lib/types";
 import { BRIEF_OUTPUT_TOKENS, BRIEF_REQUESTED, type BriefLineOutput } from "./brief";
 import { approxTokens, outputFormatTokens } from "./cost";
 import type { LlmRequest } from "./llm";
-import { triageSchema } from "./schema";
+import { triageParseSchema, triageSchema } from "./schema";
 
 /** 수집·dedup 을 통과한 후보. articleId 가 있으면 가공에 실패해 재시도하는 기존 행이다. */
 export interface Candidate {
@@ -57,7 +57,24 @@ const SNIPPET_CHARS = 120;
 /** 선정 1건당 출력 토큰 근사치(id·importance·duplicates JSON). 비용 가드 추정용. */
 const OUTPUT_TOKENS_PER_PICK = 25;
 
-export const triageFormat = zodOutputFormat(triageSchema);
+/**
+ * 선별 구조화 출력 형식. 모델에 보내는 JSON 스키마는 엄격한 계약(triageSchema — 설명 문구에 중요도
+ * `{minimum: 1, maximum: 5}`)이고, 파싱은 형태만 보는 triageParseSchema 로 한다 — 값 하나의 범위 위반이 선별 출력
+ * 전체(→ 회차 실패)를 버리지 않게. 값 확인은 resolvePicks(중요도 보정·번호 검증)와 triageCorrectionNote 가 한다.
+ */
+export const triageFormat = {
+  ...zodOutputFormat(triageSchema),
+  parse: zodOutputFormat(triageParseSchema).parse,
+};
+
+/** 중요도 범위(스키마 계약 1~5). */
+export const IMPORTANCE_MIN = 1;
+export const IMPORTANCE_MAX = 5;
+
+/** 중요도 보정: 반올림 후 1~5 로 자른다. 정상 값(1~5 정수)은 그대로다. */
+export function clampImportance(value: number): number {
+  return Math.min(IMPORTANCE_MAX, Math.max(IMPORTANCE_MIN, Math.round(value)));
+}
 
 const SYSTEM_PROMPT = readFileSync(path.join(PROMPTS_DIR, "triage.system.md"), "utf-8");
 
@@ -434,11 +451,40 @@ export interface TriageOutput {
   brief?: BriefLineOutput[];
 }
 
+/** 풀 번호로 쓸 수 있는 값(0 ~ poolSize-1 정수). */
+const isPoolIndex = (i: number, poolSize: number) => Number.isInteger(i) && i >= 0 && i < poolSize;
+
 /** already_reported 중 풀 범위 안의 번호(중복 제거). */
 export function alreadyReportedIds(triage: TriageOutput, poolSize: number): Set<number> {
-  return new Set(
-    (triage.already_reported ?? []).filter((i) => Number.isInteger(i) && i >= 0 && i < poolSize),
-  );
+  return new Set((triage.already_reported ?? []).filter((i) => isPoolIndex(i, poolSize)));
+}
+
+/**
+ * notes 용 선별 값 보정 요약 — 스키마 계약(중요도 1~5 정수·풀 번호)을 어겨 코드가 고치거나 버린 값의 수.
+ * 예: `선별 값 보정 3건(중요도 범위 1·중요도 정수 아님 0·번호 오류 2)`. 정상 출력이면 null.
+ * - 중요도: 정수가 아니면 `정수 아님`(반올림), 정수인데 1~5 밖이면 `범위`(잘라 냄) — resolvePicks 가 보정한다.
+ * - 번호 오류: 선정 id·묶음·already_reported·brief id 중 정수가 아니거나 풀 범위 밖인 값. 그 값만 버리고(선정 id 면 그
+ *   선정만 빠진다) 나머지 출력은 그대로 쓴다. 이미 쓴 번호의 재사용·이미 보도함 제외는 세지 않는다(따로 다룬다).
+ * maxPicks 로 잘려 쓰이지 않은 선정의 값도 센다 — 모델 출력의 품질 신호다. 항목 안에 notes 구분자 `;`는 없다.
+ */
+export function triageCorrectionNote(triage: TriageOutput, poolSize: number): string | null {
+  let range = 0;
+  let fraction = 0;
+  let index = 0;
+  const countIndex = (i: number) => {
+    if (!isPoolIndex(i, poolSize)) index += 1;
+  };
+  for (const p of triage.picks) {
+    if (!Number.isInteger(p.importance)) fraction += 1;
+    else if (p.importance < IMPORTANCE_MIN || p.importance > IMPORTANCE_MAX) range += 1;
+    countIndex(p.id);
+    p.duplicates.forEach(countIndex);
+  }
+  (triage.already_reported ?? []).forEach(countIndex);
+  (triage.brief ?? []).forEach((line) => countIndex(line.id));
+  const total = range + fraction + index;
+  if (total === 0) return null;
+  return `선별 값 보정 ${total}건(중요도 범위 ${range}·중요도 정수 아님 ${fraction}·번호 오류 ${index})`;
 }
 
 /**
@@ -449,8 +495,12 @@ export function alreadyReportedIds(triage: TriageOutput, poolSize: number): Set<
  */
 export function resolvePicks(triage: TriageOutput, poolSize: number, maxPicks: number): Pick[] {
   const reported = alreadyReportedIds(triage, poolSize);
-  const valid = (i: number) => Number.isInteger(i) && i >= 0 && i < poolSize && !reported.has(i);
-  const ordered = [...triage.picks].sort((a, b) => b.importance - a.importance);
+  const valid = (i: number) => isPoolIndex(i, poolSize) && !reported.has(i);
+  // 중요도는 1~5 정수로 보정한 값으로 정렬·저장한다(triageCorrectionNote 가 보정 건수를 센다). 정렬은 안정적이라
+  // 보정으로 같아진 중요도끼리는 모델이 낸 순서를 따른다.
+  const ordered = triage.picks
+    .map((p) => ({ ...p, importance: clampImportance(p.importance) }))
+    .sort((a, b) => b.importance - a.importance);
 
   const used = new Set<number>();
   const picks: Pick[] = [];

@@ -10,6 +10,7 @@ import {
   alreadyReportedNote,
   buildTriagePool,
   buildTriageRequest,
+  clampImportance,
   defaultPoolQuotas,
   estimateTriageTokens,
   loadReportedHeadlines,
@@ -20,6 +21,7 @@ import {
   quotaOverflowNote,
   quotaShortfallNote,
   resolvePicks,
+  triageCorrectionNote,
   triageFormat,
   triageLine,
   type Candidate,
@@ -567,12 +569,121 @@ describe("resolvePicks", () => {
     expect(picks.map((p) => p.index)).toEqual([1, 2]);
   });
 
-  it("triageFormat.parse 는 중요도 범위를 검증한다", () => {
+  it("triageFormat.parse 는 형태만 검증한다 — 중요도·번호 범위 위반 하나로 선별 출력 전체가 버려지지 않는다", () => {
+    const out = triageFormat.parse(
+      JSON.stringify({
+        already_reported: [1.5],
+        picks: [
+          { id: 0, importance: 9, duplicates: [] },
+          { id: 1, importance: 3, duplicates: [2 ** 60] },
+          { id: 2, importance: 2.6, duplicates: [] },
+        ],
+        brief: [{ id: -1, text: "한 줄" }],
+      }),
+    );
+    expect(out.picks.map((p) => p.id)).toEqual([0, 1, 2]);
+    // 형태가 틀리면(필드 누락·타입 오류) 여전히 실패
     expect(() =>
       triageFormat.parse(
-        JSON.stringify({ already_reported: [], picks: [{ id: 0, importance: 9, duplicates: [] }] }),
+        JSON.stringify({ already_reported: [], picks: [{ id: 0, importance: 3, duplicates: [] }] }),
       ),
     ).toThrow();
+    expect(() =>
+      triageFormat.parse(
+        JSON.stringify({
+          already_reported: [],
+          picks: [{ id: 0, importance: "5", duplicates: [] }],
+          brief: [],
+        }),
+      ),
+    ).toThrow();
+  });
+
+  it("모델에 보내는 JSON 스키마는 엄격한 계약 그대로 — 중요도 1~5 가 설명에 보인다", () => {
+    const schema = triageFormat.schema as {
+      properties: {
+        picks: { items: { properties: Record<string, { type: string; description?: string }> } };
+      };
+    };
+    const importance = schema.properties.picks.items.properties.importance;
+    expect(importance.type).toBe("integer");
+    expect(importance.description).toBe("{minimum: 1, maximum: 5}");
+  });
+
+  it("중요도: 반올림 후 1~5 로 보정해 정렬·저장한다(정상 값은 그대로)", () => {
+    expect([1, 2, 3, 4, 5].map(clampImportance)).toEqual([1, 2, 3, 4, 5]);
+    expect([0, -3, 6, 99, 2.4, 2.5, 4.6, 5.7].map(clampImportance)).toEqual([
+      1, 1, 5, 5, 2, 3, 5, 5,
+    ]);
+    const picks = resolvePicks(
+      {
+        picks: [
+          { id: 0, importance: 3, duplicates: [] },
+          { id: 1, importance: 0, duplicates: [] },
+          { id: 2, importance: 9, duplicates: [] },
+          { id: 3, importance: 5, duplicates: [] },
+          { id: 4, importance: 3.6, duplicates: [] },
+        ],
+      },
+      5,
+      30,
+    );
+    // 9 → 5 와 5 는 같아져 모델 순서(2 → 3)를 따른다.
+    expect(picks.map((p) => [p.index, p.importance])).toEqual([
+      [2, 5],
+      [3, 5],
+      [4, 4],
+      [0, 3],
+      [1, 1],
+    ]);
+  });
+
+  it("정수가 아니거나 범위 밖인 번호는 그 값만 버린다(같은 선정의 다른 묶음·다른 선정은 그대로)", () => {
+    const picks = resolvePicks(
+      {
+        already_reported: [2.5, -1],
+        picks: [
+          { id: 0, importance: 5, duplicates: [1.5, 2 ** 60, 1, -1] },
+          { id: 7.2, importance: 4, duplicates: [3] }, // 선정 id 가 틀리면 그 선정만 빠진다
+          { id: 2, importance: 3, duplicates: [3] },
+        ],
+      },
+      5,
+      30,
+    );
+    expect(picks).toEqual([
+      { index: 0, importance: 5, duplicates: [1] },
+      { index: 2, importance: 3, duplicates: [3] },
+    ]);
+  });
+
+  it("triageCorrectionNote: 보정·버린 값의 수, 정상 출력이면 null, 항목 안에 `;`가 없다", () => {
+    const normal = {
+      already_reported: [4],
+      picks: [
+        { id: 0, importance: 5, duplicates: [1] },
+        { id: 1, importance: 1, duplicates: [] }, // 재사용 번호 — 세지 않는다
+        { id: 4, importance: 3, duplicates: [] }, // 이미 보도함 — 세지 않는다
+      ],
+      brief: [{ id: 0, text: "한 줄" }],
+    };
+    expect(triageCorrectionNote(normal, 5)).toBeNull();
+    expect(triageCorrectionNote({ picks: [] }, 5)).toBeNull();
+    const note = triageCorrectionNote(
+      {
+        already_reported: [9],
+        picks: [
+          { id: 0, importance: 6, duplicates: [5] },
+          { id: 1, importance: 0, duplicates: [] },
+          { id: 2, importance: 2.5, duplicates: [] },
+          { id: 1.5, importance: 3, duplicates: [] },
+        ],
+        brief: [{ id: -1, text: "한 줄" }],
+      },
+      5,
+    );
+    expect(note).toBe("선별 값 보정 7건(중요도 범위 2·중요도 정수 아님 1·번호 오류 4)");
+    expect(note).not.toContain(";");
   });
 
   it("already_reported 는 picks 보다 앞 필드, brief 는 picks 뒤 필드다(고른 다음에 요약한다)", () => {

@@ -23,11 +23,18 @@ import type { Database as DatabaseType } from "better-sqlite3";
 import { PROMPTS_DIR } from "../../src/lib/paths";
 import { approxTokens, estimateCost, outputFormatTokens } from "./cost";
 import { parseStructured, type LlmRequest, type LlmResult, type LlmRunner } from "./llm";
-import { repeatCheckSchema, type ArticleEnrichment } from "./schema";
+import { repeatCheckParseSchema, repeatCheckSchema, type ArticleEnrichment } from "./schema";
 import { contentTokensOf, ENTITY_KEYS, RELATION_PATTERN, sharedTokens } from "./textTokens";
 import type { Pick as TriagePick, ReportedHeadline } from "./triage";
 
-export const repeatFormat = zodOutputFormat(repeatCheckSchema);
+/**
+ * 재보도 검사 구조화 출력 형식. 모델에 보내는 JSON 스키마는 repeatCheckSchema 그대로, 파싱은 형태만 보는
+ * repeatCheckParseSchema — 번호 하나가 잘못돼도 나머지 판정은 resolveRepeats 가 짝마다 걸러 쓴다.
+ */
+export const repeatFormat = {
+  ...zodOutputFormat(repeatCheckSchema),
+  parse: zodOutputFormat(repeatCheckParseSchema).parse,
+};
 
 const SYSTEM_PROMPT = readFileSync(path.join(PROMPTS_DIR, "repeat.system.md"), "utf-8");
 

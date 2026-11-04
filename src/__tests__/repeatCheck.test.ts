@@ -223,6 +223,34 @@ describe("interpretRepeatResult (실패에 열림)", () => {
     });
   });
 
+  it("번호 하나가 잘못돼도(안전 정수 밖·정수 아님·범위 밖) 그 짝만 버리고 나머지 판정은 쓴다", () => {
+    const out = interpretRepeatResult(
+      ok({
+        repeats: [
+          { id: 2 ** 60, reported: 1, event: "엉뚱한 번호" },
+          { id: 60, reported: 1.5, event: "정수 아닌 R번호" },
+          { id: 60, reported: 1, event: "미스트랄 라지 4 가중치 공개" },
+        ],
+        followups: [{ id: 61, reported: 2 ** 60, event: "범위 밖" }],
+      }),
+      inputs,
+      reported,
+    );
+    expect(out.status).toBe("ok");
+    expect(out.repeats).toEqual([{ id: 60, reported: 1, event: "미스트랄 라지 4 가중치 공개" }]);
+    expect(out.followups).toEqual([]);
+    expect(out.note).toBe("재보도 제외 1건");
+  });
+
+  it("모델에 보내는 JSON 스키마는 엄격한 계약 그대로(번호는 integer)", () => {
+    const schema = repeatFormat.schema as {
+      $defs: Record<string, { properties: Record<string, { type: string }> }>;
+    };
+    const pair = Object.values(schema.$defs)[0].properties;
+    expect(pair.id.type).toBe("integer");
+    expect(pair.reported.type).toBe("integer");
+  });
+
   it("응답 없음·오류·스키마 불일치·토큰 한도 → 아무것도 빼지 않고 실패 note", () => {
     const cases: [LlmResult | undefined, RegExp][] = [
       [undefined, /응답 검증 실패/],
