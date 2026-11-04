@@ -17,6 +17,7 @@ import { radarMetaBlock, type RadarMetaItem } from "@/lib/radarMeta";
 import { issueDayLabel, weeklyMetaBlock, type WeeklyItem } from "@/lib/weeklyRadar";
 import { cn } from "@/lib/utils";
 import type { ArticleCard, IndexCard } from "@/lib/types";
+import type { Locale } from "@/lib/i18n";
 
 // 색인 카드(IndexCard)는 원제가 없다 — 만들 때 원제 폴백을 titleKo 에 이미 넣었다(src/lib/feedIndex.ts).
 const titleOf = (a: Pick<ArticleCard, "titleKo"> & Partial<Pick<ArticleCard, "titleOriginal">>) =>
@@ -348,6 +349,8 @@ export function StoryEntry({
   article: IndexCard;
   /** 이미 분야가 정해진 목록(상세의 "같은 분야 기사")에서는 키커를 생략한다. */
   hideCategory?: boolean;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
 }) {
   return (
     <Link

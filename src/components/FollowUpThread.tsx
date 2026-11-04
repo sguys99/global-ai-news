@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatDate, formatShortDate, kstDateKey, kstDayDiff, shortSourceName } from "@/lib/labels";
 import type { FollowUpEntry } from "@/lib/types";
+import type { Locale } from "@/lib/i18n";
 
 /**
  * 상세 페이지 사건 타임라인(`getFollowUpThread`). 후속 보도 연결로 이어진 같은 사건의 기사를 호 날짜 순으로 한 줄씩 —
@@ -8,7 +9,13 @@ import type { FollowUpEntry } from "@/lib/types";
  * (제목은 바로 위 h1 이다). 머리는 연결된 쪽에 따라 "이전 보도" / "후속 보도" / "사건 흐름".
  * 박스 없이 헤어라인으로만 가르고, 코발트는 hover 제목(story-link)에만 쓴다.
  */
-export function FollowUpThread({ entries }: { entries: FollowUpEntry[] }) {
+export function FollowUpThread({
+  entries,
+}: {
+  entries: FollowUpEntry[];
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
+}) {
   const current = entries.find((e) => e.relation === "current");
   const earlier = entries.filter((e) => e.relation === "earlier").length;
   const later = entries.filter((e) => e.relation === "later").length;

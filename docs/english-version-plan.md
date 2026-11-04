@@ -334,7 +334,11 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
   - `next.config.ts` dev·프로덕션 분기 모두 `experimental.globalNotFound: true`.
   - **404(`global-not-found.tsx` + `NotFoundNotice`, 문구 `messages/notFound.ts`)를 이중 언어 지면으로 새로 만들었다.** 제호 자리에 Hahmlet "404"와 "지면에 없는 페이지 · Page not found", 마스트헤드와 같은 4px+1px 이중 괘선, 그 아래 `lg`부터 7:4 두 단(한국어 "독자 안내 — 이 페이지는 지면에 실리지 않았습니다" / 영어 "Reader notice — This page never went to print"), 각 단에 오늘의 지면·기사 검색 링크(44px 행). `/en/…`에서는 `<head>` 인라인 스크립트가 `lang="en"`으로 바꾸고, `lang-en:` 변형(`globals.css` `@custom-variant`)이 영어 단을 앞에 크게 놓는다. 영어 링크는 `NOT_FOUND_EN_LINK_LOCALE`(지금 `"ko"`)을 거친다 — `/en/`이 생기는 Phase 5에서 이 값 하나를 `"en"`으로 바꾼다. `noindex`는 Next가 넣는 것 하나만 남겼다.
   - 회귀 비교: 한국어 11페이지·sitemap·feed 같음, 404만 허용된 차이. 산출물 145.87MB(기준선 140.27MB, +4% — 0-2 스파이크 예상과 같음, 레이아웃 단계가 하나 늘어난 몫). dev에서 admin(미들웨어 307)·`/api/health` 200 확인.
-- [ ] 페이지 본문을 `src/views/{HomeView,ArticleView,EditionView,SearchView}.tsx`로 추출해 `locale`을 받게 한다.
+- [x] 페이지 본문을 `src/views/{HomeView,ArticleView,EditionView,SearchView}.tsx`로 추출해 `locale`을 받게 한다. (2026-11-04)
+  - 라우트 파일(`(ko)/…/page.tsx`)에는 `generateStaticParams`·`dynamicParams`·메타데이터만 남고 `<XView locale="ko" …/>`를 그린다. Phase 5 영어 라우트는 같은 뷰에 `locale="en"`을 넘기는 얇은 파일이 된다.
+  - 데이터는 `src/views/data.ts` 로더(`loadHome`·`loadEdition`·`loadWeeklyRadar`·`loadArticle(Page)`·`loadSearch`)가 읽고, 뷰와 메타데이터가 같은 로더를 쓴다. **모든 기사 목록이 `localeArticles(locale, …)` 한 곳을 지난다**(호 기사·홈 색인·주간 레이더 후보·관련 기사·기사 자신, 호 목록은 `localeEditionRefs`) — 1면·섹션·세 줄 요약·귀 통계·이전/다음 호가 자동으로 따라온다. 지금은 ko를 그대로 통과시키고 **en이면 예외를 던진다**: Phase 5에서 `hasEnglish` 거르기를 넣기 전에는 영어 페이지를 빌드할 수 없게 막아 둔 것이다. 거르기는 영어 필드를 떼는 `toListCards` 전에 한다.
+  - 뷰 본문 문구는 `messages/{article,edition,search}.ts`로 옮겼다. 내부 링크는 `localePath`를 거친다. JSON-LD는 마크업 위치를 지키려고 뷰 안에 두었고 값은 한국어 그대로다(Phase 6).
+  - 회귀 비교: 한국어 11페이지·sitemap·feed 같음. 산출물 145.84MB(−0.03MB — 한 문자열로 합친 숫자·단위에서 `<!-- -->` 구분자가 빠졌다).
 - [ ] 컴포넌트(25개 파일)의 하드코딩 문구를 사전 참조로 바꾼다. 서버 컴포넌트는 `locale` prop, 클라이언트 컴포넌트는 레이아웃의 `LocaleProvider` 컨텍스트를 쓴다.
 - [ ] 내부 링크(`Link href`)를 `localePath`로 바꾼다.
 

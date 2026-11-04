@@ -2,12 +2,21 @@ import Link from "next/link";
 import type { EditionRef } from "@/lib/db";
 import { formatMonthDay } from "@/lib/labels";
 import { editionPath } from "@/lib/site";
+import type { Locale } from "@/lib/i18n";
 
 /**
  * 호 고정 링크 지면 하단 내비: 이전 호 · 다음 호(DESIGN.md 굵은 잉크 괘선 + 세리프 표기).
  * 양 끝 호에서는 해당 방향을 비워 둔다.
  */
-export function EditionPager({ prev, next }: { prev: EditionRef | null; next: EditionRef | null }) {
+export function EditionPager({
+  prev,
+  next,
+}: {
+  prev: EditionRef | null;
+  next: EditionRef | null;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
+}) {
   return (
     <nav aria-label="호 이동" className="border-rule grid grid-cols-2 gap-6 border-t-2 pt-4">
       {prev ? <PagerLink edition={prev} label="← 이전 호" /> : <span />}

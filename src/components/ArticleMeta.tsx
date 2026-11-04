@@ -24,9 +24,18 @@ import {
 import { relatedCountOf } from "@/lib/feedIndex";
 import { cn } from "@/lib/utils";
 import type { ArticleCard, IndexCard } from "@/lib/types";
+import type { Locale } from "@/lib/i18n";
 
 /** 카테고리 키커. category 가 비어 있으면 렌더하지 않는다. */
-export function CategoryKicker({ category, className }: { category: string; className?: string }) {
+export function CategoryKicker({
+  category,
+  className,
+}: {
+  category: string;
+  className?: string;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
+}) {
   if (!category) return null;
   return (
     <span
@@ -51,7 +60,15 @@ const OUTLINE_BADGE =
  * sr-only 로 읽힌다.
  * relative 는 sr-only(absolute)의 기준 상자 — 가로 스크롤러 안에서 클립을 벗어나 페이지 폭을 늘리지 않게.
  */
-export function FormatBadge({ format, className }: { format: Format; className?: string }) {
+export function FormatBadge({
+  format,
+  className,
+}: {
+  format: Format;
+  className?: string;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
+}) {
   const badge = FORMAT_BADGES[format];
   if (!badge) return null;
   return (
@@ -77,7 +94,13 @@ export function RegionBadge({ region, className }: { region?: Region; className?
 }
 
 /** 중요도 1–5 도트 미터. 0(미가공)이면 렌더하지 않는다. 색만이 아니라 칸 수·라벨로도 전달. */
-export function ImportanceMeter({ value }: { value: number }) {
+export function ImportanceMeter({
+  value,
+}: {
+  value: number;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
+}) {
   if (value <= 0) return null;
   const high = value >= 4;
   return (
@@ -242,7 +265,15 @@ export function TrendBar({ value }: { value: number }) {
  * 태그 칩 목록. 비어 있으면 렌더하지 않는다.
  * max 를 주면 그 개수만 노출하고 나머지는 "+N" 으로 요약한다(미지정 시 전량 표시).
  */
-export function TagChips({ tags, max }: { tags: string[]; max?: number }) {
+export function TagChips({
+  tags,
+  max,
+}: {
+  tags: string[];
+  max?: number;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
+}) {
   if (tags.length === 0) return null;
   const shown = typeof max === "number" ? tags.slice(0, max) : tags;
   const overflow = tags.length - shown.length;

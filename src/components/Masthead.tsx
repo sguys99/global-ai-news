@@ -10,6 +10,7 @@ import type { IssueStats } from "@/lib/edition";
 import { IssueDelayNotice } from "@/components/IssueDelayNotice";
 import { ShareButton } from "@/components/ShareButton";
 import { SITE_NAME, editionPath, editionShareUrl } from "@/lib/site";
+import type { Locale } from "@/lib/i18n";
 
 /**
  * 홈 마스트헤드 (DESIGN.md §5 masthead, 시안 docs/design/mockups/front-v3.html).
@@ -44,6 +45,8 @@ export function Masthead({
   delayNoticeIssueDate?: string;
   /** 빌드 시점에 계산한 지연 일수 — 정적 HTML 에 안내를 미리 담아 레이아웃 밀림을 막는다. */
   delayNoticeInitialGap?: number;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
 }) {
   return (
     <header id="masthead" className="mx-auto max-w-[1240px] px-4 pt-5 md:px-8 md:pt-7">

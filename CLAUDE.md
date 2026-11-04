@@ -76,14 +76,24 @@
 │   │   ├── Analytics.tsx         # 방문 집계(GoatCounter count.js, 쿠키 없음) — 경로 전환마다 직접 집계
 │   │   ├── VisitorCount.tsx      # 푸터 "누적 방문 N회"(GoatCounter TOTAL.json, VISITOR_COUNT_MIN 미만이면 숨김)
 │   │   ├── JsonLd.tsx            # 구조화 데이터(JSON-LD) 스크립트 — 홈 WebSite·상세 NewsArticle
+│   │   ├── LocaleProvider.tsx    # 클라이언트 언어 컨텍스트(useLocale·useMessages, 기본 ko) — 영어 레이아웃만 감싼다
 │   │   ├── NotFoundNotice.tsx    # 404 본문 '독자 안내'(세리프 404·이중 괘선·한/영 두 단, lang-en 변형으로 순서·크기 교체)
 │   │   ├── mobile/               # 모바일 앱 셸(MobileTopBar·BottomTabBar·FilterSheet)
 │   │   ├── admin/                # Admin 전용 컴포넌트 (KpiPanel·EnglishKpiPanel(영어 커버리지·기각 사유)·SourceHealthPanel·SourceManager 등)
 │   │   └── ui/                   # shadcn/ui 프리미티브
+│   ├── views/                    # 페이지 본문(언어판 공용, `locale` prop) — 라우트는 경로 목록·메타만 두고 `<XView locale=… />`를 그린다
+│   │   ├── data.ts               # 뷰 데이터 로더(loadHome·loadEdition·loadArticlePage·loadSearch) — 언어판에 실을 기사 범위의 단일 자리(localeArticles, 영어 거르기는 Phase 5)
+│   │   ├── HomeView.tsx          # 홈 — JSON-LD + Suspense(FeedView 서버 fallback / FeedClient)
+│   │   ├── EditionView.tsx       # 호 고정 링크 — 마스트헤드·세 줄 요약·지난 호 안내·1면·주간 레이더·섹션·이 호의 기사·호 이동
+│   │   ├── ArticleView.tsx       # 상세 — 신호 패널·요약·사건 타임라인·다른 매체 보도·원문 발췌·원문 CTA·같은 분야 기사
+│   │   └── SearchView.tsx        # 검색 정적 셸(머리 + SearchClient)
 │   ├── lib/
 │   │   ├── db.ts                 # SQLite readonly 조회 (getFeed/getArticle/getIssueArticles/getEditionRefs/getLatestEditionRef/getFollowUpThread/searchArticles/getKpiSummary 등)
 │   │   ├── types.ts              # RawItem, ArticleCard(format 포함), SourceConfig, RunRow 등
 │   │   ├── edition.ts            # 1면 편집(buildEdition: 리드·서브·브리핑·레이더·화제·섹션) + frontArticles·issueStats
+│   │   ├── i18n.ts               # 다국어 기반: Locale·localePath(ko 는 입력 그대로, en 은 /en 접두)·splitLocalePath·defineMessages·getMessages·plural·formatNumber
+│   │   ├── messages/             # 영역별 문구 사전 `defineMessages({ ko, en })`(common·notFound·article·edition·search …, ko 가 원본 — en 모양은 타입·i18n.test 가 검사)
+│   │   ├── articleText.ts        # 기사 표시 헬퍼 headlineOf·summaryOf·sourceNameOf(en 은 한국어로 폴백하지 않음)·hasEnglish
 │   │   ├── labels.ts             # 분야 CATEGORIES·표시명·코드, 형식 FORMATS·배지, 소스 축약명, KST 날짜·상대 시각·발행 지연 문구 (단일 출처)
 │   │   ├── radarMeta.ts          # 레이더 카드 메타 레일(리포 ★·모델 파라미터·논문 arXiv ID 등)
 │   │   ├── englishKpi.ts         # 영어판 KPI 정의·notes 파싱(`영어 가공 N/M건`·`영어 기각`·`한국어 숫자 불일치`) — admin·kpi 공용

@@ -17,6 +17,7 @@ import {
 import { categoryLabel, kstDateKey } from "@/lib/labels";
 import type { ArticleCard, IndexCard } from "@/lib/types";
 import type { WeeklyRadar } from "@/lib/weeklyRadar";
+import type { Locale } from "@/lib/i18n";
 
 /**
  * 피드 프레젠테이션(서버·클라 공용, 훅 없음).
@@ -68,6 +69,8 @@ export function FeedView({
   weekly?: WeeklyRadar | null;
   /** 이번 호 세 줄 요약(서버 page 가 selectIssueBrief 로 고른 줄). 비면 띠를 숨긴다. 필터 모드에서는 쓰지 않는다. */
   brief?: IssueBriefLine[];
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
 }) {
   const filtered = hasActiveFilter(options);
   // 필터·정렬은 누적 전체가 있어야 맞다. 앞부분뿐이면 결과 대신 상태 줄(null).

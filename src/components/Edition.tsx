@@ -30,8 +30,17 @@ import {
 } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { ArticleCard } from "@/lib/types";
+import type { Locale } from "@/lib/i18n";
 
-export function FrontPage({ edition, timeBase }: { edition: Edition; timeBase?: string }) {
+export function FrontPage({
+  edition,
+  timeBase,
+}: {
+  edition: Edition;
+  timeBase?: string;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
+}) {
   const { lead, seconds, briefs, radar, trending } = edition;
   if (!lead) return null;
 
@@ -347,7 +356,13 @@ const WEEKLY_ROWS: Record<number, string> = {
  * md 이상 2열 세로 흐름(행 높이를 두 열이 나눠 써 헤어라인이 같은 높이에 선다, 열 사이 세로 헤어라인), 모바일 1열.
  * 맨 아래 각주가 선정 규칙을 밝힌다(순위표의 근거). 빈약한 주는 buildWeeklyRadar 가 null 이라 그리지 않는다.
  */
-export function WeeklyRadarBand({ weekly }: { weekly: WeeklyRadar }) {
+export function WeeklyRadarBand({
+  weekly,
+}: {
+  weekly: WeeklyRadar;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
+}) {
   const n = Math.min(weekly.items.length, 10);
   const rows = Math.ceil(n / 2);
   const mix = weeklyFormatMix(weekly.formats);
@@ -460,6 +475,8 @@ export function SectionBands({
 }: {
   sections: EditionSection[];
   timeBase?: string;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
 }) {
   return (
     <div className="flex flex-col gap-12 md:gap-14">

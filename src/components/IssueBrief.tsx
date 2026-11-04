@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ISSUE_BRIEF_LIMITS, type IssueBriefLine } from "@/lib/edition";
 import { cn } from "@/lib/utils";
+import type { Locale } from "@/lib/i18n";
 
 /** 줄 수 → 머리 문구. 2줄만 남은 호에 "세 줄"이라 쓰면 틀린 말이 된다. */
 const COUNT_WORDS = ["", "한", "두", "세"] as const;
@@ -24,6 +25,8 @@ export function IssueBrief({
 }: {
   lines: readonly IssueBriefLine[];
   className?: string;
+  /** 언어판 — Phase 3-3 C단계에서 컴포넌트 문구에 쓴다(지금은 한국어 고정, 기본 ko). */
+  locale?: Locale;
 }) {
   if (lines.length < ISSUE_BRIEF_LIMITS.min) return null;
 
