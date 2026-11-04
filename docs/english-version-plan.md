@@ -147,7 +147,7 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - [x] 한국 매체 소스를 전부 표시한다(AI타임스·전자신문 AI·바이라인네트워크·로봇신문 등, sources.json 전수 확인).
   - 0-1 전수 결과, 한국어 소스는 aitimes·etnews_ai·byline_network·irobotnews·geeknews 5곳이다.
   - **geeknews는 `region: kr`로 두지 않는 것을 기본으로 한다.** 해외 글을 한국어로 소개하는 커뮤니티라 다루는 사건이 대부분 해외 소식이어서 Korea Desk·`KOREA` 표시와 맞지 않는다. 영어 가공은 다른 기사와 똑같이 한다.
-  - `region: kr` 4곳과 영문명: aitimes `AI Times` · etnews_ai `Electronic Times AI`(en.etnews.com 표기) · byline_network `Byline Network` · irobotnews `iRobotNews`(공식 영문명이 없어 도메인 표기 — 학계 인용도 이 표기). 한글 이름인 hf_models에도 `HuggingFace Trending Models`. 게재 1,255건 중 `region: kr` 기사는 358건이다.
+  - `region: kr` 4곳과 영문명: aitimes `AI Times` · etnews_ai `Electronic Times AI`(en.etnews.com 표기) · byline_network `Byline Network` · irobotnews `iRobotNews`(공식 영문명이 없어 도메인 표기 — 학계 인용도 이 표기. 2026-11-04 사용자 확인). 한글 이름인 hf_models에도 `HuggingFace Trending Models`. 게재 1,255건 중 `region: kr` 기사는 358건이다.
   - 남은 일(Phase 3·5): 매체 축약명 `shortSourceName`이 한국어 이름 기준이라 영어 바이라인용 축약 표가 필요하다.
 
 ### 1-2. 가공 출력
@@ -166,7 +166,15 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - 저장 경로: `scripts/lib/enrich.ts` `resolveEnglish`가 게재분의 영어를 확정하는 한 곳이다. 같은 사건 합치기 뒤 최종 게재분에만 돌고, 저장(신규·재가공)과 `--no-save` 스냅숏(`english` 필드)이 이 값만 읽는다. 근거는 `enrichEvidence`(원문 제목 + 모델에 준 발췌)다.
 - 남은 일:
   - **프롬프트 캐싱 전제가 바뀌었다.** 가공 시스템 프롬프트가 Haiku 4.5 캐시 하한 4,096토큰을 넘는다 → Phase 9 캐싱 항목(회차당 약 $0.01 절감 가능).
-  - 기존 `title_ko .max(60)` 하나가 넘으면 묶음 10건이 함께 버려진다(영어판 이전부터 있던 위험). 실패 이력을 확인해 완화할지 정한다.
+  - ~~기존 `title_ko .max(60)` 하나가 넘으면 묶음 10건이 함께 버려진다.~~ **2026-11-04 완화(사용자 결정).**
+    - SDK zod 헬퍼는 `maxLength`·`maxItems`·`enum`을 설명 문구로만 넘기고 파싱 때 zod로 검사한다. 그래서 `title_ko` 60자, 태그 5개, 분야 enum 중 하나만 어겨도 묶음이 통째로 버려졌다. 10-08 회차의 "가공 실패·보류 10건"이 이 모양이다.
+    - 모델에게 보이는 스키마는 그대로 두고(바이트 동일), 파싱만 느슨한 `enrichBatchParseSchema`로 한다. 기사 단위 검사는 `guardEnrichment`가 맡는다.
+      - 제목 61~80자: 게재하고 `한국어 제목 60자 초과 N건`을 남긴다.
+      - 제목 80자 초과: 그 기사만 미가공으로 두고 7일 재시도한다.
+      - 분야 오류: 그 기사만 재시도한다.
+      - 태그 6개 이상: 앞 5개만 쓴다.
+    - 게재분 1,255건의 `title_ko`는 최대 60자, p99 54자다.
+    - 남은 같은 위험: 선별 `importance` 1~5 범위도 zod로만 검사한다 → 같은 방식으로 고친다(아래 커밋).
 
 ### 1-3. 영어 품질 검사 (코드, fail-closed: 기각하면 영어만 비운다)
 
@@ -230,6 +238,7 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - [ ] 커버리지 100%에서 기각 건수를 뺀 값이 나오는지 확인한다(`npm run kpi`).
 - [ ] 무작위 20건(한국 매체 10건 포함)을 직접 검토한다.
 - [ ] 기각된 기사 목록을 남기고, 필요하면 `--ids`로 재시도한다.
+- [ ] **(1-3에서 추가, 2026-11-04 사용자 결정) 한국어 요약 숫자 오류를 백필 때 함께 고친다.** `checkKoreanNumbers`를 전체 게재분에 돌린 경고 45건 중 실제 오류 21건(1-3 목록: 단위·값 19 + 모델 버전 2)을 검토하고, 같은 백필 실행 경로(2-2, 일일 수집 커밋과 충돌 없음)로 `title_ko`·`summary_ko`를 고친다. 반올림·파생 수 경고는 고치지 않는다.
 
 ---
 

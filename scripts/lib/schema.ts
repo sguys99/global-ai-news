@@ -33,12 +33,39 @@ export const articleEnrichmentSchema = z.object({
 
 export type ArticleEnrichment = z.infer<typeof articleEnrichmentSchema>;
 
-/** 가공 1회 호출(기사 여러 건) 출력. id 는 요청에 실린 기사 번호. */
+/**
+ * 가공 1회 호출(기사 여러 건) 출력. id 는 요청에 실린 기사 번호.
+ * 모델에 보이는 계약(제목 60자·태그 1~5개·분야 6키)이다 — 파싱에는 쓰지 않는다(아래 enrichBatchParseSchema).
+ */
 export const enrichBatchSchema = z.object({
   articles: z.array(articleEnrichmentSchema.extend({ id: z.number().int() })),
 });
 
 export type EnrichBatch = z.infer<typeof enrichBatchSchema>;
+
+/**
+ * 가공 출력의 파싱 스키마 — 형태(필드·타입·필수)만 본다. 모델에 보내는 JSON 스키마는 위 enrichBatchSchema 그대로다
+ * (enrich.ts enrichFormat). SDK 변환은 문자열 길이(`maxLength`)·배열 상한(`maxItems`)·`enum` 을 제약 디코딩에 넣지 않고
+ * 설명 문구(`{maxLength: 60}` 등)로만 옮긴 뒤 zod 로 검증하므로, 엄격한 스키마로 파싱하면 기사 1건의 61자 제목·잘못된
+ * 분야 값이 그 묶음 10건을 통째로 버린다(parseStructured → null). 그래서 파싱은 느슨하게 하고, 제목 길이·분야·태그 수는
+ * enrich.ts guardEnrichment 가 기사별로 확인해 그 기사만 미가공으로 돌리거나 고친다.
+ */
+export const enrichBatchParseSchema = z.object({
+  articles: z.array(
+    z.object({
+      id: z.number().int(),
+      title_ko: z.string(),
+      summary_ko: z.string(),
+      category: z.string(),
+      tags: z.array(z.string()),
+      title_en: z.string(),
+      summary_en: z.string(),
+    }),
+  ),
+});
+
+export type RawEnrichBatch = z.infer<typeof enrichBatchParseSchema>;
+export type RawArticleEnrichment = Omit<RawEnrichBatch["articles"][number], "id">;
 
 /**
  * 세 줄 요약(brief)의 한 줄: 요약하는 선정의 후보 번호(id)와 한국어 한 줄(text).

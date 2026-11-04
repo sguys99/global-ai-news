@@ -6,9 +6,12 @@ import {
   articleFields,
   buildEnrichRequests,
   CHUNK_SIZE,
+  emptyEnrichGuardTally,
   enrichEvidence,
   enrichFormat,
+  enrichGuardNotes,
   estimateEnrichTokens,
+  guardEnrichment,
   inputExcerpt,
   MAX_INPUT_CHARS,
   readCategoryGuide,
@@ -17,6 +20,8 @@ import {
   resolveEnglish,
   resolveEnrichments,
   splitTopics,
+  TITLE_KO_HARD_LIMIT,
+  TITLE_KO_LIMIT,
   type EnrichInput,
 } from "../../scripts/lib/enrich";
 import { approxTokens, outputFormatTokens } from "../../scripts/lib/cost";
@@ -24,7 +29,11 @@ import { dropRepeats } from "../../scripts/lib/repeatCheck";
 import { applySameEventMerges } from "../../scripts/lib/sameEvent";
 import type { Pick } from "../../scripts/lib/triage";
 import { parseEnglishNotes } from "../../src/lib/englishKpi";
-import { articleEnrichmentSchema, CATEGORIES } from "../../scripts/lib/schema";
+import {
+  articleEnrichmentSchema,
+  CATEGORIES,
+  enrichBatchParseSchema,
+} from "../../scripts/lib/schema";
 import { FORMAT_LABELS, FORMATS, type Format } from "../../src/lib/labels";
 import { PROMPTS_DIR } from "../../src/lib/paths";
 
@@ -335,6 +344,120 @@ describe("resolveEnrichments", () => {
     expect([...out.keys()]).toEqual([1]);
     expect(out.get(1)).toEqual(enrichment);
   });
+
+  it("기사별 확인: 한 기사가 제약을 어겨도 같은 묶음의 나머지는 그대로 남는다", () => {
+    const tally = emptyEnrichGuardTally();
+    const out = resolveEnrichments(
+      {
+        articles: [
+          { id: 1, ...enrichment },
+          { id: 2, ...enrichment, title_ko: "가".repeat(TITLE_KO_HARD_LIMIT + 1) },
+          { id: 3, ...enrichment, category: "Nope" },
+          { id: 4, ...enrichment, title_ko: "나".repeat(72) },
+          { id: 5, ...enrichment, tags: ["a", "b", "c", "d", "e", "f", "g"] },
+        ],
+      },
+      [1, 2, 3, 4, 5],
+      tally,
+    );
+    expect([...out.keys()]).toEqual([1, 4, 5]);
+    expect(out.get(1)).toEqual(enrichment);
+    expect(out.get(4)?.title_ko).toBe("나".repeat(72));
+    expect(out.get(5)?.tags).toEqual(["a", "b", "c", "d", "e"]);
+    expect(tally).toEqual({
+      titleOver: 1,
+      titleOverMax: 72,
+      titleRejected: 1,
+      categoryRejected: 1,
+      tagsTrimmed: 1,
+    });
+  });
+
+  it("tally 는 묶음마다 누적되고, 기각된 첫 결과 뒤의 같은 id 는 받지 않는다", () => {
+    const tally = emptyEnrichGuardTally();
+    const long = "가".repeat(TITLE_KO_HARD_LIMIT + 5);
+    const a = resolveEnrichments(
+      {
+        articles: [
+          { id: 1, ...enrichment, title_ko: long },
+          { id: 1, ...enrichment },
+        ],
+      },
+      [1],
+      tally,
+    );
+    const b = resolveEnrichments(
+      { articles: [{ id: 11, ...enrichment, title_ko: "다".repeat(65) }] },
+      [11],
+      tally,
+    );
+    expect(a.size).toBe(0);
+    expect([...b.keys()]).toEqual([11]);
+    expect(tally.titleRejected).toBe(1);
+    expect(tally.titleOver).toBe(1);
+    expect(tally.titleOverMax).toBe(65);
+  });
+});
+
+describe("guardEnrichment — 묶음 대신 기사별로 거르는 가공 제약", () => {
+  it("정상 출력(제목 60자·분야 키·태그 1~5개)은 값을 바꾸지 않는다", () => {
+    for (const e of [
+      enrichment,
+      { ...enrichment, title_ko: "가".repeat(TITLE_KO_LIMIT), tags: ["a", "b", "c", "d", "e"] },
+      ...readFewShot().map((ex) => ex.output),
+    ]) {
+      const r = guardEnrichment(e);
+      expect(r).toEqual({ ok: true, enrichment: e, titleOver: false, tagsTrimmed: false });
+      if (r.ok) expect(r.enrichment.tags).toBe(e.tags);
+    }
+  });
+
+  it(`제목 ${TITLE_KO_LIMIT + 1}~${TITLE_KO_HARD_LIMIT}자는 자르지 않고 게재, 넘으면 그 기사만 기각`, () => {
+    const over = guardEnrichment({ ...enrichment, title_ko: "가".repeat(TITLE_KO_HARD_LIMIT) });
+    expect(over.ok && over.titleOver).toBe(true);
+    expect(over.ok && over.enrichment.title_ko.length).toBe(TITLE_KO_HARD_LIMIT);
+    expect(
+      guardEnrichment({ ...enrichment, title_ko: "가".repeat(TITLE_KO_HARD_LIMIT + 1) }),
+    ).toEqual({ ok: false, reason: "title" });
+  });
+
+  it("분야: 대소문자·공백만 맞춰 주고, 6개 키 밖(구 값 포함)은 기각", () => {
+    const r = guardEnrichment({ ...enrichment, category: " Physical " });
+    expect(r.ok && r.enrichment.category).toBe("physical");
+    for (const category of ["Nope", "Agents", "Language Models", ""]) {
+      expect(guardEnrichment({ ...enrichment, category })).toEqual({
+        ok: false,
+        reason: "category",
+      });
+    }
+  });
+
+  it("태그: 5개를 넘으면 정규화·중복 제거 뒤 앞 5개(저장 normalizeTags 와 같은 결과), 0개는 그대로", () => {
+    const r = guardEnrichment({ ...enrichment, tags: ["LLM", "llm", "b", "c", "d", "e", "f"] });
+    expect(r.ok && r.tagsTrimmed).toBe(true);
+    expect(r.ok && r.enrichment.tags).toEqual(["llm", "b", "c", "d", "e"]);
+    const none = guardEnrichment({ ...enrichment, tags: [] });
+    expect(none.ok && none.enrichment.tags).toEqual([]);
+    expect(none.ok && none.tagsTrimmed).toBe(false);
+  });
+
+  it("enrichGuardNotes: 해당 항목만, 항목 안에 notes 구분자 `;`가 없다", () => {
+    expect(enrichGuardNotes(emptyEnrichGuardTally())).toEqual([]);
+    const notes = enrichGuardNotes({
+      titleOver: 2,
+      titleOverMax: 74,
+      titleRejected: 1,
+      categoryRejected: 1,
+      tagsTrimmed: 3,
+    });
+    expect(notes).toEqual([
+      "한국어 제목 길이 초과 1건(80자 초과, 재시도)",
+      "분야 값 오류 1건(재시도)",
+      "한국어 제목 60자 초과 2건(게재, 최장 74자)",
+      "태그 5개 초과 3건(앞 5개만)",
+    ]);
+    for (const n of notes) expect(n).not.toContain(";");
+  });
 });
 
 describe("스키마 검증", () => {
@@ -354,14 +477,58 @@ describe("스키마 검증", () => {
     expect(required).toEqual(expect.arrayContaining(["title_en", "summary_en"]));
   });
 
-  it("enrichFormat.parse 는 구조화 출력 JSON 을 검증한다", () => {
+  it("enrichFormat.parse 는 형태(필드·타입)만 검증한다 — 제약 위반 기사 하나로 묶음이 버려지지 않는다", () => {
     const ok = JSON.stringify({ articles: [{ id: 3, ...enrichment }] });
     expect(enrichFormat.parse(ok).articles[0].id).toBe(3);
-    const bad = JSON.stringify({ articles: [{ id: 3, ...enrichment, category: "Nope" }] });
-    expect(() => enrichFormat.parse(bad)).toThrow();
+    const overLimit = JSON.stringify({
+      articles: [
+        { id: 1, ...enrichment },
+        {
+          id: 2,
+          ...enrichment,
+          title_ko: "가".repeat(120),
+          category: "Nope",
+          tags: [],
+        },
+        { id: 3, ...enrichment, tags: ["a", "b", "c", "d", "e", "f"] },
+      ],
+    });
+    expect(enrichFormat.parse(overLimit).articles.map((a) => a.id)).toEqual([1, 2, 3]);
+    expect(enrichBatchParseSchema.safeParse(JSON.parse(overLimit)).success).toBe(true);
+    // 형태가 틀리면(필드 누락·타입 오류·JSON 아님) 여전히 묶음 실패
+    const noTitle: Partial<typeof enrichment> = { ...enrichment };
+    delete noTitle.title_ko;
+    expect(() =>
+      enrichFormat.parse(JSON.stringify({ articles: [{ id: 3, ...noTitle }] })),
+    ).toThrow();
+    expect(() =>
+      enrichFormat.parse(JSON.stringify({ articles: [{ id: 3.5, ...enrichment }] })),
+    ).toThrow();
+    expect(() => enrichFormat.parse("{not json")).toThrow();
   });
 
-  it("category enum 외 값·태그 0개/6개는 실패", () => {
+  it("모델에 보내는 JSON 스키마는 엄격한 계약 그대로 — 60자·태그 1~5개·분야 enum 이 보인다", () => {
+    const item = (
+      enrichFormat.schema as {
+        properties: {
+          articles: {
+            items: {
+              properties: Record<string, { description?: string; minItems?: number }>;
+            };
+          };
+        };
+      }
+    ).properties.articles.items.properties;
+    expect(item.title_ko.description).toContain(`{maxLength: ${TITLE_KO_LIMIT}}`);
+    expect(item.tags.description).toContain("{maxItems: 5}");
+    expect(item.tags.minItems).toBe(1);
+    expect(item.category.description).toContain(JSON.stringify(CATEGORIES));
+  });
+
+  it("계약 스키마(few-shot·타입 기준): category enum 외 값·태그 0개/6개·제목 61자는 실패", () => {
+    expect(
+      articleEnrichmentSchema.safeParse({ ...enrichment, title_ko: "가".repeat(61) }).success,
+    ).toBe(false);
     expect(articleEnrichmentSchema.safeParse({ ...enrichment, category: "X" }).success).toBe(false);
     // 분야 개편 전 구 값은 더 이상 출력 enum 이 아니다
     expect(articleEnrichmentSchema.safeParse({ ...enrichment, category: "Agents" }).success).toBe(

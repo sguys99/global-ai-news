@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { FORMAT_LABELS, type Format } from "../../src/lib/labels";
+import { CATEGORIES, FORMAT_LABELS, type Category, type Format } from "../../src/lib/labels";
 import { PROMPTS_DIR } from "../../src/lib/paths";
 import type { RawItem } from "../../src/lib/types";
 import { approxTokens, outputFormatTokens } from "./cost";
@@ -24,7 +24,14 @@ import {
 } from "./englishCheck";
 import { glossaryBlock, glossaryTables, readGlossary, selectGlossary } from "./glossary";
 import type { LlmRequest } from "./llm";
-import { enrichBatchSchema, type ArticleEnrichment, type EnrichBatch } from "./schema";
+import {
+  enrichBatchParseSchema,
+  enrichBatchSchema,
+  type ArticleEnrichment,
+  type RawArticleEnrichment,
+  type RawEnrichBatch,
+} from "./schema";
+import { normalizeTags } from "./tags";
 
 /** 한 요청에 묶는 기사 수. 한 요청이 실패해도 잃는 기사가 이 수를 넘지 않는다. */
 export const CHUNK_SIZE = 10;
@@ -39,7 +46,102 @@ const MAX_OUTPUT_TOKENS_PER_ARTICLE = 550;
 /** 기사 1건당 출력 토큰 근사치(비용 가드 추정용). 실측 예상 약 270에 약 20% 여유. */
 const EST_OUTPUT_TOKENS_PER_ARTICLE = 320;
 
-export const enrichFormat = zodOutputFormat(enrichBatchSchema);
+/**
+ * 가공 구조화 출력 형식. 모델에 보내는 JSON 스키마는 엄격한 계약(enrichBatchSchema — 설명 문구에 `{maxLength: 60}`·
+ * `{maxItems: 5}`·분야 enum)이고, 파싱은 형태만 보는 enrichBatchParseSchema 로 한다 — 기사 1건의 제약 위반이 묶음
+ * 10건을 버리지 않게. 제약은 resolveEnrichments → guardEnrichment 가 기사별로 적용한다.
+ */
+export const enrichFormat = {
+  ...zodOutputFormat(enrichBatchSchema),
+  parse: zodOutputFormat(enrichBatchParseSchema).parse,
+};
+
+/** 한국어 제목 길이 계약(프롬프트·스키마 설명의 60자). 이 이하는 그대로 게재한다. */
+export const TITLE_KO_LIMIT = 60;
+/**
+ * 한국어 제목 허용 상한. 61~80자는 게재하고 notes 에 남긴다(목록·지면 제목은 line-clamp·말줄임, og 썸네일은 3줄 말줄임이라
+ * 조금 긴 제목도 깨지지 않는다). 이를 넘으면 제목이 아니라 문장을 쓴 출력으로 보고 그 기사만 미가공(7일 재심사)으로 돌린다 —
+ * 한국어 헤드라인을 낱말 중간에서 자르지 않는다. 게재 1,255건(2026-11-04) 최장 60자·99% 54자, 60자 근접(58자 이상)은 1건.
+ */
+export const TITLE_KO_HARD_LIMIT = 80;
+/** 태그 개수 계약(스키마 설명의 maxItems 5). 넘으면 정규화·중복 제거 뒤 앞 5개만 쓴다(tags.ts saveTags 와 같은 결과). */
+export const TAGS_LIMIT = 5;
+
+/** guardEnrichment 결과: 통과(필요하면 고친 값) 또는 그 기사만 미가공으로 돌리는 사유. */
+export type EnrichGuardResult =
+  | { ok: true; enrichment: ArticleEnrichment; titleOver: boolean; tagsTrimmed: boolean }
+  | { ok: false; reason: "title" | "category" };
+
+/**
+ * 가공 결과 1건의 기사별 확인 — 스키마가 묶음 단위로 막던 제약의 단일 자리. 정상 출력(제목 60자 이하·분야 6키·태그 5개
+ * 이하)은 값을 바꾸지 않고 그대로 통과한다.
+ * - 제목: 60자 이하 그대로, 61~80자 게재(titleOver), 80자 초과 기각(reason title).
+ * - 분야: 6개 키 중 하나여야 한다. 대소문자·앞뒤 공백만 맞춰 주고, 그 밖의 값은 기각(reason category).
+ * - 태그: 5개를 넘으면 정규화 뒤 앞 5개(tagsTrimmed). 0개는 그대로(저장 시 태그 없음).
+ */
+export function guardEnrichment(raw: RawArticleEnrichment): EnrichGuardResult {
+  if (raw.title_ko.length > TITLE_KO_HARD_LIMIT) return { ok: false, reason: "title" };
+  const category = toCategory(raw.category);
+  if (!category) return { ok: false, reason: "category" };
+  const tagsTrimmed = raw.tags.length > TAGS_LIMIT;
+  return {
+    ok: true,
+    enrichment: {
+      ...raw,
+      category,
+      tags: tagsTrimmed ? normalizeTags(raw.tags, TAGS_LIMIT) : raw.tags,
+    },
+    titleOver: raw.title_ko.length > TITLE_KO_LIMIT,
+    tagsTrimmed,
+  };
+}
+
+function toCategory(value: string): Category | null {
+  if ((CATEGORIES as readonly string[]).includes(value)) return value as Category;
+  const folded = value.trim().toLowerCase();
+  return (CATEGORIES as readonly string[]).includes(folded) ? (folded as Category) : null;
+}
+
+/** 회차 전체(묶음 여러 개)의 기사별 확인 집계 — enrichGuardNotes 재료. */
+export interface EnrichGuardTally {
+  /** 61~80자로 게재한 제목 수와 그중 최장 길이. */
+  titleOver: number;
+  titleOverMax: number;
+  /** 80자를 넘어 미가공으로 돌린 기사 수. */
+  titleRejected: number;
+  /** 분야 값이 6개 키가 아니어서 미가공으로 돌린 기사 수. */
+  categoryRejected: number;
+  /** 태그를 5개로 줄인 기사 수. */
+  tagsTrimmed: number;
+}
+
+export const emptyEnrichGuardTally = (): EnrichGuardTally => ({
+  titleOver: 0,
+  titleOverMax: 0,
+  titleRejected: 0,
+  categoryRejected: 0,
+  tagsTrimmed: 0,
+});
+
+/**
+ * collection_runs.notes 줄(없으면 빈 배열, 항목 안에 `;` 없음). 기각된 기사는 `가공 실패·보류 N건`에도 함께 센다
+ * (collect.ts — 선정 수 - 가공 수).
+ */
+export function enrichGuardNotes(t: EnrichGuardTally): string[] {
+  const notes: string[] = [];
+  if (t.titleRejected > 0) {
+    notes.push(`한국어 제목 길이 초과 ${t.titleRejected}건(${TITLE_KO_HARD_LIMIT}자 초과, 재시도)`);
+  }
+  if (t.categoryRejected > 0) notes.push(`분야 값 오류 ${t.categoryRejected}건(재시도)`);
+  if (t.titleOver > 0) {
+    notes.push(
+      `한국어 제목 ${TITLE_KO_LIMIT}자 초과 ${t.titleOver}건(게재, 최장 ${t.titleOverMax}자)`,
+    );
+  }
+  if (t.tagsTrimmed > 0)
+    notes.push(`태그 ${TAGS_LIMIT}개 초과 ${t.tagsTrimmed}건(앞 ${TAGS_LIMIT}개만)`);
+  return notes;
+}
 
 /**
  * 본문 끝의 GitHub 토픽(`설명 · topics: a, b, c` — collect/api.ts githubSummary). 토픽은 소문자·숫자·하이픈 슬러그를
@@ -215,15 +317,33 @@ export function estimateEnrichTokens({ request, ids }: EnrichChunk) {
   };
 }
 
-/** 모델 출력 → id 별 가공 결과. 요청에 없던 id 는 버린다. */
+/**
+ * 모델 출력(묶음 1개) → id 별 가공 결과. 요청에 없던 id 는 버리고, id 당 첫 결과만 guardEnrichment 로 확인한다 —
+ * 기각된 기사는 결과에 없다(미가공 저장 → 다음 실행에서 재심사). tally 를 넘기면 묶음마다 누적한다.
+ */
 export function resolveEnrichments(
-  batch: EnrichBatch,
+  batch: RawEnrichBatch,
   requestedIds: Iterable<number>,
+  tally: EnrichGuardTally = emptyEnrichGuardTally(),
 ): Map<number, ArticleEnrichment> {
   const wanted = new Set(requestedIds);
+  const seen = new Set<number>();
   const out = new Map<number, ArticleEnrichment>();
-  for (const { id, ...enrichment } of batch.articles) {
-    if (wanted.has(id) && !out.has(id)) out.set(id, enrichment);
+  for (const { id, ...raw } of batch.articles) {
+    if (!wanted.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    const result = guardEnrichment(raw);
+    if (!result.ok) {
+      if (result.reason === "title") tally.titleRejected += 1;
+      else tally.categoryRejected += 1;
+      continue;
+    }
+    if (result.titleOver) {
+      tally.titleOver += 1;
+      tally.titleOverMax = Math.max(tally.titleOverMax, result.enrichment.title_ko.length);
+    }
+    if (result.tagsTrimmed) tally.tagsTrimmed += 1;
+    out.set(id, result.enrichment);
   }
   return out;
 }

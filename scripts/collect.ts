@@ -42,8 +42,10 @@ import { estimateCost } from "./lib/cost";
 import { dedupKey } from "./lib/dedup";
 import {
   buildEnrichRequests,
+  emptyEnrichGuardTally,
   enrichEvidence,
   enrichFormat,
+  enrichGuardNotes,
   estimateEnrichTokens,
   resolveEnglish,
   resolveEnrichments,
@@ -730,12 +732,15 @@ async function main(): Promise<void> {
     );
     const results = await llm.run(chunks.map((c) => c.request));
     const enriched = new Map<number, ArticleEnrichment>();
+    // 기사별 확인(제목 길이·분야·태그 수 — lib/enrich.ts guardEnrichment): 기각된 기사만 미가공으로 남는다.
+    const guard = emptyEnrichGuardTally();
     for (const chunk of chunks) {
       const parsed = parseStructured(results.get(chunk.request.id)?.message ?? null, enrichFormat);
       if (!parsed) continue;
-      for (const [id, e] of resolveEnrichments(parsed, chunk.ids)) enriched.set(id, e);
+      for (const [id, e] of resolveEnrichments(parsed, chunk.ids, guard)) enriched.set(id, e);
     }
     if (snapshot) snapshot.enrichments = Object.fromEntries(enriched);
+    stats.notes.push(...enrichGuardNotes(guard));
 
     const unfinished = picks.length - enriched.size;
     if (unfinished > 0) {
