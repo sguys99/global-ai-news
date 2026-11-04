@@ -23,6 +23,16 @@ import {
   FORMAT_DISPLAY_LABELS,
   FORMAT_LABELS,
   FORMATS,
+  CATEGORY_LABELS,
+  CATEGORY_LABELS_EN,
+  FORMAT_DISPLAY_LABELS_EN,
+  formatCountLabel,
+  formatLabel,
+  hasHangul,
+  issueNoLabel,
+  REGION_LABELS,
+  regionLabel,
+  sourceDisplayName,
 } from "@/lib/labels";
 import { CONFIGS_DIR } from "@/lib/paths";
 import type { SourceConfig } from "@/lib/types";
@@ -272,5 +282,282 @@ describe("발행 지연 판정 — KST 기준", () => {
   it("안내 문구 — 지연 없음·잘못된 입력은 null", () => {
     expect(issueDelayCopy("2026-10-29", 0, 135)).toBeNull();
     expect(issueDelayCopy("bad", 1, 135)).toBeNull();
+  });
+});
+
+describe("labels — 영어판 표시명 (locale 인자, 기본 ko)", () => {
+  it("분야 영어 표시명(Phase 0-5 확정) — 코드는 두 언어 같다", () => {
+    expect(CATEGORIES.map((c) => categoryLabel(c, "en"))).toEqual([
+      "LLM",
+      "Agents",
+      "Physical AI",
+      "Open Source & Tools",
+      "Research",
+      "Industry & Policy",
+    ]);
+    expect(CATEGORIES.map((c) => categoryLabel(c))).toEqual(
+      CATEGORIES.map((c) => CATEGORY_LABELS[c]),
+    );
+    expect(CATEGORIES.map((c) => categoryLabel(c, "ko"))).toEqual(
+      CATEGORIES.map((c) => categoryLabel(c)),
+    );
+    expect(Object.keys(CATEGORY_LABELS_EN)).toEqual([...CATEGORIES]);
+  });
+
+  it("분야 영어: 구 값은 새 분야명, 미정의 값은 원문, 빈 값은 빈 문자열", () => {
+    expect(categoryLabel("Language Models", "en")).toBe("LLM");
+    expect(categoryLabel("산업·정책", "en")).toBe("Industry & Policy");
+    expect(categoryLabel("Unknown", "en")).toBe("Unknown");
+    expect(categoryLabel("", "en")).toBe("");
+  });
+
+  it("형식 영어 표시명 News·Repo·Model·Paper — 프롬프트용 FORMAT_LABELS 는 그대로", () => {
+    expect(FORMATS.map((f) => formatLabel(f, "en"))).toEqual(["News", "Repo", "Model", "Paper"]);
+    expect(FORMATS.map((f) => formatLabel(f))).toEqual(
+      FORMATS.map((f) => FORMAT_DISPLAY_LABELS[f]),
+    );
+    expect(Object.keys(FORMAT_DISPLAY_LABELS_EN)).toEqual([...FORMATS]);
+    expect(FORMAT_LABELS.oss).toBe("오픈소스");
+  });
+
+  it("형식 건수 문구: ko '저장소 4', en 복수형(뉴스는 stories)", () => {
+    expect(formatCountLabel("oss", 4)).toBe("저장소 4");
+    expect(formatCountLabel("news", 24, "ko")).toBe("뉴스 24");
+    expect(formatCountLabel("oss", 4, "en")).toBe("4 repos");
+    expect(formatCountLabel("model", 1, "en")).toBe("1 model");
+    expect(formatCountLabel("paper", 3, "en")).toBe("3 papers");
+    expect(formatCountLabel("news", 31, "en")).toBe("31 stories");
+    expect(formatCountLabel("news", 1, "en")).toBe("1 story");
+    expect(formatCountLabel("news", 0, "en")).toBe("0 stories");
+  });
+
+  it("지역 표시명 — 배지 KOREA 는 두 언어 같고 스크린리더 이름만 바뀐다", () => {
+    expect(regionLabel("kr")).toBe(REGION_LABELS.kr);
+    expect(regionLabel("kr", "en")).toBe("Korean outlet");
+  });
+
+  it("호수 표기", () => {
+    expect(issueNoLabel(135)).toBe("제135호");
+    expect(issueNoLabel(135, "en")).toBe("No. 135");
+  });
+
+  it("hasHangul", () => {
+    expect(hasHangul("AI타임스")).toBe(true);
+    expect(hasHangul("ㅋ")).toBe(true);
+    expect(hasHangul("OpenAI — “lockdown” mode · 4×")).toBe(false);
+  });
+});
+
+describe("labels — 영어판 매체명 (sourceDisplayName)", () => {
+  it("ko 는 기존과 같다(축약 shortSourceName, 전체 name)", () => {
+    for (const s of SOURCES_JSON) {
+      expect(sourceDisplayName(s)).toBe(shortSourceName(s.name));
+      expect(sourceDisplayName(s, "ko", true)).toBe(s.name);
+    }
+  });
+
+  it("en: 축약 맵의 라틴 이름 → nameEn → name", () => {
+    expect(
+      sourceDisplayName(
+        { name: "HuggingFace 트렌딩 모델", nameEn: "HuggingFace Trending Models" },
+        "en",
+      ),
+    ).toBe("Hugging Face");
+    expect(sourceDisplayName({ name: "AI타임스", nameEn: "AI Times" }, "en")).toBe("AI Times");
+    expect(sourceDisplayName({ name: "TechCrunch AI" }, "en")).toBe("TechCrunch");
+    expect(sourceDisplayName({ name: "The Verge AI" }, "en")).toBe("The Verge AI");
+    // 영문명이 없는 한글 매체(설정 누락)는 name 그대로 — sourcesConfig 테스트가 nameEn 누락을 막는다.
+    expect(sourceDisplayName({ name: "새매체" }, "en")).toBe("새매체");
+  });
+
+  it("en 전체 이름은 nameEn ?? name", () => {
+    expect(sourceDisplayName({ name: "AI타임스", nameEn: "AI Times" }, "en", true)).toBe(
+      "AI Times",
+    );
+    expect(sourceDisplayName({ name: "TechCrunch AI" }, "en", true)).toBe("TechCrunch AI");
+  });
+
+  it("등록된 모든 소스의 영어판 매체명(축약·전체)에 한글이 없다", () => {
+    for (const s of SOURCES_JSON) {
+      expect(hasHangul(sourceDisplayName(s, "en")), s.id).toBe(false);
+      expect(hasHangul(sourceDisplayName(s, "en", true)), s.id).toBe(false);
+    }
+  });
+});
+
+describe("labels — 영어판 날짜 (KST 고정, Intl 문장형 출력 미사용)", () => {
+  // 2026-11-03 05:05 UTC = 2026-11-03 14:05 KST (화요일)
+  const iso = "2026-11-03T05:05:00Z";
+  // 2026-10-03 23:42 UTC = 2026-10-04 08:42 KST (일요일) — UTC 로는 전날
+  const crossing = "2026-10-03T23:42:08.711Z";
+
+  it("짧은·보통·월일·긴 표기", () => {
+    expect(formatShortDate(iso, "en")).toBe("Nov 3");
+    expect(formatDate(iso, "en")).toBe("Nov 3, 2026");
+    expect(formatMonthDay(iso, "en")).toBe("Tue, Nov 3, 2026");
+    expect(formatLongDate(iso, "en")).toBe("Tuesday, November 3, 2026");
+  });
+
+  it("일시는 24시간제, KST 는 호출하는 쪽이 붙인다(한국어판과 같다)", () => {
+    expect(formatDateTime(iso, "en")).toBe("Nov 3, 2026, 14:05");
+    expect(formatDateTime("2026-11-02T15:07:00Z", "en")).toBe("Nov 3, 2026, 00:07");
+    expect(formatDateTime(iso)).toBe("2026.11.03 14:05");
+  });
+
+  it("UTC 자정을 넘긴 시각도 KST 날짜로", () => {
+    expect(formatShortDate(crossing, "en")).toBe("Oct 4");
+    expect(formatLongDate(crossing, "en")).toBe("Sunday, October 4, 2026");
+    expect(formatMonthDay(crossing, "en")).toBe("Sun, Oct 4, 2026");
+  });
+
+  it("모든 달·요일 이름", () => {
+    const months = Array.from({ length: 12 }, (_, i) =>
+      formatShortDate(`2026-${String(i + 1).padStart(2, "0")}-15T03:00:00Z`, "en"),
+    );
+    expect(months).toEqual([
+      "Jan 15",
+      "Feb 15",
+      "Mar 15",
+      "Apr 15",
+      "May 15",
+      "Jun 15",
+      "Jul 15",
+      "Aug 15",
+      "Sep 15",
+      "Oct 15",
+      "Nov 15",
+      "Dec 15",
+    ]);
+    // 2026-11-01(일) ~ 11-07(토)
+    const days = Array.from(
+      { length: 7 },
+      (_, i) => formatLongDate(`2026-11-0${i + 1}T03:00:00Z`, "en").split(",")[0],
+    );
+    expect(days).toEqual([
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ]);
+  });
+
+  it("출력에 특수 공백(U+202F·U+00A0)이 없다", () => {
+    for (const out of [
+      formatShortDate(iso, "en"),
+      formatDate(iso, "en"),
+      formatMonthDay(iso, "en"),
+      formatLongDate(iso, "en"),
+      formatDateTime(iso, "en"),
+      formatRelativeKst("2026-11-02T05:05:00Z", iso, "en"),
+    ]) {
+      expect(out).not.toMatch(/[   ]/);
+    }
+  });
+
+  it("잘못된 입력은 빈 문자열", () => {
+    expect(formatDate("not-a-date", "en")).toBe("");
+    expect(formatLongDate("", "en")).toBe("");
+    expect(formatDateTime("bad", "en")).toBe("");
+  });
+});
+
+describe("labels — 영어판 상대 시각 (한국어판과 같은 경계)", () => {
+  // 기준: 2026-10-26T21:00Z = 2026-10-27 06:00 KST (호 발행 시각)
+  const now = "2026-10-26T21:00:00Z";
+  const en = (iso: string, n: string = now) => formatRelativeKst(iso, n, "en");
+
+  it("1분 미만·미래는 'just now'", () => {
+    expect(en("2026-10-26T20:59:30Z")).toBe("just now");
+    expect(en(now)).toBe("just now");
+    expect(en("2026-10-26T21:05:00Z")).toBe("just now");
+  });
+
+  it("분·시간(내림, 단수형)", () => {
+    expect(en("2026-10-26T20:59:00Z")).toBe("1 minute ago");
+    expect(en("2026-10-26T20:00:01Z")).toBe("59 minutes ago");
+    expect(en("2026-10-26T20:00:00Z")).toBe("1 hour ago");
+    expect(en("2026-10-26T11:30:00Z")).toBe("9 hours ago");
+    expect(en("2026-10-25T21:00:01Z")).toBe("23 hours ago");
+  });
+
+  it("KST 달력상 전날 → 'yesterday, HH:mm KST'", () => {
+    // 2026-10-25T21:00Z = 10-26 06:00 KST, 기준 10-27 06:00 KST → 정확히 24시간, 전날
+    expect(en("2026-10-25T21:00:00Z")).toBe("yesterday, 06:00 KST");
+    expect(en("2026-10-25T15:10:00Z")).toBe("yesterday, 00:10 KST");
+  });
+
+  it("그보다 오래되면 같은 해 'Oct 24', 다른 해 'Dec 30, 2025'", () => {
+    expect(en("2026-10-24T12:00:00Z")).toBe("Oct 24");
+    expect(en("2025-12-30T03:00:00Z")).toBe("Dec 30, 2025");
+  });
+
+  it("한국어판 출력은 locale 생략·'ko' 가 같다", () => {
+    for (const iso of [
+      "2026-10-26T20:59:30Z",
+      "2026-10-26T20:30:00Z",
+      "2026-10-26T12:00:00Z",
+      "2026-10-25T21:00:00Z",
+      "2026-10-20T00:00:00Z",
+    ]) {
+      expect(formatRelativeKst(iso, now, "ko")).toBe(formatRelativeKst(iso, now));
+    }
+  });
+
+  it("잘못된 입력은 빈 문자열", () => {
+    expect(en("bad")).toBe("");
+    expect(en(now, "bad")).toBe("");
+  });
+});
+
+describe("labels — 영어판 발행 지연 문구", () => {
+  it("1일: 'Not out yet', 오늘 호가 아직 없고 보고 있는 호를 밝힌다", () => {
+    expect(issueDelayCopy("2026-10-29", 1, 135, "en")).toEqual({
+      label: "Not out yet",
+      strong: "The Friday, October 30 issue",
+      rest: " isn't out yet — you're reading the Thursday, October 29 issue (No. 135).",
+      short: "Oct 30 issue not out yet · reading Oct 29",
+    });
+  });
+
+  it("2일 이상: 'Delayed', 지연 일수", () => {
+    expect(issueDelayCopy("2026-10-28", 2, 134, "en")).toEqual({
+      label: "Delayed",
+      strong: "No new issue since Wednesday, October 28 (No. 134)",
+      rest: " — publication is 2 days behind.",
+      short: "No issue since Oct 28 · 2 days late",
+    });
+    expect(issueDelayCopy("2026-10-28", 3, 134, "en")?.short).toBe(
+      "No issue since Oct 28 · 3 days late",
+    );
+  });
+
+  it("호수 미상은 호수 생략, 연말 다음 날도 KST 달력으로", () => {
+    expect(issueDelayCopy("2026-12-31", 1, 0, "en")).toEqual({
+      label: "Not out yet",
+      strong: "The Friday, January 1 issue",
+      rest: " isn't out yet — you're reading the Thursday, December 31 issue.",
+      short: "Jan 1 issue not out yet · reading Dec 31",
+    });
+    expect(issueDelayCopy("2026-10-28", 2, 0, "en")?.strong).toBe(
+      "No new issue since Wednesday, October 28",
+    );
+  });
+
+  it("한국어판은 locale 생략·'ko' 가 같고, 영어 문구에는 한글이 없다", () => {
+    expect(issueDelayCopy("2026-10-29", 1, 135, "ko")).toEqual(
+      issueDelayCopy("2026-10-29", 1, 135),
+    );
+    for (const gap of [1, 2, 5]) {
+      const c = issueDelayCopy("2026-10-29", gap, 135, "en")!;
+      expect(hasHangul(Object.values(c).join(" "))).toBe(false);
+    }
+  });
+
+  it("지연 없음·잘못된 입력은 null", () => {
+    expect(issueDelayCopy("2026-10-29", 0, 135, "en")).toBeNull();
+    expect(issueDelayCopy("bad", 1, 135, "en")).toBeNull();
   });
 });

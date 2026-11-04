@@ -304,9 +304,20 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 3-2. 다국어 유틸
 
-- [ ] `src/lib/i18n.ts`: `Locale`, `LOCALES`, `localePath(locale, path)`, 문구 사전 `messages.ko`/`messages.en`(키 타입 공유, ko가 원본). 테스트로 en이 ko의 모든 키를 갖는지 확인한다.
-- [ ] `src/lib/labels.ts`: 분야·형식 영어 표시명, `categoryLabel(cat, locale)` 등 locale 인자(기본 `ko`), 날짜 포맷 영어판(`Tue, Nov 3, 2026`, `Tuesday, November 3, 2026`), 상대 시각(`3 hours ago`), 발행 지연 문구 영어판.
-- [ ] `ArticleCard` 표시 헬퍼를 둔다: `headlineOf(card, locale)`, `summaryOf(card, locale)`, `sourceNameOf(card, locale)`.
+- [x] `src/lib/i18n.ts`: `Locale`, `LOCALES`, `localePath(locale, path)`, 문구 사전 `messages.ko`/`messages.en`(키 타입 공유, ko가 원본). 테스트로 en이 ko의 모든 키를 갖는지 확인한다. (2026-11-04)
+  - 사전은 영역별 파일 `src/lib/messages/<영역>.ts`에 `defineMessages({ ko, en })`로 ko·en을 나란히 둔다. 모으는 파일은 없다 — 컴포넌트가 자기 이름공간을 직접 import한다(클라이언트 번들에 쓰는 이름공간만 실리고, 병렬 작업이 같은 파일을 고치지 않는다). 첫 이름공간은 셸 공용 문구 `common`.
+  - ko·en 어긋남은 두 겹으로 막는다. 타입: `en`은 `MessageShape<typeof ko>`라 키 누락·추가·문자열↔함수·인자 차이가 컴파일 오류다. 런타임: `i18n.test.ts`가 `src/lib/messages/`의 모든 파일을 읽어 키·값 종류를 깊게 비교하고, en 값에 한글이 없는지 확인한다(새 이름공간도 등록 없이 검사된다).
+  - `localePath`: ko는 입력 그대로(한국어 HTML 무변화의 핵심), en은 `/en` 접두(`/` → `/en/`, 쿼리·해시 유지, 이미 `/en`이거나 외부·`#`·`?`로 시작하면 그대로). basePath는 `Link`가 붙인다. 언어 전환·활성 메뉴 판정용 `splitLocalePath`도 둔다.
+  - `LocaleProvider`(`useLocale`·`useMessages`)는 기본값이 ko다. 한국어 레이아웃에는 감싸지 않는다 — 감싸면 한국어 모든 페이지의 인라인 RSC에 클라이언트 참조가 하나 더 붙는다. 영어 레이아웃만 감싼다.
+- [x] `src/lib/labels.ts`: 분야·형식 영어 표시명, `categoryLabel(cat, locale)` 등 locale 인자(기본 `ko`), 날짜 포맷 영어판(`Tue, Nov 3, 2026`, `Tuesday, November 3, 2026`), 상대 시각(`3 hours ago`), 발행 지연 문구 영어판. (2026-11-04)
+  - 새 locale 인자는 모두 마지막 자리, 기본값 `ko`라 기존 호출(scripts 포함) 출력이 같다. `categoryLabel`·`formatLabel`·`formatCountLabel`(`4 repos`·`31 stories`)·`regionLabel`·`issueNoLabel`(`제135호`/`No. 135`)·`sourceDisplayName`(en은 축약 맵의 라틴 이름 → `nameEn` → `name`, sources.json 전 소스가 한글 없는 영어 이름을 갖는지 테스트)·`hasHangul`.
+  - 영어 날짜는 Intl 출력 대신 KST 연월일·요일 표로 직접 만든다(Node·ICU 버전에 따라 AM/PM 앞에 U+202F가 끼는 차이를 피한다). 시각은 24시간제. `formatMonthDay` 영어판은 `Tue, Nov 3, 2026`(연도 포함), `formatLongDate`는 `Tuesday, November 3, 2026`.
+  - 상대 시각은 ko와 같은 경계로 `just now`·`3 minutes ago`·`3 hours ago`·`yesterday, 06:00 KST`·`Oct 24`. 발행 지연은 `Not out yet`·`Delayed` 두 단계로 같은 `{label, strong, rest, short}` 모양이다.
+  - 형식 `FORMAT_LABELS`는 LLM 프롬프트·운영용 이름이라 한국어만 둔다.
+- [x] `ArticleCard` 표시 헬퍼를 둔다: `headlineOf(card, locale)`, `summaryOf(card, locale)`, `sourceNameOf(card, locale)`. (2026-11-04, `src/lib/articleText.ts`)
+  - ko는 지금 컴포넌트의 식 그대로다(`titleKo || titleOriginal`, `summaryKo`, `shortSourceName`). en은 **한국어 가공 텍스트로 폴백하지 않는다**: 제목 `titleEn` → 한글 없는 원제 → `""`, 요약 `summaryEn` → `""`.
+  - `hasEnglish(card)`는 영어 제목·요약이 둘 다 있을 때만 참이다. 영어 필드가 없는 목록 카드 타입(SearchIndexEntry·IndexCard)을 넘기면 타입 오류가 나서, 영어 필드를 떼기 전 카드로 판정하게 만든다.
+  - `ArticleCard`·`db.ts`는 바꾸지 않았다. Phase 1에서 이미 `titleEn`·`summaryEn`·`source.nameEn`·`source.region`을 싣고, `toListCard`가 목록·색인·`latest.json`에서는 뗀다. Phase 5에 남는 틈: `FollowUpEntry`에 영어 제목이 없고, `RelatedCoverage.source`는 저장된 표시명 문자열이라 영어 매체명은 이름으로 찾아야 한다.
 
 ### 3-3. 라우트·뷰 분리 (Phase 0-2 결과대로)
 

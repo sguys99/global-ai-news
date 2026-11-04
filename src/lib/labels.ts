@@ -2,7 +2,11 @@
  * 표시용 라벨·날짜 포맷 단일 출처 (DESIGN.md §4).
  * 데이터 값(분야 키·소스명)은 불변이고, 화면 표기만 여기서 변환한다.
  * 날짜는 빌드(UTC)·브라우저(사용자 TZ) 간 하이드레이션 불일치를 막기 위해 KST로 고정한다.
+ *
+ * 영어판(Phase 3-2): 독자 화면용 표시명·날짜·상대 시각·발행 지연 문구는 마지막 인자 `locale`(기본 "ko")로 영어를 낸다.
+ * 기본값이 ko 라 기존 호출(웹·scripts/)은 출력이 그대로다. 운영·프롬프트용 이름(FORMAT_LABELS 등)은 한국어 전용이다.
  */
+import type { Locale } from "@/lib/i18n";
 
 /**
  * 분야(카테고리) 저장 키 — articles.category 와 LLM 가공 출력 enum(scripts/lib/schema.ts)의 단일 출처.
@@ -20,6 +24,22 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   oss: "오픈소스·도구",
   research: "연구·논문",
   industry: "산업·정책",
+};
+
+/** 분야 키 → 영어 표시명(영어판, Phase 0-5 확정). */
+export const CATEGORY_LABELS_EN: Record<Category, string> = {
+  llm: "LLM",
+  agent: "Agents",
+  physical: "Physical AI",
+  oss: "Open Source & Tools",
+  research: "Research",
+  industry: "Industry & Policy",
+};
+
+/** 언어 → 분야 표시명 맵(칩·내비처럼 키 순회로 그릴 때). */
+export const CATEGORY_LABELS_BY_LOCALE: Record<Locale, Record<Category, string>> = {
+  ko: CATEGORY_LABELS,
+  en: CATEGORY_LABELS_EN,
 };
 
 /** 분야 키 → 3자 코드(좁은 키커·배지용). */
@@ -67,10 +87,10 @@ export function categorySlug(category: string): string {
   return isCategory(key) ? key : "etc";
 }
 
-/** 카테고리 표시명. 구 값은 새 분야명으로, 미정의 값은 원문, 빈 값은 빈 문자열. */
-export function categoryLabel(category: string): string {
+/** 카테고리 표시명. 구 값은 새 분야명으로, 미정의 값은 원문, 빈 값은 빈 문자열(두 언어 같은 규칙). */
+export function categoryLabel(category: string, locale: Locale = "ko"): string {
   const key = normalizeCategory(category);
-  return isCategory(key) ? CATEGORY_LABELS[key] : category;
+  return isCategory(key) ? CATEGORY_LABELS_BY_LOCALE[locale][key] : category;
 }
 
 /** 카테고리 3자 코드(LLM/AGT/PHY/OSS/RES/BIZ). 미정의·빈 값은 빈 문자열. */
@@ -110,6 +130,50 @@ export const FORMAT_DISPLAY_LABELS: Record<Format, string> = {
   paper: "논문",
 };
 
+/**
+ * 형식 키 → 영어판 화면 표시명(Phase 0-5 확정). oss 는 "Repo" — 분야 "Open Source & Tools"와 겹치지 않는다
+ * (한국어판 "저장소"와 같은 이유). FORMAT_LABELS(프롬프트·운영용)의 영어판은 두지 않는다.
+ */
+export const FORMAT_DISPLAY_LABELS_EN: Record<Format, string> = {
+  news: "News",
+  oss: "Repo",
+  model: "Model",
+  paper: "Paper",
+};
+
+/** 언어 → 형식 화면 표시명 맵. */
+export const FORMAT_DISPLAY_LABELS_BY_LOCALE: Record<Locale, Record<Format, string>> = {
+  ko: FORMAT_DISPLAY_LABELS,
+  en: FORMAT_DISPLAY_LABELS_EN,
+};
+
+/** 형식 화면 표시명(FORMAT_DISPLAY_LABELS / _EN). */
+export function formatLabel(format: Format, locale: Locale = "ko"): string {
+  return FORMAT_DISPLAY_LABELS_BY_LOCALE[locale][format];
+}
+
+/**
+ * 영어 건수 명사(단수·복수). 뉴스는 불가산 "news" 가 아니라 "stories" 로 센다(Phase 0-5: `31 stories · 18 outlets`).
+ */
+const FORMAT_COUNT_NOUNS_EN: Record<Format, readonly [one: string, other: string]> = {
+  news: ["story", "stories"],
+  oss: ["repo", "repos"],
+  model: ["model", "models"],
+  paper: ["paper", "papers"],
+};
+
+/**
+ * 형식별 건수 문구 — 귀·레이더 머리·OG 형식 구성의 한 칸.
+ * ko "저장소 4"(표시명 + 공백 + 수, weeklyRadar·ogImage 와 같은 모양), en "4 repos"·"1 story"(수가 앞, 복수형).
+ */
+export function formatCountLabel(format: Format, count: number, locale: Locale = "ko"): string {
+  if (locale === "en") {
+    const [one, other] = FORMAT_COUNT_NOUNS_EN[format];
+    return `${count} ${count === 1 ? one : other}`;
+  }
+  return `${FORMAT_DISPLAY_LABELS[format]} ${count}`;
+}
+
 /** 형식 키 → 카드 배지 문구. 뉴스는 배지를 달지 않는다(빈 문자열). */
 export const FORMAT_BADGES: Record<Format, string> = {
   news: "",
@@ -140,6 +204,16 @@ export type Region = (typeof REGIONS)[number];
 export const REGION_LABELS: Record<Region, string> = {
   kr: "한국 매체",
 };
+
+/** 지역 키 → 영어판 스크린리더 이름(KOREA 배지의 sr-only). 배지 문구 KOREA 는 두 언어 같다. */
+export const REGION_LABELS_EN: Record<Region, string> = {
+  kr: "Korean outlet",
+};
+
+/** 지역 표시명(REGION_LABELS / _EN). */
+export function regionLabel(region: Region, locale: Locale = "ko"): string {
+  return (locale === "en" ? REGION_LABELS_EN : REGION_LABELS)[region];
+}
 
 /** 지역 키 → 배지 문구(형식 배지와 같은 잉크 아웃라인 칩). 해외는 배지가 없다. */
 export const REGION_BADGES: Record<Region, string> = {
@@ -180,6 +254,32 @@ export function shortSourceName(name: string): string {
   return SOURCE_SHORT_LABELS[name] ?? name;
 }
 
+const HANGUL = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
+
+/** 한글(자모·호환 자모·음절)이 섞였는지 — 영어판 표시 폴백 판정용. */
+export function hasHangul(text: string): boolean {
+  return HANGUL.test(text);
+}
+
+/**
+ * 언어별 매체 표시명. `full` 이면 원래 이름(툴팁·상세 신호 패널), 아니면 축약명(바이라인·칩).
+ *  - ko: 지금 그대로 — 축약 `shortSourceName(name)`, 전체 `name`.
+ *  - en: 축약명 맵에 라틴 문자 이름이 있으면 그것(예: "HuggingFace 트렌딩 모델" → "Hugging Face"),
+ *    없으면 영문 매체명 `nameEn`(sources.name_en, 한글 이름 매체만 있다), 그것도 없으면 `name`.
+ *    전체 이름은 `nameEn ?? name`. 해외 매체 대부분은 nameEn 이 없고 name 이 이미 영문이다.
+ */
+export function sourceDisplayName(
+  source: { name: string; nameEn?: string },
+  locale: Locale = "ko",
+  full = false,
+): string {
+  if (locale !== "en") return full ? source.name : shortSourceName(source.name);
+  if (full) return source.nameEn || source.name;
+  const short = SOURCE_SHORT_LABELS[source.name];
+  if (short && !hasHangul(short)) return short;
+  return source.nameEn || source.name;
+}
+
 const TZ = "Asia/Seoul";
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -213,16 +313,49 @@ function kstParts(
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** 'MM.DD' (카드·목록). */
-export function formatShortDate(iso: string): string {
+/*
+ * 영어 날짜는 Intl 의 문장형 출력(toLocaleDateString 등)을 쓰지 않고 KST 분해값을 고정 표에서 조립한다 —
+ * ICU 버전(Node·브라우저)마다 쉼표·공백(AM/PM 앞 U+202F 등)이 달라 빌드 HTML 과 하이드레이션이 어긋날 수 있다.
+ * 시각은 24시간제(한국어판·"06:00 KST 발행"과 같은 표기)라 AM/PM 이 없다.
+ */
+const EN_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const EN_WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const EN_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+const EN_MONTHS_SHORT = EN_MONTHS.map((m) => m.slice(0, 3));
+
+/** 'Nov 3' */
+const enMonthDay = (p: { m: number; d: number }) => `${EN_MONTHS_SHORT[p.m - 1]} ${p.d}`;
+/** 'Nov 3, 2026' */
+const enDate = (p: { y: number; m: number; d: number }) => `${enMonthDay(p)}, ${p.y}`;
+/** 'Tuesday, November 3' */
+const enLongMonthDay = (p: { m: number; d: number; w: number }) =>
+  `${EN_WEEKDAYS[p.w]}, ${EN_MONTHS[p.m - 1]} ${p.d}`;
+
+/** 'MM.DD' (카드·목록) / en 'Nov 3'. */
+export function formatShortDate(iso: string, locale: Locale = "ko"): string {
   const p = kstParts(iso);
-  return p ? `${pad(p.m)}.${pad(p.d)}` : "";
+  if (!p) return "";
+  return locale === "en" ? enMonthDay(p) : `${pad(p.m)}.${pad(p.d)}`;
 }
 
-/** 'YYYY.MM.DD' (바이라인·상세). */
-export function formatDate(iso: string): string {
+/** 'YYYY.MM.DD' (바이라인·상세) / en 'Nov 3, 2026'. */
+export function formatDate(iso: string, locale: Locale = "ko"): string {
   const p = kstParts(iso);
-  return p ? `${p.y}.${pad(p.m)}.${pad(p.d)}` : "";
+  if (!p) return "";
+  return locale === "en" ? enDate(p) : `${p.y}.${pad(p.m)}.${pad(p.d)}`;
 }
 
 /** 'YYYY-MM-DD' KST (호 고정 링크 `/edition/[date]` 경로 키). */
@@ -231,22 +364,36 @@ export function kstDateKey(iso: string | number | Date): string {
   return p ? `${p.y}-${pad(p.m)}-${pad(p.d)}` : "";
 }
 
-/** 'M월 D일(요)' (공유 미리보기 문구). */
-export function formatMonthDay(iso: string): string {
+/**
+ * 'M월 D일(요)' (공유 미리보기 문구·지난 호 이동) / en 'Tue, Nov 3, 2026'.
+ * 영어는 연도를 붙인다 — 요일·월 약칭 뒤에 연도 없는 날짜는 영어 지면에서 지난 호인지 읽히지 않는다(계획서 짧은 표기).
+ */
+export function formatMonthDay(iso: string, locale: Locale = "ko"): string {
   const p = kstParts(iso);
-  return p ? `${p.m}월 ${p.d}일(${WEEKDAYS[p.w]})` : "";
+  if (!p) return "";
+  return locale === "en"
+    ? `${EN_WEEKDAYS_SHORT[p.w]}, ${enDate(p)}`
+    : `${p.m}월 ${p.d}일(${WEEKDAYS[p.w]})`;
 }
 
-/** 'YYYY년 M월 D일 (요)요일' (마스트헤드). */
-export function formatLongDate(iso: string): string {
+/** 'YYYY년 M월 D일 (요)요일' (마스트헤드) / en 'Tuesday, November 3, 2026'. */
+export function formatLongDate(iso: string, locale: Locale = "ko"): string {
   const p = kstParts(iso);
-  return p ? `${p.y}년 ${p.m}월 ${p.d}일 ${WEEKDAYS[p.w]}요일` : "";
+  if (!p) return "";
+  return locale === "en"
+    ? `${enLongMonthDay(p)}, ${p.y}`
+    : `${p.y}년 ${p.m}월 ${p.d}일 ${WEEKDAYS[p.w]}요일`;
 }
 
-/** 'YYYY.MM.DD HH:mm' KST (상대 시각의 툴팁·절대 일시). */
-export function formatDateTime(iso: string): string {
+/**
+ * 'YYYY.MM.DD HH:mm' KST (상대 시각의 툴팁·절대 일시) / en 'Nov 3, 2026, 14:05'.
+ * 두 언어 모두 "KST" 를 붙이지 않는다 — 호출하는 쪽(RelativeTime 툴팁 `${…} KST`)이 붙인다.
+ */
+export function formatDateTime(iso: string, locale: Locale = "ko"): string {
   const p = kstParts(iso);
-  return p ? `${p.y}.${pad(p.m)}.${pad(p.d)} ${pad(p.hh)}:${pad(p.mm)}` : "";
+  if (!p) return "";
+  const time = `${pad(p.hh)}:${pad(p.mm)}`;
+  return locale === "en" ? `${enDate(p)}, ${time}` : `${p.y}.${pad(p.m)}.${pad(p.d)} ${time}`;
 }
 
 const MINUTE = 60_000;
@@ -257,23 +404,39 @@ const DAY = 24 * HOUR;
  * `now` 기준 상대 시각 (KST 고정, 바이라인용).
  * 1분 미만(시계 오차로 미래인 경우 포함) '방금' → 'N분 전' → 24시간 미만 'N시간 전'
  * → KST 달력상 전날이면 '어제 HH:mm' → 같은 해 'M.D' / 다른 해 'YYYY.M.D'.
+ * en 은 같은 경계로 'just now' → '1 minute ago'·'N minutes ago' → '1 hour ago'·'N hours ago'
+ * → 'yesterday, HH:mm KST'(시각이 보이는 유일한 자리라 KST 를 붙인다) → 'Nov 3' / 'Nov 3, 2025'.
+ * 바이라인 중간에 들어가므로 소문자로 시작한다.
  * 정적 빌드에서 값이 고정되도록 `now`는 호출자가 넘긴다(호 발행 시각 등).
  */
-export function formatRelativeKst(iso: string, now: string | number | Date): string {
+export function formatRelativeKst(
+  iso: string,
+  now: string | number | Date,
+  locale: Locale = "ko",
+): string {
   const t = new Date(iso).getTime();
   const n = new Date(now).getTime();
   if (Number.isNaN(t) || Number.isNaN(n)) return "";
+  const en = locale === "en";
 
   const diff = n - t;
-  if (diff < MINUTE) return "방금";
-  if (diff < HOUR) return `${Math.floor(diff / MINUTE)}분 전`;
-  if (diff < DAY) return `${Math.floor(diff / HOUR)}시간 전`;
+  if (diff < MINUTE) return en ? "just now" : "방금";
+  if (diff < HOUR) {
+    const m = Math.floor(diff / MINUTE);
+    return en ? `${m} ${m === 1 ? "minute" : "minutes"} ago` : `${m}분 전`;
+  }
+  if (diff < DAY) {
+    const h = Math.floor(diff / HOUR);
+    return en ? `${h} ${h === 1 ? "hour" : "hours"} ago` : `${h}시간 전`;
+  }
 
   const p = kstParts(t)!;
   const q = kstParts(n)!;
   // '어제'는 UTC가 아니라 KST 달력 날짜 차이로 판정한다.
   const dayGap = (Date.UTC(q.y, q.m - 1, q.d) - Date.UTC(p.y, p.m - 1, p.d)) / DAY;
-  if (dayGap === 1) return `어제 ${pad(p.hh)}:${pad(p.mm)}`;
+  const time = `${pad(p.hh)}:${pad(p.mm)}`;
+  if (dayGap === 1) return en ? `yesterday, ${time} KST` : `어제 ${time}`;
+  if (en) return p.y === q.y ? enMonthDay(p) : enDate(p);
   return p.y === q.y ? `${p.m}.${p.d}` : `${p.y}.${p.m}.${p.d}`;
 }
 
@@ -303,10 +466,15 @@ export function issueDelayDays(issueDate: string, now: string | number | Date): 
 /** 'YYYY-MM-DD'(KST 달력 날짜) 정오 기준 분해 — 날짜 키를 요일 있는 표기로 바꿀 때 쓴다. */
 const kstDateParts = (dateKey: string) => kstParts(`${dateKey}T12:00:00+09:00`);
 
+/** 호수 표기: ko '제135호', en 'No. 135'. */
+export function issueNoLabel(issueNo: number, locale: Locale = "ko"): string {
+  return locale === "en" ? `No. ${issueNo}` : `제${issueNo}호`;
+}
+
 /** 발행 지연 안내 문구(상태 라벨 + 전체 문장 + 좁은 화면용 짧은 문구). */
 export interface IssueDelayCopy {
-  /** 상태 라벨 — 1일 "발행 전", 2일 이상 "발행 지연". */
-  label: "발행 전" | "발행 지연";
+  /** 상태 라벨 — 1일 "발행 전"(en "Not out yet"), 2일 이상 "발행 지연"(en "Delayed"). */
+  label: "발행 전" | "발행 지연" | "Not out yet" | "Delayed";
   /** md 이상 전체 문장: 잉크로 강조할 앞 구절 + 이어지는 문장. */
   strong: string;
   rest: string;
@@ -318,11 +486,20 @@ export interface IssueDelayCopy {
  * 발행 지연 안내 문구. gap 은 issueDelayDays 결과(≥1), issueNo 는 보고 있는 호의 호수(0 = 미상 → 생략).
  *  - 1일: "10월 30일 금요일 호는 아직 발행 전입니다 — 지금은 10월 29일 목요일 제135호를 보고 계십니다."
  *  - 2일+: "10월 28일 수요일 제134호 이후 새 호가 나오지 않았습니다 — 발행이 2일째 늦어지고 있습니다."
+ * en(같은 구조, strong 에 날짜가 든다):
+ *  - 1일: "The Friday, October 30 issue" + " isn't out yet — you're reading the Thursday, October 29 issue (No. 135)."
+ *  - 2일+: "No new issue since Wednesday, October 28 (No. 134)" + " — publication is 2 days behind."
  * 잘못된 입력·gap < 1 이면 null(안내 없음).
  */
-export function issueDelayCopy(issueDate: string, gap: number, issueNo = 0): IssueDelayCopy | null {
+export function issueDelayCopy(
+  issueDate: string,
+  gap: number,
+  issueNo = 0,
+  locale: Locale = "ko",
+): IssueDelayCopy | null {
   const issue = kstDateParts(issueDate);
   if (!issue || !(gap >= 1)) return null;
+  if (locale === "en") return issueDelayCopyEn(issueDate, issue, gap, issueNo);
   const long = (p: { m: number; d: number; w: number }) => `${p.m}월 ${p.d}일 ${WEEKDAYS[p.w]}요일`;
   const short = (p: { m: number; d: number; w: number }) => `${p.m}.${p.d}(${WEEKDAYS[p.w]})`;
   const issueName = `${long(issue)} ${issueNo > 0 ? `제${issueNo}호` : "호"}`;
@@ -342,5 +519,30 @@ export function issueDelayCopy(issueDate: string, gap: number, issueNo = 0): Iss
     strong: `${long(today)} 호`,
     rest: `는 아직 발행 전입니다 — 지금은 ${issueName}를 보고 계십니다.`,
     short: `${short(today)} 호 발행 전 · ${short(issue)} 호를 보는 중`,
+  };
+}
+
+/** issueDelayCopy 의 영어판(분해·판정은 같다). 짧은 문구는 요일 없이 'Oct 30' 으로 줄인다. */
+function issueDelayCopyEn(
+  issueDate: string,
+  issue: { m: number; d: number; w: number },
+  gap: number,
+  issueNo: number,
+): IssueDelayCopy {
+  const no = issueNo > 0 ? ` (${issueNoLabel(issueNo, "en")})` : "";
+  if (gap >= 2) {
+    return {
+      label: "Delayed",
+      strong: `No new issue since ${enLongMonthDay(issue)}${no}`,
+      rest: ` — publication is ${gap} days behind.`,
+      short: `No issue since ${enMonthDay(issue)} · ${gap} days late`,
+    };
+  }
+  const today = kstParts(Date.parse(`${issueDate}T12:00:00+09:00`) + DAY)!;
+  return {
+    label: "Not out yet",
+    strong: `The ${enLongMonthDay(today)} issue`,
+    rest: ` isn't out yet — you're reading the ${enLongMonthDay(issue)} issue${no}.`,
+    short: `${enMonthDay(today)} issue not out yet · reading ${enMonthDay(issue)}`,
   };
 }
