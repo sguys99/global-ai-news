@@ -66,7 +66,7 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ## 진행 현황 개요
 
-- [ ] **Phase 0** — 기준선·기술 검증(라우팅 스파이크·영어 품질 샘플·용량 측정)
+- [x] **Phase 0** — 기준선·기술 검증(라우팅 스파이크·영어 품질 샘플·용량 측정) — 2026-11-04 완료. Search Console 기준선만 11-17 이후로 보류
 - [ ] **Phase 1** — 영어 가공 데이터(수집 파이프라인, 화면 노출 없이 축적)
 - [ ] **Phase 2** — 지난 기사 영어 백필
 - [ ] **Phase 3** — 다국어 기반 구조(한국어 화면 무변화)
@@ -117,8 +117,18 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 0-5. 영어판 문구 확정
 
-- [ ] 영어 홈 제목·설명·태그라인 초안을 3개 정도 만들어 사용자에게 고르게 한다. 예: `AI Daybook — Daily AI News Briefing from Korea and the World`.
-- [ ] 분야·형식 영어 표시명을 정한다: LLM · Agents · Physical AI · Open Source & Tools · Research · Industry & Policy / News · Repo · Model · Paper.
+- [x] 영어 홈 제목·설명·태그라인 초안을 3개 정도 만들어 사용자에게 고르게 한다. 예: `AI Daybook — Daily AI News Briefing from Korea and the World`. (2026-11-03 사용자 선택: **1안 "한국 + 세계"**. 2안 글로벌 브리핑, 3안 한국 특화와 비교했다. 3안은 지면의 69%가 해외 기사라 약속과 내용이 어긋나 뺐다.)
+
+  | 자리                            | 확정 문구                                                                                                                                          |
+  | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 홈 `<title>`                    | `AI Daybook — Daily AI News Briefing from Korea and the World`                                                                                     |
+  | 홈 description(약 150자)        | `Every morning from Seoul: the day's top AI news, open-source repos, models and papers — with a Korea Desk on Korean AI you won't find elsewhere.` |
+  | 태그라인(푸터·기본 공유 썸네일) | `The world's AI news, and Korea's, edited every morning in Seoul.`                                                                                 |
+
+- [x] 분야·형식 영어 표시명을 정한다: LLM · Agents · Physical AI · Open Source & Tools · Research · Industry & Policy / News · Repo · Model · Paper. (2026-11-03 사용자 확인: **계획안 그대로**.)
+  - 분야 코드(LLM·AGT·PHY·OSS·RES·BIZ)와 형식 배지(REPO·MODEL·PAPER)는 이미 라틴 문자라 그대로 쓴다.
+  - 귀·레이더 머리처럼 건수를 세는 자리는 복수형을 쓴다: `31 stories · 18 outlets`, `4 repos · 2 models · 3 papers`. 뉴스 건수는 `news`(불가산)가 아니라 `stories`로 센다.
+  - 한국어판은 형식 oss를 "저장소"로 표시해 분야 "오픈소스·도구"와 겹치지 않게 했다. 영어 `Repo`도 `Open Source & Tools`와 겹치지 않는다.
 
 ---
 
@@ -339,6 +349,7 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 ## Phase 9: (선택) 추가 아이디어
 
 - [ ] **영어 뉴스레터:** 세 줄 요약 + 1면 + Korea Desk를 매일 메일로 보낸다(Buttondown 등). 영어권 유입이 생긴 뒤에 검토한다.
+- [ ] **가공 프롬프트 캐싱(0-3에서 추가):** 영어 규칙을 넣으면 가공 시스템 프롬프트가 Haiku 4.5의 캐시 하한(4,096토큰)을 넘는다. 회차마다 같은 시스템 프롬프트로 4번 호출하므로, Batches와 함께 `cache_control`을 시험해 볼 만하다. 지금은 캐싱을 쓰지 않는다(CLAUDE.md "프롬프트 캐싱은 쓰지 않는다"). Phase 1 비용이 실측으로 나온 뒤 판단한다.
 - [ ] **영어 세 줄 요약 전용 생성:** 선별 출력 `brief`에 영어 줄을 함께 받아(같은 호출) `title_en` 대신 편집 문장으로 쓴다.
 - [ ] **한국 관련 해외 기사 표시:** 가공 출력에 `about_korea` 불리언을 추가해, 해외 매체의 삼성·네이버 기사도 Korea Desk 후보로 삼는다(비용 미미).
 - [ ] **태그 정규화:** 태그를 영어 기준 키로 통일하고 한국어 표시명을 따로 둔다.
