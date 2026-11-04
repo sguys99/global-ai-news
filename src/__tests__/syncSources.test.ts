@@ -108,6 +108,44 @@ describe("syncSources — configs/sources.json → sources 테이블", () => {
     expect(describeSync(r)).toBe("삭제 1(reddit_localllama) · 비활성 1(old_rss)");
   });
 
+  it("region·nameEn 을 region·name_en 으로 맞추고, 빠지면 NULL 로 되돌린다", () => {
+    const geo = () =>
+      db.prepare("SELECT id, region, name_en FROM sources ORDER BY id").all() as {
+        id: string;
+        region: string | null;
+        name_en: string | null;
+      }[];
+    syncSources(db, [
+      src("aitimes", { name: "AI타임스", region: "kr", nameEn: "AI Times" }),
+      src("geeknews"),
+      src("hf_models", { nameEn: "  HuggingFace Trending Models  " }),
+    ]);
+    expect(geo()).toEqual([
+      { id: "aitimes", region: "kr", name_en: "AI Times" },
+      { id: "geeknews", region: null, name_en: null },
+      { id: "hf_models", region: null, name_en: "HuggingFace Trending Models" }, // 앞뒤 공백 제거
+    ]);
+
+    // region·nameEn 을 지우면 갱신으로 잡히고 NULL 이 된다
+    const r = syncSources(db, [
+      src("aitimes", { name: "AI타임스" }),
+      src("geeknews"),
+      src("hf_models", { nameEn: "HuggingFace Trending Models" }),
+    ]);
+    expect(r.updated).toEqual(["aitimes"]);
+    expect(geo()[0]).toEqual({ id: "aitimes", region: null, name_en: null });
+  });
+
+  it("알 수 없는 region 은 경고 후 해외(NULL), 빈 nameEn 은 NULL", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    syncSources(db, [src("aitimes", { region: "jp" as SourceConfig["region"], nameEn: "   " })]);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(db.prepare("SELECT region, name_en FROM sources").get()).toEqual({
+      region: null,
+      name_en: null,
+    });
+  });
+
   it("알 수 없는 format 은 경고 후 news, 중복 id 는 앞의 것만", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     syncSources(db, [

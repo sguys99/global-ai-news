@@ -35,4 +35,42 @@ describe("configs/sources.json", () => {
       expect.arrayContaining(["the_robot_report", "gnews_physical_ai", "irobotnews"]),
     );
   });
+
+  it("한국 매체 4곳만 region: kr — geeknews 는 해외 글을 소개하는 커뮤니티라 두지 않는다(영어판 1-1)", () => {
+    const kr = sources.filter((s) => s.region === "kr").map((s) => s.id);
+    expect(kr.sort()).toEqual(["aitimes", "byline_network", "etnews_ai", "irobotnews"]);
+  });
+
+  it("이름에 한글이 있는 소스는 모두 영문 매체명(nameEn)이 있다", () => {
+    const missing = sources.filter((s) => /[\uac00-\ud7a3]/.test(s.name) && !s.nameEn);
+    expect(missing.map((s) => s.id)).toEqual([]);
+  });
+});
+
+describe("sourceSchema — 영어판 소스 속성(region·nameEn)", () => {
+  const base = { id: "aitimes", name: "AI타임스", kind: "rss", url: "https://a", enabled: 1 };
+  const parse = (extra: Record<string, unknown>) => sourceSchema.safeParse({ ...base, ...extra });
+
+  it("region 은 생략하거나 kr 만", () => {
+    expect(parse({}).success).toBe(true);
+    expect(parse({ region: "kr" }).data).toMatchObject({ region: "kr" });
+    expect(parse({ region: "jp" }).success).toBe(false);
+    expect(parse({ region: "" }).success).toBe(false);
+  });
+
+  it("nameEn 은 비지 않은 라틴 문자열 — 앞뒤 공백은 지운다", () => {
+    expect(parse({ nameEn: "AI Times" }).data).toMatchObject({ nameEn: "AI Times" });
+    expect(parse({ nameEn: "  Byline Network " }).data).toMatchObject({ nameEn: "Byline Network" });
+    expect(parse({ nameEn: "GitHub (topic:ai-agents·mcp)" }).success).toBe(true);
+    expect(parse({ nameEn: "Café IA" }).success).toBe(true);
+    expect(parse({ nameEn: "" }).success).toBe(false);
+    expect(parse({ nameEn: "   " }).success).toBe(false);
+    expect(parse({ nameEn: "AI타임스" }).success).toBe(false);
+    expect(parse({ nameEn: "電子新聞" }).success).toBe(false);
+  });
+
+  it("스키마가 두 필드를 선언해 저장 시 지워지지 않는다", () => {
+    const parsed = parse({ region: "kr", nameEn: "AI Times" });
+    expect(parsed.data).toEqual({ ...base, region: "kr", nameEn: "AI Times" });
+  });
 });

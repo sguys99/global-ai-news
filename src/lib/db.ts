@@ -2,6 +2,7 @@ import Database, { type Database as DatabaseType } from "better-sqlite3";
 import {
   categoryAliases,
   categoryLabel,
+  isRegion,
   kstDateKey,
   normalizeCategory,
   toFormat,
@@ -15,11 +16,13 @@ import {
 } from "@/lib/sourceHealth";
 import type {
   ArticleCard,
+  ArticleSource,
   Engagement,
   FollowUpEntry,
   LatestFeedEntry,
   RelatedCoverage,
   RunRow,
+  SearchIndexEntry,
 } from "@/lib/types";
 import { weekWindow, type WeeklyCandidate } from "@/lib/weeklyRadar";
 
@@ -42,6 +45,8 @@ interface ArticleRow {
   source_id: string;
   source_name: string;
   source_format: string | null; // sources.format — 미정의 값은 news 로 본다
+  source_name_en: string | null; // sources.name_en — 영문 매체명(한글 이름 매체만)
+  source_region: string | null; // sources.region — 'kr' 외 값은 해외로 본다
   url: string;
   title_original: string;
   content_raw: string | null;
@@ -49,6 +54,8 @@ interface ArticleRow {
   trending_score: number;
   title_ko: string | null;
   summary_ko: string | null;
+  title_en: string | null; // 영어판 — 가공 전·영어 품질 검사 기각이면 NULL
+  summary_en: string | null;
   category: string | null;
   importance: number | null;
   related_json: string | null;
@@ -84,19 +91,29 @@ export function parseEngagement(json: string | null): Engagement | undefined {
   }
 }
 
+/** 행 → 카드 매체. 영문명·지역은 값이 있을 때만 키를 둔다(해외 매체 대부분은 id·name 뿐). */
+function toArticleSource(row: ArticleRow): ArticleSource {
+  const source: ArticleSource = { id: row.source_id, name: row.source_name };
+  if (row.source_name_en) source.nameEn = row.source_name_en;
+  if (isRegion(row.source_region)) source.region = row.source_region;
+  return source;
+}
+
 /**
- * DB 행 → 렌더 DTO. LLM 미가공(null) 필드는 빈 값으로 채운다.
+ * DB 행 → 렌더 DTO. LLM 미가공(null) 필드는 빈 값으로 채운다(영어 제목·요약도 없으면 빈 문자열).
  * 분야는 새 키로 정규화한다 — 마이그레이션 전 구 값 행도 섹션·필터에 같은 분야로 잡힌다.
- * 형식은 소스 속성(sources.format)이라 지난 기사에도 그대로 소급된다.
+ * 형식·영문 매체명·지역은 소스 속성(sources.format·name_en·region)이라 지난 기사에도 그대로 소급된다.
  */
 function toArticleCard(row: ArticleRow): ArticleCard {
   const card: ArticleCard = {
     id: row.id,
-    source: { id: row.source_id, name: row.source_name },
+    source: toArticleSource(row),
     url: row.url,
     titleKo: row.title_ko ?? "",
     summaryKo: row.summary_ko ?? "",
     titleOriginal: row.title_original,
+    titleEn: row.title_en ?? "",
+    summaryEn: row.summary_en ?? "",
     contentRaw: row.content_raw ?? undefined,
     category: normalizeCategory(row.category ?? ""),
     format: toFormat(row.source_format),
@@ -117,17 +134,30 @@ function toArticleCard(row: ArticleRow): ArticleCard {
  * 열어 직접 추가할 수 없다 — 그 전의 DB(마이그레이션 전 배포 브랜치 등)에서도 조회가 깨지지 않게 확인한다.
  */
 export function hasSourceFormat(conn: DatabaseType): boolean {
-  const cols = conn.prepare("PRAGMA table_info(sources)").all() as { name: string }[];
-  return cols.some((c) => c.name === "format");
+  return tableColumns(conn, "sources").has("format");
 }
 
-/** 기사 조회 공통 SELECT. format 컬럼이 없으면 NULL(→ news)로 읽는다. */
+/** 테이블의 컬럼 이름들(PRAGMA table_info). */
+function tableColumns(conn: DatabaseType, table: "articles" | "sources"): Set<string> {
+  const cols = conn.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  return new Set(cols.map((c) => c.name));
+}
+
+/**
+ * 기사 조회 공통 SELECT. 나중에 추가된 컬럼(sources.format·name_en·region, articles.title_en·summary_en)이
+ * 없는 옛 DB 에서는 NULL 로 읽는다(→ news·해외·영어 없음) — hasSourceFormat 과 같은 이유.
+ */
 function articleSelect(conn: DatabaseType): string {
-  const format = hasSourceFormat(conn) ? "s.format" : "NULL";
+  const sourceCols = tableColumns(conn, "sources");
+  const articleCols = tableColumns(conn, "articles");
+  const s = (col: string) => (sourceCols.has(col) ? `s.${col}` : "NULL");
+  const a = (col: string) => (articleCols.has(col) ? `a.${col}` : "NULL");
   return `
-  SELECT a.id, a.source_id, s.name AS source_name, ${format} AS source_format, a.url,
+  SELECT a.id, a.source_id, s.name AS source_name, ${s("format")} AS source_format,
+         ${s("name_en")} AS source_name_en, ${s("region")} AS source_region, a.url,
          a.title_original, a.content_raw, a.published_at, a.trending_score,
-         a.title_ko, a.summary_ko, a.category, a.importance, a.related_json,
+         a.title_ko, a.summary_ko, ${a("title_en")} AS title_en, ${a("summary_en")} AS summary_en,
+         a.category, a.importance, a.related_json,
          a.engagement_json,
          strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at) AS collected_at,
          (SELECT GROUP_CONCAT(t.name)
@@ -212,16 +242,22 @@ export function getFeed(opts: FeedOptions = {}, conn: DatabaseType = getDb()): A
 }
 
 /**
- * 목록·지면용 카드: 상세 전용 원문 발췌(contentRaw)를 뺀다. 홈·호 페이지는 카드 배열을
- * 클라이언트 컴포넌트에 넘겨 페이지 HTML 에 그대로 실리므로, 빼지 않으면 페이지가 수백 KB
- * 커지고 링크 미리보기 스크랩(카카오톡 등)이 실패할 위험도 커진다.
+ * 목록·지면용 카드 한 건(= 검색 인덱스·latest.json 항목): 상세 전용 원문 발췌(contentRaw)와 영어판 필드
+ * (titleEn·summaryEn, 매체 nameEn·region)를 뺀다. 한국어 지면은 영어를 그리지 않는데, 홈·호 페이지는 카드 배열을
+ * 클라이언트 컴포넌트에 넘겨 페이지 HTML·RSC 에 그대로 실린다 — 영어 요약까지 실으면 호 페이지가 카드 35건 × 2벌
+ * (인라인 + .txt)로 수십 KB 커진다(영어판 Phase 4 용량 리스크). 키 순서는 원래 카드 그대로 둔다(산출물 비교가 쉽게).
  */
+export function toListCard(article: ArticleCard): SearchIndexEntry {
+  const card = { ...article, source: { id: article.source.id, name: article.source.name } };
+  delete card.contentRaw;
+  delete card.titleEn;
+  delete card.summaryEn;
+  return card;
+}
+
+/** 목록·지면용 카드 배열(toListCard). 홈·호 페이지가 클라이언트 컴포넌트에 넘기기 전에 쓴다. */
 export function toListCards(articles: ArticleCard[]): ArticleCard[] {
-  return articles.map((article) => {
-    const card = { ...article };
-    delete card.contentRaw;
-    return card;
-  });
+  return articles.map(toListCard);
 }
 
 /** FTS5 MATCH 표현식 생성: 공백 토큰화 → 각 토큰 prefix("tok"*) → OR 결합. */
@@ -600,7 +636,7 @@ export function getArticlesCollectedSince(
     )
     .all(since) as ArticleRow[];
   return rows.map((row) => {
-    const { contentRaw: _contentRaw, ...entry } = toArticleCard(row);
+    const entry = toListCard(toArticleCard(row));
     return {
       ...entry,
       categoryLabel: categoryLabel(entry.category),

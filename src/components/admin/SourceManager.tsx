@@ -4,11 +4,20 @@
  * 소스 관리 (Phase 5). 표 + 추가/수정 폼 + 토글/삭제.
  * /api/admin/sources 에 fetch 하고, 응답으로 받은 최신 목록으로 갱신한다(낙관적 X).
  * WEB kind 는 "수집 예정" 배지(등록만, 수집 Post-MVP).
+ * 영어판 소스 속성: region(kr = 한국 매체, 목록에 KOREA 배지)·nameEn(영문 매체명, 한글 이름 매체만). 둘 다 생략이 기본이다.
  */
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FORMAT_LABELS, FORMATS, type Format } from "@/lib/labels";
+import { RegionBadge } from "@/components/ArticleMeta";
+import {
+  FORMAT_LABELS,
+  FORMATS,
+  REGION_LABELS,
+  REGIONS,
+  isRegion,
+  type Format,
+} from "@/lib/labels";
 import type { SourceConfig, SourceKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -118,6 +127,42 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
           />
         </div>
         <div className="flex flex-col gap-1">
+          <label htmlFor="source-name-en" className="text-caption text-muted-foreground">
+            nameEn (영문 매체명 — 한글 이름일 때만)
+          </label>
+          <Input
+            id="source-name-en"
+            lang="en"
+            value={form.nameEn ?? ""}
+            // 비우면 키를 지운다(생략 = 영어판은 name). 빈 문자열은 검증에서 막힌다.
+            onChange={(e) => setForm({ ...form, nameEn: e.target.value || undefined })}
+            placeholder="AI Times"
+            className={input}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="source-region" className="text-caption text-muted-foreground">
+            region
+          </label>
+          <select
+            id="source-region"
+            value={form.region ?? ""}
+            onChange={(e) => {
+              // 해외는 기본값이라 sources.json 에 적지 않는다(생략 = 해외).
+              const region = e.target.value;
+              setForm({ ...form, region: isRegion(region) ? region : undefined });
+            }}
+            className="border-input text-body h-11 rounded-lg border bg-transparent px-3 md:h-9"
+          >
+            <option value="">해외 (생략)</option>
+            {REGIONS.map((r) => (
+              <option key={r} value={r}>
+                {r} ({REGION_LABELS[r]})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
           <label className="text-caption text-muted-foreground">kind</label>
           <select
             value={form.kind}
@@ -149,7 +194,7 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
             ))}
           </select>
         </div>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 sm:col-span-2">
           <label className="text-caption text-muted-foreground">
             url {form.kind === "reddit" && "(r/Subreddit 형식)"}
           </label>
@@ -213,7 +258,17 @@ export function SourceManager({ initial }: { initial: SourceConfig[] }) {
                 )}
               >
                 <td className="font-mono">{s.id}</td>
-                <td>{s.name}</td>
+                <td>
+                  <span className="inline-flex items-center gap-2">
+                    {s.name}
+                    <RegionBadge region={s.region} />
+                  </span>
+                  {s.nameEn && (
+                    <span lang="en" className="text-muted-foreground block">
+                      {s.nameEn}
+                    </span>
+                  )}
+                </td>
                 <td>
                   {s.kind}
                   {s.kind === "web" && (

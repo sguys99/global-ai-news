@@ -128,6 +128,29 @@ export function toFormat(value: unknown): Format {
 }
 
 /**
+ * 지역(region) 키 — 소스 속성(configs/sources.json `region`)이자 sources.region 컬럼 값. 생략(NULL) = 해외 매체.
+ * 형식처럼 소스가 정하고 JOIN 으로 지난 기사에도 소급된다. 영어판 Korea Desk·`KOREA` 표시가 LLM 비용 없이 이 값을 쓴다.
+ * 한국어 커뮤니티라도 해외 소식을 소개하는 소스(geeknews)는 두지 않는다 — 다루는 사건이 해외라 Korea Desk 감이 아니다.
+ */
+export const REGIONS = ["kr"] as const;
+
+export type Region = (typeof REGIONS)[number];
+
+/** 지역 키 → 운영 도구·스크린리더 이름. */
+export const REGION_LABELS: Record<Region, string> = {
+  kr: "한국 매체",
+};
+
+/** 지역 키 → 배지 문구(형식 배지와 같은 잉크 아웃라인 칩). 해외는 배지가 없다. */
+export const REGION_BADGES: Record<Region, string> = {
+  kr: "KOREA",
+};
+
+export function isRegion(value: unknown): value is Region {
+  return typeof value === "string" && (REGIONS as readonly string[]).includes(value);
+}
+
+/**
  * 바이라인·칩·메타·상세 신호 패널에서 쓰는 매체 축약명 맵 — 독자가 아는 매체 이름(공식 표기, 예: "Hugging Face").
  * 축약명이 같은 소스는 매체 하나로 묶인다(feedFilter `groupSources`, 귀의 "매체 N곳"). 원래 이름은 title 툴팁에 둔다.
  */

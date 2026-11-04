@@ -154,6 +154,41 @@ describe("getFeed", () => {
     expect(getFeed({}, db).some((a) => "engagement" in a)).toBe(false);
   });
 
+  it("영어 제목·요약: 있으면 그대로, 없으면(NULL) 빈 문자열", () => {
+    db.prepare(
+      "UPDATE articles SET title_en = 'Agent A', summary_en = 'Summary A.' WHERE title_original = 'A'",
+    ).run();
+    const byTitle = Object.fromEntries(getFeed({}, db).map((a) => [a.titleOriginal, a]));
+    expect(byTitle.A).toMatchObject({ titleEn: "Agent A", summaryEn: "Summary A." });
+    expect(byTitle.B).toMatchObject({ titleEn: "", summaryEn: "" });
+  });
+
+  it("매체 영문명·지역은 소스 속성(sources.name_en·region)을 JOIN 으로 읽는다 — 없거나 미정의 값이면 키가 없다", () => {
+    // 기본: 해외·영문명 없음 → id·name 만
+    expect(getFeed({}, db).every((a) => Object.keys(a.source).length === 2)).toBe(true);
+    db.prepare("UPDATE sources SET region = 'kr', name_en = 'HN' WHERE id = 'hackernews'").run();
+    db.prepare("UPDATE sources SET region = 'jp', name_en = '' WHERE id = 'techcrunch_ai'").run();
+    const bySource = Object.fromEntries(getFeed({}, db).map((a) => [a.source.id, a.source]));
+    expect(bySource.hackernews).toEqual({
+      id: "hackernews",
+      name: "Hacker News",
+      nameEn: "HN",
+      region: "kr",
+    });
+    expect(bySource.techcrunch_ai).toEqual({ id: "techcrunch_ai", name: "TechCrunch AI" });
+  });
+
+  it("영어판 컬럼(title_en·summary_en·region·name_en)이 없는 예전 DB 도 조회가 깨지지 않는다", () => {
+    db.exec("ALTER TABLE articles DROP COLUMN title_en");
+    db.exec("ALTER TABLE articles DROP COLUMN summary_en");
+    db.exec("ALTER TABLE sources DROP COLUMN region");
+    db.exec("ALTER TABLE sources DROP COLUMN name_en");
+    const feed = getFeed({}, db);
+    expect(feed).toHaveLength(3);
+    expect(feed.every((a) => a.titleEn === "" && a.summaryEn === "")).toBe(true);
+    expect(feed.every((a) => !("region" in a.source) && !("nameEn" in a.source))).toBe(true);
+  });
+
   it("format 컬럼이 없는 예전 DB(읽기 전용이라 추가 불가)도 조회가 깨지지 않고 news 로 읽는다", () => {
     db.exec("ALTER TABLE sources DROP COLUMN format");
     const feed = getFeed({}, db);

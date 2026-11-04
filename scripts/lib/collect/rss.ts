@@ -3,7 +3,7 @@
  * rss-parser 로 피드를 파싱해 RawItem[] 으로 정규화한다.
  */
 import Parser from "rss-parser";
-import type { Category, Format } from "../../../src/lib/labels";
+import type { Category, Format, Region } from "../../../src/lib/labels";
 import type { RawItem } from "../../../src/lib/types";
 
 /** sources.json 의 소스 한 건 (Phase 1: rss 만 사용). */
@@ -17,6 +17,10 @@ export interface SourceConfig {
   maxItems?: number;
   /** 형식(news|oss|model|paper). 미지정 시 news — sources.format 으로 동기화된다(lib/syncSources.ts). */
   format?: Format;
+  /** 지역 — "kr" = 한국 매체, 미지정 = 해외. sources.region 으로 동기화된다(영어판 Korea Desk·KOREA 표시). */
+  region?: Region;
+  /** 영문 매체명(name 에 한글이 있는 소스만). sources.name_en 으로 동기화 — 미지정 시 영어판은 name 을 쓴다. */
+  nameEn?: string;
   /** 키워드 사전 필터 목록 이름(configs/keyword-filters.json). 지정하면 키워드가 없는 항목을 수집 직후 버린다(collect.ts). */
   keywordFilter?: string;
   /**

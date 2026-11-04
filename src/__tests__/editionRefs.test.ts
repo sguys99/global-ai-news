@@ -195,13 +195,26 @@ describe("getArticlesUntil / getLatestPublishedAt", () => {
 });
 
 describe("toListCards", () => {
-  it("상세 전용 원문 발췌(contentRaw) 키만 빼고 나머지는 그대로", () => {
+  it("상세 전용 원문 발췌(contentRaw)와 영어판 필드만 빼고 나머지는 그대로", () => {
     article("2026-10-05 10:00:00", "2026-10-05T10:00:00Z");
-    db.prepare("UPDATE articles SET content_raw = 'long body'").run();
+    db.prepare(
+      "UPDATE articles SET content_raw = 'long body', title_en = 'Title', summary_en = 'Summary.'",
+    ).run();
+    db.prepare("UPDATE sources SET region = 'kr', name_en = 'HN'").run();
     const [full] = getArticlesUntil("2026-10-06T00:00:00.000Z", db);
     expect(full.contentRaw).toBe("long body");
+    expect(full).toMatchObject({ titleEn: "Title", summaryEn: "Summary." });
+    expect(full.source).toEqual({ id: "hn", name: "Hacker News", nameEn: "HN", region: "kr" });
     const [card] = toListCards([full]);
-    expect("contentRaw" in card).toBe(false);
-    expect(card).toEqual({ ...full, contentRaw: undefined });
+    // 한국어 지면은 영어를 그리지 않는다 — 클라이언트 props(RSC 페이로드)에 싣지 않는다.
+    expect(card.source).toEqual({ id: "hn", name: "Hacker News" });
+    const dropped = new Set(["contentRaw", "titleEn", "summaryEn"]);
+    for (const key of dropped) expect(key in card).toBe(false);
+    const rest = Object.fromEntries(Object.entries(full).filter(([key]) => !dropped.has(key)));
+    expect(card).toEqual({ ...rest, source: { id: "hn", name: "Hacker News" } });
+    // 키 순서도 원래 카드 그대로(산출물 비교가 쉽게)
+    expect(Object.keys(card)).toEqual(Object.keys(rest));
+    // 원본 카드는 건드리지 않는다
+    expect(full.source.region).toBe("kr");
   });
 });

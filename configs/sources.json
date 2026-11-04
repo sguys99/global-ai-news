@@ -44,6 +44,8 @@
   {
     "id": "aitimes",
     "name": "AI타임스",
+    "nameEn": "AI Times",
+    "region": "kr",
     "kind": "rss",
     "url": "https://www.aitimes.com/rss/allArticle.xml",
     "enabled": 1,
@@ -52,6 +54,8 @@
   {
     "id": "etnews_ai",
     "name": "전자신문 AI",
+    "nameEn": "Electronic Times AI",
+    "region": "kr",
     "kind": "rss",
     "url": "https://rss.etnews.com/04046.xml",
     "enabled": 1,
@@ -60,6 +64,8 @@
   {
     "id": "byline_network",
     "name": "바이라인네트워크",
+    "nameEn": "Byline Network",
+    "region": "kr",
     "kind": "rss",
     "url": "https://byline.network/feed/",
     "enabled": 1,
@@ -170,6 +176,8 @@
   {
     "id": "irobotnews",
     "name": "로봇신문",
+    "nameEn": "iRobotNews",
+    "region": "kr",
     "kind": "rss",
     "topic": "physical",
     "url": "https://www.irobotnews.com/rss/S1N1.xml",
@@ -337,6 +345,7 @@
   {
     "id": "hf_models",
     "name": "HuggingFace 트렌딩 모델",
+    "nameEn": "HuggingFace Trending Models",
     "kind": "hf_models",
     "format": "model",
     "url": "https://huggingface.co/api/models?sort=trendingScore&limit=30",

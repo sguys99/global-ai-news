@@ -130,4 +130,15 @@ describe("buildLatestFeed", () => {
     expect(json).not.toContain("본문 전문");
     expect(json).not.toContain("contentRaw");
   });
+
+  it("영어판 필드는 아직 싣지 않는다(titleEn 은 영어판 Phase 7 에 더한다)", () => {
+    db.prepare(
+      "UPDATE articles SET title_en = 'English title', summary_en = 'English summary.'",
+    ).run();
+    db.prepare("UPDATE sources SET region = 'kr', name_en = 'GH English'").run();
+    const json = JSON.stringify(buildLatestFeed(NOW, db));
+    for (const key of ["titleEn", "summaryEn", "nameEn", "region", "English"]) {
+      expect(json).not.toContain(key);
+    }
+  });
 });

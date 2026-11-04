@@ -87,4 +87,18 @@ describe("buildSearchIndex", () => {
     const json = JSON.stringify(buildSearchIndex(db));
     expect(json).not.toContain("본문 전문");
   });
+
+  it("영어판 필드(영어 제목·요약, 매체 영문명·지역)는 싣지 않는다 — 영어판 Phase 1 은 산출물이 그대로", () => {
+    db.prepare(
+      "UPDATE articles SET title_en = 'English title', summary_en = 'English summary.'",
+    ).run();
+    db.prepare("UPDATE sources SET region = 'kr', name_en = 'HN English'").run();
+    const entry = buildSearchIndex(db).find((e) => e.id === 1)!;
+    expect("titleEn" in entry).toBe(false);
+    expect("summaryEn" in entry).toBe(false);
+    expect(entry.source).toEqual({ id: "hackernews", name: "Hacker News" });
+    const json = JSON.stringify(buildSearchIndex(db));
+    expect(json).not.toContain("English");
+    expect(json).not.toContain('"region"');
+  });
 });

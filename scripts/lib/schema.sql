@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS sources (
   kind        TEXT NOT NULL,               -- 'rss' | 'web' | 'hn' | 'github' | 'hf' | 'hf_models' | 'reddit' | 'arxiv'
   url         TEXT NOT NULL,
   enabled     INTEGER NOT NULL DEFAULT 1,  -- 'web'은 MVP에서 0 (수집 Post-MVP)
-  format      TEXT NOT NULL DEFAULT 'news' -- 'news' | 'oss' | 'model' | 'paper' (src/lib/labels.ts FORMATS)
+  format      TEXT NOT NULL DEFAULT 'news', -- 'news' | 'oss' | 'model' | 'paper' (src/lib/labels.ts FORMATS)
+  region      TEXT,                        -- 'kr' = 한국 매체, NULL = 해외 (src/lib/labels.ts REGIONS, 영어판 Korea Desk)
+  name_en     TEXT                         -- 영문 매체명(한글 이름 매체만), NULL 이면 영어판은 name
 );
 
 -- 기사 (수집 원본 + LLM 가공 결과 통합)
@@ -29,6 +31,10 @@ CREATE TABLE IF NOT EXISTS articles (
   -- LLM 가공 결과
   title_ko        TEXT,
   summary_ko      TEXT,
+  -- 영어판(Phase 1~): 가공이 원문에서 직접 쓴 영어 제목·요약. 영어 품질 검사(scripts/lib/englishCheck.ts)에서
+  -- 기각되거나 영어판 이전 기사면 NULL — 한국어 게재와 무관하다. FTS 는 한국어·원문만 색인한다(아래 articles_fts).
+  title_en        TEXT,
+  summary_en      TEXT,
   category        TEXT,                    -- 분야 키(llm|agent|physical|oss|research|industry, src/lib/labels.ts)
   importance      INTEGER,                 -- 1~5 (LLM 선별 단계의 상대 평가)
   -- 같은 사건을 다룬 다른 매체 기사(선별 단계에서 묶음). '[{"source":..,"url":..,"title":..}]'

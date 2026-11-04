@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Byline, CategoryKicker, FormatBadge } from "@/components/ArticleMeta";
+import { Byline, CategoryKicker, FormatBadge, RegionBadge } from "@/components/ArticleMeta";
 import { StoryEntry } from "@/components/Story";
 import type { ArticleCard } from "@/lib/types";
 
@@ -38,6 +38,22 @@ describe("FormatBadge — 형식 배지(시안 결정 ⑪)", () => {
 
   it("뉴스는 아무것도 그리지 않는다", () => {
     const { container } = render(<FormatBadge format="news" />);
+    expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("RegionBadge — 지역 배지(영어판 1-1, 형식 배지와 같은 문법)", () => {
+  it("kr: 화면은 KOREA(aria-hidden), 스크린리더는 한국 매체 — 잉크 아웃라인, 코발트 없음", () => {
+    const { container } = render(<RegionBadge region="kr" />);
+    expect(screen.getByText("KOREA")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("한국 매체")).toHaveClass("sr-only");
+    const badge = container.firstElementChild!;
+    expect(badge).toHaveClass("border", "border-foreground", "text-foreground", "text-badge");
+    expect(badge.className).not.toMatch(/brand/);
+  });
+
+  it("해외(지역 없음)는 아무것도 그리지 않는다", () => {
+    const { container } = render(<RegionBadge />);
     expect(container).toBeEmptyDOMElement();
   });
 });

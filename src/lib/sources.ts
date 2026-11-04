@@ -10,7 +10,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { CATEGORIES, FORMATS } from "@/lib/labels";
+import { CATEGORIES, FORMATS, REGIONS } from "@/lib/labels";
 import { CONFIGS_DIR } from "@/lib/paths";
 import type { SourceConfig, SourceKind } from "@/lib/types";
 import { commitFile, hasGithubConfig } from "@/lib/github";
@@ -31,6 +31,12 @@ const SOURCE_KINDS: SourceKind[] = [
   "arxiv",
 ];
 
+/**
+ * 영문 매체명 허용 문자: 라틴 문자·숫자·문장부호·기호·공백(예: "AI Times", "GitHub (topic:llm)", "Café AI").
+ * 한글·한자·가나는 막는다 — 영어판 바이라인에 그대로 실리는 값이다.
+ */
+const LATIN_NAME = /^[\p{Script=Latin}\p{N}\p{P}\p{S}\p{Zs}]+$/u;
+
 /** 소스 1건 검증 스키마. url 은 kind 에 따라 다르게 검증한다(reddit 은 r/... 형식, arxiv 는 카테고리명 또는 URL). */
 export const sourceSchema = z
   .object({
@@ -44,6 +50,15 @@ export const sourceSchema = z
     enabled: z.union([z.literal(0), z.literal(1)]),
     maxItems: z.number().int().positive().optional(),
     format: z.enum(FORMATS).optional(),
+    // 지역 — "kr" 만(생략 = 해외). 영어판 Korea Desk·KOREA 표시가 쓴다(sources.region 동기화).
+    region: z.enum(REGIONS).optional(),
+    // 영문 매체명 — 한글 이름 매체만 둔다(생략 시 영어판은 name). 앞뒤 공백은 저장 전에 지운다.
+    nameEn: z
+      .string()
+      .trim()
+      .min(1, "nameEn 이 비어 있습니다. 영문명이 없으면 필드를 지우세요.")
+      .regex(LATIN_NAME, "nameEn 은 영문(라틴 문자)으로 적습니다.")
+      .optional(),
     // 주력 분야 힌트(설정 전용). 스키마에 없으면 zod 가 키를 지워 저장 시 사라지므로 반드시 선언한다.
     topic: z.enum(CATEGORIES).optional(),
     // 키워드 사전 필터 목록 이름(configs/keyword-filters.json). topic 과 같은 이유로 선언한다.

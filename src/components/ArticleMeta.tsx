@@ -2,6 +2,7 @@
  * 기사 신호 프레젠테이션 컴포넌트 (DESIGN.md §4). 피드·검색·상세가 공유한다.
  * - CategoryKicker: 코발트 키커(한글 표시명)
  * - FormatBadge: 형식 배지(REPO·MODEL·PAPER) — 잉크 1px 아웃라인, 코발트 없음. 뉴스는 렌더하지 않는다
+ * - RegionBadge: 지역 배지(KOREA) — 형식 배지와 같은 문법. 해외 매체는 렌더하지 않는다
  * - ImportanceMeter: 5칸 원형 도트 미터(4–5는 코발트)
  * - Byline: (형식 배지) 소스 · 날짜 · 중요도 (+ 선택 화제 지수)
  * - TrendBar: 0–100 고정 스케일 수평 바
@@ -12,10 +13,13 @@ import type { ReactNode } from "react";
 import {
   FORMAT_BADGES,
   FORMAT_DISPLAY_LABELS,
+  REGION_BADGES,
+  REGION_LABELS,
   categoryLabel,
   formatDate,
   shortSourceName,
   type Format,
+  type Region,
 } from "@/lib/labels";
 import { relatedCountOf } from "@/lib/feedIndex";
 import { cn } from "@/lib/utils";
@@ -36,6 +40,10 @@ export function CategoryKicker({ category, className }: { category: string; clas
   );
 }
 
+/** 잉크 1px 아웃라인 배지 공용 클래스(형식·지역) — 코발트 금지. */
+const OUTLINE_BADGE =
+  "border-foreground text-foreground text-badge relative inline-flex h-[17px] shrink-0 items-center border px-[5px] pt-px font-sans font-bold tracking-[0.09em] whitespace-nowrap";
+
 /**
  * 형식 배지 REPO·MODEL·PAPER (시안 결정 ⑪). 10.5px 굵은 대문자, 잉크 1px 테두리, 각진 면 — 코발트는 쓰지 않는다
  * (단일 강조색 원칙: 코발트는 옆의 분야 키커 몫). 뉴스는 배지가 없다.
@@ -47,14 +55,23 @@ export function FormatBadge({ format, className }: { format: Format; className?:
   const badge = FORMAT_BADGES[format];
   if (!badge) return null;
   return (
-    <span
-      className={cn(
-        "border-foreground text-foreground text-badge relative inline-flex h-[17px] shrink-0 items-center border px-[5px] pt-px font-sans font-bold tracking-[0.09em] whitespace-nowrap",
-        className,
-      )}
-    >
+    <span className={cn(OUTLINE_BADGE, className)}>
       <span aria-hidden>{badge}</span>
       <span className="sr-only">{FORMAT_DISPLAY_LABELS[format]}</span>
+    </span>
+  );
+}
+
+/**
+ * 지역 배지 KOREA — 한국 매체(sources.region = kr). 형식 배지와 같은 문법(잉크 아웃라인·대문자, 스크린리더엔 "한국 매체").
+ * 지금은 운영 콘솔 소스 목록만 쓴다(영어판 Phase 5 의 KOREA 표시가 같은 컴포넌트를 쓸 수 있게 여기 둔다).
+ */
+export function RegionBadge({ region, className }: { region?: Region; className?: string }) {
+  if (!region) return null;
+  return (
+    <span className={cn(OUTLINE_BADGE, className)}>
+      <span aria-hidden>{REGION_BADGES[region]}</span>
+      <span className="sr-only">{REGION_LABELS[region]}</span>
     </span>
   );
 }

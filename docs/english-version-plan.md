@@ -138,12 +138,17 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 1-1. 저장소
 
-- [ ] `scripts/lib/schema.sql` `articles`에 `title_en TEXT`, `summary_en TEXT`를 추가하고, 기존 DB에는 `ensureSchema`(`scripts/lib/initDb.ts`)로 컬럼을 추가한다.
-- [ ] `src/lib/types.ts` `ArticleCard`에 `titleEn`·`summaryEn`(빈 문자열 = 없음)을 추가하고, `src/lib/db.ts` `articleSelect`·`toArticleCard`가 함께 읽게 한다.
-- [ ] `configs/sources.json`에 `region`(`"kr"`)과 `nameEn`을 추가하고 `syncSources`·`sources` 테이블(`region`, `name_en`)·admin 검증(`src/lib/sources.ts`)에 반영한다. `ArticleCard.source`에 `nameEn`·`region`을 노출한다.
-- [ ] 한국 매체 소스를 전부 표시한다(AI타임스·전자신문 AI·바이라인네트워크·로봇신문 등, sources.json 전수 확인).
+> **1-1 완료 (2026-11-04).** 테스트 954건·타입체크·린트 통과, 배포 DB 사본으로 마이그레이션·동기화 확인(두 번째 동기화 "변경 없음").
+
+- [x] `scripts/lib/schema.sql` `articles`에 `title_en TEXT`, `summary_en TEXT`를 추가하고, 기존 DB에는 `ensureSchema`(`scripts/lib/initDb.ts`)로 컬럼을 추가한다. (FTS는 그대로 한국어·원문만 색인한다. 영어 필드를 쓰면 갱신 트리거가 행을 다시 색인하므로 Phase 2 백필 때 FTS 행 약 1,232개가 다시 쓰인다 — 무해.)
+- [x] `src/lib/types.ts` `ArticleCard`에 `titleEn`·`summaryEn`(빈 문자열 = 없음)을 추가하고, `src/lib/db.ts` `articleSelect`·`toArticleCard`가 함께 읽게 한다. (옛 DB에 컬럼이 없으면 NULL로 읽는다 — `hasSourceFormat`과 같은 방식.)
+  - **용량 대책:** 목록·지면 카드(`toListCard`)는 영어 필드와 매체 부가 정보를 뺀다. 홈·호 페이지는 카드를 클라이언트 컴포넌트에 넘겨 RSC로 두 번 실리는데, 빈 키만으로도 1,255장에 약 48KB가 붙었다. 그래서 한국어 페이지·`search-index.json`·`feed-index.json`·`latest.json`은 바뀌지 않는다. Phase 5 영어 페이지는 영어용 목록 카드 변형을 따로 둔다. Phase 7 `latest.json` `titleEn` 추가는 `toListCard`·`LatestFeedEntry`를 의도적으로 바꿔야 한다(지금은 테스트가 필드가 없음을 검사한다).
+- [x] `configs/sources.json`에 `region`(`"kr"`)과 `nameEn`을 추가하고 `syncSources`·`sources` 테이블(`region`, `name_en`)·admin 검증(`src/lib/sources.ts`)에 반영한다. `ArticleCard.source`에 `nameEn`·`region`을 노출한다. (값이 있을 때만 키를 둔다. nameEn은 라틴 문자만 허용. 라벨 단일 출처는 `src/lib/labels.ts` `REGIONS`·`REGION_BADGES`("KOREA"). admin 소스 관리에 영문명 입력·지역 선택과 `KOREA` 칩(형식 배지와 같은 잉크 1px 아웃라인 `RegionBadge`, Phase 5에서 재사용)을 더했다.)
+- [x] 한국 매체 소스를 전부 표시한다(AI타임스·전자신문 AI·바이라인네트워크·로봇신문 등, sources.json 전수 확인).
   - 0-1 전수 결과, 한국어 소스는 aitimes·etnews_ai·byline_network·irobotnews·geeknews 5곳이다.
   - **geeknews는 `region: kr`로 두지 않는 것을 기본으로 한다.** 해외 글을 한국어로 소개하는 커뮤니티라 다루는 사건이 대부분 해외 소식이어서 Korea Desk·`KOREA` 표시와 맞지 않는다. 영어 가공은 다른 기사와 똑같이 한다.
+  - `region: kr` 4곳과 영문명: aitimes `AI Times` · etnews_ai `Electronic Times AI`(en.etnews.com 표기) · byline_network `Byline Network` · irobotnews `iRobotNews`(공식 영문명이 없어 도메인 표기 — 학계 인용도 이 표기). 한글 이름인 hf_models에도 `HuggingFace Trending Models`. 게재 1,255건 중 `region: kr` 기사는 358건이다.
+  - 남은 일(Phase 3·5): 매체 축약명 `shortSourceName`이 한국어 이름 기준이라 영어 바이라인용 축약 표가 필요하다.
 
 ### 1-2. 가공 출력
 

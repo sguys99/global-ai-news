@@ -1,15 +1,16 @@
 /**
  * configs/sources.json → sources 테이블 동기화(멱등). 수집 배치 시작과 `npm run db:init` 이 호출한다.
  *
- * - sources.json 의 **전 소스**(비활성 포함)를 id/name/kind/url/enabled/format 으로 맞춘다.
- *   format 생략 → 'news'. 형식은 이 테이블에만 있고 기사는 JOIN 으로 읽으므로, 값을 바꾸면 지난 기사에도 소급된다.
+ * - sources.json 의 **전 소스**(비활성 포함)를 id/name/kind/url/enabled/format/region/name_en 으로 맞춘다.
+ *   format 생략 → 'news', region·nameEn 생략 → NULL(해외·영문명 없음). 셋 다 이 테이블에만 있고 기사는 JOIN 으로
+ *   읽으므로, 값을 바꾸면 지난 기사에도 소급된다(영어판 Korea Desk·영문 바이라인).
  * - sources.json 에서 빠진 행: 기사가 참조하지 않으면 DELETE, 참조하면 enabled=0 으로 남긴다(FK·JOIN 유지).
  * - 바뀐 행만 쓴다. 이미 맞는 DB 에서는 읽기만 하므로 빌드(prebuild)에서 돌려도 data/app.db 가 바뀌지 않는다.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { Database as DatabaseType } from "better-sqlite3";
-import { isFormat, toFormat, type Format } from "../../src/lib/labels";
+import { isFormat, isRegion, toFormat, type Format, type Region } from "../../src/lib/labels";
 import { CONFIGS_DIR } from "../../src/lib/paths";
 import type { SourceConfig } from "./collect/rss";
 
@@ -37,23 +38,28 @@ interface SourceRow {
   url: string;
   enabled: number;
   format: Format;
+  region: Region | null;
+  name_en: string | null;
 }
 
-const FIELDS = ["name", "kind", "url", "enabled", "format"] as const;
+const FIELDS = ["name", "kind", "url", "enabled", "format", "region", "name_en"] as const;
 
 export function syncSources(db: DatabaseType, sources: SourceConfig[]): SyncSourcesResult {
   const result: SyncSourcesResult = { inserted: [], updated: [], deleted: [], disabled: [] };
   const existing = new Map(
     (
-      db.prepare("SELECT id, name, kind, url, enabled, format FROM sources").all() as SourceRow[]
+      db
+        .prepare("SELECT id, name, kind, url, enabled, format, region, name_en FROM sources")
+        .all() as SourceRow[]
     ).map((r) => [r.id, r]),
   );
   const insert = db.prepare(
-    `INSERT INTO sources (id, name, kind, url, enabled, format)
-     VALUES (@id, @name, @kind, @url, @enabled, @format)`,
+    `INSERT INTO sources (id, name, kind, url, enabled, format, region, name_en)
+     VALUES (@id, @name, @kind, @url, @enabled, @format, @region, @name_en)`,
   );
   const update = db.prepare(
-    `UPDATE sources SET name = @name, kind = @kind, url = @url, enabled = @enabled, format = @format
+    `UPDATE sources SET name = @name, kind = @kind, url = @url, enabled = @enabled, format = @format,
+            region = @region, name_en = @name_en
       WHERE id = @id`,
   );
   const referenced = db.prepare("SELECT 1 FROM articles WHERE source_id = ? LIMIT 1");
@@ -69,6 +75,10 @@ export function syncSources(db: DatabaseType, sources: SourceConfig[]): SyncSour
       if (s.format !== undefined && !isFormat(s.format)) {
         console.warn(`[syncSources] ${s.id}: 알 수 없는 format "${String(s.format)}" → news`);
       }
+      // 지역도 같다 — 오타는 경고 후 해외(NULL)로 둔다.
+      if (s.region !== undefined && !isRegion(s.region)) {
+        console.warn(`[syncSources] ${s.id}: 알 수 없는 region "${String(s.region)}" → 해외(NULL)`);
+      }
       const row: SourceRow = {
         id: s.id,
         name: s.name,
@@ -76,6 +86,9 @@ export function syncSources(db: DatabaseType, sources: SourceConfig[]): SyncSour
         url: s.url,
         enabled: s.enabled ? 1 : 0,
         format: toFormat(s.format),
+        region: isRegion(s.region) ? s.region : null,
+        // 빈·공백 영문명은 없는 것으로 본다(영어판이 name 으로 폴백).
+        name_en: s.nameEn?.trim() || null,
       };
       const prev = existing.get(s.id);
       if (!prev) {

@@ -3,7 +3,7 @@
  * - RawItem: 수집 어댑터 출력(원본). collect.ts 가 소비.
  * - ArticleCard: 피드/검색/상세에서 쓰는 렌더 DTO.
  */
-import type { Category, Format } from "@/lib/labels";
+import type { Category, Format, Region } from "@/lib/labels";
 
 /** 소스 종류. configs/sources.json 의 kind 와 동일. */
 export type SourceKind = "rss" | "web" | "hn" | "github" | "hf" | "hf_models" | "reddit" | "arxiv";
@@ -20,6 +20,8 @@ export interface SourceConfig {
   enabled: number; // 1=활성, 0=비활성
   maxItems?: number; // 1회 신규 후보 상한(scripts/collect.ts)
   format?: Format; // 형식 — 생략 시 news (sources.format 으로 동기화, src/lib/labels.ts FORMATS)
+  region?: Region; // 지역 — "kr" 만, 생략 = 해외 (sources.region 으로 동기화, src/lib/labels.ts REGIONS)
+  nameEn?: string; // 영문 매체명 — name 에 한글이 있을 때만, 생략 시 영어판은 name (sources.name_en)
   topic?: Category; // 주력 분야 힌트(현재 physical 만) — 선별 풀 할당용. 설정 전용(DB 컬럼 없음)
   keywordFilter?: string; // 키워드 사전 필터 목록 이름(configs/keyword-filters.json) — 설정 전용
 }
@@ -70,11 +72,17 @@ export interface RawItem {
 /** 렌더용 기사 카드 DTO. */
 export interface ArticleCard {
   id: number;
-  source: { id: string; name: string };
+  source: ArticleSource;
   url: string;
   titleKo: string;
   summaryKo: string;
   titleOriginal: string;
+  /**
+   * 영어 제목·요약(articles.title_en·summary_en, 영어판 Phase 1~). DB 조회 결과에는 항상 있다 — 영어가 없으면 빈 문자열
+   * (가공 전 기사·영어 품질 검사 기각). 한국어 지면의 목록용 카드(toListCards)와 공개 JSON 에서는 키째 뺀다(용량).
+   */
+  titleEn?: string;
+  summaryEn?: string;
   contentRaw?: string; // 원문 발췌 (상세 페이지에서 사용)
   category: string; // 분야 키(CATEGORIES 중 하나, src/lib/labels.ts)
   format: Format; // 형식(news|oss|model|paper) — 소스 속성(sources.format JOIN)
@@ -89,6 +97,20 @@ export interface ArticleCard {
    * 레이더 메타 줄(★ 스타·♥ likes·▲ upvotes 등)은 src/lib/radarMeta.ts 가 여기서 만든다.
    */
   engagement?: Engagement;
+}
+
+/**
+ * 카드의 매체. 영문명·지역은 소스 속성(sources.name_en·region JOIN)이라 지난 기사에도 소급된다.
+ * 값이 없으면 키를 두지 않는다(해외 매체 대부분) — 목록용 카드·공개 JSON 은 id·name 만 싣는다.
+ */
+export interface ArticleSource {
+  id: string;
+  /** 매체 표시명(sources.name, 한국어판). */
+  name: string;
+  /** 영문 매체명 — 한글 이름 매체만 있다. 영어판은 없으면 name 을 쓴다. */
+  nameEn?: string;
+  /** "kr" = 한국 매체(Korea Desk·KOREA 표시). 없으면 해외. */
+  region?: Region;
 }
 
 /** 대표 기사에 묶인 다른 매체 보도. */
@@ -121,8 +143,10 @@ export interface FollowUpEntry {
  * engagement 는 남긴다 — 메트릭이 있는 기사가 일부(2026-10 기준 997건 중 174건)이고 값이 작아
  * 인덱스가 1% 안쪽(약 5KB / 800KB)만 커진다. 검색 결과 카드도 같은 메타를 쓸 수 있게 구조를 맞춘다.
  * ArticleCard 와 구조 호환 → ArticleCard 컴포넌트·filterAndSortFeed 를 캐스팅 없이 재사용.
+ * 영어 제목·요약도 뺀다(한국어 검색이라 쓰지 않는다 — 영어판 Phase 1 은 공개 산출물이 바뀌지 않는다).
+ * 만드는 곳은 src/lib/db.ts toListCard 하나다(매체도 id·name 만).
  */
-export type SearchIndexEntry = Omit<ArticleCard, "contentRaw">;
+export type SearchIndexEntry = Omit<ArticleCard, "contentRaw" | "titleEn" | "summaryEn">;
 
 /**
  * 전체 기사 색인(StoryEntry)·피드 필터/정렬에 필요한 필드만 남긴 카드 — 홈 색인의 첫 페이지(정적 HTML)와

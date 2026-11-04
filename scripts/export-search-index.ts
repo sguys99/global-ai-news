@@ -9,14 +9,14 @@
  */
 import { writeFileSync } from "node:fs";
 import type { Database as DatabaseType } from "better-sqlite3";
-import { getDb, getFeed } from "../src/lib/db";
+import { getDb, getFeed, toListCard } from "../src/lib/db";
 import { SEARCH_INDEX_PATH } from "../src/lib/paths";
 import type { SearchIndexEntry } from "../src/lib/types";
 
-/** 전 기사를 검색 인덱스 항목(본문 contentRaw 제외)으로 변환한다. */
+/** 전 기사를 검색 인덱스 항목(본문 contentRaw·영어 필드 제외)으로 변환한다. */
 export function buildSearchIndex(conn: DatabaseType = getDb()): SearchIndexEntry[] {
-  // getFeed = 피드와 동일한 toArticleCard 매핑. 검색 인덱스는 본문만 떼어 재사용한다.
-  return getFeed({}, conn).map(({ contentRaw: _contentRaw, ...entry }) => entry);
+  // getFeed = 피드와 동일한 toArticleCard 매핑. 검색 인덱스는 본문·영어 필드만 떼어(toListCard) 재사용한다.
+  return getFeed({}, conn).map(toListCard);
 }
 
 /** 검색 인덱스를 JSON 파일로 기록한다. */
