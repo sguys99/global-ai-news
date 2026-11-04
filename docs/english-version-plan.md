@@ -44,7 +44,13 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - **영어 작성 규칙은 한 곳에서 관리한다.** `configs/prompts/english.md`(문체·고유명사·숫자 규칙)와 `configs/prompts/glossary.en.md`(한국 기관·기업 영문 표기)를 가공 프롬프트와 백필 프롬프트가 함께 쓴다.
 - **선별·재보도 검사·같은 사건 합치기·세 줄 요약 선택은 한국어 기준 그대로 둔다.** 영어판은 그 결과를 따라간다. 영어 세 줄 요약은 같은 줄 id의 `title_en`을 쓴다(추가 호출 없음).
 - **소스 속성으로 지역을 둔다.** `configs/sources.json`에 `region`(`kr` | 생략)과 `nameEn`(영문 매체명)을 두고 `sources` 테이블에 동기화한다(`format`과 같은 방식). Korea Desk와 `KOREA` 표시는 LLM 비용 없이 이 값으로 정한다.
-- **라우트는 언어별 최상위 레이아웃으로 나눈다(Phase 0 스파이크로 확정).** 1안은 `src/app/(ko)/layout.tsx`(`lang="ko"`)와 `src/app/(en)/en/layout.tsx`(`lang="en"`)다. 페이지 본문은 `src/views/*`로 옮겨 두 언어가 공유하고, 사이트맵·RSS·OG 라우트 핸들러는 레이아웃 밖에 둔다. 스파이크에서 정적 export 404가 깨지면 2안으로 간다. 2안은 레이아웃을 하나로 두고 영어 페이지 래퍼에 `lang="en"`을 주는 방식이다. Google은 `lang` 속성 대신 본문과 hreflang으로 언어를 판단하므로 SEO 손실은 작다.
+- **라우트는 언어별 최상위 레이아웃으로 나눈다 — 1안 확정(2026-11-03 Phase 0-2 스파이크).** `src/app/(ko)/layout.tsx`(`lang="ko"`)와 `src/app/(en)/en/layout.tsx`(`lang="en"`)를 두고, 앱 전체 404는 `src/app/global-not-found.tsx`가 맡는다. 이 파일은 `next.config.ts`의 dev·프로덕션 분기 **둘 다**에 `experimental.globalNotFound: true`가 있어야 동작한다(Next 15.5.15). 페이지 본문은 `src/views/*`로 옮겨 두 언어가 공유하고, 사이트맵·RSS·OG·api 라우트 핸들러와 아이콘은 그룹 밖 `src/app/`에 그대로 둔다. 스파이크에서 정적 export 확인 5개(lang·404·sitemap/feed/og·dev admin·basePath)를 모두 통과했고, 한국어 페이지 본문 마크업은 기준선과 같았다. 2안(단일 레이아웃 + 영어 래퍼 `lang="en"`)도 빌드해 비교했다. 용량이 똑같이 늘고(+4%, 페이지당 약 +5KB — 레이아웃 단계가 하나 늘어나며 생기는 비용) 정적 HTML이 `lang="ko"`로 남아서 기각했다.
+  - **404는 한 장뿐이다**(GitHub Pages·nginx). 404 페이지에 두 언어 문구를 함께 싣고, `/en/` 경로에서는 인라인 스크립트로 `lang`을 바꾼다.
+  - `global-not-found`는 레이아웃을 거치지 않는다. viewport·헤더·모바일 바·푸터·ThemeProvider·Analytics를 직접 넣어야 하므로, 두 레이아웃과 404가 공유하는 `fonts.ts`와 공용 셸 모듈로 모은다.
+  - 언어를 넘는 이동은 전체 새로 고침이다(루트 레이아웃이 다르다). 언어 전환 링크는 `prefetch={false}`를 검토한다.
+  - 영어 레이아웃에도 `metadataBase`·소유 확인 메타를 넣는다.
+  - 실험 기능에 기대므로 Next를 올릴 때 404부터 확인한다. 기능이 깨져도 빌드는 성공하고 404만 기본 화면으로 퇴보한다.
+  - 상세: [phase0/0-2-routing-spike.md](english-version/phase0/0-2-routing-spike.md)
 - **UI 문구는 사전으로 관리한다.** `src/lib/i18n.ts`에 `Locale = "ko" | "en"`, 문구 사전, `localePath()`를 둔다. 분야·형식 표시명과 날짜 포맷은 기존 단일 출처인 `src/lib/labels.ts`에 영어 버전을 더한다.
 - **한국어판은 바뀌지 않는다.** 구조를 바꾼 뒤에도 한국어 페이지의 HTML이 바뀌지 않았는지 비교해서 확인한다(Phase 3).
 - **불변:** 정적 export·GitHub Pages·Batches 호출 계층·비용 상한 $0.1·DESIGN.md 톤(뉴스프린트·잉크·코발트 단일 강조·괘선)은 그대로다.
@@ -86,9 +92,9 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 0-2. 라우팅 스파이크 (별도 브랜치, 버림)
 
-- [ ] `(ko)`·`(en)` 두 최상위 레이아웃을 만들고 페이지 하나씩 둔다.
-- [ ] 정적 export(`npm run build`, Docker)로 확인한다: ① 두 페이지 `lang` 속성 ② `404.html` 생성·동작(필요하면 `global-not-found`) ③ `sitemap.xml`·`feed.xml`·`og/*` 라우트 생성 ④ 로컬 `next dev`에서 admin(`*.local.tsx`) 동작 ⑤ `basePath` 하위 링크.
-- [ ] 1안 채택 여부를 결정하고 결과를 이 문서 `아키텍처 결정`에 적는다. 실패하면 2안(단일 레이아웃 + 영어 래퍼 `lang="en"`)으로 간다.
+- [x] `(ko)`·`(en)` 두 최상위 레이아웃을 만들고 페이지 하나씩 둔다. (기존 페이지 전부를 `(ko)`로 옮기고 `/en/`·`/en/article/[id]`를 더했다. 로컬 브랜치 `spike/i18n-routing`에 있고 푸시하지 않았다.)
+- [x] 정적 export(`npm run build`, Docker)로 확인한다: ① 두 페이지 `lang` 속성 ② `404.html` 생성·동작(필요하면 `global-not-found`) ③ `sitemap.xml`·`feed.xml`·`og/*` 라우트 생성 ④ 로컬 `next dev`에서 admin(`*.local.tsx`) 동작 ⑤ `basePath` 하위 링크. (Docker 정적 빌드에서 5개 모두 PASS. ②는 `global-not-found` 필요. 테스트 867건·타입체크도 통과)
+- [x] 1안 채택 여부를 결정하고 결과를 이 문서 `아키텍처 결정`에 적는다. 실패하면 2안(단일 레이아웃 + 영어 래퍼 `lang="en"`)으로 간다. (**1안 채택**, 2026-11-03)
 
 ### 0-3. 영어 품질 샘플
 
