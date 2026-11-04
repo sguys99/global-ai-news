@@ -1,6 +1,6 @@
 Korean → English names for the English edition (title_en·summary_en). Maintainer notes (text outside `- ` bullets is never sent to the model):
 each bullet holds one or more entries joined by ` · `, as `key · short form → English`, and every key left of `→` is the same name (과기정통부 = 과학기술정보통신부).
-The enrich step sends only the entries whose keys appear in a request's articles, as a `[용어집]` block (scripts/lib/glossary.ts). Keys match as substrings, ignoring spaces, so write keys as the press writes them.
+The enrich step sends only the entries whose keys appear in a request's articles, as a `[용어집]` block (scripts/lib/glossary.ts). Keys match as substrings; a space in a key is optional in the text (and Hangul↔Latin boundaries may have one), but a space missing from the key is not — write a multi-word name with its space (보스턴 다이나믹스 matches 보스턴다이나믹스 too, not the reverse).
 A bullet that starts with an English label and a colon (Military ranks, Family names) is a table sent with every request.
 
 ### Government, public bodies and law
@@ -44,9 +44,9 @@ A bullet that starts with an English label and a colon (Military ranks, Family n
 - KT → KT
 - LG전자 · 엘지전자 → LG Electronics · LG CNS → LG CNS · LG AI연구원 → LG AI Research · 엑사원 → EXAONE
 - 현대차 · 현대자동차 → Hyundai Motor · 현대차그룹 → Hyundai Motor Group · 현대모비스 → Hyundai Mobis
-- 네이버 → Naver · 네이버클라우드 → Naver Cloud · 네이버지도 → Naver Map
-- 카카오 → Kakao · 카카오톡 · 카톡 → KakaoTalk · 카카오모빌리티 → Kakao Mobility · 카나나 → Kanana
-- NC AI → NC AI · 두산로보틱스 → Doosan Robotics · 포스코DX → POSCO DX · 한컴 → Hancom · 한전KDN → KEPCO KDN · MDS테크 → MDS Tech
+- 네이버 → Naver · 네이버 클라우드 → Naver Cloud · 네이버지도 → Naver Map
+- 카카오 → Kakao · 카카오톡 · 카톡 → KakaoTalk · 카카오 모빌리티 → Kakao Mobility · 카나나 → Kanana
+- NC AI → NC AI · 두산 로보틱스 → Doosan Robotics · 포스코DX → POSCO DX · 한컴 → Hancom · 한전KDN → KEPCO KDN · MDS테크 → MDS Tech
 - IBK기업은행 → Industrial Bank of Korea (IBK) · 롯데벤처스 → Lotte Ventures
 - 배민 → Baemin · 우아한형제들 → Woowa Brothers · 쏘카 → SOCAR
 
@@ -82,13 +82,13 @@ Write the original spelling. Watch the pairs that look alike.
 - 오픈AI → OpenAI · 챗GPT → ChatGPT · 코덱스 → Codex · 아스트라 → Astra · 솔 → Sol (GPT model)
 - 구글 → Google · 제미나이 → Gemini · 아르곤 → Argon · 카본 → Carbon
 - 메타 → Meta · 뮤즈 → Muse · 마이크로소프트 · MS → Microsoft
-- 엔비디아 → Nvidia · 네모트론 → Nemotron · 허깅페이스 → Hugging Face
+- 엔비디아 → Nvidia · 네모트론 → Nemotron · 허깅 페이스 → Hugging Face
 - 딥시크 → DeepSeek · 알리바바 → Alibaba · 큐원 → Qwen · 텐센트 → Tencent · 문샷 AI → Moonshot AI · 키미 → Kimi · 미니맥스 → MiniMax · 즈푸 · 지푸 → Zhipu AI (Z.ai)
 - 미스트랄 → Mistral AI · 르총크 → Le Chonk · 복스트랄 → Voxtral · 코히어 → Cohere · 알레프 알파 → Aleph Alpha
 - 타입세이프 AI → TypeSafe AI · 제브 → Jev · 리퀴드 AI → Liquid AI · 리플렉션 AI → Reflection AI · 사카나 → Sakana AI · 누스 리서치 → Nous Research
 - 스페이스X → SpaceX · 애플 → Apple · 아마존 → Amazon · 인텔 → Intel · 퀄컴 → Qualcomm · 화웨이 → Huawei · 브로드컴 → Broadcom · 폭스콘 → Foxconn
-- 시스코 → Cisco · 오라클 → Oracle · 팔로알토 → Palo Alto Networks · 데이터독 → Datadog · 넷앱 → NetApp · 뉴타닉스 → Nutanix · 워크데이 → Workday · 지멘스 → Siemens · 슈나이더일렉트릭 → Schneider Electric
-- 보스턴다이나믹스 → Boston Dynamics · 아틀라스 → Atlas · 애질리티 로보틱스 → Agility Robotics · 푸리에 → Fourier · 뉴라 로보틱스 → NEURA Robotics · 뮌헨공대 → Technical University of Munich (TUM)
+- 시스코 → Cisco · 오라클 → Oracle · 팔로알토 → Palo Alto Networks · 데이터독 → Datadog · 넷앱 → NetApp · 뉴타닉스 → Nutanix · 워크데이 → Workday · 지멘스 → Siemens · 슈나이더 일렉트릭 → Schneider Electric
+- 보스턴 다이나믹스 → Boston Dynamics · 아틀라스 → Atlas · 애질리티 로보틱스 → Agility Robotics · 푸리에 → Fourier · 뉴라 로보틱스 → NEURA Robotics · 뮌헨공대 → Technical University of Munich (TUM)
 - 샘 알트먼 → Sam Altman · 다리오 아모데이 → Dario Amodei · 저커버그 → Mark Zuckerberg · 피차이 → Sundar Pichai · 사티아 나델라 → Satya Nadella · 얀 르쿤 → Yann LeCun · 마크 레이버트 → Marc Raibert
-- 로이터 → Reuters · 블룸버그 → Bloomberg · 디 인포메이션 → The Information · 파이낸셜타임스 → Financial Times · 월스트리트저널 → The Wall Street Journal · 뉴욕타임스 → The New York Times · 포춘 → Fortune
+- 로이터 → Reuters · 블룸버그 → Bloomberg · 디 인포메이션 → The Information · 파이낸셜 타임스 → Financial Times · 월스트리트 저널 → The Wall Street Journal · 뉴욕 타임스 → The New York Times · 포춘 → Fortune
 - 백악관 → White House · 미 의회 → U.S. Congress · 미 연방거래위원회 → Federal Trade Commission (FTC) · 유럽연합 → European Union (EU)

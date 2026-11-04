@@ -75,6 +75,8 @@ describe("keyPattern", () => {
     expect(keyPattern("LG AI연구원").test("LG AI 연구원은")).toBe(true);
     expect(keyPattern("클로드 코드").test("클로드코드로")).toBe(true);
     expect(keyPattern("오픈AI").test("오픈 AI 가")).toBe(true);
+    // 붙여 쓴 한글 키도 띄어 쓴 본문에 걸린다(1-4 no-save: 로봇신문 "보스턴 다이나믹스").
+    expect(keyPattern("보스턴다이나믹스").test("보스턴 다이나믹스의 아틀라스")).toBe(true);
   });
 
   it("라틴 키는 영숫자 경계를 본다 — 한글 조사·붙은 한글은 경계다", () => {

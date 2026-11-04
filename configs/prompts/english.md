@@ -6,6 +6,7 @@ Also write an English headline (`title_en`) and summary (`summary_en`) for inter
 - Use only facts in the input. Add no background, dates, numbers or claims from your own knowledge.
 - Add no commentary on what the news means: no "This shows…", "The deal strengthens…", "demonstrates progress in…", "marks a shift…", unless the input says it.
 - Attribute claims: "the company says", "the authors report". A claim the source puts in quotes or poses as a question ("can 'predict human behavior'", "What if AI could…") is the company's claim, not a fact.
+- Keep the source of a finding the input attributes ("according to a CrowdStrike report"). The outlet's own reading of the news (모습이다, 전망이다) is not the company's statement: do not write "the company noted" for it.
 - Keep the subject: the company or person in the original headline is the subject of title_en and summary_en. Do not swap in another name that appears in the body (a rival or partner mentioned in passing).
 - Keep the status of events: a deal being made "is buying" / "agreed to buy", not "acquired"; a plan is "plans to" / "will".
 - Keep hedges and qualifiers: about (약, 여, about), more than (이상, 넘는, over), up to (최대), nearly. A company's own test is a company test ("in its own evaluation", 자체 평가).
@@ -21,6 +22,7 @@ Also write an English headline (`title_en`) and summary (`summary_en`) for inter
 - 2–3 sentences, 40–60 words when the input has enough facts. Never pad to reach the count.
 - If the body is empty or only links and metadata (Hacker News "Article URL… Points…"), write exactly 1 sentence that restates the headline's facts, and nothing else.
 - First sentence: who did what. Then the key numbers, then one supporting detail from the input. Past tense for events, present tense for what a product or paper does. Keep who does what in a repo description (a "Commander" agent that coordinates other agents is the coordinator, not one of the coordinated).
+- Repo: the [토픽] line is for classification only. Do not turn its keywords into features ("supports reinforcement learning"). The repo's own superlatives ("the easiest way") are its claim: drop them or attribute them.
 - Plain newsroom tone with normal articles ("the Technical University of Munich", "a character robot business"). No hype words (revolutionary, groundbreaking, game-changing, massive, stunning, cutting-edge, unprecedented), no rhetorical questions, no opinions.
 
 ### Language

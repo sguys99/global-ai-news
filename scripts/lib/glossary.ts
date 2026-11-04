@@ -109,7 +109,9 @@ export function keyPattern(key: string): RegExp {
   }
   const lead = ALNUM.test(key.trim()[0] ?? "") ? "(?<![A-Za-z0-9])" : "";
   const trail = ALNUM.test(key.trim().at(-1) ?? "") ? "(?![A-Za-z0-9])" : "";
-  return new RegExp(lead + parts.map(escapeRegex).join("\\s*") + trail, "u");
+  // 한글 덩어리는 음절 사이에도 공백을 허용한다(`보스턴다이나믹스` ↔ `보스턴 다이나믹스` — 매체마다 띄어쓰기가 다르다).
+  const units = parts.flatMap((p) => (HANGUL.test(p[0]!) ? [...p] : [p]));
+  return new RegExp(lead + units.map(escapeRegex).join("\\s*") + trail, "u");
 }
 
 /** 정규식은 키마다 한 번만 만든다(묶음마다 약 250개 키를 대조한다). */
