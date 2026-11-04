@@ -99,6 +99,7 @@
 ├── scripts/                      # 배치 파이프라인 (tsx 실행)
 │   ├── collect.ts                # 수집→전처리→선별→가공→재보도 검사→같은 사건 합치기→SQLite 오케스트레이터 (--dry-run / --no-save / --db)
 │   ├── reclassify.ts             # 구 분야값 → 6개 키 LLM 재분류 (npm run db:reclassify, 기본 dry-run)
+│   ├── backfill-en.ts            # 지난 기사 영어 백필 + 한국어 숫자 수정(configs/backfill/) (npm run db:backfill-en, 기본 dry-run)
 │   ├── triage-compare.ts         # no-save 스냅숏으로 개편 전후 선별 비교 (npm run triage:compare)
 │   ├── export-search-index.ts    # public/search-index.json 생성 (prebuild)
 │   ├── export-feed-index.ts      # public/feed-index.json — 홈 전체 기사 색인 누적분(IndexCard, prebuild)
@@ -213,6 +214,7 @@ npm run collect -- --no-save        # LLM 단계까지 실제로 돌리되 DB �
 npm run collect -- --dry-run --db <path>  # --db 는 dry-run·no-save 전용(예: 배포 브랜치 DB 사본)
 npm run triage:compare -- <스냅숏>  # 같은 풀로 개편 전후 선별 비교
 npm run db:reclassify               # 구 분야값 재분류(기본 dry-run, --apply 로 백업 후 적용, --only-legacy)
+npm run db:backfill-en              # 지난 기사 영어 백필(기본 dry-run — LLM 없음, --apply 로 백업 후 적용, --ids 재시도, --ko-fixes)
 npm run db:reindex                  # FTS5 재색인
 npm run kpi                         # 최근 N일 KPI (기본 30) / npm run kpi -- baseline: 콘텐츠 개편 지표 / -- health: 소스 헬스
 ```
@@ -273,6 +275,7 @@ docker compose up --build   # http://localhost:8080/global-ai-news/ (/ 는 여�
 | `GITHUB_REPO` / `GITHUB_BRANCH`                | admin GitHub 연동 대상 `owner/repo` / 브랜치 — **로컬 admin 전용**                                                                       | 선택 (GitHub 연동 시)  |
 | `ADMIN_PASSWORD`                               | 운영자 인증 — **로컬 admin 전용**                                                                                                        | 필수 (로컬 Admin 사용) |
 | `RECLASSIFY_MAX_COST_USD`                      | `db:reclassify` 예상 비용 상한 (기본 0.5)                                                                                                | 선택                   |
+| `BACKFILL_MAX_COST_USD`                        | `db:backfill-en` 예상 비용 상한 (기본 1)                                                                                                 | 선택                   |
 
 ## 데이터 모델
 

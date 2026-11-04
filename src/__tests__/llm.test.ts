@@ -76,11 +76,12 @@ function fakeClient({
 
 const runner = (
   client: ReturnType<typeof fakeClient>,
-  opts: Partial<{ useBatch: boolean; batchTimeoutMs: number }> = {},
+  opts: Partial<{ useBatch: boolean; batchTimeoutMs: number; directFallback: boolean }> = {},
 ) =>
   new LlmRunner({
     useBatch: opts.useBatch ?? true,
     batchTimeoutMs: opts.batchTimeoutMs ?? 60_000,
+    directFallback: opts.directFallback,
     pollIntervalMs: 0,
     client: client as unknown as Anthropic,
     log: () => {},
@@ -145,6 +146,47 @@ describe("LlmRunner — Batches API", () => {
     client.messages.create.mockRejectedValueOnce(new Error("overloaded"));
     const results = await runner(client).run([req("a")]);
     expect(results.get("a")).toMatchObject({ message: null, error: "overloaded" });
+  });
+});
+
+describe("LlmRunner — directFallback=false (영어 백필)", () => {
+  it("시간 초과돼도 일반 호출(표준 단가)로 다시 보내지 않고 결과 없음으로 돌려준다", async () => {
+    const client = fakeClient({ endsAfterPolls: Infinity });
+    const llm = runner(client, { batchTimeoutMs: 0, directFallback: false });
+    const results = await llm.run([req("a"), req("b")]);
+    expect(client.messages.batches.cancel).toHaveBeenCalled();
+    expect(client.messages.create).not.toHaveBeenCalled();
+    expect(results.get("a")).toMatchObject({ message: null, error: "batch canceled", batch: true });
+    expect(llm.usage.costUsd).toBe(0);
+  });
+
+  it("배치 안에서 성공한 것만 쓰고, 개별 실패는 재시도하지 않는다", async () => {
+    const client = fakeClient({
+      batchItems: (ids) =>
+        ids.map((id) =>
+          id === "b"
+            ? { custom_id: id, result: { type: "errored" } }
+            : { custom_id: id, result: { type: "succeeded", message: message(id) } },
+        ),
+    });
+    const results = await runner(client, { directFallback: false }).run([req("a"), req("b")]);
+    expect(textOf(results.get("a")?.message)).toBe("a");
+    expect(results.get("b")).toMatchObject({ message: null, error: "batch errored" });
+    expect(client.messages.create).not.toHaveBeenCalled();
+  });
+
+  it("배치 제출이 실패하면 전부 결과 없음(사유 포함)", async () => {
+    const client = fakeClient({ createFails: true });
+    const results = await runner(client, { directFallback: false }).run([req("a")]);
+    expect(results.get("a")).toMatchObject({ message: null, batch: true });
+    expect(results.get("a")?.error).toContain("batch create failed");
+    expect(client.messages.create).not.toHaveBeenCalled();
+  });
+
+  it("useBatch=false 면 directFallback 과 무관하게 일반 호출한다", async () => {
+    const client = fakeClient();
+    await runner(client, { useBatch: false, directFallback: false }).run([req("a")]);
+    expect(client.messages.create).toHaveBeenCalledTimes(1);
   });
 });
 

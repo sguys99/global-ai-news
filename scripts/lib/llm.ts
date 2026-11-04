@@ -4,6 +4,8 @@
  * - 기본은 Message Batches API(입력·출력 50% 할인). 일 1회 배치라 기다리는 사용자가 없다.
  * - 배치가 batchTimeoutMs 안에 끝나지 않거나 제출 자체가 실패하면 취소하고, 결과를 못 받은
  *   요청만 일반 Messages API 로 1회 더 보낸다(배치 내 개별 실패도 같은 경로로 재시도).
+ *   directFallback=false 면 이 재시도를 하지 않는다 — 요청이 많은 일회성 작업(영어 백필 약 70건)에서 배치가
+ *   시간 초과되면 전부 표준 단가(2배)로 다시 보내 비용 상한을 넘기 때문이다. 결과를 못 받은 요청은 실패로 돌려준다.
  * - 비용은 응답 usage 로 누적한다(배치 결과는 할인 단가, 일반 호출은 표준 단가).
  */
 import Anthropic from "@anthropic-ai/sdk";
@@ -35,6 +37,11 @@ export interface LlmRunnerOptions {
   useBatch: boolean;
   batchTimeoutMs: number;
   pollIntervalMs?: number;
+  /**
+   * 배치가 시간 초과·제출 실패·개별 실패로 결과를 못 준 요청을 일반 호출(표준 단가)로 다시 보낼지(기본 true — 수집).
+   * false 면 배치 결과만 쓰고 나머지는 `message: null` 로 돌려준다(useBatch=false 면 이 값과 무관하게 일반 호출).
+   */
+  directFallback?: boolean;
   /** 테스트 주입용. 미지정 시 ANTHROPIC_API_KEY 로 첫 호출 때 생성한다. */
   client?: Anthropic;
   log?: (msg: string) => void;
@@ -66,10 +73,22 @@ export class LlmRunner {
     if (requests.length === 0) return results;
 
     if (this.opts.useBatch) {
+      const fallback = this.opts.directFallback ?? true;
+      let batchError = "batch: no result";
       try {
         for (const [id, result] of await this.runBatch(requests)) results.set(id, result);
       } catch (err) {
-        this.log(`batch failed (${(err as Error).message}) — falling back to direct calls`);
+        batchError = `batch failed: ${(err as Error).message}`;
+        this.log(
+          `batch failed (${(err as Error).message}) — ${fallback ? "falling back to direct calls" : "no direct fallback"}`,
+        );
+      }
+      if (!fallback) {
+        for (const req of requests) {
+          if (!results.has(req.id))
+            results.set(req.id, { message: null, error: batchError, batch: true });
+        }
+        return results;
       }
     }
 
