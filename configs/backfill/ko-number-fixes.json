@@ -1,0 +1,271 @@
+{
+  "version": 1,
+  "fixes": [
+    {
+      "id": 151,
+      "field": "title_ko",
+      "from": "965억 달러",
+      "to": "9,650억 달러",
+      "reason": "원문 $965B → 9,650억 달러"
+    },
+    {
+      "id": 151,
+      "field": "summary_ko",
+      "from": "965억 달러",
+      "to": "9,650억 달러",
+      "reason": "원문 $965B → 9,650억 달러"
+    },
+    {
+      "id": 154,
+      "field": "summary_ko",
+      "from": "680만 개 단백질과 110만 개 구조",
+      "to": "68억 개 단백질과 11억 개 구조",
+      "reason": "원문 6.8B proteins·1.1B structures → 68억·11억"
+    },
+    {
+      "id": 155,
+      "field": "title_ko",
+      "from": "신규 유니콘 기업 등장, Fireworks·Baseten 등 평가액 10억 달러",
+      "to": "신규 데카콘 기업 등장, Fireworks·Baseten 등 평가액 100억 달러",
+      "reason": "원문 decacorns(평가액 100억 달러 이상) → 100억 달러"
+    },
+    {
+      "id": 155,
+      "field": "summary_ko",
+      "from": "평가액 10억 달러(데카콘)",
+      "to": "평가액 100억 달러(데카콘)",
+      "reason": "데카콘 = 평가액 100억 달러 이상"
+    },
+    {
+      "id": 238,
+      "field": "summary_ko",
+      "from": "852억 달러",
+      "to": "8,520억 달러",
+      "reason": "원문 $852 billion → 8,520억 달러"
+    },
+    {
+      "id": 417,
+      "field": "summary_ko",
+      "from": "78억 개 매개변수",
+      "to": "780억 개 매개변수",
+      "reason": "원문 78 billion parameters → 780억"
+    },
+    {
+      "id": 417,
+      "field": "summary_ko",
+      "from": " 중 학습 데이터 21% 이상이 독일어이며,",
+      "to": " 규모로, 학습 데이터의 21% 이상이 독일어이며,",
+      "reason": "사실 오류: 원문은 매개변수(78 billion)와 학습 데이터 독일어 비중(Over 21 percent)이 별개 — '매개변수 중 학습 데이터' 혼동"
+    },
+    {
+      "id": 475,
+      "field": "summary_ko",
+      "from": "계산 비용을 40~77% 감소시켰다",
+      "to": "힘 계산 횟수를 Sella의 40.2~77.2% 수준으로 줄였다",
+      "reason": "원문 requires only 40.2–77.2% of Sella's force calls — 감소율이 아니라 남은 비율"
+    },
+    {
+      "id": 493,
+      "field": "title_ko",
+      "from": "3.49조원",
+      "to": "4.7조원",
+      "reason": "원문 4.7 trillion won($3.49 billion) → 4.7조원"
+    },
+    {
+      "id": 493,
+      "field": "summary_ko",
+      "from": "약 3.49억 달러",
+      "to": "약 34.9억 달러",
+      "reason": "원문 $3.49 billion → 34.9억 달러"
+    },
+    {
+      "id": 601,
+      "field": "summary_ko",
+      "from": "180억 개",
+      "to": "1,800억 개",
+      "reason": "원문 180 billion pieces → 1,800억 개"
+    },
+    {
+      "id": 636,
+      "field": "summary_ko",
+      "from": "12억 매개변수",
+      "to": "120억 매개변수",
+      "reason": "원문 12B → 120억 매개변수"
+    },
+    {
+      "id": 671,
+      "field": "title_ko",
+      "from": "수익 50억 달러",
+      "to": "수익 500억 달러",
+      "reason": "원문 $50 billion → 500억 달러"
+    },
+    {
+      "id": 671,
+      "field": "summary_ko",
+      "from": "약 50억 달러",
+      "to": "약 500억 달러",
+      "reason": "원문 about $50 billion → 500억 달러"
+    },
+    {
+      "id": 710,
+      "field": "title_ko",
+      "from": "500억 토큰",
+      "to": "5,000억 토큰",
+      "reason": "원문 500B Tokens → 5,000억 토큰"
+    },
+    {
+      "id": 760,
+      "field": "title_ko",
+      "from": "200억 원",
+      "to": "20억 원",
+      "reason": "원문 20억 원 투자 → 20억 원(10배 부풀림)"
+    },
+    {
+      "id": 760,
+      "field": "summary_ko",
+      "from": "200억 원",
+      "to": "20억 원",
+      "reason": "원문 20억 원 투자 → 20억 원(10배 부풀림)"
+    },
+    {
+      "id": 763,
+      "field": "summary_ko",
+      "from": "Claude 3.5 Sonnet",
+      "to": "Claude Fable 5.1",
+      "reason": "모델 버전 오류: 원문 클로드 페이블 5.1"
+    },
+    {
+      "id": 770,
+      "field": "summary_ko",
+      "from": "2,700만 달러",
+      "to": "27억 달러",
+      "reason": "원문 $2.7 billion → 27억 달러"
+    },
+    {
+      "id": 770,
+      "field": "summary_ko",
+      "from": "달러 구글 인수 거래 실패 후",
+      "to": "달러 규모 구글 거래 이후",
+      "reason": "사실 오류: 원문 capping a fall from $2.7 billion Google deal — 거래는 성사됐고 '인수'·'실패' 근거 없음"
+    },
+    {
+      "id": 833,
+      "field": "title_ko",
+      "from": "16.8억 달러",
+      "to": "168억 달러",
+      "reason": "원문 $16.8B → 168억 달러"
+    },
+    {
+      "id": 833,
+      "field": "summary_ko",
+      "from": "16.8억 달러",
+      "to": "168억 달러",
+      "reason": "원문 $16.8 billion → 168억 달러"
+    },
+    {
+      "id": 944,
+      "field": "summary_ko",
+      "from": "GPT-4 아스트라",
+      "to": "GPT-6 아스트라",
+      "reason": "모델 버전 오류: 원문 GPT-6 아스트라"
+    },
+    {
+      "id": 968,
+      "field": "title_ko",
+      "from": "150억 달러",
+      "to": "14.5억 달러",
+      "reason": "원문 $1.45B → 14.5억 달러"
+    },
+    {
+      "id": 968,
+      "field": "summary_ko",
+      "from": "150억 달러",
+      "to": "14.5억 달러",
+      "reason": "원문 $1.45B → 14.5억 달러"
+    },
+    {
+      "id": 1054,
+      "field": "title_ko",
+      "from": "1,550억 토큰",
+      "to": "155조 토큰",
+      "reason": "원문 155T toks/day → 155조 토큰"
+    },
+    {
+      "id": 1054,
+      "field": "summary_ko",
+      "from": "1,550억 토큰",
+      "to": "155조 토큰",
+      "reason": "원문 155T toks/day → 155조 토큰"
+    },
+    {
+      "id": 1055,
+      "field": "title_ko",
+      "from": "125조원 규모",
+      "to": "300억 달러 규모",
+      "reason": "원문 $30B 조달 — 125조원은 평가액 $1.25T 오환산"
+    },
+    {
+      "id": 1055,
+      "field": "summary_ko",
+      "from": "30억 달러",
+      "to": "300억 달러",
+      "reason": "원문 $30B → 300억 달러"
+    },
+    {
+      "id": 1055,
+      "field": "summary_ko",
+      "from": "1조 2,500억 달러(약 125조원)",
+      "to": "1조 2,500억 달러",
+      "reason": "원화 환산 오류 삭제($1.25T ≠ 125조원)"
+    },
+    {
+      "id": 1075,
+      "field": "summary_ko",
+      "from": "280만 토큰",
+      "to": "100만 토큰",
+      "reason": "원문 1M-token context → 100만 토큰(2.8T 총 파라미터와 혼동)"
+    },
+    {
+      "id": 1237,
+      "field": "summary_ko",
+      "from": "등 5개 기관이 참여해",
+      "to": "등이 참여해",
+      "reason": "원문 참여 기관 6곳 이상 나열 — 5개는 틀린 셈"
+    },
+    {
+      "id": 1258,
+      "field": "summary_ko",
+      "from": "2026년까지 국비",
+      "to": "2026~2028년 3년간 국비",
+      "reason": "사실 오류: 원문 사업 기간은 올해부터 2028년까지 3년"
+    },
+    {
+      "id": 1301,
+      "field": "title_ko",
+      "from": "900억 달러",
+      "to": "9,000억 달러",
+      "reason": "원문 $900B → 9,000억 달러"
+    },
+    {
+      "id": 1301,
+      "field": "summary_ko",
+      "from": "900억 달러",
+      "to": "9,000억 달러",
+      "reason": "원문 $900B → 9,000억 달러"
+    },
+    {
+      "id": 1306,
+      "field": "summary_ko",
+      "from": "753억 파라미터",
+      "to": "7,530억 파라미터",
+      "reason": "원문 753B → 7,530억 파라미터"
+    },
+    {
+      "id": 1321,
+      "field": "summary_ko",
+      "from": "27억 파라미터",
+      "to": "270억 파라미터",
+      "reason": "원문 27B → 270억 파라미터"
+    }
+  ]
+}
