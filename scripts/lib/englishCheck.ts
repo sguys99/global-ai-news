@@ -27,6 +27,12 @@
  *    전부 근거 쪽이라 넉넉해질 뿐이다 — 게재분 대리 측정에서 "three million chips" → `300만 개`류 오탐이 실제로 나왔다.
  *  - 통화: 출력의 달러 금액(`$`·US$·USD·dollar·달러)은 근거에 달러 표기가, 원화 금액(KRW·₩·won·원)은 근거에 원화
  *    표기가 있어야 한다. 숫자·규모가 같은 통화 바꿔치기(`5조원` → `$5 trillion`)를 잡는다.
+ *  - (2-3 백필 기각 검토) 수량이 아닌 용어 `CO2`·`CO₂`·`2D`·`3D`·`4D`는 **출력 쪽에서만** 숫자를 뽑기 전에 지운다
+ *    (`3D models` ← "printable model"). 근거 쪽은 그대로 둔다 — 지우면 `3차원` ← "3D"가 새로 걸린다. 근거는 NFKC 로
+ *    아래·위첨자를 ASCII 로 바꾼다(`CO₂` → `CO2`). 모델명(`H100`·`B200`)은 건드리지 않는다.
+ *  - (2-3) 범위의 앞 숫자는 뒤 금액의 단위를 물려받는다(`$1–2 billion`의 1 = 10억, `10~20억`의 10 = 10억) — 출력·근거
+ *    모두. 구분자는 `–`·`~`·`-`이고, 앞 숫자 앞에 영문자·숫자·점이 붙어 있으면 범위가 아니다(`Qwen3-32B`). `-`에는
+ *    붙여 쓴 K·M·B·T 를 받지 않는다(`3.1-8B`는 모델 크기). 단위가 뒤에 없는 범위(`2025-2026`)는 그대로다.
  *
  * 한국어 쪽(checkKoreanNumbers)은 같은 대조를 `title_ko`·`summary_ko`에 돌려 근거에 없는 숫자를 돌려준다 — notes 경고
  * 전용이고 게재를 막지 않는다(0-3 부록: 기존 게재분의 billion→억 10배 오류). 한국어 월 표기(`6월` ← "June")가 오탐의
@@ -223,6 +229,10 @@ interface Amount {
    * 근거 쪽에서만 두 값을 다 쓴다.
    */
   partial?: number;
+  /** 사슬 첫 숫자에 곱한 단위(범위 앞 숫자가 물려받는다 — rangeStarts). */
+  scale: number;
+  /** 붙여 쓴 한 글자 단위(K·M·B·T) — `-` 범위에서는 받지 않는다(`3.1-8B`). */
+  compact?: boolean;
 }
 
 /**
@@ -264,7 +274,15 @@ function koreanAmounts(text: string): Amount[] {
         break;
       }
     }
-    out.push({ start: segs[i].start, end, value, ...(partial === undefined ? {} : { partial }) });
+    const u0 = segs[i].unit!;
+    const scale = (KO_SMALL[u0[0]] ?? 1) * (KO_BIG[u0[u0.length - 1]] ?? 1);
+    out.push({
+      start: segs[i].start,
+      end,
+      value,
+      scale,
+      ...(partial === undefined ? {} : { partial }),
+    });
     i = j - 1;
   }
   return out;
@@ -279,14 +297,45 @@ function englishAmounts(text: string): Amount[] {
       start: m.index,
       end: m.index + m[0].length,
       value: parseFloat(clean(m[1])) * EN_SCALE[unit],
+      scale: EN_SCALE[unit],
+      ...(unit.length === 1 ? { compact: true } : {}),
     });
   }
   return out;
 }
 
-function amountsIn(text: string): Amount[] {
-  return [...koreanAmounts(text), ...englishAmounts(text)];
+/**
+ * 금액 바로 앞의 범위 앞 숫자(`1–`·`10~`·`$1–$`). 앞 숫자 앞에 영문자·숫자·점·쉼표가 붙어 있으면 범위가 아니다
+ * (`Qwen3-32B`·`v2.1-3B`).
+ */
+const RANGE_HEAD = /(?<![A-Za-z0-9.,])(\d+(?:[.,]\d+)*)\s?([–~-])\s?(?:US\$|\$|₩)?$/;
+
+/**
+ * 범위의 앞 숫자에 뒤 금액의 단위를 물려준다(`$1–2 billion` → 1e9, `10~20억달러` → 1e9). 구간은 앞 숫자부터 금액
+ * 끝까지(표시용) — 뒤 숫자는 원래 금액이 먼저 찾아지도록 amountsIn 이 원래 금액 뒤에 둔다. 이미 금액 안에 든
+ * 앞 숫자(`1억~2억`)는 건드리지 않는다.
+ */
+function rangeStarts(text: string, amounts: readonly Amount[]): Amount[] {
+  const out: Amount[] = [];
+  for (const a of amounts) {
+    const m = RANGE_HEAD.exec(text.slice(0, a.start));
+    if (!m) continue;
+    if (m[2] === "-" && a.compact) continue; // `3.1-8B`·`7-70B`는 모델 크기일 수 있다
+    const start = m.index;
+    if (amounts.some((b) => start >= b.start && start < b.end)) continue;
+    out.push({ start, end: a.end, value: parseFloat(clean(m[1])) * a.scale, scale: a.scale });
+  }
+  return out;
 }
+
+function amountsIn(text: string): Amount[] {
+  const amounts = [...koreanAmounts(text), ...englishAmounts(text)];
+  return [...amounts, ...rangeStarts(text, amounts)];
+}
+
+/** 수량이 아닌 용어(출력 쪽만 지운다 — 파일 머리 주석). `CO2e`·`CO₂를`도 지우고 `CO20`·`3DGS`·`H200`은 그대로 둔다. */
+const NON_QUANTITY = /\bCO[2₂]e?(?![A-Za-z0-9])|\b[234]D(?![A-Za-z0-9])/g;
+const stripNonQuantities = (text: string) => text.replace(NON_QUANTITY, " ");
 
 // ---------------------------------------------------------------------------------------------------------------
 // 통화
@@ -352,7 +401,8 @@ interface NumberEvidence {
 }
 
 function buildEvidence(evidence: ArticleEvidence, { months = false } = {}): NumberEvidence {
-  const text = [evidence.title, evidence.content].filter(Boolean).join("\n");
+  // NFKC: 아래·위첨자·전각 숫자를 ASCII 로(`CO₂` → `CO2`). 근거 쪽이라 숫자가 늘 뿐이다.
+  const text = [evidence.title, evidence.content].filter(Boolean).join("\n").normalize("NFKC");
   const raw = new Set((text.match(NUM) ?? []).map(clean));
   const nums = [...raw].map(Number).filter((n) => Number.isFinite(n));
   const words = text.toLowerCase().match(/[a-z]+/g) ?? [];
@@ -379,7 +429,8 @@ const matchesAny = (list: readonly number[], v: number) => list.some((x) => clos
  * 출력 텍스트에서 근거로 뒷받침되지 않는 숫자·금액(표시용 문자열). 같은 금액에서 여러 숫자가 걸리면 한 번만 적는다.
  * 통화가 근거에 없으면 `USD(통화)`·`KRW(통화)`를 더한다.
  */
-function unsupportedIn(text: string, ev: NumberEvidence): string[] {
+function unsupportedIn(output: string, ev: NumberEvidence): string[] {
+  const text = stripNonQuantities(output);
   const amounts = amountsIn(text);
   const bad: string[] = [];
   const add = (s: string) => {

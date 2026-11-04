@@ -8,13 +8,14 @@ Also write an English headline (`title_en`) and summary (`summary_en`) for inter
 - Attribute claims: "the company says", "the authors report". A claim the source puts in quotes or poses as a question ("can 'predict human behavior'", "What if AI could…") is the company's claim, not a fact.
 - Keep the source of a finding the input attributes ("according to a CrowdStrike report"). The outlet's own reading of the news (모습이다, 전망이다) is not the company's statement: do not write "the company noted" for it.
 - Keep the subject: the company or person in the original headline is the subject of title_en and summary_en. Do not swap in another name that appears in the body (a rival or partner mentioned in passing).
-- Keep the status of events: a deal being made "is buying" / "agreed to buy", not "acquired"; a plan is "plans to" / "will".
+- Keep the status of events: a deal being made "is buying" / "agreed to buy", not "acquired"; a plan is "plans to" / "will". A planned event (예정, "will", a date later than the story's event) has not happened: 30일 코스닥 상장 예정 → "will list on Kosdaq on the 30th", not "listed".
 - Keep hedges and qualifiers: about (약, 여, about), more than (이상, 넘는, over), up to (최대), nearly. A company's own test is a company test ("in its own evaluation", 자체 평가).
 
 ### title_en
 
 - Sentence case: capitalize the first word and proper nouns only (`OpenAI raises $11 billion of its $30 billion target`). Keep official casing of names (SK hynix, maum.ai, EXAONE, iPhone). Common terms stay lowercase: physical AI, world model, humanoid robot.
 - One plain news headline, at most 100 characters (aim for 60–90). Subject + verb + object, present tense. No trailing period, no emoji, no exclamation mark, no question-style teasers.
+- Claim no more than the body: problems given are not problems solved, "a fixed corpus" is not "any corpus", "reduce" is not "eliminate". Keep the body's hedges in the headline too (약 4000배 → about 4,000x).
 - Repo: `<project>, <what it does>`. Paper: `<method or model> <does what / finds what>` — state the result the abstract claims, not a different benefit (do not say "efficiency" or "faster" unless the abstract does). Model: `<model>, <size/base> <task> model`.
 
 ### summary_en
@@ -39,8 +40,9 @@ Also write an English headline (`title_en`) and summary (`summary_en`) for inter
 - Every number must come from the input, with the same value and unit. Never calculate new numbers (no percentages, ratios, sums, differences, "one teammate" from a two-person team, or currency conversions) and never round. 단 2명의 팀 → "a two-person team".
 - Currency stays in the source currency. Never convert won to dollars or dollars to won.
   - US dollars: `$11 billion`, `$62.5 million`, `$900 billion` ($900B = $900 billion, not $90 billion). Other currencies keep their symbol or code: `€5 million`.
-  - Korean won: write `KRW` + the amount in English scale words. 1만 = 10 thousand, 1억 = 100 million, 10억 = 1 billion, 1조 = 1 trillion. N억 = KRW N÷10 billion, so 10억 is KRW 1 billion (not 100 million). Examples: 5조원 → KRW 5 trillion; 1조 1,000억원 → KRW 1.1 trillion; 6700억 → KRW 670 billion; 989억 → KRW 98.9 billion; 147억 → KRW 14.7 billion; 10억 → KRW 1 billion; 24억 → KRW 2.4 billion.
+  - Korean won: write `KRW` + the amount in English scale words. 1만 = 10 thousand, 1억 = 100 million, 10억 = 1 billion, 1조 = 1 trillion. N억 = KRW N÷10 billion, so 10억 is KRW 1 billion (not 100 million). Examples: 5조원 → KRW 5 trillion; 1조 1,000억원 → KRW 1.1 trillion; 6700억 → KRW 670 billion; 989억 → KRW 98.9 billion; 147억 → KRW 14.7 billion; 10억 → KRW 1 billion; 24억 → KRW 2.4 billion. Always "KRW 5 trillion", never "5 trillion won".
   - A dollar amount written in Korean (4억6500만달러) → `$465 million`. If the input gives a won equivalent in parentheses (약 6250억원), drop it.
 - Keep parameter counts and model names exactly as written: `27B`, `26B-A4B`, `167M`, `1.2B`, `GPT-6.1 Sol`, `Opus 5.5`. Do not spell 27B or 167M out in words.
 - Korean counts with 만: 119만 → 1.19 million, 5만 → 50,000.
 - Dates: keep a date only if its month is clear in the input. Do not add weekdays or years that are not in the input.
+- Relative time stays relative: this year, next year, last month, 올해, 내년, 지난해 → "this year", "next year", "last year". Never turn it into a year or month; you are not given the story's date.

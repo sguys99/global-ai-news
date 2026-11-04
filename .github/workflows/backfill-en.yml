@@ -41,6 +41,10 @@ on:
         description: "ids 와 함께: 영어가 있어도 다시 만든다"
         type: boolean
         default: false
+      chunk:
+        description: "요청 1건에 묶는 기사 수. 비우면 스크립트 기본 20 — 재시도는 작게(예: 4) 해 같은 묶음 기사끼리 사실이 섞이는 것을 줄인다"
+        type: string
+        required: false
       max_cost:
         description: "예상 비용 상한 USD. 비우면 vars.BACKFILL_MAX_COST_USD → 스크립트 기본 $1"
         type: string
@@ -132,6 +136,7 @@ jobs:
           IN_LIMIT: ${{ inputs.limit }}
           IN_SINCE: ${{ inputs.since }}
           IN_OVERWRITE: ${{ inputs.overwrite }}
+          IN_CHUNK: ${{ inputs.chunk }}
           IN_MAX_COST: ${{ inputs.max_cost }}
           IN_KO_FIXES: ${{ inputs.ko_fixes }}
         run: |
@@ -141,6 +146,7 @@ jobs:
           [ -n "${IN_LIMIT}" ] && args+=(--limit "${IN_LIMIT}")
           [ -n "${IN_SINCE}" ] && args+=(--since "${IN_SINCE}")
           [ "${IN_OVERWRITE}" = "true" ] && args+=(--overwrite)
+          [ -n "${IN_CHUNK}" ] && args+=(--chunk "${IN_CHUNK}")
           [ -n "${IN_MAX_COST}" ] && args+=(--max-cost "${IN_MAX_COST}")
           [ "${IN_KO_FIXES}" = "true" ] && args+=(--ko-fixes configs/backfill/ko-number-fixes.json)
           # dry-run 은 무료 count_tokens 로 입력 토큰을 실측한다(키가 없으면 스크립트가 근사치로 넘어간다).

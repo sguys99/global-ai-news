@@ -115,6 +115,46 @@ describe("findUnsupportedNumbers — 계획 1-4·추가 경계", () => {
   });
 });
 
+describe("findUnsupportedNumbers — 2-3 백필 기각 검토(검사기 오탐)", () => {
+  it("수량이 아닌 용어(CO2·CO₂·2D·3D·4D)는 숫자로 보지 않는다(#489·#1095·#727)", () => {
+    expect(passes("CO2 batteries", "using carbon dioxide gas to store energy")).toBe(true);
+    expect(passes("8.5 times more CO2", "CO₂를 8.5배 더 배출")).toBe(true);
+    expect(passes("CO₂ emissions", "carbon dioxide")).toBe(true);
+    expect(passes("3D models", "Generate a printable model from text")).toBe(true);
+    expect(passes("2D and 4D views", "multi-view rendering")).toBe(true);
+    expect(passes("3 models", "Generate a printable model from text")).toBe(false);
+    expect(passes("2 batteries", "carbon dioxide")).toBe(false);
+    expect(passes("H200", "H100 GPUs")).toBe(false); // 모델명은 그대로 숫자다
+    expect(passes("3DGS", "Gaussian splatting")).toBe(false); // 붙어 있으면 용어가 아니다
+  });
+
+  it("근거는 NFKC 로 아래첨자를 바꾼다(CO₂ → CO2)", () => {
+    expect(passes("2 atoms", "CO₂ molecule")).toBe(true);
+  });
+
+  it("범위의 앞 숫자는 뒤 금액의 단위를 물려받는다(#161)", () => {
+    expect(passes("$1–2 billion", "10억~20억달러 규모")).toBe(true);
+    expect(passes("$1-2 billion", "between $1 billion and $2 billion")).toBe(true);
+    expect(passes("$1~$2 billion", "10억~20억달러")).toBe(true);
+    expect(passes("$1–2 billion", "1억~2억달러")).toBe(false);
+    expect(passes("$10–20 billion", "10억~20억달러")).toBe(false);
+    expect(passes("KRW 1–2 billion", "10~20억원")).toBe(true); // 근거 쪽도 물려받는다
+    expect(findUnsupportedNumbers("$10–20 billion", ev("10억~20억달러"))).toEqual([
+      "10–20 billion",
+      "20 billion",
+    ]);
+  });
+
+  it("범위가 아닌 하이픈은 그대로다(연도·버전·모델 크기)", () => {
+    expect(passes("2025-2026 roadmap", "2025-2026 로드맵")).toBe(true);
+    expect(passes("2025–2026", "2025 and 2026")).toBe(true);
+    expect(passes("GPT-5-1", "GPT-5-1")).toBe(true);
+    expect(passes("Llama 3.1-8B", "Llama 3.1 8B")).toBe(true); // `-` + 붙여 쓴 B 는 범위가 아니다
+    expect(passes("Qwen3-32B", "Qwen3 32B")).toBe(true);
+    expect(passes("Qwen3-235B-A22B", "Qwen3-235B-A22B")).toBe(true);
+  });
+});
+
 describe("findUnsupportedNumbers — 통화", () => {
   it("달러 금액은 근거에 $·달러·USD·dollar 가 있어야 한다", () => {
     expect(findUnsupportedNumbers("$5 trillion", ev("5조원"))).toEqual(["USD(통화)"]);
@@ -352,6 +392,15 @@ describe("checkKoreanNumbers", () => {
         ev("Only 26 percent of companies have full visibility into AI costs"),
       ),
     ).toEqual(["74"]);
+  });
+
+  it("한국어 출력의 3D 도 숫자로 보지 않는다(#727)", () => {
+    expect(
+      checkKoreanNumbers(
+        { titleKo: "텍스트로 3D 모델 생성", summaryKo: "" },
+        ev("Generate a printable model"),
+      ),
+    ).toEqual([]);
   });
 
   it("원화로 바꾼 달러 금액은 통화 경고(1055)", () => {
