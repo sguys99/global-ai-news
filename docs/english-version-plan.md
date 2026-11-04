@@ -328,7 +328,12 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 3-3. 라우트·뷰 분리 (Phase 0-2 결과대로)
 
-- [ ] 현재 `src/app/{page,article,edition,search,admin}`을 `(ko)` 그룹으로 옮기고 `layout.tsx`를 `(ko)/layout.tsx`로 옮긴다.
+- [x] 현재 `src/app/{page,article,edition,search,admin}`을 `(ko)` 그룹으로 옮기고 `layout.tsx`를 `(ko)/layout.tsx`로 옮긴다. (2026-11-04)
+  - 공용 셸: `src/app/fonts.ts`(Pretendard·Hahmlet), `src/app/SiteShell.tsx`(`siteViewport`, `<html lang>`·body·ThemeProvider·헤더·모바일 바·푸터·Analytics). 두 레이아웃과 404가 이것만 쓴다. `locale`이 `ko`가 아닐 때만 `LocaleProvider`로 감싸서 한국어 페이지에는 클라이언트 참조가 늘지 않는다.
+  - `(en)/en/layout.tsx`(lang=en, 0-5 영어 제목·설명, `metadataBase`·소유 확인)를 미리 두었다. 영어 페이지가 없어 산출물에는 `en/`이 없다. 소유 확인 메타는 `site.ts` `SITE_VERIFICATION` 하나를 두 레이아웃이 쓴다.
+  - `next.config.ts` dev·프로덕션 분기 모두 `experimental.globalNotFound: true`.
+  - **404(`global-not-found.tsx` + `NotFoundNotice`, 문구 `messages/notFound.ts`)를 이중 언어 지면으로 새로 만들었다.** 제호 자리에 Hahmlet "404"와 "지면에 없는 페이지 · Page not found", 마스트헤드와 같은 4px+1px 이중 괘선, 그 아래 `lg`부터 7:4 두 단(한국어 "독자 안내 — 이 페이지는 지면에 실리지 않았습니다" / 영어 "Reader notice — This page never went to print"), 각 단에 오늘의 지면·기사 검색 링크(44px 행). `/en/…`에서는 `<head>` 인라인 스크립트가 `lang="en"`으로 바꾸고, `lang-en:` 변형(`globals.css` `@custom-variant`)이 영어 단을 앞에 크게 놓는다. 영어 링크는 `NOT_FOUND_EN_LINK_LOCALE`(지금 `"ko"`)을 거친다 — `/en/`이 생기는 Phase 5에서 이 값 하나를 `"en"`으로 바꾼다. `noindex`는 Next가 넣는 것 하나만 남겼다.
+  - 회귀 비교: 한국어 11페이지·sitemap·feed 같음, 404만 허용된 차이. 산출물 145.87MB(기준선 140.27MB, +4% — 0-2 스파이크 예상과 같음, 레이아웃 단계가 하나 늘어난 몫). dev에서 admin(미들웨어 307)·`/api/health` 200 확인.
 - [ ] 페이지 본문을 `src/views/{HomeView,ArticleView,EditionView,SearchView}.tsx`로 추출해 `locale`을 받게 한다.
 - [ ] 컴포넌트(25개 파일)의 하드코딩 문구를 사전 참조로 바꾼다. 서버 컴포넌트는 `locale` prop, 클라이언트 컴포넌트는 레이아웃의 `LocaleProvider` 컨텍스트를 쓴다.
 - [ ] 내부 링크(`Link href`)를 `localePath`로 바꾼다.

@@ -37,17 +37,22 @@
 .
 ├── src/                          # 웹 애플리케이션 소스
 │   ├── app/                      # Next.js App Router
-│   │   ├── layout.tsx
-│   │   ├── page.tsx              # 홈(/) — 최신 호 지면·색인 첫 30건 SSG + 누적 색인(feed-index.json) 클라 필터
+│   │   ├── (ko)/                 # 한국어판 라우트 그룹(URL 접두어 없음)
+│   │   │   ├── layout.tsx        # 한국어 최상위 레이아웃(<html lang="ko">, 사이트 metadata) — 앱 루트 레이아웃은 없다
+│   │   │   ├── page.tsx          # 홈(/) — 최신 호 지면·색인 첫 30건 SSG + 누적 색인(feed-index.json) 클라 필터
+│   │   │   ├── article/[id]/page.tsx # 상세(/article/[id]) — SSG generateStaticParams
+│   │   │   ├── search/page.tsx   # 검색(/search) — 정적 셸 + SearchClient
+│   │   │   ├── edition/[date]/page.tsx # 호 고정 링크(/edition/YYYY-MM-DD) — 그날 수집분(호) 지면 SSG
+│   │   │   └── admin/            # 운영 콘솔 — 로컬 전용(page.local.tsx, login/page.local.tsx)
+│   │   ├── (en)/en/layout.tsx    # 영어 최상위 레이아웃(<html lang="en">, LocaleProvider) — 영어 페이지는 영어판 Phase 5
+│   │   ├── SiteShell.tsx         # 문서 셸(html·body·헤더·모바일 바·푸터·테마·집계·globals.css) + siteViewport — 두 레이아웃·404 공용
+│   │   ├── fonts.ts              # next/font 인스턴스(Pretendard·Hahmlet) — SiteShell 이 쓴다
+│   │   ├── global-not-found.tsx  # 앱 전체 404(experimental.globalNotFound) — 이중 언어, /en/ 아래면 lang=en
 │   │   ├── globals.css           # Tailwind v4 + DESIGN.md 디자인 토큰
 │   │   ├── icon.svg              # 파비콘 원본(이니셜 "D.") — favicon.ico·apple-icon.png 는 여기서 래스터화
-│   │   ├── article/[id]/page.tsx # 상세(/article/[id]) — SSG generateStaticParams
-│   │   ├── search/page.tsx       # 검색(/search) — 정적 셸 + SearchClient
-│   │   ├── edition/[date]/page.tsx # 호 고정 링크(/edition/YYYY-MM-DD) — 그날 수집분(호) 지면 SSG
 │   │   ├── og/                   # 공유 썸네일(og:image) — 빌드타임 PNG: edition/<날짜>·article/<id>(최근 기사만)·default
 │   │   ├── sitemap.ts            # 사이트맵(/sitemap.xml) — 홈·검색·호 전체·기사 전체, 빌드타임 정적
 │   │   ├── feed.xml/route.ts     # RSS(/feed.xml) — 최신 호 기준 3일 수집분 60건, 빌드타임 정적
-│   │   ├── admin/                # 운영 콘솔 — 로컬 전용(page.local.tsx, login/page.local.tsx)
 │   │   └── api/                  # Route Handler — 로컬 전용(route.local.ts)
 │   │       ├── health/
 │   │       └── admin/{login,logout,sources,collect}/  # 인증·소스 커밋·workflow_dispatch 트리거
@@ -71,6 +76,7 @@
 │   │   ├── Analytics.tsx         # 방문 집계(GoatCounter count.js, 쿠키 없음) — 경로 전환마다 직접 집계
 │   │   ├── VisitorCount.tsx      # 푸터 "누적 방문 N회"(GoatCounter TOTAL.json, VISITOR_COUNT_MIN 미만이면 숨김)
 │   │   ├── JsonLd.tsx            # 구조화 데이터(JSON-LD) 스크립트 — 홈 WebSite·상세 NewsArticle
+│   │   ├── NotFoundNotice.tsx    # 404 본문 '독자 안내'(세리프 404·이중 괘선·한/영 두 단, lang-en 변형으로 순서·크기 교체)
 │   │   ├── mobile/               # 모바일 앱 셸(MobileTopBar·BottomTabBar·FilterSheet)
 │   │   ├── admin/                # Admin 전용 컴포넌트 (KpiPanel·EnglishKpiPanel(영어 커버리지·기각 사유)·SourceHealthPanel·SourceManager 등)
 │   │   └── ui/                   # shadcn/ui 프리미티브

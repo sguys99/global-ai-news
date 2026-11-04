@@ -15,7 +15,7 @@ vi.mock("@/lib/db", () => ({
   getLatestPublishedAt: () => null,
 }));
 
-import ArticlePage from "@/app/article/[id]/page";
+import ArticlePage from "@/app/(ko)/article/[id]/page";
 
 function article(p: Partial<ArticleCard>): ArticleCard {
   return {

@@ -24,18 +24,25 @@ const SITE_ORIGIN = "https://sguys99.github.io";
 const LOCAL_ONLY_EXTENSIONS = ["local.tsx", "local.ts", "local.jsx", "local.js"];
 const PUBLIC_EXTENSIONS = ["tsx", "ts", "jsx", "js"];
 
+// 최상위 레이아웃이 언어마다 하나((ko)·(en)/en)라 앱 전체 404 는 src/app/global-not-found.tsx 가 맡는다.
+// 실험 기능(Next 15.4+)이라 dev·프로덕션 두 분기 모두에 켠다 — dev 에서 빠지면 dev 404 만 Next 기본 화면이 된다.
+// 기능이 깨져도 빌드는 성공하고 404 만 기본 화면으로 퇴보한다 → Next 를 올릴 때 404 부터 확인(english-version-plan).
+const EXPERIMENTAL: NextConfig["experimental"] = { globalNotFound: true };
+
 const nextConfig = (phase: string): NextConfig => {
   if (phase !== PHASE_PRODUCTION_BUILD) {
     // 개발 서버: export 미적용. basePath도 두지 않아 기존 로컬 경로 그대로 사용.
     // pageExtensions에 local.* 를 포함해 admin/api/middleware를 로컬에서 그대로 노출.
     return {
       pageExtensions: [...LOCAL_ONLY_EXTENSIONS, ...PUBLIC_EXTENSIONS],
+      experimental: EXPERIMENTAL,
     };
   }
 
   return {
     // 프로덕션 빌드: local.* 제외 → admin/api/middleware가 라우트로 인식되지 않아 out/에서 제외.
     pageExtensions: PUBLIC_EXTENSIONS,
+    experimental: EXPERIMENTAL,
     // better-sqlite3는 빌드타임 readonly 조회 전용이라 런타임 번들에 포함되지
     // 않으므로 serverExternalPackages 없이도 정상.
     output: "export",

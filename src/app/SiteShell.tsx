@@ -1,0 +1,67 @@
+import type { Viewport } from "next";
+import type { ReactNode } from "react";
+import { Analytics } from "@/components/Analytics";
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
+import { LocaleProvider } from "@/components/LocaleProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { BottomTabBar } from "@/components/mobile/BottomTabBar";
+import { MobileTopBar } from "@/components/mobile/MobileTopBar";
+import { DEFAULT_LOCALE, HTML_LANG, type Locale } from "@/lib/i18n";
+import { fontVariables } from "./fonts";
+import "./globals.css";
+
+/*
+ * 사이트 문서 셸 — `<html>`·`<body>`와 그 안의 고정 크롬(헤더·모바일 바·푸터·테마·방문 집계).
+ * 최상위 레이아웃이 언어마다 하나씩((ko)/layout.tsx·(en)/en/layout.tsx)이고 앱 전체 404(global-not-found.tsx)는
+ * 레이아웃을 거치지 않으므로, 세 곳이 이 컴포넌트 하나를 그려 셸이 갈라지지 않게 한다(english-version-plan Phase 3-3).
+ * globals.css 도 여기서 한 번 import 한다 — 세 진입점 모두 이 모듈을 거친다.
+ */
+
+/** 모바일 셸(mobile-plan Phase 1): notch/safe-area 대응 + 테마별 브라우저 크롬 색. 두 레이아웃·404 공용. */
+export const siteViewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f4f1" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1118" },
+  ],
+};
+
+export function SiteShell({
+  locale,
+  head,
+  children,
+}: Readonly<{
+  /** 문서 언어 — `<html lang>`. 헤더·푸터 문구는 Phase 3-3 C단계에서 이 값을 받는다. */
+  locale: Locale;
+  /** `<head>`에 직접 넣을 요소(global-not-found 의 언어 판정 스크립트). 없으면 `<head>`를 쓰지 않는다 — Next 가 채운다. */
+  head?: ReactNode;
+  children: ReactNode;
+}>) {
+  const shell = (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+      <Header />
+      <MobileTopBar />
+      <div className="flex-1">{children}</div>
+      <Footer />
+      <BottomTabBar />
+    </ThemeProvider>
+  );
+
+  return (
+    <html lang={HTML_LANG[locale]} className={fontVariables} suppressHydrationWarning>
+      {head ? <head>{head}</head> : null}
+      <body className="bg-background text-foreground flex min-h-screen flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] antialiased md:pb-0">
+        {/* 한국어는 공급자 없이 그린다(컨텍스트 기본값 ko) — 감싸면 한국어 모든 페이지 RSC 에 클라이언트 참조가 하나 더 실린다. */}
+        {locale === DEFAULT_LOCALE ? (
+          shell
+        ) : (
+          <LocaleProvider locale={locale}>{shell}</LocaleProvider>
+        )}
+        <Analytics />
+      </body>
+    </html>
+  );
+}

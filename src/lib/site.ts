@@ -46,6 +46,22 @@ export const VISITOR_COUNT_MIN = 100;
 export const GOOGLE_SITE_VERIFICATION = "";
 export const NAVER_SITE_VERIFICATION = "";
 
+/** 최상위 레이아웃 metadata.verification — 한국어·영어 레이아웃 공용(빈 값은 태그 없음). */
+export const SITE_VERIFICATION: Metadata["verification"] = {
+  google: GOOGLE_SITE_VERIFICATION || undefined,
+  other: NAVER_SITE_VERIFICATION
+    ? { "naver-site-verification": NAVER_SITE_VERIFICATION }
+    : undefined,
+};
+
+/*
+ * 영어판 홈 제목·설명(english-version-plan 0-5 확정, 2026-11-03). 영어 레이아웃 기본 metadata 에만 쓴다 —
+ * 영어 페이지·hreflang·영어 공유 메타는 Phase 5·6 에서 붙인다.
+ */
+export const SITE_TITLE_EN = `${SITE_NAME} — Daily AI News Briefing from Korea and the World`;
+export const SITE_DESCRIPTION_EN =
+  "Every morning from Seoul: the day's top AI news, open-source repos, models and papers — with a Korea Desk on Korean AI you won't find elsewhere.";
+
 /** RSS 피드 경로(basePath 제외, src/app/feed.xml) — 네이버 서치어드바이저 제출·구독용. */
 export const FEED_PATH = "/feed.xml";
 
