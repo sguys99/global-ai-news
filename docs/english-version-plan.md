@@ -371,7 +371,10 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
   - 관련 기사·타임라인은 목록용 최소 필드와 최소 마크업만 넘긴다(약 −13KB).
   - 그래도 모자라면 기사 페이지의 `index.txt`를 지우고 기사 링크 prefetch를 끈다.
 - [ ] **호 페이지 ≤ 150KB**(현행 382KB). 같은 수단을 쓴다.
-- [ ] og 호 PNG는 최근 30일만 만든다. 기사 PNG의 7일 창과 같은 방식이고, 그 이전 호는 `og/default.png`를 쓴다.
+- [x] og 호 PNG는 최근 30일만 만든다. 기사 PNG의 7일 창과 같은 방식이고, 그 이전 호는 `og/default.png`를 쓴다. (2026-11-05)
+  - `site.ts` `EDITION_THUMBNAIL_WINDOW_DAYS = 30`·`hasEditionThumbnail(date, latestEditionDate)`: DB 최신 호 날짜와 그 앞 29일(KST 날짜 30개)만 참이다. 기준이 벽시계가 아니라 DB라 같은 `app.db`면 산출물이 같다.
+  - 생성(`og/edition/[file]` `generateStaticParams`)과 참조(`editionMetadata`, 홈·호 고정 링크)가 이 판정 하나를 쓴다. `editionMetadata`의 새 인자 `latestEditionDate`는 필수라 빠뜨리면 타입 오류다. JSON-LD·RSS·`latest.json`은 호 PNG를 참조하지 않는다.
+  - `ogEditionWindow.test.ts`: 가짜 DB 46개 호로 실제 라우트·메타데이터를 돌려 생성 PNG 30장, 모든 og:image가 생성된 PNG이거나 기본 썸네일인지 확인한다. 지금 DB(최신 호 11-05)로는 PNG 30장, 기본 썸네일 4개 호다.
 - [ ] `deploy.yml`에 산출물 크기 검사를 넣는다: 700MB면 `::warning::`, 950MB면 실패.
 - [ ] 한국어 회귀 비교(3-1)를 다시 통과하는지 확인한다. 클래스 이름 변경은 의도된 차이로 보고, 렌더 결과(스크린숏)가 같은지 확인한다.
 
