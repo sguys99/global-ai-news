@@ -21,7 +21,7 @@ import { formatShortDate } from "@/lib/labels";
 import { radarMetaBlock, type RadarMetaItem } from "@/lib/radarMeta";
 import { issueDayLabel, weeklyMetaBlock, type WeeklyItem } from "@/lib/weeklyRadar";
 import { cn } from "@/lib/utils";
-import type { ArticleCard, IndexCard } from "@/lib/types";
+import type { ArticleCard, IndexCard, RadarCard, StoryCard } from "@/lib/types";
 
 // 색인 카드(IndexCard)는 원제가 없다 — 만들 때 원제 폴백을 titleKo 에 이미 넣었다(src/lib/feedIndex.ts).
 const hrefOf = (a: Pick<ArticleCard, "id">, locale: Locale) =>
@@ -31,7 +31,7 @@ const hrefOf = (a: Pick<ArticleCard, "id">, locale: Locale) =>
 
 /** 스토리 변형 공통 prop. */
 interface StoryProps {
-  article: ArticleCard;
+  article: StoryCard;
   timeBase?: string;
   /** 언어판(기본 ko). */
   locale?: Locale;
@@ -77,7 +77,7 @@ export function StorySectionItem({
   timeBase,
   locale = "ko",
 }: {
-  article: ArticleCard;
+  article: StoryCard;
   featured?: boolean;
   /**
    * 밴드에 이 기사 하나뿐일 때(대표) — md 이상에서 [제목 | 요약·바이라인] 가로 한 줄로 펼친다.
@@ -168,7 +168,7 @@ export function StoryRadar({
   wide = false,
   locale = "ko",
 }: {
-  article: ArticleCard;
+  article: RadarCard;
   wide?: boolean;
   /** 언어판(기본 ko). */
   locale?: Locale;
@@ -237,7 +237,7 @@ function RadarMetaRail({
   wide = false,
   locale,
 }: {
-  article: ArticleCard;
+  article: RadarCard;
   wide?: boolean;
   locale: Locale;
 }) {

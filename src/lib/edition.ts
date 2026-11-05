@@ -21,28 +21,32 @@
  * 비뉴스가 4건 미만이면 레이더가 준다(0건이면 빈 배열 → UI 가 레이더 띠를 숨긴다). 남는 기사는 섹션 밴드로 간다.
  */
 import { CATEGORIES, FORMATS, type Format, shortSourceName } from "@/lib/labels";
-import type { ArticleCard } from "@/lib/types";
+import type { ArticleCard, RadarCard, StoryCard } from "@/lib/types";
 
-export interface EditionSection {
+/**
+ * 카드 타입 C: buildEdition 은 ArticleCard 로 짜고(기본), 호 고정 링크의 클라이언트 섬은 같은 편집을 행으로 받은
+ * 지면 카드(StoryCard)로 되살린다(src/lib/editionPayload.ts). 레이더 칸만 메타 레일용 URL·메트릭이 더 있다.
+ */
+export interface EditionSection<C extends StoryCard = ArticleCard> {
   /** 분야 키(CATEGORIES 순서). */
   category: string;
   /** 이 호 안의 해당 분야 기사 수(1면 게재분 포함). */
   count: number;
   /** 그중 1면 본문(리드·서브·브리핑·레이더)에 실린 수 — 밴드 머리의 "· 1면 N건". */
   onFront: number;
-  items: ArticleCard[];
+  items: C[];
 }
 
-export interface Edition {
-  lead: ArticleCard | null;
-  seconds: ArticleCard[];
+export interface Edition<C extends StoryCard = ArticleCard> {
+  lead: C | null;
+  seconds: C[];
   /** 오늘의 브리핑 — 서브 다음 뉴스, 분야당 1건(편집 순). */
-  briefs: ArticleCard[];
+  briefs: C[];
   /** 오픈소스·논문 레이더 — 비뉴스(편집 순). 비면 띠를 숨긴다. */
-  radar: ArticleCard[];
-  trending: ArticleCard[];
-  sections: EditionSection[];
-  issue: ArticleCard[];
+  radar: (C & RadarCard)[];
+  trending: C[];
+  sections: EditionSection<C>[];
+  issue: C[];
 }
 
 export interface EditionLimits {
@@ -238,9 +242,9 @@ export function buildEdition(
 }
 
 /** 1면 본문 기사(리드 → 서브 → 브리핑 → 레이더 순). 지금 화제는 순위 정보라 포함하지 않는다. */
-export function frontArticles(
-  edition: Pick<Edition, "lead" | "seconds" | "briefs" | "radar">,
-): ArticleCard[] {
+export function frontArticles<C extends StoryCard>(
+  edition: Pick<Edition<C>, "lead" | "seconds" | "briefs" | "radar">,
+): C[] {
   const { lead, seconds, briefs, radar } = edition;
   return [...(lead ? [lead] : []), ...seconds, ...briefs, ...radar];
 }

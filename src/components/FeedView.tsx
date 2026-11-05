@@ -24,8 +24,9 @@ import type { WeeklyRadar } from "@/lib/weeklyRadar";
  * 피드 프레젠테이션(서버·클라 공용, 훅 없음).
  *
  * 정적 export에서 두 곳에서 쓰인다:
- *  1) page.tsx의 Suspense fallback — 서버가 기본 옵션(필터 없음)으로 **정적 HTML에 지면을 렌더**
+ *  1) HomeView 의 Suspense fallback(FeedFallback) — 기본 옵션(필터 없음)으로 **정적 HTML에 지면을 렌더**
  *     (LCP·SEO·"피드 정적 생성" 보장). useSearchParams를 쓰지 않으므로 bailout되지 않는다.
+ *     FeedFallback 은 클라이언트 컴포넌트라 RSC 에는 렌더 트리가 아니라 FeedClient 와 공유하는 props 한 벌만 실린다.
  *  2) FeedClient(클라) 내부 — URL 쿼리로 파싱한 옵션을 받아 동일 마크업으로 재렌더.
  *
  * 두 가지 모드 (DESIGN.md §3):

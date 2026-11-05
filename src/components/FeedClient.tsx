@@ -33,18 +33,8 @@ import type { WeeklyRadar } from "@/lib/weeklyRadar";
  *
  * 언어는 prop 이 아니라 LocaleProvider 컨텍스트로 읽어(props 는 RSC 페이로드에 실린다) FeedView 에 넘긴다.
  */
-export function FeedClient({
-  issueArticles,
-  indexHead,
-  indexTotal,
-  indexVersion,
-  sources,
-  tags,
-  editionInfo,
-  initialDelayGap,
-  weekly,
-  brief,
-}: {
+/** 홈 본문 props — 뷰(HomeView)가 FeedClient 와 서버 fallback(FeedFallback)에 같은 값을 넘긴다. */
+export interface FeedClientProps {
   issueArticles: ArticleCardType[];
   indexHead: IndexCard[];
   indexTotal: number;
@@ -56,7 +46,46 @@ export function FeedClient({
   initialDelayGap?: number;
   weekly?: WeeklyRadar | null;
   brief?: IssueBriefLine[];
-}) {
+}
+
+/** 기본 옵션(필터·정렬 없음) — 정적 HTML 의 지면. */
+const DEFAULT_OPTIONS = {};
+
+/**
+ * 홈 Suspense fallback = 기본 옵션 FeedView(정적 HTML 의 지면 — LCP·SEO). useSearchParams 를 쓰지 않아 bailout 되지 않는다.
+ * 클라이언트 컴포넌트로 두는 이유는 페이로드다(영어판 Phase 4-1): 서버 컴포넌트 fallback 은 렌더 트리(1면·밴드·색인 첫 페이지의
+ * 요소·클래스)가 통째로 RSC 에 실리지만, 클라이언트 fallback 은 props 만 실리고 그 props 는 FeedClient 에 넘기는 것과 같은
+ * 객체라 React Flight 가 한 벌만 싣고 다른 쪽은 참조로 잇는다. 정적 HTML 은 같은 FeedView 의 SSR 이라 그대로다.
+ */
+export function FeedFallback({
+  indexHead,
+  indexTotal,
+  ...feed
+}: Omit<FeedClientProps, "indexVersion">) {
+  const locale = useLocale();
+  return (
+    <FeedView
+      {...feed}
+      index={indexHead}
+      indexTotal={indexTotal}
+      options={DEFAULT_OPTIONS}
+      locale={locale}
+    />
+  );
+}
+
+export function FeedClient({
+  issueArticles,
+  indexHead,
+  indexTotal,
+  indexVersion,
+  sources,
+  tags,
+  editionInfo,
+  initialDelayGap,
+  weekly,
+  brief,
+}: FeedClientProps) {
   const locale = useLocale();
   const searchParams = useSearchParams();
   // 피드는 검색어를 쓰지 않으므로 q 는 버린다.

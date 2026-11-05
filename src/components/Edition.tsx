@@ -28,14 +28,14 @@ import { frontPageMessages } from "@/lib/messages/frontPage";
 import { weekRangeLabel, weeklyFormatMix, type WeeklyRadar } from "@/lib/weeklyRadar";
 import { CATEGORIES, FORMATS, categoryLabel, categorySlug } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import type { ArticleCard } from "@/lib/types";
+import type { ArticleCard, RadarCard, StoryCard } from "@/lib/types";
 
 export function FrontPage({
   edition,
   timeBase,
   locale = "ko",
 }: {
-  edition: Edition;
+  edition: Edition<StoryCard>;
   timeBase?: string;
   /** 언어판(기본 ko). */
   locale?: Locale;
@@ -110,7 +110,7 @@ function BriefList({
   className,
   locale,
 }: {
-  articles: ArticleCard[];
+  articles: StoryCard[];
   timeBase?: string;
   className?: string;
   locale: Locale;
@@ -167,7 +167,7 @@ function RadarBand({
   className,
   locale,
 }: {
-  articles: ArticleCard[];
+  articles: RadarCard[];
   className?: string;
   locale: Locale;
 }) {
@@ -216,7 +216,7 @@ export function TrendingList({
   className,
   locale = "ko",
 }: {
-  articles: ArticleCard[];
+  articles: StoryCard[];
   className?: string;
   /** 언어판(기본 ko). */
   locale?: Locale;
@@ -277,7 +277,7 @@ export interface IssueContentsRow {
  * 이 호의 지면 차례(CATEGORIES 순). 섹션 밴드(edition.sections)는 1면에 다 오른 분야를 빼므로,
  * 건수는 호 전체(edition.issue)에서 직접 센다 — 기사가 0건인 분야만 생략한다.
  */
-export function issueContents(edition: Edition): IssueContentsRow[] {
+export function issueContents(edition: Edition<StoryCard>): IssueContentsRow[] {
   const frontIds = new Set(frontArticles(edition).map((a) => a.id));
   const banded = new Set(edition.sections.map((s) => s.category));
   return CATEGORIES.map((category) => {
@@ -301,7 +301,7 @@ function IssueContents({
   className,
   locale,
 }: {
-  edition: Edition;
+  edition: Edition<StoryCard>;
   className?: string;
   locale: Locale;
 }) {
@@ -425,7 +425,7 @@ function SectionBand({
   timeBase,
   locale,
 }: {
-  section: EditionSection;
+  section: EditionSection<StoryCard>;
   timeBase?: string;
   locale: Locale;
 }) {
@@ -474,7 +474,7 @@ export function SectionBands({
   timeBase,
   locale = "ko",
 }: {
-  sections: EditionSection[];
+  sections: EditionSection<StoryCard>[];
   timeBase?: string;
   /** 언어판(기본 ko). */
   locale?: Locale;

@@ -81,7 +81,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 /**
- * 훅이 없는 공용 프레젠테이션이라 서버(FeedView fallback)·클라(FilterSheet·SearchClient) 어디서나 그린다 —
+ * 훅이 없는 공용 프레젠테이션이라 서버·클라(FeedView — 홈 fallback·FeedClient, FilterSheet·SearchClient) 어디서나 그린다 —
  * 언어는 `locale` prop 으로 받는다(클라 부모가 `useLocale()` 을 넘긴다). 링크는 언어판 경로(`localePath`)로 만든다.
  */
 export function FilterBar({
