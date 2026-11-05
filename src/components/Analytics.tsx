@@ -20,8 +20,9 @@ export function countPath(pathname: string): string {
 }
 
 /**
- * 방문 집계(GoatCounter count.js). 홈 → 기사 이동은 Next 클라이언트 전환이라 페이지를 다시 불러오지 않는다 →
+ * 방문 집계(GoatCounter count.js). 홈·호·검색 사이 이동은 Next 클라이언트 전환이라 페이지를 다시 불러오지 않는다 →
  * 자동 집계(onload)를 끄고 경로가 바뀔 때마다 직접 센다. 쿼리(?category= 등 필터)는 빼고 경로만 센다.
+ * 기사로 가는 이동은 전체 로드(ArticleLink 일반 `<a>`)라 새 문서에서 스크립트 준비(onReady) 때 한 번 센다.
  * localhost·사설 IP 는 count.js 가 스스로 거른다(로컬 dev·Docker 확인은 집계되지 않음).
  */
 export function Analytics() {

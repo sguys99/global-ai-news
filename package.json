@@ -9,6 +9,7 @@
     "export-latest": "tsx scripts/export-latest.ts",
     "prebuild": "tsx scripts/lib/initDb.ts --existing && tsx scripts/export-search-index.ts && tsx scripts/export-feed-index.ts && tsx scripts/export-latest.ts",
     "build": "next build",
+    "postbuild": "tsx scripts/postbuild.ts",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",

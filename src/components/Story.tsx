@@ -13,19 +13,19 @@
  * 모두 `locale`(기본 ko)을 받아 제목·요약·매체(articleText)·키커·배지·바이라인·링크를 그 언어로 그린다.
  * 서버·클라이언트 공용(훅 없음) — 클라이언트 부모(StoryIndex)는 useLocale() 값을 넘긴다.
  */
-import Link from "next/link";
+import { ArticleLink } from "@/components/ArticleLink";
 import { Byline, CategoryKicker, Dot, FormatBadge } from "@/components/ArticleMeta";
 import { headlineOf, sourceNameOf, summaryOf } from "@/lib/articleText";
-import { localePath, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import { formatShortDate } from "@/lib/labels";
 import { radarMetaBlock, type RadarMetaItem } from "@/lib/radarMeta";
 import { issueDayLabel, weeklyMetaBlock, type WeeklyItem } from "@/lib/weeklyRadar";
 import { cn } from "@/lib/utils";
-import type { ArticleCard, IndexCard } from "@/lib/types";
+import type { EntryCard } from "@/lib/feedIndex";
+import type { ArticleCard } from "@/lib/types";
 
 // 색인 카드(IndexCard)는 원제가 없다 — 만들 때 원제 폴백을 titleKo 에 이미 넣었다(src/lib/feedIndex.ts).
-const hrefOf = (a: Pick<ArticleCard, "id">, locale: Locale) =>
-  localePath(locale, `/article/${a.id}`);
+// 기사 링크는 ArticleLink(일반 `<a>`, prefetch 없음 — 기사 index.txt 는 빌드 후 지운다).
 // 클래스는 globals.css 컴포넌트 층(`st-*`·`sg-*`) — 링크 묶음은 포커스 링을 품는다(따로 붙일 때는 `st-f`).
 // 조건부·덮어쓰기 클래스는 유틸리티로 남긴다(컴포넌트 층을 늘 이긴다).
 
@@ -40,7 +40,7 @@ interface StoryProps {
 export function StoryLead({ article, timeBase, locale = "ko" }: StoryProps) {
   const summary = summaryOf(article, locale);
   return (
-    <Link href={hrefOf(article, locale)} className="story-link st-lead">
+    <ArticleLink articleId={article.id} locale={locale} className="story-link st-lead">
       <CategoryKicker category={article.category} locale={locale} />
       <h2 className="headline st-lead-h">{headlineOf(article, locale)}</h2>
       {summary && (
@@ -48,14 +48,14 @@ export function StoryLead({ article, timeBase, locale = "ko" }: StoryProps) {
         <p className="st-lead-p">{summary}</p>
       )}
       <Byline article={article} showTrend timeBase={timeBase} locale={locale} />
-    </Link>
+    </ArticleLink>
   );
 }
 
 export function StorySecondary({ article, timeBase, locale = "ko" }: StoryProps) {
   const summary = summaryOf(article, locale);
   return (
-    <Link href={hrefOf(article, locale)} className="story-link st-sec">
+    <ArticleLink articleId={article.id} locale={locale} className="story-link st-sec">
       <CategoryKicker category={article.category} locale={locale} />
       <h3 className="headline st-sec-h">{headlineOf(article, locale)}</h3>
       {summary && <p className="st-sum3">{summary}</p>}
@@ -66,7 +66,7 @@ export function StorySecondary({ article, timeBase, locale = "ko" }: StoryProps)
         className="mt-auto pt-1"
         locale={locale}
       />
-    </Link>
+    </ArticleLink>
   );
 }
 
@@ -91,8 +91,9 @@ export function StorySectionItem({
 }) {
   const summary = summaryOf(article, locale);
   return (
-    <Link
-      href={hrefOf(article, locale)}
+    <ArticleLink
+      articleId={article.id}
+      locale={locale}
       className={cn(
         "story-link st-item",
         // gap-x 30px: 1fr:2fr 둘째 칸 시작 = W/3 + 20px — 2·3·4건 밴드의 둘째 칸 본문(pl-5)과 같은 x.
@@ -123,7 +124,7 @@ export function StorySectionItem({
         className={wide ? "pt-1" : "mt-auto pt-1"}
         locale={locale}
       />
-    </Link>
+    </ArticleLink>
   );
 }
 
@@ -136,7 +137,7 @@ export function StorySectionItem({
  */
 export function StoryBrief({ article, timeBase, locale = "ko" }: StoryProps) {
   return (
-    <Link href={hrefOf(article, locale)} className="story-link st-brief">
+    <ArticleLink articleId={article.id} locale={locale} className="story-link st-brief">
       <CategoryKicker category={article.category} className="max-md:hidden" locale={locale} />
       <h3 className="headline st-brief-h">{headlineOf(article, locale)}</h3>
       <Byline
@@ -154,7 +155,7 @@ export function StoryBrief({ article, timeBase, locale = "ko" }: StoryProps) {
         className="min-w-0 flex-nowrap gap-x-2 overflow-hidden whitespace-nowrap"
         locale={locale}
       />
-    </Link>
+    </ArticleLink>
   );
 }
 
@@ -175,8 +176,9 @@ export function StoryRadar({
 }) {
   const summary = summaryOf(article, locale);
   return (
-    <Link
-      href={hrefOf(article, locale)}
+    <ArticleLink
+      articleId={article.id}
+      locale={locale}
       className={cn(
         "story-link",
         wide
@@ -224,7 +226,7 @@ export function StoryRadar({
         )}
       </div>
       <RadarMetaRail article={article} wide={wide} locale={locale} />
-    </Link>
+    </ArticleLink>
   );
 }
 
@@ -282,7 +284,7 @@ export function StoryWeekly({
   // 식별자가 없어 매체명이 식별자 자리에 왔으면(radarMetaBlock 강등) 매체를 두 번 쓰지 않는다.
   const showSource = id?.key !== "source";
   return (
-    <Link href={hrefOf(item, locale)} className="story-link st-wk">
+    <ArticleLink articleId={item.id} locale={locale} className="story-link st-wk">
       <span
         className={cn(
           "st-rank row-span-3 pt-px",
@@ -314,7 +316,7 @@ export function StoryWeekly({
           </span>
         ))}
       </span>
-    </Link>
+    </ArticleLink>
   );
 }
 
@@ -357,8 +359,8 @@ export function StoryEntry({
   hideCategory = false,
   locale = "ko",
 }: {
-  /** 색인 카드 — ArticleCard·검색 인덱스 항목도 그대로 받는다. */
-  article: IndexCard;
+  /** 색인 카드 — ArticleCard·검색 인덱스 항목·목록 카드(EntryCard, 태그 없음)도 그대로 받는다. */
+  article: EntryCard;
   /** 이미 분야가 정해진 목록(상세의 "같은 분야 기사")에서는 키커를 생략한다. */
   hideCategory?: boolean;
   /** 언어판(기본 ko) — 클라이언트 부모(StoryIndex)는 useLocale() 값을 넘긴다. */
@@ -366,8 +368,9 @@ export function StoryEntry({
 }) {
   const summary = summaryOf(article, locale);
   return (
-    <Link
-      href={hrefOf(article, locale)}
+    <ArticleLink
+      articleId={article.id}
+      locale={locale}
       // st-entry grid-rows-[1fr_auto]: 2열 색인에서 옆 항목에 맞춰 늘어난 높이를 본문 행이 받는다 — 바이라인이 바닥에 붙어
       // 좌우 항목의 바이라인이 같은 높이에 선다(auto 행 두 개면 여분이 반씩 나뉘어 어긋났다).
       className="story-link st-entry"
@@ -392,6 +395,6 @@ export function StoryEntry({
         className="col-start-2 mt-1"
         locale={locale}
       />
-    </Link>
+    </ArticleLink>
   );
 }

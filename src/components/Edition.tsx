@@ -12,6 +12,7 @@
  * 홈은 클라이언트 FeedView 가 useLocale() 값을, 호 고정 링크는 서버 뷰가 prop 으로 넘긴다.
  */
 import Link from "next/link";
+import { ArticleLink } from "@/components/ArticleLink";
 import { FormatBadge, TrendBar } from "@/components/ArticleMeta";
 import {
   StoryBrief,
@@ -236,7 +237,7 @@ export function TrendingList({
       <ol>
         {articles.map((a, i) => (
           <li key={a.id}>
-            <Link href={localePath(locale, `/article/${a.id}`)} className="story-link ed-tr">
+            <ArticleLink articleId={a.id} locale={locale} className="story-link ed-tr">
               <span
                 className={cn(
                   "st-rank row-span-2",
@@ -256,7 +257,7 @@ export function TrendingList({
                 <TrendBar value={a.trendingScore} />
                 <span className="ed-tr-s">{a.trendingScore}</span>
               </span>
-            </Link>
+            </ArticleLink>
           </li>
         ))}
       </ol>

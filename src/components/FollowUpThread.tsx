@@ -1,6 +1,6 @@
-import Link from "next/link";
+import { ArticleLink } from "@/components/ArticleLink";
 import { headlineOf } from "@/lib/articleText";
-import { getMessages, localePath, type Locale } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 import {
   formatDate,
   formatShortDate,
@@ -60,8 +60,9 @@ export function FollowUpThread({
                 </span>
               </div>
             ) : (
-              <Link
-                href={localePath(locale, `/article/${e.id}`)}
+              <ArticleLink
+                articleId={e.id}
+                locale={locale}
                 className={`story-link ${ROW} ${FOCUS}`}
               >
                 <IssueDate iso={e.issuedAt} locale={locale} />
@@ -83,7 +84,7 @@ export function FollowUpThread({
                     {headlineOf(e, locale)}
                   </span>
                 </span>
-              </Link>
+              </ArticleLink>
             )}
           </li>
         ))}

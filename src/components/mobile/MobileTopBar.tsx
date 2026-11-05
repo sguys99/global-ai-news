@@ -1,18 +1,23 @@
+"use client";
+
 import Link from "next/link";
 import { HeaderWordmark } from "@/components/HeaderWordmark";
 import { Icon } from "@/components/Icon";
+import { useLocale, useMessages } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { getMessages, localePath, type Locale } from "@/lib/i18n";
+import { localePath } from "@/lib/i18n";
 import { commonMessages } from "@/lib/messages/common";
 
 /**
  * 모바일 전용 상단 바. 데스크톱 Header(`hidden md:block`)의 모바일 짝으로 `md:hidden`만 렌더된다.
  * 워드마크(홈에선 제호를 지나면 등장) + 검색 + 테마 토글.
- * 서버 컴포넌트라 언어를 prop 으로 받는다(SiteShell). 워드마크·테마 토글은 클라이언트라 컨텍스트로 읽는다.
+ * 셸 클라이언트 섬(ShellChrome)의 일부라 언어는 컨텍스트로 읽는다(Phase 4-1 — 서버 컴포넌트면 바 요소 트리가
+ * 모든 페이지 RSC 에 실린다).
  */
-export function MobileTopBar({ locale = "ko" }: { locale?: Locale }) {
-  const t = getMessages(commonMessages, locale);
+export function MobileTopBar() {
+  const locale = useLocale();
+  const t = useMessages(commonMessages);
   return (
     <header className="sh-mtb">
       <div className="sh-mtb-in">

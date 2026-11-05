@@ -8,6 +8,7 @@
  * - 그 너머·필터·정렬: 모든 달 조각을 받아 기본 정렬 순으로 합친다(필터는 어차피 전체가 필요하다).
  */
 import { filterAndSortFeed } from "@/lib/feedFilter";
+import type { Locale } from "@/lib/i18n";
 import type { ArticleCard, IndexCard } from "@/lib/types";
 
 /**
@@ -52,6 +53,35 @@ export function toIndexCard(article: ArticleCard | IndexCard): IndexCard {
   const related = relatedCountOf(a);
   if (related) card.relatedCount = related;
   return card;
+}
+
+/**
+ * 목록 한 줄(StoryEntry) 카드 — 색인 카드에서 태그를 뺐다. StoryEntry 는 태그를 그리지 않는다.
+ * 영어판은 영어 제목·요약·원제·영문 매체명을 더 싣는다(articleText 헬퍼가 en 일 때 읽는 필드).
+ */
+export type EntryCard = Omit<IndexCard, "tags"> &
+  Partial<Pick<ArticleCard, "titleOriginal" | "titleEn" | "summaryEn">>;
+
+/**
+ * 상세 "같은 분야 기사"(RelatedStories 클라이언트 섬)에 넘기는 카드(Phase 4-1 페이지 무게, 분석 순위 5).
+ * 서버 렌더면 RSC 에 카드마다 렌더된 요소 트리(클래스·미터·바이라인, 약 1.2KB)가 실리는데, 섬에 props 로 넘기면
+ * 그 언어로 화면에 쓰는 값만 실린다. 값이 없는 선택 필드는 키를 두지 않는다(RSC 가 `"$undefined"` 를 적지 않게).
+ * ko 는 toIndexCard 와 같은 값(원제 폴백 포함)이라 서버 렌더와 HTML 이 같다.
+ */
+export function toEntryCard(article: ArticleCard, locale: Locale = "ko"): EntryCard {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { tags, ...card } = toIndexCard(article);
+  if (locale !== "en") return card;
+  const { titleOriginal, titleEn, summaryEn, source } = article;
+  return {
+    ...card,
+    titleKo: "",
+    summaryKo: "",
+    source: source.nameEn ? { ...card.source, nameEn: source.nameEn } : card.source,
+    // headlineOf(en)은 영어 제목이 없을 때만 원제를 읽는다.
+    ...(titleEn ? { titleEn } : { titleOriginal }),
+    ...(summaryEn ? { summaryEn } : {}),
+  };
 }
 
 /**

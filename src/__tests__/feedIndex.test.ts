@@ -4,6 +4,7 @@ import {
   buildFeedIndex,
   mergeIndex,
   relatedCountOf,
+  toEntryCard,
   toIndexCard,
 } from "@/lib/feedIndex";
 import { filterAndSortFeed } from "@/lib/feedFilter";
@@ -135,4 +136,38 @@ describe("mergeIndex — 첫 페이지 + 받은 전체 + 이번 호", () => {
       expect(ids(after)).toEqual(ids(before));
     },
   );
+});
+
+describe("toEntryCard — 상세 같은 분야 기사 섬 props", () => {
+  it("ko: 색인 카드에서 태그만 뺀다(원제 폴백·묶인 보도 개수 그대로)", () => {
+    const a = { ...card(17), tags: ["x", "y"] };
+    const { tags, ...rest } = toIndexCard(a);
+    expect(tags).toEqual(["x", "y"]);
+    expect(toEntryCard(a)).toEqual(rest);
+    expect(toEntryCard(a, "ko")).not.toHaveProperty("tags");
+    expect(toEntryCard(a).titleKo).toBe("T17");
+  });
+
+  it("en: 영어 제목·요약·영문 매체명만 더하고 한국어 본문은 싣지 않는다, 없는 값은 키도 없다", () => {
+    const a: ArticleCard = {
+      ...card(3),
+      titleEn: "English title",
+      summaryEn: "English summary",
+      source: { id: "kr", name: "한국 매체", nameEn: "Korean Outlet" },
+    };
+    const en = toEntryCard(a, "en");
+    expect(en).toMatchObject({
+      titleKo: "",
+      summaryKo: "",
+      titleEn: "English title",
+      summaryEn: "English summary",
+      source: { id: "kr", name: "한국 매체", nameEn: "Korean Outlet" },
+    });
+    expect(en).not.toHaveProperty("titleOriginal");
+    const bare = toEntryCard({ ...card(3), titleEn: undefined, summaryEn: undefined }, "en");
+    expect(bare).not.toHaveProperty("titleEn");
+    expect(bare).not.toHaveProperty("summaryEn");
+    expect(bare.titleOriginal).toBe("T3");
+    expect(Object.values(bare as Record<string, unknown>)).not.toContain(undefined);
+  });
 });
