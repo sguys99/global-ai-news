@@ -180,7 +180,7 @@ describe("editionShare — 세 줄 요약을 공유 설명으로", () => {
 
   it("og:description·twitter description 에 실린다", () => {
     const lead = card({ titleKo: "리드 기사" });
-    const meta = editionMetadata({ lead, seconds: [] }, info, "/", [
+    const meta = editionMetadata({ lead, seconds: [] }, info, "/", "2026-10-30", [
       line(lead.id),
       line(77, "둘째 줄 요약"),
     ]);

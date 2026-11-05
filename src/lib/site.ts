@@ -105,6 +105,21 @@ export function hasArticleThumbnail(
   return Date.parse(publishedAt) >= Date.parse(latestPublishedAt) - ARTICLE_THUMBNAIL_WINDOW_MS;
 }
 
+/**
+ * 호 썸네일 생성 기간: DB 최신 호 날짜 기준 30일(KST 날짜 30개) — 최신 호 날짜와 그 앞 29일까지 포함하고,
+ * 30일 전 날짜부터는 기본 썸네일이다. 기사 썸네일과 같은 이유(호마다 PNG 가 쌓여 Pages 용량 잠식)로
+ * 공유가 몰리는 최근 호만 그린다. 기준이 벽시계가 아니라 DB 라 같은 app.db 면 산출물이 같다.
+ * 생성(og/edition/[file] generateStaticParams)과 참조(editionMetadata)가 이 판정 하나를 같이 쓴다.
+ */
+export const EDITION_THUMBNAIL_WINDOW_DAYS = 30;
+
+export function hasEditionThumbnail(date: string, latestEditionDate: string | null): boolean {
+  if (!latestEditionDate) return false;
+  const day = (key: string) => Date.parse(`${key}T00:00:00Z`) / (24 * 3600 * 1000);
+  const age = day(latestEditionDate) - day(date);
+  return age >= 0 && age < EDITION_THUMBNAIL_WINDOW_DAYS;
+}
+
 export interface ShareImage {
   path: string;
   alt: string;
@@ -197,16 +212,22 @@ export function editionShare(
 /**
  * 호 공유 메타(홈·호 고정 링크 공용): 제목 = 1면 리드, 설명 = 세 줄 요약(없으면 서브), 썸네일 = 그날 1면.
  * `path` 는 og:url — 공유되는 페이지 자신의 경로(홈 "/", 호 고정 링크 "/edition/[date]/").
+ * `latestEditionDate` 는 DB 최신 호 날짜(getLatestEditionRef) — 썸네일 기간(hasEditionThumbnail) 밖의
+ * 호는 PNG 를 만들지 않으므로 기본 썸네일을 쓴다.
  */
 export function editionMetadata(
   edition: Pick<Edition, "lead" | "seconds">,
   info: EditionInfo,
   path: string,
+  latestEditionDate: string | null,
   brief: readonly IssueBriefLine[] = [],
 ): ShareMetadata {
   const { title, description, version } = editionShare(edition, info, brief);
   if (!edition.lead || !info.publishedAt) return shareMetadata({ title, description, path });
   const date = kstDateKey(info.publishedAt);
+  if (!hasEditionThumbnail(date, latestEditionDate)) {
+    return shareMetadata({ title, description, path });
+  }
   return shareMetadata({
     title,
     description,

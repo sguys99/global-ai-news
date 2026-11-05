@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getEditionRefs } from "@/lib/db";
+import { getEditionRefs, getLatestEditionRef } from "@/lib/db";
 import { formatLongDate } from "@/lib/labels";
 import { SITE_NAME, editionMetadata, editionPath } from "@/lib/site";
 import { EditionView } from "@/views/EditionView";
@@ -25,7 +25,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { ref, edition, brief } = data;
   return {
     title: `${formatLongDate(ref.publishedAt)} AI 뉴스 브리핑 제${ref.issueNo}호 — ${SITE_NAME}`,
-    ...editionMetadata(edition, ref, editionPath(ref.date), brief),
+    ...editionMetadata(
+      edition,
+      ref,
+      editionPath(ref.date),
+      getLatestEditionRef()?.date ?? null,
+      brief,
+    ),
   };
 }
 

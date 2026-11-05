@@ -10,7 +10,14 @@ export function generateMetadata(): Metadata {
   const ref = getLatestEditionRef();
   if (!ref) return {};
   const edition = buildEdition(getIssueArticles(ref.date));
-  return editionMetadata(edition, ref, "/", selectIssueBrief(edition, getIssueBriefs(ref.date)));
+  // 홈은 최신 호 자신이라 썸네일 기간의 기준 날짜도 ref.date.
+  return editionMetadata(
+    edition,
+    ref,
+    "/",
+    ref.date,
+    selectIssueBrief(edition, getIssueBriefs(ref.date)),
+  );
 }
 
 /** 한국어 홈(최신 호 지면 + 전체 기사 색인) 라우트 — 메타만 두고 본문은 src/views/HomeView.tsx(언어판 공용). */
