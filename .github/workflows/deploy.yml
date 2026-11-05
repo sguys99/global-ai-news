@@ -51,6 +51,8 @@ jobs:
       #      반영한다(러너 사본만 바뀌고 커밋하지 않음. 이미 맞으면 쓰지 않음, DB 파일이 없으면 실패).
       #   ② export-search-index · export-feed-index · export-latest — public/search-index/·feed-index/(언어별 호 월 조각 +
       #      manifest.json, Phase 4-2)·latest.json 생성 → next build가 out/ 산출.
+      # postbuild(scripts/postbuild.ts)가 next build 직후 자동 실행된다: 기사 RSC(article/<id>/index.txt)를 지운다
+      #   (기사 링크는 일반 <a> — ArticleLink). out/ 이 없으면 실패해 업로드 전에 멈춘다.
       - name: Build static export
         run: npm run build
 

@@ -76,7 +76,9 @@ describe("shareMetadata", () => {
       locale: "ko_KR",
       images: [{ url: OG_DEFAULT_IMAGE, width: 1200, height: 600 }],
     });
-    expect(m.twitter).toMatchObject({ card: "summary_large_image", images: [OG_DEFAULT_IMAGE] });
+    // X 는 twitter:title·description·image 가 없으면 og:* 로 대체한다 — og 값을 다시 적지 않는다(Phase 4-1).
+    // images: [] 는 Next 가 og 이미지를 twitter:image 로 자동 채우지 않게 하는 표시다(title·description 은 Next 가 채운다).
+    expect(m.twitter).toEqual({ card: "summary_large_image", images: [] });
   });
 
   it("버전이 있으면 이미지 URL에 캐시 무효화 쿼리", () => {
@@ -185,11 +187,10 @@ describe("editionMetadata — 썸네일 기간 밖 호는 생성되지 않는 PN
     expect(imageUrl("2026-11-04")).toBe("/og/edition/2026-10-06.png?v=42-7");
   });
 
-  it("30일·31일 뒤 최신 호 기준: 기본 썸네일(twitter 도 같음)", () => {
+  it("30일·31일 뒤 최신 호 기준: 기본 썸네일", () => {
     expect(imageUrl("2026-11-05")).toBe(OG_DEFAULT_IMAGE);
     expect(imageUrl("2026-11-06")).toBe(OG_DEFAULT_IMAGE);
     const m = editionMetadata({ lead, seconds: [] }, info, "/", "2026-11-06");
-    expect(m.twitter).toMatchObject({ images: [OG_DEFAULT_IMAGE] });
     // 제목·og:url 은 기간과 무관하게 그날 1면 그대로
     expect(m.openGraph).toMatchObject({ title: "리드", url: "/" });
   });
@@ -238,12 +239,12 @@ describe("공유 메타 회귀 — Phase 5 지면(buildEdition)에서도 리드�
     expect(share.version).toBe(`42-${e.lead!.id}`);
   });
 
-  it("editionMetadata 는 Edition 전체를 받아도 리드·서브로만 og·twitter 를 채운다", () => {
+  it("editionMetadata 는 Edition 전체를 받아도 리드·서브로만 og 를 채운다(twitter 는 og 값을 다시 적지 않는다)", () => {
     const e = buildEdition(issue());
     const m = editionMetadata(e, info, "/edition/2026-10-06/", LATEST);
     const { title, description } = editionShare({ lead: e.lead, seconds: e.seconds }, info);
     expect(m.openGraph).toMatchObject({ title, description });
-    expect(m.twitter).toMatchObject({ title, description });
+    expect(m.twitter).toEqual({ card: "summary_large_image", images: [] });
   });
 
   it("입력 순서를 섞어도 제목·설명·버전이 같다", () => {

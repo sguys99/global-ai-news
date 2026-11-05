@@ -75,7 +75,7 @@ describe("Header·MobileTopBar — 영어판", () => {
 
   it("모바일 상단 바: 검색 버튼 라벨·링크", () => {
     usePathname.mockReturnValue("/en/");
-    const { container } = en(<MobileTopBar locale="en" />);
+    const { container } = en(<MobileTopBar />);
     expect(screen.getByRole("link", { name: "Search" })).toHaveAttribute("href", "/en/search");
     expect(hasHangul(uiText(container))).toBe(false);
   });
@@ -114,7 +114,7 @@ describe("Footer — 영어판", () => {
       "fetch",
       vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ count: "12,345" }) })),
     );
-    const { container } = en(<Footer locale="en" />);
+    const { container } = en(<Footer />);
     expect(screen.getByText(SITE_TAGLINE_EN)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Today's issue" })).toHaveAttribute("href", EN_HOME);
     expect(screen.getByRole("link", { name: "Search" })).toHaveAttribute("href", "/en/search");

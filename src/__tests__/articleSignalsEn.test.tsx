@@ -172,7 +172,7 @@ describe("FollowUpThread — 영어판", () => {
     expect(screen.getByText("This story")).toBeInTheDocument();
     expect(screen.getByText("2 days earlier")).toBeInTheDocument();
     expect(screen.getByText("1 day later")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /First/ })).toHaveAttribute("href", "/en/article/1");
+    expect(screen.getByRole("link", { name: /First/ })).toHaveAttribute("href", "/en/article/1/");
     expect(hasHangul(uiText(container))).toBe(false);
   });
 
@@ -181,7 +181,7 @@ describe("FollowUpThread — 영어판", () => {
     expect(screen.getByRole("heading", { name: "사건 흐름 · 3건" })).toBeInTheDocument();
     expect(screen.getByText("지금 보는 기사")).toBeInTheDocument();
     expect(screen.getByText("2일 전")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /첫 보도/ })).toHaveAttribute("href", "/article/1");
+    expect(screen.getByRole("link", { name: /첫 보도/ })).toHaveAttribute("href", "/article/1/");
   });
 
   it("dayGap 언어판", () => {

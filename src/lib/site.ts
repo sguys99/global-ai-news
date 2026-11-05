@@ -168,7 +168,12 @@ export function shareMetadata({
     openGraph: article
       ? { ...common, type: "article", ...article }
       : { ...common, type: "website" },
-    twitter: { card: "summary_large_image", title, description, images: [imageUrl] },
+    // X 는 twitter:title·description·image 가 없으면 og:title·description·image 를 쓴다(X Cards 문서
+    // "Getting started with Cards"·"Cards markup" — OpenGraph 대체). 그래서 og 와 같은 값을 다시 적지 않는다.
+    // 단 Next(15.5 resolve-metadata postProcessMetadata)는 openGraph 가 있으면 빠진 twitter title·description·images 를
+    // og 값으로 **스스로 채워** 출력한다 — title·description 은 공개 API 로 막을 수 없다. images 만 빈 배열이면
+    // "지정됨"으로 보고 채우지 않아 twitter:image(+ 자동 채움이면 width·height·alt·type) 줄이 빠진다(Phase 4-1, 분석 순위 6).
+    twitter: { card: "summary_large_image", images: [] },
     alternates: {
       canonical: path,
       types: { "application/rss+xml": [{ url: FEED_PATH, title: SITE_NAME }] },

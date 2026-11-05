@@ -111,7 +111,7 @@ describe("상세 사건 타임라인 — 후속 보도 연결", () => {
     const section = thread()!;
     expect(within(section).getByRole("heading").textContent).toBe("이전 보도");
     const link = within(section).getByRole("link");
-    expect(link).toHaveAttribute("href", "/article/3");
+    expect(link).toHaveAttribute("href", "/article/3/");
     expect(link.textContent).toContain("미스트랄, 라지 4 발표");
     expect(link.textContent).toContain("이전 보도");
     expect(link.textContent).toContain("GitHub"); // 축약명
@@ -134,7 +134,7 @@ describe("상세 사건 타임라인 — 후속 보도 연결", () => {
     const section = thread()!;
     expect(within(section).getByRole("heading").textContent).toBe("후속 보도 · 2건");
     const links = within(section).getAllByRole("link");
-    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/article/8", "/article/9"]);
+    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/article/8/", "/article/9/"]);
     expect(links[0].textContent).toContain("같은 날");
     expect(links[1].textContent).toContain("2일 뒤");
     expect(links[1].textContent).toContain("Story 9"); // 한국어 제목이 없으면 원제

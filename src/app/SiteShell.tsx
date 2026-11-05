@@ -1,13 +1,7 @@
 import type { Viewport } from "next";
 import type { ReactNode } from "react";
-import { Analytics } from "@/components/Analytics";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
-import { LocaleProvider } from "@/components/LocaleProvider";
-import { ThemeProvider } from "@/components/ThemeProvider";
-import { BottomTabBar } from "@/components/mobile/BottomTabBar";
-import { MobileTopBar } from "@/components/mobile/MobileTopBar";
-import { DEFAULT_LOCALE, HTML_LANG, type Locale } from "@/lib/i18n";
+import { ShellChrome } from "@/components/ShellChrome";
+import { HTML_LANG, type Locale } from "@/lib/i18n";
 import { fontVariables } from "./fonts";
 import "./globals.css";
 
@@ -35,35 +29,22 @@ export function SiteShell({
   children,
 }: Readonly<{
   /**
-   * 문서 언어 — `<html lang>`. 서버 컴포넌트인 모바일 상단 바·푸터는 prop 으로 받고, 클라이언트 셸(헤더 내비·워드마크·
-   * 테마 토글·하단 탭 바·방문 줄)은 아래 LocaleProvider 컨텍스트로 읽는다(Header 자체는 문구가 없다).
+   * 문서 언어 — `<html lang>`. 고정 크롬(ShellChrome, 클라이언트)은 이 값으로 LocaleProvider 를 정하고(ko 는 공급자 없음)
+   * 헤더·모바일 바·푸터·탭 바가 컨텍스트로 읽는다.
    */
   locale: Locale;
   /** `<head>`에 직접 넣을 요소(global-not-found 의 언어 판정 스크립트). 없으면 `<head>`를 쓰지 않는다 — Next 가 채운다. */
   head?: ReactNode;
   children: ReactNode;
 }>) {
-  const shell = (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-      <Header />
-      <MobileTopBar locale={locale} />
-      <div className="flex-1">{children}</div>
-      <Footer locale={locale} />
-      <BottomTabBar />
-    </ThemeProvider>
-  );
-
   return (
     <html lang={HTML_LANG[locale]} className={fontVariables} suppressHydrationWarning>
       {head ? <head>{head}</head> : null}
       <body className="sh-body">
-        {/* 한국어는 공급자 없이 그린다(컨텍스트 기본값 ko) — 감싸면 한국어 모든 페이지 RSC 에 클라이언트 참조가 하나 더 실린다. */}
-        {locale === DEFAULT_LOCALE ? (
-          shell
-        ) : (
-          <LocaleProvider locale={locale}>{shell}</LocaleProvider>
-        )}
-        <Analytics />
+        {/* 고정 크롬은 클라이언트 섬 하나(ShellChrome) — RSC 에는 참조 한 줄과 언어·연도만 실린다(Phase 4-1). */}
+        <ShellChrome locale={locale} year={new Date().getFullYear()}>
+          {children}
+        </ShellChrome>
       </body>
     </html>
   );

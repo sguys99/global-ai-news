@@ -178,14 +178,14 @@ describe("editionShare — 세 줄 요약을 공유 설명으로", () => {
     );
   });
 
-  it("og:description·twitter description 에 실린다", () => {
+  it("og:description 에 실린다(twitter 는 og 값을 다시 적지 않는다)", () => {
     const lead = card({ titleKo: "리드 기사" });
     const meta = editionMetadata({ lead, seconds: [] }, info, "/", "2026-10-30", [
       line(lead.id),
       line(77, "둘째 줄 요약"),
     ]);
     expect(meta.openGraph?.description).toBe("AI Daybook 10월 30일(금) 제42호 — 둘째 줄 요약");
-    expect(meta.twitter?.description).toBe("AI Daybook 10월 30일(금) 제42호 — 둘째 줄 요약");
+    expect(meta.twitter).toEqual({ card: "summary_large_image", images: [] });
   });
 });
 
@@ -251,7 +251,7 @@ describe("IssueBrief 띠", () => {
     const band = screen.getByRole("region", { name: "세 줄 요약" });
     const items = within(band).getAllByRole("listitem");
     expect(items).toHaveLength(3);
-    expect(within(items[0]).getByRole("link")).toHaveAttribute("href", "/article/11");
+    expect(within(items[0]).getByRole("link")).toHaveAttribute("href", "/article/11/");
     expect(within(items[2]).getByRole("link", { name: /셋째 줄 요약/ })).toBeInTheDocument();
     expect(band.querySelector("ol")).not.toBeNull();
   });

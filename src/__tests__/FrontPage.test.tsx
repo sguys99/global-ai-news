@@ -186,7 +186,7 @@ describe("FrontPage — Phase 6-2 시안 반영", () => {
     const [first] = within(briefs).getAllByRole("listitem");
     const a = edition.briefs[0];
     const link = within(first).getByRole("link");
-    expect(link).toHaveAttribute("href", `/article/${a.id}`);
+    expect(link).toHaveAttribute("href", `/article/${a.id}/`);
     expect(link).toHaveClass("st-brief");
     expect(applyOf("st-brief")).toContain("min-h-11");
     // 키커는 두 번(md 칸 · 모바일 바이라인) — 각자 반대 폭에서 숨는다

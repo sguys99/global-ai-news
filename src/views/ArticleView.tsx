@@ -11,8 +11,9 @@ import {
 import { FollowUpThread } from "@/components/FollowUpThread";
 import { Icon } from "@/components/Icon";
 import { JsonLd } from "@/components/JsonLd";
-import { StoryEntry } from "@/components/Story";
+import { RelatedStories } from "@/components/RelatedStories";
 import { headlineOf, sourceNameOf, summaryOf } from "@/lib/articleText";
+import { toEntryCard } from "@/lib/feedIndex";
 import { getMessages, localePath, type Locale } from "@/lib/i18n";
 import { categoryLabel, formatDate, shortSourceName } from "@/lib/labels";
 import { articleMessages } from "@/lib/messages/article";
@@ -178,9 +179,7 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
             </Link>
           </div>
           <div className="flex flex-col">
-            {related.map((a) => (
-              <StoryEntry key={a.id} article={a} hideCategory locale={locale} />
-            ))}
+            <RelatedStories cards={related.map((a) => toEntryCard(a, locale))} />
           </div>
         </section>
       )}

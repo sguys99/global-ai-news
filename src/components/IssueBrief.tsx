@@ -1,7 +1,7 @@
-import Link from "next/link";
+import { ArticleLink } from "@/components/ArticleLink";
 import { ISSUE_BRIEF_LIMITS, type IssueBriefLine } from "@/lib/edition";
 import { cn } from "@/lib/utils";
-import { getMessages, localePath, type Locale } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 import { issueBriefMessages } from "@/lib/messages/issueBrief";
 
 /** 줄 수 → 머리 문구("세 줄 요약", en "Three things to know"). 2줄만 남은 호에 "세 줄"이라 쓰면 틀린 말이 된다. */
@@ -54,12 +54,12 @@ export function IssueBrief({
         <ol className="divide-border mt-1.5 divide-y md:mt-0 md:flex md:flex-col md:gap-y-2 md:divide-y-0">
           {lines.map((line, i) => (
             <li key={line.id}>
-              <Link href={localePath(locale, `/article/${line.id}`)} className="story-link ed-br-a">
+              <ArticleLink articleId={line.id} locale={locale} className="story-link ed-br-a">
                 <span aria-hidden className="ed-br-n">
                   {i + 1}
                 </span>
                 <span className="headline ed-br-h">{line.text}</span>
-              </Link>
+              </ArticleLink>
             </li>
           ))}
         </ol>

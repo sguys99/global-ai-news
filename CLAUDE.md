@@ -39,15 +39,16 @@
 │   ├── app/                      # Next.js App Router
 │   │   ├── (ko)/                 # 한국어판 라우트 그룹(URL 접두어 없음)
 │   │   │   ├── layout.tsx        # 한국어 최상위 레이아웃(<html lang="ko">, 사이트 metadata) — 앱 루트 레이아웃은 없다
+│   │   │   ├── not-found.tsx     # null — Next 기본 404 트리가 모든 RSC 에 실리지 않게(루트 app/not-found.tsx·(en)/en 도 같다, 보이는 404 는 global-not-found)
 │   │   │   ├── page.tsx          # 홈(/) — 최신 호 지면·색인 첫 30건 SSG + 누적 색인(feed-index/ 조각) 클라 필터
 │   │   │   ├── article/[id]/page.tsx # 상세(/article/[id]) — SSG generateStaticParams
 │   │   │   ├── search/page.tsx   # 검색(/search) — 정적 셸 + SearchClient
 │   │   │   ├── edition/[date]/page.tsx # 호 고정 링크(/edition/YYYY-MM-DD) — 그날 수집분(호) 지면 SSG
 │   │   │   └── admin/            # 운영 콘솔 — 로컬 전용(page.local.tsx, login/page.local.tsx)
 │   │   ├── (en)/en/layout.tsx    # 영어 최상위 레이아웃(<html lang="en">, LocaleProvider) — 영어 페이지는 영어판 Phase 5
-│   │   ├── SiteShell.tsx         # 문서 셸(html·body·헤더·모바일 바·푸터·테마·집계·globals.css) + siteViewport — 두 레이아웃·404 공용
+│   │   ├── SiteShell.tsx         # 문서 셸(html·body·globals.css + 고정 크롬 ShellChrome) + siteViewport — 두 레이아웃·404 공용
 │   │   ├── fonts.ts              # next/font 인스턴스(Pretendard·Hahmlet) — SiteShell 이 쓴다
-│   │   ├── global-not-found.tsx  # 앱 전체 404(experimental.globalNotFound) — 이중 언어, /en/ 아래면 lang=en
+│   │   ├── global-not-found.tsx  # 앱 전체 404(experimental.globalNotFound, out/404.html) — 이중 언어, /en/ 아래면 lang=en
 │   │   ├── globals.css           # Tailwind v4 + DESIGN.md 디자인 토큰 + 컴포넌트 클래스(`@layer components`, sg-·st-·ed-… 접두어)
 │   │   ├── icon.svg              # 파비콘 원본(이니셜 "D.") — favicon.ico·apple-icon.png 는 여기서 래스터화
 │   │   ├── og/                   # 공유 썸네일(og:image) — 빌드타임 PNG: edition/<날짜>·article/<id>(최근 기사만)·default
@@ -63,6 +64,9 @@
 │   │   ├── ShareButton.tsx       # 호 공유(모바일 공유 시트·데스크톱 링크 복사) — 호 고정 링크를 공유
 │   │   ├── Edition.tsx           # FrontPage(리드·서브·오늘의 브리핑)·RadarBand·TrendingList(지금 화제)·이 호의 지면·SectionBands
 │   │   ├── Story.tsx             # 스토리 변형 7종(Lead/Secondary/SectionItem/Brief/Radar/Weekly/Entry)
+│   │   ├── ArticleLink.tsx       # 기사 링크 = 일반 <a>(basePath·localePath, prefetch 없음 — 기사 index.txt 는 postbuild 가 지운다)
+│   │   ├── ShellChrome.tsx       # 고정 크롬 클라이언트 섬 하나(테마·Header·MobileTopBar·Footer·BottomTabBar·Analytics, 영어면 LocaleProvider) — RSC 참조 1줄
+│   │   ├── RelatedStories.tsx    # 상세 "같은 분야 기사" 클라이언트 섬 — toEntryCard 카드 props 로 StoryEntry 를 그린다(RSC 에 렌더 트리 대신 값만)
 │   │   ├── StoryIndex.tsx        # 전체 기사 색인(30건씩 더 보기, 홈은 첫 30건 밖을 색인 머리·월별 조각으로 받아 펼침)
 │   │   ├── ArticleMeta.tsx       # 신호: 키커·FormatBadge·중요도 미터·바이라인·화제 바·태그
 │   │   ├── FollowUpThread.tsx    # 상세 사건 타임라인(이전 보도·후속 보도 — follow_up_of 양방향)
@@ -124,6 +128,7 @@
 │   ├── export-feed-index.ts      # public/feed-index/<언어>/ — 홈 전체 기사 색인 월별 조각 + manifest.json(색인 머리 포함, prebuild)
 │   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터, prebuild)
 │   ├── kpi.ts                    # KPI CLI (npm run kpi) + baseline 하위 명령(콘텐츠 개편 지표) + health(소스 헬스, --ci 는 collect.yml 요약)
+│   ├── postbuild.ts              # npm postbuild 훅(next build 직후): out/ 후처리 단계 목록(lib/postbuild.ts) — 지금은 기사 RSC index.txt 삭제, 멱등·out/ 없으면 실패
 │   ├── size-report.ts            # out/ 크기 보고(분류별·기사/호 페이지 평균·p90·무거운 쪽, --base 비교) — --ci 는 deploy.yml 검사(700MB 경고·950MB 실패, 기준값은 lib/sizeReport.ts)
 │   └── lib/
 │       ├── schema.ts             # 선별·가공·재보도 출력 스키마(zod/v4), CATEGORIES 재수출(정의는 src/lib/labels.ts)
@@ -189,7 +194,7 @@
 3. **LLM 선별 → 가공 → 재보도 검사** — 선별 1회로 최대 `MAX_PICKS_PER_RUN`(35)건을 고르고 같은 사건을 묶고 중요도(1~5, 형식 안에서 상대 평가)를 매긴다. 선정 기사만 10건씩 묶어 한국어 제목·요약·분야·태그와 영어 제목·요약(같은 호출, 화면 미노출 — 영어판 Phase 1)을 생성한 뒤, 재보도 검사 1회로 새 전개 없는 재보도를 뺀다. 이어서 코드만으로(LLM 호출 없음) 오늘 게재 뉴스끼리 같은 사건을 다시 대조해, 선별이 묶지 못한 보도를 대표 기사의 `related`로 합치고, 최종 게재분의 영어를 코드로 검사해 기각된 기사는 영어만 비운다(한국어 게재는 그대로). 모든 호출은 Message Batches API(50% 할인, 시간 초과 시 일반 호출로 대체), 실행당 비용 상한 `MAX_COST_USD_PER_RUN`($0.1). 회차당 LLM 호출은 보통 6회(선별 1·가공 4·재보도 1). 선별 출력의 세 줄 요약(`brief`)은 합친 뒤 게재분·내용·수치를 코드로 대조해 남은 줄만 `collection_runs.brief_json`에 저장한다(별도 호출 없음, fail-open).
 4. **저장** — 선정 기사는 `articles`(+`related_json`: 묶인 다른 매체 보도)·`tags`/`article_tags`, 미선정·재보도 후보와 같은 사건으로 합쳐진 기사는 `seen_items`에 키만 기록. 실행 통계(`llm_calls`/토큰/비용/상태)와 notes(소스별 결과, `형식별 후보→풀→게재`, `할당 미달/초과`, `재보도 제외 N건`, `같은 사건 합침 N건`, `영어 가공 N/M건` 등)를 `collection_runs`에 1행 기록(notes 구분자 `; `). 공개 페이지는 가공을 마친 기사(`summary_ko IS NOT NULL`)만 노출한다.
 
-결과 `data/app.db`를 `deploy/github-pages`에 커밋하고 `deploy.yml`을 dispatch → `npm run build`(prebuild: `initDb --existing`(스키마·sources 동기화) → `export-search-index` → `export-feed-index`(언어별 호 월 조각) → `export-latest`) → `out/`을 GitHub Pages에 배포합니다.
+결과 `data/app.db`를 `deploy/github-pages`에 커밋하고 `deploy.yml`을 dispatch → `npm run build`(prebuild: `initDb --existing`(스키마·sources 동기화) → `export-search-index` → `export-feed-index`(언어별 호 월 조각) → `export-latest`) → `next build` → postbuild(`scripts/postbuild.ts`: 기사 `article/<id>/index.txt` 삭제) → `out/`을 GitHub Pages에 배포합니다.
 
 ### 호(issue)와 1면
 
@@ -254,7 +259,7 @@ npm run dev       # http://localhost:3000 (export·basePath 미적용, admin/api
 ### 빌드
 
 ```bash
-npm run build     # prebuild(initDb --existing·검색 인덱스·latest.json) → 정적 export out/
+npm run build     # prebuild(initDb --existing·검색 인덱스·latest.json) → 정적 export out/ → postbuild(기사 RSC .txt 삭제)
 npm run size:report -- [out] [--base <기준 out>]  # 산출물 크기 표(분류별·페이지 평균 대 예산 기사 40KB·호 150KB), --base 로 경량화 전후 비교, --json
 ```
 
@@ -411,6 +416,8 @@ npx shadcn@latest add card dialog input
 - 소스 정의는 `configs/sources.json`으로 관리 (코드 하드코딩 금지 — GitHub 검색 쿼리도 `url`에)
 - 분야·형식 키/표시명은 `src/lib/labels.ts`, 분야 정의는 `configs/prompts/categories.md`에서만 관리
 - 화면 문구는 `src/lib/messages/<영역>.ts`(`defineMessages({ ko, en })`)에만 둔다 — 컴포넌트·뷰에 한글을 직접 쓰면 `noHardcodedHangul.test.ts`가 실패한다. 서버 컴포넌트는 `locale` prop, 클라이언트 컴포넌트는 `useLocale()`·`useMessages()`, 내부 링크는 `localePath(locale, …)`
+- 공개 페이지 무게(Phase 4-1): 모든 페이지에 반복되는 클라이언트 조각은 섬 하나로 묶는다(셸 = `ShellChrome`) — 클라이언트 컴포넌트마다 RSC 에 모듈 참조 행(약 270B)이 붙고, 서버 컴포넌트의 렌더 트리는 RSC 에 통째로 실린다. 반복 목록을 서버에서 그릴지 섬에 값으로 넘길지는 RSC 크기로 고른다(`RelatedStories`)
+- 기사 페이지 링크는 `ArticleLink`(일반 `<a>`, prefetch 없음 — `next/link`·`router` 로 기사에 가지 않는다) — 기사 `.txt` 는 빌드 후 지운다(`scripts/postbuild.ts`). `ArticleLink.test.tsx`가 `/article/` 내부 경로를 직접 만드는 코드를 막는다
 - 런타임 경로 상수는 `src/lib/paths.ts`, 설정 파일은 `configs/`에서 관리
 - DB 조회는 `src/lib/db.ts`를 통해 readonly로 접근
 - 환경 변수는 `.env.local` 사용 (git에 커밋하지 않음)

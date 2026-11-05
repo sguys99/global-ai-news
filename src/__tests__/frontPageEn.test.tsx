@@ -187,7 +187,7 @@ describe("영어판 마스트헤드·세 줄 요약", () => {
     expect(screen.getByRole("heading", { name: "Two things to know" })).toBeInTheDocument();
     expect(screen.getByText("This issue at a glance")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /First line/ }).getAttribute("href")).toBe(
-      "/en/article/1",
+      "/en/article/1/",
     );
     expect(issueBriefHeading(3, "en")).toBe("Three things to know");
     expect(issueBriefHeading(3)).toBe("세 줄 요약");
@@ -255,7 +255,7 @@ describe("영어판 주간 레이더", () => {
     expect(band.textContent).toContain("Tuesday issue");
     expect(band.textContent).toContain("That day");
     expect(screen.getByRole("heading", { name: "Weekly pick 1" })).toBeInTheDocument();
-    expect(within(band).getAllByRole("link")[0].getAttribute("href")).toBe("/en/article/1");
+    expect(within(band).getAllByRole("link")[0].getAttribute("href")).toBe("/en/article/1/");
   });
 
   it("순수 함수 영어판 — ko 기본값은 그대로", () => {
