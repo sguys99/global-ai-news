@@ -370,7 +370,7 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
   - 뜻밖의 큰 몫: ① 중요도 미터(점 5개에 긴 클래스) — 호 페이지에 약 49개, 약 44KB. ② 클래스 문자열이 세 벌(HTML·인라인 RSC·`.txt`)로 기사 1건당 34KB. ③ 호의 "이 호의 기사" 색인이 전체 카드(`toListCards`)를 클라이언트에 넘겨 기사마다 두 번 실린다(호당 22KB+). ④ `(ko)`에 `not-found`가 없어 Next 기본 404 트리가 모든 RSC에 실린다(페이지당 약 4KB). ⑤ 기사 링크에 `prefetch` 지정이 없어 화면의 모든 기사 링크가 `index.txt`를 미리 받는다.
   - 판정: 호 150KB는 `.txt`를 둔 채로 된다(미터·클래스 압축 + 호 색인 클라이언트 섬, 약 125KB). **기사 40KB는 `.txt`를 두면 안 된다** — 렌더 무변화 수단을 다 써도 약 55KB이고, 약 32KB가 고정비(메타 사본·루트 트리·모듈 참조·JSON-LD 두 벌 + `<head>`)다. 계획한 대비책(기사 `index.txt` 삭제 + 기사 링크를 일반 `<a>`로)을 더해 약 37KB(p90 약 40)가 된다. `prefetch={false}`만으로는 부족하다 — 없는 `.txt`를 요청하면 GitHub Pages가 약 30KB짜리 `404.html`을 돌려준 뒤에야 전체 이동으로 넘어간다.
   - 상세(구성 분해·클래스 상위 30·순위별 절감 실측/추정): [phase4/4-1-weight-analysis.md](english-version/phase4/4-1-weight-analysis.md)
-- [ ] **기사 페이지 1건(HTML + `.txt`) ≤ 40KB**(현행 92KB):
+- [x] **기사 페이지 1건(HTML + `.txt`) ≤ 40KB**(현행 92KB): (2026-11-05 달성 — **평균 34.6KB, p50 34.3, p90 36.9, 최대 51.6**, gzip 전송 8.61→7.49KB)
   - 반복 카드의 긴 Tailwind 클래스 묶음을 짧은 컴포넌트 클래스로 바꾼다(`globals.css` `@apply`, 약 −21KB).
   - 관련 기사·타임라인은 목록용 최소 필드와 최소 마크업만 넘긴다(약 −13KB).
   - 그래도 모자라면 기사 페이지의 `index.txt`를 지우고 기사 링크 prefetch를 끈다.
@@ -379,6 +379,15 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
     - 반복되는 긴 Tailwind 묶음을 `globals.css` `@layer components`의 `@apply` 클래스로 바꿨다. 이름은 `<영역 2자>-<부분>[-<변형>]`(`sg-` 신호·`st-` 스토리·`ed-` 지면·`ar-` 기사·`fb-` 필터·`sh-` 셸·`ui-` 버튼)이다. `@utility`가 아니라 components 층이라 호출부가 `cn()`으로 넘기는 유틸리티가 계층 순서로 이긴다(twMerge가 하던 일). 한 번만 쓰는 짧은 묶음과 조건부 클래스는 유틸리티로 남겼다. `componentClasses.test.ts`가 쓰는 클래스와 정의된 클래스가 서로 맞는지 검사한다. 규칙은 CLAUDE.md 코딩 컨벤션과 DESIGN.md §10에 적었다.
     - 공개 화면 아이콘 6종은 `Icon.tsx`(lucide 0.460 도형 사본, `viewBox`와 클래스만)로 바꾸고 기본 속성은 `.ic` 규칙으로 뺐다. lucide를 올려도 이 6종은 따라가지 않는다.
     - 회귀: 대표 10페이지 × 1280·360px × 라이트·다크 40조합 + hover·키보드 포커스 24조합 + 단일 항목 레이아웃 호 8조합, 모든 요소(::before/::after 포함)의 계산 스타일 차이 0. 전체 페이지 픽셀은 70/72 조합이 완전히 같고, 나머지 2조합은 기준선끼리 찍어도 같은 값으로 나는 Chromium 깜빡임이다. 정적 HTML 차이는 미터의 `data-v`와 아이콘 속성뿐이다.
+  - **2차(2026-11-05) — 기사 전용(분석 순위 4·5·6·7·9):** 기사 68.5→34.6KB. 단계별 실측: 
+    - Next 기본 404 트리 제거 약 −2.4KB: `src/app/not-found.tsx`·`(ko)/not-found.tsx`·`(en)/en/not-found.tsx`가 `null`을 돌려준다. 404 화면은 `global-not-found`가 그대로 맡고 렌더 마크업이 같다.
+    - 중복 twitter 메타 −0.2KB: Next 15.5는 빠진 `twitter:title/description/image`를 og로 채워 넣는다(`card`만 두면 오히려 +0.8KB). 그래서 `twitter: { card, images: [] }`로 `twitter:image` 한 줄만 뺐다. X는 twitter 태그가 없으면 og로 대체한다(developer.x.com/cards/markup).
+    - **기사 `index.txt` 삭제 −22.2KB:** 기사 링크는 모두 `ArticleLink`(basePath + `localePath`를 붙인 일반 `<a>`, prefetch 없음)다. `npm run build` 뒤 npm `postbuild`(`scripts/postbuild.ts`, 단계 목록 `scripts/lib/postbuild.ts` `POSTBUILD_STEPS` — 4-3이 단계를 더한다)가 `article/*/index.txt`·`en/article/*/index.txt`를 지운다(1,277개 −28.51MB). deploy.yml·Dockerfile·회귀 도구가 모두 `npm run build`를 거친다. 다시 돌려도 0개이고, `out/`이 없으면 실패한다.
+    - "같은 분야 기사" 카드를 클라이언트 섬(`RelatedStories`, 목록용 최소 카드 `toEntryCard`)으로 −2.7KB.
+    - 셸(테마·헤더·모바일 바·푸터·하단 탭·집계)을 클라이언트 섬 하나(`ShellChrome`)로 합쳐 모듈 참조 행을 줄였다 −4.2KB(호 페이지도 −7.8KB).
+    - 확인: 기사 5·홈·호·404(`/`·`/en/`) × 1280/360 × 라이트/다크 + hover·포커스 24, 60조합의 계산 스타일·픽셀 차이 0. 홈→기사→뒤로→앞으로→호→화제 기사→관련 카드→검색→결과 탐색에서 `article/*/index.txt` 요청 0건(기준선은 같은 탐색에서 107건), 4xx·5xx 0건. 다크 테마가 전체 이동 뒤에도 유지되고 GoatCounter가 이동마다 한 번씩 센다(기준선과 같은 12회).
+    - 남긴 선택지(목표에 필요 없음): JSON-LD가 HTML과 인라인 RSC에 두 번 실린다(약 2.9KB, postbuild 주입으로 뺄 수 있음). 화면이 바뀌는 것(관련 카드 4→3장 약 −1.5KB, 관련 카드 요약 빼기 약 −2.5KB, 원문 발췌 상한 약 −0.8KB)은 하지 않았다.
+    - 전체: `out/` 114.76→70.55MB, 파일 2,956→1,690개(4-2 색인 분할 포함).
 - [ ] **호 페이지 ≤ 150KB**(현행 382KB). 같은 수단을 쓴다.
 - [x] og 호 PNG는 최근 30일만 만든다. 기사 PNG의 7일 창과 같은 방식이고, 그 이전 호는 `og/default.png`를 쓴다. (2026-11-05)
   - `site.ts` `EDITION_THUMBNAIL_WINDOW_DAYS = 30`·`hasEditionThumbnail(date, latestEditionDate)`: DB 최신 호 날짜와 그 앞 29일(KST 날짜 30개)만 참이다. 기준이 벽시계가 아니라 DB라 같은 `app.db`면 산출물이 같다.
