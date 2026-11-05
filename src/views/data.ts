@@ -13,8 +13,9 @@ import {
   toListCards,
 } from "@/lib/db";
 import { buildEdition, selectIssueBrief } from "@/lib/edition";
-import { INDEX_PAGE_SIZE, buildFeedIndex, feedIndexVersion } from "@/lib/feedIndex";
+import { INDEX_PAGE_SIZE, buildFeedIndex } from "@/lib/feedIndex";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
+import { indexBuildVersion } from "@/lib/indexShards";
 import { issueDelayDays } from "@/lib/labels";
 import { hasArticleThumbnail, ogArticleImagePath } from "@/lib/site";
 import type { ArticleCard } from "@/lib/types";
@@ -68,8 +69,8 @@ function localeEditionRefs(locale: Locale) {
 /**
  * 홈(최신 호 지면 + 전체 기사 색인). 빌드타임 1회 SSG: 이번 호 카드(1면·섹션 밴드)·전체 기사 색인 첫 페이지·
  * 소스·태그와 이번 호 정보를 클라이언트 셸에 넘긴다. 페이지(정적 HTML·RSC 페이로드)에는 첫 화면이 그리는 만큼만
- * 싣는다 — 누적 전체는 prebuild 가 만든 feed-index.json 으로 FeedClient 가 "더 보기"·필터·정렬 때 받는다
- * (src/lib/feedIndex.ts — 영어판 색인 파일은 Phase 5). 필터/정렬은 브라우저에서 수행한다.
+ * 싣는다 — 누적 전체는 prebuild 가 만든 feed-index/<언어>/ 월별 조각으로 FeedClient 가 "더 보기"·필터·정렬 때 받는다
+ * (src/lib/feedIndex.ts·indexShards.ts — 영어 조각은 Phase 5). 필터/정렬은 브라우저에서 수행한다.
  */
 export function loadHome(locale: Locale) {
   const feed = buildFeedIndex(localeArticles(locale, getFeed()));
@@ -89,8 +90,8 @@ export function loadHome(locale: Locale) {
   return {
     /** FeedView(서버 fallback)·FeedClient 공용 props. */
     feed: { issueArticles, sources, tags, editionInfo, initialDelayGap, weekly, brief },
-    /** 전체 기사 색인 첫 페이지 + 누적 건수 + feed-index.json 캐시 키. */
-    index: { indexHead, indexTotal, indexVersion: feedIndexVersion(ref?.date, indexTotal) },
+    /** 전체 기사 색인 첫 페이지 + 누적 건수 + 색인 목록(feed-index/<언어>/manifest.json) 캐시 키. */
+    index: { indexHead, indexTotal, indexVersion: indexBuildVersion(ref?.date, indexTotal) },
   };
 }
 
@@ -163,10 +164,16 @@ export function loadArticlePage(locale: Locale, id: number) {
 // ─── 검색 ─────────────────────────────────────────────────────────────────────
 
 /**
- * 검색 페이지 정적 셸 데이터 — 소스·태그(필터 칩·추천 검색어)만. 실제 검색은 SearchClient 가 search-index.json 으로 한다.
- * Phase 5 영어판은 영어 색인 파일(search-index.en.json)과 한글 태그 숨김을 여기서 정한다.
+ * 검색 페이지 정적 셸 데이터 — 소스·태그(필터 칩·추천 검색어)와 검색 색인 목록 캐시 키만. 실제 검색은 SearchClient 가
+ * search-index/<언어>/ 월별 조각으로 한다(언어 고르기는 src/lib/indexShards.ts `INDEX_LOCALE`).
+ * Phase 5 영어판은 한글 태그 숨김을 여기서 정한다.
  */
 export function loadSearch(locale: Locale) {
   assertLocaleReady(locale);
-  return { sources: getSourcesWithCounts(), tags: getActiveTags(8) };
+  const total = localeArticles(locale, getFeed()).length;
+  return {
+    sources: getSourcesWithCounts(),
+    tags: getActiveTags(8),
+    indexVersion: indexBuildVersion(getLatestEditionRef()?.date, total),
+  };
 }

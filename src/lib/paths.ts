@@ -23,11 +23,11 @@ export const REGRESS_MANIFEST_PATH = path.join(CONFIGS_DIR, "html-regress-pages.
 // SQLite 데이터베이스 파일 경로 (수집 배치가 생성, 빌드/런타임은 readonly 조회)
 export const DB_PATH = path.join(DATA_DIR, "app.db");
 
-// 클라이언트 검색 인덱스 (export-search-index 가 빌드 직전 생성, /search 가 fetch)
-export const SEARCH_INDEX_PATH = path.join(PUBLIC_DIR, "search-index.json");
+// 클라이언트 검색 색인 — <언어>/manifest.json + <언어>/<YYYY-MM>.json (export-search-index 가 빌드 직전 생성, /search 가 fetch)
+export const SEARCH_INDEX_DIR = path.join(PUBLIC_DIR, "search-index");
 
-// 홈 전체 기사 색인 (export-feed-index 가 빌드 직전 생성, 홈이 "더 보기"·필터 때 fetch)
-export const FEED_INDEX_PATH = path.join(PUBLIC_DIR, "feed-index.json");
+// 홈 전체 기사 색인 — 같은 배치 (export-feed-index 가 빌드 직전 생성, 홈이 "더 보기"·필터 때 fetch)
+export const FEED_INDEX_DIR = path.join(PUBLIC_DIR, "feed-index");
 
 // 최근 수집분 피드 (export-latest 가 빌드 직전 생성 — 외부 소비용, 자랑터 큐레이터가 fetch)
 export const LATEST_FEED_PATH = path.join(PUBLIC_DIR, "latest.json");

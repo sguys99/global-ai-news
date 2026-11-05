@@ -2,7 +2,7 @@
 #
 # 로컬 정적 서빙 이미지 — GitHub Pages 배포(deploy.yml)와 같은 산출물(out/)을 nginx로 띄운다.
 #   ① builder: Node 22(CI와 같은 버전)에서 npm ci → npm run build
-#      (prebuild: initDb --existing → search-index.json → latest.json, 그 뒤 정적 export out/)
+#      (prebuild: initDb --existing → search-index/·feed-index/ 월별 조각 → latest.json, 그 뒤 정적 export out/)
 #   ② runner: nginx(비루트)가 out/ 을 basePath 와 같은 /global-ai-news/ 서브경로에서 서빙
 #
 # 콘텐츠는 빌드 시점의 data/app.db 로 굳는다(정적 export — 런타임 DB 접근 없음).

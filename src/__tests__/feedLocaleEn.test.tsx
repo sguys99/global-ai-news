@@ -12,7 +12,9 @@ import { IndexLoadStatus, StoryIndex } from "@/components/StoryIndex";
 import { FilterSheet } from "@/components/mobile/FilterSheet";
 import { buildFeedIndex } from "@/lib/feedIndex";
 import { groupSources } from "@/lib/feedFilter";
+import { resetIndexCache } from "@/lib/indexShards";
 import type { ArticleCard } from "@/lib/types";
+import { indexServer } from "./helpers/indexServer";
 
 /**
  * 영어판(Phase 3-3 C단계) — 피드·색인·필터·검색·호 이동·공유 컴포넌트가 en 에서 한글 없이 그려지는지,
@@ -254,11 +256,9 @@ describe("SearchInput·SearchClient — en(컨텍스트)", () => {
   });
 
   it("검색어가 없으면 추천 주제(영어 머리·/en 링크), 있으면 결과 머리·빈 결과 문구가 영어다", async () => {
-    const entries = buildFeedIndex([card(1), card(2)]).map((c) => ({ ...c, contentRaw: "" }));
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response(JSON.stringify(entries))),
-    );
+    // 영어판도 Phase 5 전까지는 한국어 색인(search-index/ko/)을 읽는다 — 한 달 조각뿐이라 범위 문구·지난 기사 버튼이 없다.
+    resetIndexCache();
+    vi.stubGlobal("fetch", indexServer([card(1), card(2)], () => "2026-10-25").fetchMock);
     const { container, unmount } = render(<SearchClient sources={sources} tags={["agents"]} />, {
       wrapper: en,
     });

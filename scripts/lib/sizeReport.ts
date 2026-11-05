@@ -79,7 +79,8 @@ const OG_RE = /^og\/(?:en\/)?(article|edition)\/[^/]+\.png$/i;
 /**
  * out/ 기준 상대 경로(구분자 `/` 또는 `\`) → 분류·언어·페이지.
  * 영어판은 `en/` 접두(`en/article/<id>/…`, `en/edition/…`, `en/index.html`)와 `og/en/…` 를 영어로 센다.
- * 검색·홈 색인은 앞으로 나눠 낼 파일(`search-index-2026-11.json`, `feed-index/…`)도 접두로 넓게 받는다.
+ * 검색·홈 색인은 나눠 낸 파일(`search-index/ko/2026-11.json`, `feed-index/…`)도 접두로 넓게 받는다.
+ * 월별 조각(Phase 4-2)은 언어가 디렉터리라(`search-index/en/…`) 그 자리의 `en` 도 영어로 센다.
  */
 export function classifyPath(relPath: string): Classified {
   let p = relPath.replace(/\\/g, "/").replace(/^\.\//, "").replace(/^\/+/, "");
@@ -105,8 +106,9 @@ export function classifyPath(relPath: string): Classified {
 
   if (p.startsWith("fonts/")) return { cls: "fonts", lang };
   if (p.startsWith("_next/")) return { cls: FONT_EXT.test(p) ? "fonts" : "next-static", lang };
-  if (/(^|\/)search-index[^/]*(\/|$)/.test(p)) return { cls: "search-index", lang };
-  if (/(^|\/)feed-index[^/]*(\/|$)/.test(p)) return { cls: "feed-index", lang };
+  const indexLang: Lang = /(^|\/)(search|feed)-index\/en\//.test(p) ? "en" : lang;
+  if (/(^|\/)search-index[^/]*(\/|$)/.test(p)) return { cls: "search-index", lang: indexLang };
+  if (/(^|\/)feed-index[^/]*(\/|$)/.test(p)) return { cls: "feed-index", lang: indexLang };
   return { cls: "other", lang };
 }
 

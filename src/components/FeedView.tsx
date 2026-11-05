@@ -33,7 +33,7 @@ import type { WeeklyRadar } from "@/lib/weeklyRadar";
  *  - 필터 결과: 분야·매체·태그 중 하나라도 있음 → 결과 헤더 · 결과 목록
  *
  * 전체 기사 색인 데이터(src/lib/feedIndex.ts): 정적 HTML 에는 기본 정렬 첫 페이지(`index`)만 싣고,
- * 누적 전체는 FeedClient 가 "더 보기"·필터·정렬 때 feed-index.json 으로 받아 `index`를 바꿔 넣는다.
+ * 누적 전체는 FeedClient 가 "더 보기"·필터·정렬 때 feed-index/ 색인 머리·월별 조각으로 받아 `index`를 바꿔 넣는다.
  * 전체가 필요한데(필터·정렬) 아직 앞부분뿐이면 목록 자리에 상태 줄(`indexLoadState`)을 둔다 — 부분 결과를 세지 않는다.
  *
  * 언어: 서버 fallback 은 뷰가 `locale` 을, FeedClient 는 `useLocale()` 을 넘긴다. 훅 없는 하위(Masthead·1면·FilterBar)에는

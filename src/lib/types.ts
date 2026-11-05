@@ -137,20 +137,17 @@ export interface FollowUpEntry {
 }
 
 /**
- * 클라이언트 검색 인덱스(public/search-index.json) 한 항목.
- * 카드 렌더(titleOriginal 폴백·trendingScore 배지)와 정렬(importance)에 필요한 필드를
- * 모두 포함하되, 용량/비용의 주범인 원문 본문(contentRaw)만 제외한다.
- * engagement 는 남긴다 — 메트릭이 있는 기사가 일부(2026-10 기준 997건 중 174건)이고 값이 작아
- * 인덱스가 1% 안쪽(약 5KB / 800KB)만 커진다. 검색 결과 카드도 같은 메타를 쓸 수 있게 구조를 맞춘다.
+ * 목록·지면용 카드 한 건(이름은 옛 검색 인덱스 항목에서 왔다) — 홈·호 페이지 카드와 public/latest.json 항목의 바탕.
+ * 용량/비용의 주범인 원문 본문(contentRaw)과 영어 제목·요약을 뺀 ArticleCard 다(engagement 는 남긴다).
  * ArticleCard 와 구조 호환 → ArticleCard 컴포넌트·filterAndSortFeed 를 캐스팅 없이 재사용.
- * 영어 제목·요약도 뺀다(한국어 검색이라 쓰지 않는다 — 영어판 Phase 1 은 공개 산출물이 바뀌지 않는다).
  * 만드는 곳은 src/lib/db.ts toListCard 하나다(매체도 id·name 만).
+ * 클라이언트 검색 색인은 Phase 4-2 부터 이 모양이 아니라 월별 조각의 행이다(src/lib/indexShards.ts SearchCard).
  */
 export type SearchIndexEntry = Omit<ArticleCard, "contentRaw" | "titleEn" | "summaryEn">;
 
 /**
  * 전체 기사 색인(StoryEntry)·피드 필터/정렬에 필요한 필드만 남긴 카드 — 홈 색인의 첫 페이지(정적 HTML)와
- * public/feed-index.json(나머지, "더 보기"·필터 때 fetch) 한 항목.
+ * public/feed-index/ 월별 조각(나머지, "더 보기"·필터 때 fetch — 행으로 줄여 싣고 src/lib/indexShards.ts 가 되돌린다) 한 항목.
  * 원문 URL·원제·묶인 보도 목록·메트릭은 색인이 그리지 않아 뺀다. 원제 폴백은 만들 때 titleKo 에 미리 넣고,
  * 묶인 보도는 바이라인 "외 N곳"에 쓰는 개수(relatedCount, 0 이면 키 생략)만 남긴다.
  * ArticleCard·SearchIndexEntry 도 구조상 이 타입을 만족한다(색인 컴포넌트·필터가 셋을 모두 받는다).

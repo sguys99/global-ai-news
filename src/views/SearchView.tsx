@@ -7,11 +7,11 @@ import { loadSearch } from "@/views/data";
 /**
  * 검색 페이지 본문 = 정적 셸 + 클라이언트 검색(정적 export) — 언어판 공용 뷰(영어판 Phase 3-3).
  * 빌드타임엔 소스·태그(필터 칩·추천 검색어)만 조회하고(src/views/data.ts `loadSearch`), 실제 검색은 SearchClient 가
- * search-index.json 을 fetch 해 FlexSearch 로 수행한다. useSearchParams 사용 → 정적 export에서 <Suspense> 경계 필수.
+ * search-index/<언어>/ 월별 조각을 fetch 해 FlexSearch 로 수행한다. useSearchParams 사용 → 정적 export에서 <Suspense> 경계 필수.
  * SearchClient(클라이언트)는 언어를 LocaleProvider 컨텍스트로 읽는다.
  */
 export function SearchView({ locale }: { locale: Locale }) {
-  const { sources, tags } = loadSearch(locale);
+  const { sources, tags, indexVersion } = loadSearch(locale);
   const t = getMessages(searchMessages, locale);
 
   return (
@@ -22,7 +22,7 @@ export function SearchView({ locale }: { locale: Locale }) {
       </header>
 
       <Suspense fallback={null}>
-        <SearchClient sources={sources} tags={tags} />
+        <SearchClient sources={sources} tags={tags} indexVersion={indexVersion} />
       </Suspense>
     </main>
   );

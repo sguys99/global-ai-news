@@ -3,7 +3,7 @@
  * 실행: npm run export-latest  (= tsx scripts/export-latest.ts)
  * `prebuild`에서 export-search-index 와 함께 자동 실행되어 최신 data/app.db 를 반영한다.
  *
- * search-index.json 은 전 기사(하루 ~20KB씩 늘고 정렬 없음)라 외부에서 매일 받기엔 크다.
+ * 검색 색인(search-index/)은 전 기사를 월별 조각으로 나눈 내부 형식(행 배열)이라 외부 계약으로 쓰기엔 맞지 않다.
  * 최근 LATEST_WINDOW_DAYS 일 동안 **수집된** 공개 기사만 중요도 순으로 담는다(본문 contentRaw 제외).
  * 창은 빌드 시각 기준이다 — 빌드는 수집 커밋 직후에 돈다(deploy.yml).
  * `brief` 는 최신 호 세 줄 요약(지면 마스트헤드 아래 띠와 같은 줄·같은 순서)이다. 줄이 가리키는 기사가 items 에

@@ -230,12 +230,12 @@ function orderByFor(sort: FeedOptions["sort"]): string {
     ? "a.published_at DESC"
     : sort === "importance"
       ? "a.importance DESC, a.trending_score DESC"
-      : "a.trending_score DESC, a.published_at DESC";
+      : "a.trending_score DESC, a.published_at DESC, a.id ASC";
 }
 
 /**
  * 피드용 기사 목록. 태그·소스 필터와 정렬을 지원한다(PRD §3.5).
- * 기본 정렬은 트렌딩 점수 내림차순(동점 시 최신순),
+ * 기본 정렬은 트렌딩 점수 내림차순(동점 시 최신순, 그래도 같으면 id 순),
  * sort=latest 는 게시 최신순, sort=importance 는 중요도 우선.
  */
 export function getFeed(opts: FeedOptions = {}, conn: DatabaseType = getDb()): ArticleCard[] {
@@ -264,6 +264,17 @@ export function toListCard(article: ArticleCard): SearchIndexEntry {
 /** 목록·지면용 카드 배열(toListCard). 홈·호 페이지가 클라이언트 컴포넌트에 넘기기 전에 쓴다. */
 export function toListCards(articles: ArticleCard[]): ArticleCard[] {
   return articles.map(toListCard);
+}
+
+/**
+ * 공개 기사 id → 호 날짜('YYYY-MM-DD', created_at 의 KST 날짜 — `getEditionRefs` 와 같은 기준).
+ * 클라이언트 색인을 호 월별 조각으로 나눌 때 쓴다(scripts/lib/indexShards.ts).
+ */
+export function getIssueDates(conn: DatabaseType = getDb()): Map<number, string> {
+  const rows = conn
+    .prepare(`SELECT a.id, date(a.created_at, '+9 hours') AS d FROM articles a WHERE ${PUBLISHED}`)
+    .all() as { id: number; d: string }[];
+  return new Map(rows.map((r) => [r.id, r.d]));
 }
 
 /** FTS5 MATCH 표현식 생성: 공백 토큰화 → 각 토큰 prefix("tok"*) → OR 결합. */

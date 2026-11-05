@@ -1,13 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   INDEX_PAGE_SIZE,
   buildFeedIndex,
-  feedIndexUrl,
-  feedIndexVersion,
-  loadFeedIndex,
   mergeIndex,
   relatedCountOf,
-  resetFeedIndexCache,
   toIndexCard,
 } from "@/lib/feedIndex";
 import { filterAndSortFeed } from "@/lib/feedFilter";
@@ -139,58 +135,4 @@ describe("mergeIndex — 첫 페이지 + 받은 전체 + 이번 호", () => {
       expect(ids(after)).toEqual(ids(before));
     },
   );
-});
-
-describe("feedIndexVersion / feedIndexUrl", () => {
-  it("최신 호 날짜와 누적 건수로 캐시 키를 만든다", () => {
-    expect(feedIndexVersion("2026-10-31", 1146)).toBe("2026-10-31-1146");
-    expect(feedIndexVersion(undefined, 0)).toBe("none-0");
-  });
-
-  it("dev(basePath 없음)에서는 루트 경로", () => {
-    expect(feedIndexUrl("2026-10-31-1146")).toBe("/feed-index.json?v=2026-10-31-1146");
-  });
-});
-
-describe("loadFeedIndex — 1회 요청·실패 시 다시 시도", () => {
-  const data = buildFeedIndex(cards.slice(0, 3));
-
-  beforeEach(() => resetFeedIndexCache());
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    resetFeedIndexCache();
-  });
-
-  it("같은 URL 은 한 번만 받는다", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify(data)));
-    vi.stubGlobal("fetch", fetchMock);
-    const [a, b] = await Promise.all([loadFeedIndex("/f?v=1"), loadFeedIndex("/f?v=1")]);
-    await loadFeedIndex("/f?v=1");
-    expect(a).toEqual(data);
-    expect(b).toBe(a);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("HTTP 오류·배열 아님은 실패로 보고, 다음 호출이 다시 요청한다", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("nope", { status: 404 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] })))
-      .mockResolvedValueOnce(new Response(JSON.stringify(data)));
-    vi.stubGlobal("fetch", fetchMock);
-    await expect(loadFeedIndex("/f")).rejects.toThrow("404");
-    await expect(loadFeedIndex("/f")).rejects.toThrow("not an array");
-    await expect(loadFeedIndex("/f")).resolves.toEqual(data);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-  });
-
-  it("네트워크 실패도 캐시에 남기지 않는다", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-      .mockResolvedValueOnce(new Response(JSON.stringify(data)));
-    vi.stubGlobal("fetch", fetchMock);
-    await expect(loadFeedIndex("/f")).rejects.toThrow("Failed to fetch");
-    await expect(loadFeedIndex("/f")).resolves.toEqual(data);
-  });
 });

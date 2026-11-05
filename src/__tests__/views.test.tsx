@@ -18,6 +18,8 @@ vi.mock("@/lib/db", async (importOriginal) => ({
   getWeekRadarCandidates: () => [],
   getSourcesWithCounts: () => [],
   getActiveTags: () => ["mcp"],
+  getFeed: () => [],
+  getLatestEditionRef: () => null,
 }));
 // 검색 본문은 브라우저에서 색인을 받는다 — 정적 셸만 본다.
 vi.mock("@/components/SearchClient", () => ({ SearchClient: () => null }));

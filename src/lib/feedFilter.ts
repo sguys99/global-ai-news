@@ -2,7 +2,7 @@
  * 피드 필터/정렬의 클라이언트 측 단일 출처.
  *
  * 정적 export(GitHub Pages)에서는 서버가 쿼리별로 다른 HTML을 만들 수 없으므로,
- * 빌드타임에 만든 전체 카드 JSON(홈 feed-index.json·검색 search-index.json)을 받아 브라우저에서 거른다.
+ * 빌드타임에 만든 색인 조각(홈 feed-index/·검색 search-index/, src/lib/indexShards.ts)을 받아 브라우저에서 거른다.
  * 이 함수는 서버 빌드 시점의 `src/lib/db.ts` `buildFilters`/`orderByFor` SQL 의미를 카드 배열 대상으로
  * 1:1 이전한 것이다(동점 보조 키까지 동일). 서버/클라 동작 일치는 단위 테스트로 고정한다.
  */
@@ -17,10 +17,19 @@ function byPublishedDesc(a: IndexCard, b: IndexCard): number {
 }
 
 /**
+ * 기본 정렬(화제순) 비교자 — trending_score DESC, published_at DESC, id ASC.
+ * 마지막 id 는 SQL(`orderByFor`)과 같은 동점 처리를 명시한 것이라(예전에도 SQLite 가 id 순으로 냈다) 순서가 전순서가 된다 —
+ * 월별 색인 조각(src/lib/indexShards.ts)을 이 비교자로 합치면 빌드 시점 누적 순서가 그대로 되살아난다.
+ */
+export function compareDefaultOrder(a: IndexCard, b: IndexCard): number {
+  return b.trendingScore - a.trendingScore || byPublishedDesc(a, b) || a.id - b.id;
+}
+
+/**
  * `orderByFor`(db.ts)와 동일한 정렬 비교자.
  * - latest:      published_at DESC
  * - importance:  importance DESC, trending_score DESC
- * - (기본)       trending_score DESC, published_at DESC
+ * - (기본)       trending_score DESC, published_at DESC, id ASC
  */
 function comparatorFor(sort: FeedOptions["sort"]): (a: IndexCard, b: IndexCard) => number {
   if (sort === "latest") {
@@ -29,7 +38,7 @@ function comparatorFor(sort: FeedOptions["sort"]): (a: IndexCard, b: IndexCard) 
   if (sort === "importance") {
     return (a, b) => b.importance - a.importance || b.trendingScore - a.trendingScore;
   }
-  return (a, b) => b.trendingScore - a.trendingScore || byPublishedDesc(a, b);
+  return compareDefaultOrder;
 }
 
 /** 매체 필터 옵션 한 건 — `getSourcesWithCounts` 행(소스 id·원래 이름·게재 기사 수). */

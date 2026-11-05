@@ -15,7 +15,10 @@
 /.next/
 /out/
 
-# 검색 인덱스·홈 색인: prebuild/deploy.yml 빌드 시 data/app.db에서 생성(커밋하지 않음).
+# 검색 색인·홈 색인(언어별 월별 조각 + manifest.json): prebuild/deploy.yml 빌드 시 data/app.db에서 생성(커밋하지 않음).
+/public/search-index/
+/public/feed-index/
+# Phase 4-2 전 단일 파일(export 가 지운다 — 남은 로컬 사본이 커밋되지 않게)
 /public/search-index.json
 /public/feed-index.json
 /public/latest.json

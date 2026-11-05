@@ -17,7 +17,10 @@ data/app.db-wal
 data/app.db-shm
 data/app.db.bak-*
 data/reclassify-cache.json
+public/search-index
 public/search-index.json
+public/feed-index
+public/feed-index.json
 public/latest.json
 *.log
 .env
