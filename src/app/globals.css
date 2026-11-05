@@ -180,6 +180,447 @@
   }
 }
 
+/*
+ * 인라인 SVG 아이콘(src/components/Icon.tsx) 기본값 — lucide 가 요소마다 싣던 표현 속성(width·height 24, fill none,
+ * stroke currentColor 2px, round)을 옮겨 왔다. base 층이라 표현 속성처럼 어떤 컴포넌트·유틸리티 클래스(size-4 등)에도 진다.
+ */
+@layer base {
+  .ic {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+/*
+ * 컴포넌트 클래스 (english-version-plan Phase 4-1 — 정적 페이지 무게 줄이기). 화면은 그대로다.
+ * 같은 Tailwind 묶음이 페이지마다 HTML·인라인 RSC·index.txt 세 벌로 수십 번 실리므로, 자주 반복되는 긴 묶음을
+ * 짧은 이름 하나로 바꾼다. 값은 여기서 `@apply` 로만 적는다(토큰·변형은 유틸리티와 같은 CSS 로 컴파일된다).
+ *
+ * 이름: `<영역>-<부분>[-<변형>]`, 영역 접두어 2글자 — Tailwind 유틸리티 이름(m-·p-·mt-…)과 겹치지 않는다.
+ *   sg- 신호(ArticleMeta: 키커·배지·중요도 미터·바이라인·태그)   st- 스토리 변형(Story.tsx)
+ *   ed- 지면(Edition·Masthead·IssueBrief·StoryIndex·FeedView)   ar- 기사 상세(ArticleView·FollowUpThread)
+ *   fb- 필터 바(FilterBar)   sh- 셸(SiteShell·Header·HeaderNav·HeaderWordmark·MobileTopBar·Footer·BottomTabBar)
+ *   ui- shadcn 프리미티브(Button 기본 묶음)
+ * 규칙:
+ * - `@layer components` 에 둔다(`@utility` 금지). 호출부가 cn()·className 으로 덧붙이는 유틸리티는 utilities 층이라
+ *   늘 이긴다 — 예전에 twMerge 가 충돌 클래스를 지워서 내던 결과를 cascade layer 가 낸다
+ *   (예: CategoryKicker 의 `text-label`, Byline 의 `flex-nowrap gap-x-2`, HeaderWordmark 의 `text-lg`).
+ * - 그래서 덮어쓰기·조건부 클래스는 유틸리티로 남긴다. 컴포넌트 클래스끼리 겹쳐 쓰는 것(`sg-by sg-byc`·`ed-nav-on`)은
+ *   같은 속성을 다투지 않거나, 이기는 쪽을 이 파일에서 뒤에 둔다(순서가 의미 있다 — 옮기지 말 것).
+ * - `story-link`(@utility)·`headline` 은 묶지 않고 마크업에 그대로 둔다 — hover 코발트가 utilities 층에 있어야 한다.
+ * - 한 번만 나오는 짧은 묶음은 그대로 둔다(줄어드는 바이트보다 읽기 비용이 크다).
+ */
+@layer components {
+  /* ── sg- 신호 (ArticleMeta.tsx) ───────────────────────────── */
+  .sg-kick {
+    @apply text-meta text-brand font-bold tracking-[0.02em] whitespace-nowrap;
+  }
+  /* 형식·지역 배지 — 잉크 1px 아웃라인, 코발트 금지 */
+  .sg-badge {
+    @apply border-foreground text-foreground text-badge relative inline-flex h-[17px] shrink-0 items-center border px-[5px] pt-px font-sans font-bold tracking-[0.09em] whitespace-nowrap;
+  }
+  /* 중요도 미터: <span class="sg-imp" data-v="N"> + 클래스 없는 <i> 5개. 앞 N칸 채움(4–5는 코발트), 나머지 빈 칸 */
+  .sg-imp {
+    @apply inline-flex items-center gap-[3px];
+  }
+  .sg-imp > i {
+    /* 빈 칸 테두리 /80 — 종이(#f4f4f1) 위 3.4:1(비텍스트 AA 3:1). 시안의 70%는 2.8:1이라 올렸다. */
+    @apply border-muted-foreground/80 size-1.5 rounded-full border;
+  }
+  .sg-imp[data-v="1"] > i:first-child,
+  .sg-imp[data-v="2"] > i:nth-child(-n + 2),
+  .sg-imp[data-v="3"] > i:nth-child(-n + 3) {
+    @apply border-foreground bg-foreground;
+  }
+  .sg-imp[data-v="4"] > i:nth-child(-n + 4),
+  .sg-imp[data-v="5"] > i {
+    @apply border-brand bg-brand;
+  }
+  .sg-dot {
+    @apply size-0.5 shrink-0 rounded-full bg-current;
+  }
+  /* 진한 보조 글자(매체명·수치) */
+  .sg-em {
+    @apply text-foreground-soft font-semibold;
+  }
+  .sg-tr {
+    @apply min-w-0 truncate;
+  }
+  .sg-src-c {
+    @apply max-w-full truncate;
+  }
+  .sg-src-f {
+    @apply inline-flex items-center gap-[7px];
+  }
+  .sg-oth {
+    @apply text-muted-foreground font-normal;
+  }
+  .sg-by {
+    @apply text-meta text-muted-foreground flex flex-wrap items-center gap-x-2.5 gap-y-1;
+  }
+  /* compact 바이라인 — sg-by 뒤에 둔다(md 에서 items-start 가 이긴다) */
+  .sg-byc {
+    @apply md:flex-col md:items-start;
+  }
+  .sg-trend {
+    @apply bg-border relative block h-0.5 flex-1 overflow-hidden;
+  }
+  .sg-trend > span {
+    @apply bg-brand absolute inset-y-0 left-0;
+  }
+  .sg-tag {
+    @apply border-border text-foreground-soft rounded-pill text-meta inline-flex items-center border px-2.5 py-0.5;
+  }
+
+  /* ── st- 스토리 변형 (Story.tsx) — 링크 묶음은 포커스 링(st-f)을 품는다 ───────────── */
+  .st-f {
+    @apply focus-visible:ring-ring focus-visible:ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-offset-4;
+  }
+  .st-lead {
+    @apply focus-visible:ring-ring focus-visible:ring-offset-background flex flex-col gap-4 outline-none focus-visible:ring-2 focus-visible:ring-offset-4;
+  }
+  .st-lead-h {
+    @apply text-display-xl font-serif font-bold;
+  }
+  /* 모바일 17px → md 이상 19px(text-dek) */
+  .st-lead-p {
+    @apply text-foreground-soft md:text-dek max-w-[40em] text-[1.0625rem] leading-[1.7];
+  }
+  .st-sec {
+    @apply focus-visible:ring-ring focus-visible:ring-offset-background flex h-full flex-col gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-4;
+  }
+  .st-sec-h {
+    @apply text-headline font-serif font-bold;
+  }
+  .st-sum2 {
+    @apply text-caption text-muted-foreground line-clamp-2;
+  }
+  .st-sum3 {
+    @apply text-caption text-muted-foreground line-clamp-3;
+  }
+  .st-item {
+    @apply focus-visible:ring-ring focus-visible:ring-offset-background flex h-full flex-col gap-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-4;
+  }
+  .st-item-hf {
+    @apply text-headline font-serif font-bold md:text-[1.5rem] md:leading-[1.3];
+  }
+  .st-item-p {
+    @apply text-caption text-muted-foreground line-clamp-3 max-w-[42em];
+  }
+  /* 산세리프 소제목(섹션 항목·색인) */
+  .st-ttl {
+    @apply text-title font-semibold tracking-[-0.02em];
+  }
+  .st-brief {
+    @apply focus-visible:ring-ring focus-visible:ring-offset-background grid min-h-11 grid-cols-1 gap-y-[3px] py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-4 md:grid-cols-[7.5rem_minmax(0,1fr)_auto] md:items-baseline md:gap-x-4 md:py-[13px];
+  }
+  .st-brief-h {
+    @apply md:text-title line-clamp-2 font-serif text-[0.9375rem] leading-[1.4] font-bold tracking-[-0.03em] md:line-clamp-1 md:leading-[1.5];
+  }
+  /* 레이더 카드(띠의 subgrid 2행). 한 장뿐인 가로 카드(wide)는 유틸리티 + st-f */
+  .st-radar {
+    @apply focus-visible:ring-ring focus-visible:ring-offset-background row-span-2 grid grid-rows-subgrid gap-y-2.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-4;
+  }
+  .st-radar-b {
+    @apply flex min-w-0 flex-col gap-2.5;
+  }
+  .st-radar-h {
+    @apply text-title line-clamp-3 font-serif leading-[1.45] font-bold tracking-[-0.03em] md:text-[1.0625rem];
+  }
+  /* 머리 줄(배지·키커) */
+  .st-hd {
+    @apply flex min-w-0 items-center gap-2;
+  }
+  .st-rail {
+    @apply border-border text-meta text-muted-foreground relative flex min-w-0 flex-col gap-[3px] border-t pt-2.5 tabular-nums;
+  }
+  .st-rail-id {
+    @apply text-foreground-soft truncate font-semibold tracking-[-0.005em];
+  }
+  .st-stats {
+    @apply flex flex-wrap items-center gap-x-2 gap-y-0.5;
+  }
+  .st-mt {
+    @apply inline-flex items-center gap-1;
+  }
+  .st-ic {
+    @apply size-[11px] shrink-0 translate-y-[0.5px] fill-current;
+  }
+  /* 세리프 순위 숫자(주간 레이더·지금 화제) — 행 수·색은 호출부 유틸리티 */
+  .st-rank {
+    @apply font-serif text-[1.875rem] leading-none tracking-[-0.04em] tabular-nums;
+  }
+  .st-wk {
+    @apply focus-visible:ring-ring focus-visible:ring-offset-background grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 gap-y-1 py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-4 md:grid-cols-[2.75rem_minmax(0,1fr)];
+  }
+  .st-wk-day {
+    @apply text-label text-muted-foreground ml-auto shrink-0 pl-1 whitespace-nowrap;
+  }
+  .st-wk-h {
+    @apply md:text-title line-clamp-2 font-serif text-[0.9375rem] leading-[1.45] font-bold tracking-[-0.03em];
+  }
+  .st-wk-meta {
+    @apply text-meta text-muted-foreground relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums;
+  }
+  .st-entry {
+    @apply border-border focus-visible:ring-ring focus-visible:ring-offset-background grid grid-cols-[3.25rem_minmax(0,1fr)] grid-rows-[1fr_auto] gap-x-3 gap-y-1 border-b py-4 outline-none focus-visible:ring-2 focus-visible:ring-offset-4;
+  }
+  /* 날짜 칼럼(색인·사건 타임라인) */
+  .st-date {
+    @apply text-muted-foreground font-serif text-[0.9375rem] font-semibold tabular-nums;
+  }
+  .st-body {
+    @apply flex min-w-0 flex-col gap-[3px];
+  }
+
+  /* ── ed- 지면 (Edition·Masthead·IssueBrief·StoryIndex·FeedView) ───────────── */
+  .ed-plink {
+    @apply text-foreground focus-visible:ring-ring -my-3 inline-flex min-h-11 items-center font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2 md:my-0 md:min-h-0;
+  }
+  .ed-nav {
+    @apply text-caption focus-visible:ring-ring flex-none px-2.5 py-3 font-medium whitespace-nowrap outline-none first:pl-0 focus-visible:ring-2;
+  }
+  .ed-nav-on {
+    @apply text-foreground decoration-brand underline decoration-2 underline-offset-[14px];
+  }
+  .ed-nav-off {
+    @apply text-foreground-soft hover:text-foreground;
+  }
+  .ed-ear {
+    @apply text-meta text-muted-foreground border-border flex flex-col gap-0.5 md:flex-none md:border-l md:pt-0.5 md:pb-1.5 md:pl-5;
+  }
+  .ed-ear-n {
+    @apply text-foreground font-bold tabular-nums md:mr-0.5 md:font-serif md:text-[2.125rem] md:leading-[1.05] md:font-extrabold md:tracking-[-0.04em];
+  }
+  .ed-ear-u {
+    @apply md:text-foreground md:mr-1.5 md:font-serif md:text-[1.0625rem] md:leading-none md:font-bold;
+  }
+  .ed-br {
+    @apply border-rule animate-rise border-y pt-3.5 pb-2 [animation-delay:40ms] md:grid md:grid-cols-[9.5rem_minmax(0,1fr)] md:gap-x-8 md:py-5 lg:grid-cols-[11rem_minmax(0,1fr)];
+  }
+  .ed-br-a {
+    @apply focus-visible:ring-ring focus-visible:ring-offset-background grid min-h-11 grid-cols-[1.375rem_minmax(0,1fr)] items-baseline gap-x-2.5 py-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-4 md:min-h-0 md:grid-cols-[1.75rem_minmax(0,1fr)] md:py-0;
+  }
+  .ed-br-n {
+    @apply text-muted-foreground font-serif text-[0.9375rem] leading-none font-bold tabular-nums md:text-base;
+  }
+  .ed-br-h {
+    @apply text-title font-serif leading-[1.45] font-semibold tracking-[-0.03em] text-pretty md:text-[1.1875rem] md:leading-[1.5];
+  }
+  /* 1면 서브 칸 */
+  .ed-sec {
+    @apply border-border border-b py-5 md:border-b-0 md:border-l md:px-5 md:pt-6 md:pb-2 md:first:border-l-0 md:first:pl-0 md:last:pr-0;
+  }
+  /* 밴드 머리(레이더·섹션): 굵은 괘선 + 세리프 제목 + 보조 문구 */
+  .ed-bh {
+    @apply border-rule mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t-2 pt-3;
+  }
+  .ed-bh-h {
+    @apply text-display-md font-serif font-extrabold whitespace-nowrap;
+  }
+  .ed-cnt {
+    @apply text-meta text-muted-foreground tabular-nums;
+  }
+  .ed-all {
+    @apply text-meta text-brand focus-visible:ring-ring -my-3 ml-auto inline-flex min-h-11 items-center font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-2 md:my-0 md:min-h-0;
+  }
+  /* 레이더 띠: 모바일 가로 스냅(카드 64%) → md 이상 칸 수별 열(RADAR_COLS 유틸리티) */
+  .ed-rd-ul {
+    @apply relative -mx-4 grid snap-x snap-mandatory scroll-px-4 auto-cols-[64%] grid-flow-col grid-rows-[auto_auto] gap-y-2.5 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] md:mx-0 md:snap-none md:auto-cols-auto md:grid-flow-row md:grid-rows-none md:gap-y-7 md:overflow-visible md:px-0 [&::-webkit-scrollbar]:hidden;
+  }
+  .ed-rd-li {
+    @apply border-border row-span-2 grid min-w-0 snap-start grid-rows-subgrid gap-y-2.5 pr-4 md:pr-5 max-md:[&:nth-child(n+2)]:border-l max-md:[&:nth-child(n+2)]:pl-4;
+  }
+  /* 칸 사이 세로 헤어라인(md 이상) — 칸 수별, ed-rd-li 뒤에 둔다(last:pr-0 이 이긴다) */
+  .ed-rd-2 {
+    @apply md:last:pr-0 md:[&:nth-child(2)]:border-l md:[&:nth-child(2)]:pl-5;
+  }
+  .ed-rd-3 {
+    @apply md:last:pr-0 md:[&:nth-child(n+2)]:border-l md:[&:nth-child(n+2)]:pl-5;
+  }
+  .ed-rd-4 {
+    @apply lg:last:pr-0 md:[&:nth-child(2n)]:border-l md:[&:nth-child(2n)]:pl-5 lg:[&:nth-child(n+2)]:border-l lg:[&:nth-child(n+2)]:pl-5;
+  }
+  /* 지금 화제 행 */
+  .ed-tr {
+    @apply border-border focus-visible:ring-ring grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 gap-y-1.5 border-b py-3.5 outline-none focus-visible:ring-2;
+  }
+  .ed-tr-h {
+    @apply line-clamp-2 text-[0.9375rem] leading-[1.45] font-semibold;
+  }
+  .ed-tr-m {
+    @apply text-label text-muted-foreground flex items-center gap-2;
+  }
+  .ed-tr-s {
+    @apply text-foreground-soft min-w-[2ch] text-right font-semibold tabular-nums;
+  }
+  /* 이 호의 지면 행 */
+  .ed-ic {
+    @apply border-border text-caption focus-visible:ring-ring flex items-baseline gap-2 border-b py-[9px] leading-[1.4] outline-none focus-visible:ring-2;
+  }
+  .ed-ic-d {
+    @apply border-input flex-1 translate-y-[3px] self-center border-b border-dotted;
+  }
+  .ed-ic-f {
+    @apply text-label text-muted-foreground w-[4.2em] text-right tabular-nums;
+  }
+  /* 섹션 밴드 칸 — 칸별 여백·헤어라인은 SECTION_CELLS 유틸리티 */
+  .ed-cell {
+    @apply border-border min-w-0 py-4 first:pt-0 max-md:border-t max-md:first:border-t-0 md:py-0;
+  }
+  .ed-pill {
+    @apply rounded-pill border-foreground text-caption hover:bg-foreground hover:text-background focus-visible:ring-ring inline-flex min-h-12 items-center gap-2 border px-6 font-semibold transition-colors outline-none focus-visible:ring-2;
+  }
+  .ed-share {
+    @apply text-foreground focus-visible:ring-ring -mx-2 -my-3 inline-flex min-h-11 items-center gap-1 px-2 font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2 md:my-0 md:min-h-0;
+  }
+
+  /* ── ar- 기사 상세 (ArticleView·FollowUpThread) ───────────── */
+  .ar-main {
+    @apply mx-auto flex max-w-[720px] flex-col px-4 pt-2 pb-32 md:px-6 md:pt-10 md:pb-20;
+  }
+  .ar-back {
+    @apply text-caption text-muted-foreground hover:text-foreground focus-visible:ring-ring bg-background/90 border-border sticky top-13 z-10 -mx-4 inline-flex items-center gap-1.5 border-b px-4 py-3 font-medium backdrop-blur-md outline-none focus-visible:ring-2 md:static md:mx-0 md:w-fit md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none;
+  }
+  .ar-h1 {
+    @apply text-display-lg animate-rise font-serif font-extrabold;
+  }
+  .ar-sigs {
+    @apply border-t-rule border-b-border mt-7 grid grid-cols-2 border-t-2 border-b md:grid-cols-4;
+  }
+  .ar-sig {
+    @apply border-border flex min-w-0 flex-col gap-1 py-3.5 pr-3 max-md:even:border-l max-md:even:pl-4 max-md:nth-[n+3]:border-t md:border-l md:pl-4 md:first:border-l-0 md:first:pl-0;
+  }
+  .ar-sig-l {
+    @apply text-label text-muted-foreground font-semibold;
+  }
+  .ar-sig-v {
+    @apply text-caption truncate font-semibold;
+  }
+  .ar-lbl {
+    @apply text-label text-brand font-bold tracking-[0.04em];
+  }
+  .ar-sum {
+    @apply text-dek md:text-[1.25rem] md:leading-[1.75];
+  }
+  /* 본문 아래 구획(다른 매체 보도·사건 타임라인·원문 발췌) — 간격은 호출부 gap-* */
+  .ar-sect {
+    @apply border-border mt-9 flex flex-col border-t pt-7;
+  }
+  .ar-h {
+    @apply text-label text-muted-foreground font-bold tracking-[0.04em];
+  }
+  .ar-li {
+    @apply border-border border-b last:border-b-0;
+  }
+  .ar-cov {
+    @apply focus-visible:ring-ring flex min-h-11 items-baseline gap-3 py-2.5 outline-none focus-visible:ring-2;
+  }
+  .ar-cov-s {
+    @apply text-meta text-foreground-soft w-24 shrink-0 truncate font-semibold;
+  }
+  .ar-cta {
+    @apply bg-primary text-primary-foreground rounded-pill text-caption focus-visible:ring-ring mt-10 hidden w-fit items-center gap-2 px-6 py-3.5 font-semibold transition-opacity outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 md:inline-flex;
+  }
+  .ar-bar {
+    @apply border-rule bg-background/90 fixed inset-x-0 bottom-0 z-40 flex items-center border-t px-4 backdrop-blur-md md:hidden;
+  }
+  .ar-mcta {
+    @apply bg-primary text-primary-foreground rounded-pill text-caption focus-visible:ring-ring flex min-h-12 w-full items-center justify-center gap-2 px-6 font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset;
+  }
+  .ar-rh {
+    @apply border-rule flex items-baseline gap-3 border-t-2 pt-3;
+  }
+  .ar-rh-h {
+    @apply font-serif text-2xl font-extrabold tracking-[-0.04em];
+  }
+  .ar-all {
+    @apply text-meta text-brand -my-3 ml-auto inline-flex min-h-11 items-center font-semibold hover:underline md:my-0 md:min-h-0;
+  }
+
+  /* ── fb- 필터 바 (FilterBar) ───────────── */
+  .fb-tab {
+    @apply focus-visible:ring-ring inline-flex min-h-11 items-center border-b-2 text-[0.9375rem] leading-[1.55] font-semibold transition-colors outline-none focus-visible:ring-2 md:min-h-0 md:py-1.5;
+  }
+  .fb-tab-on {
+    @apply border-brand text-foreground;
+  }
+  .fb-tab-off {
+    @apply text-muted-foreground hover:text-foreground border-transparent;
+  }
+  .fb-chip {
+    @apply rounded-pill text-meta focus-visible:ring-ring inline-flex min-h-11 items-center border px-3.5 whitespace-nowrap transition-colors outline-none focus-visible:ring-2 md:min-h-8;
+  }
+  .fb-chip-on {
+    @apply border-foreground bg-foreground text-background font-semibold;
+  }
+  .fb-chip-off {
+    @apply border-border text-foreground-soft hover:border-foreground hover:text-foreground;
+  }
+
+  /* ── sh- 셸 (SiteShell·Header·MobileTopBar·Footer·BottomTabBar) ───────────── */
+  .sh-body {
+    @apply bg-background text-foreground flex min-h-screen flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] antialiased md:pb-0;
+  }
+  .sh-hdr {
+    @apply border-border bg-background/85 sticky top-0 z-50 hidden border-b backdrop-blur-md md:block;
+  }
+  .sh-hdr-in {
+    @apply mx-auto flex h-13 max-w-[1240px] items-center gap-8 px-8;
+  }
+  .sh-nav {
+    @apply text-caption focus-visible:ring-ring py-1 font-semibold underline-offset-[18px] outline-none focus-visible:ring-2;
+  }
+  .sh-nav-on {
+    @apply text-foreground decoration-brand underline decoration-2;
+  }
+  .sh-nav-off {
+    @apply text-muted-foreground hover:text-foreground;
+  }
+  /* 헤더 워드마크 — 크기·여백 덮어쓰기(모바일 py-2 text-lg)와 보임/숨김은 호출부 유틸리티 */
+  .sh-wm {
+    @apply focus-visible:ring-ring font-serif text-xl font-extrabold tracking-[-0.045em] whitespace-nowrap transition-[opacity,transform] duration-200 ease-out outline-none focus-visible:ring-2;
+  }
+  .sh-mtb {
+    @apply border-border bg-background/85 sticky top-0 z-50 border-b backdrop-blur-md md:hidden;
+  }
+  .sh-mtb-in {
+    @apply flex h-13 w-full items-center justify-between px-4;
+  }
+  .sh-ft-in {
+    @apply mx-auto grid max-w-[1240px] gap-6 px-4 pt-7 pb-10 md:grid-cols-[1fr_auto] md:items-end md:px-8;
+  }
+  .sh-ft-np {
+    @apply font-serif text-[2.5rem] leading-none font-extrabold tracking-[-0.045em];
+  }
+  /* 44px 터치 타깃 — 음수 마진으로 시각 높이는 유지(모바일만) */
+  .sh-fl {
+    @apply hover:text-brand -my-3 inline-flex min-h-11 items-center md:my-0 md:min-h-0;
+  }
+  .sh-tabs {
+    @apply border-rule bg-background/90 fixed inset-x-0 bottom-0 z-50 flex border-t backdrop-blur-md md:hidden;
+  }
+  .sh-tb {
+    @apply focus-visible:ring-ring relative flex h-14 flex-1 flex-col items-center justify-center gap-1 text-[11px] transition-colors outline-none before:absolute before:top-0 before:h-0.5 before:w-8 before:transition-colors focus-visible:ring-2 focus-visible:ring-inset;
+  }
+  .sh-tb-on {
+    @apply text-primary before:bg-brand font-semibold;
+  }
+  .sh-tb-off {
+    @apply text-muted-foreground font-normal before:bg-transparent;
+  }
+
+  /* ── ui- shadcn Button 기본 묶음(변형·크기는 cva 유틸리티 그대로) ───────────── */
+  .ui-btn {
+    @apply focus-visible:ring-ring inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0;
+  }
+}
+
 /* 카드 링크 hover: 제목(.headline)만 코발트로 — 카드 전체 색 변화 없음 */
 @utility story-link {
   & .headline {

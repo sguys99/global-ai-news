@@ -12,7 +12,6 @@ import { groupSources, type SourceOption } from "@/lib/feedFilter";
 import { getMessages, localePath, type Locale } from "@/lib/i18n";
 import { CATEGORIES, categoryLabel } from "@/lib/labels";
 import { filterMessages } from "@/lib/messages/filter";
-import { cn } from "@/lib/utils";
 
 /** 기본 정렬(sort 미지정)은 트렌딩 점수순 — feedFilter/db 의 기본 정렬과 동일. 표시명은 filter 이름공간 `sort`. */
 const SORTS: { value: SearchOptions["sort"]; key: "trending" | "latest" | "importance" }[] = [
@@ -43,8 +42,6 @@ export function buildHref(
   return (qs ? `${basePath}?${qs}` : basePath) + anchor;
 }
 
-const focus = "outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
 function Chip({
   href,
   active,
@@ -58,13 +55,7 @@ function Chip({
     <Link
       href={href}
       aria-current={active ? "true" : undefined}
-      className={cn(
-        "rounded-pill text-meta inline-flex min-h-11 items-center border px-3.5 whitespace-nowrap transition-colors md:min-h-8",
-        active
-          ? "border-foreground bg-foreground text-background font-semibold"
-          : "border-border text-foreground-soft hover:border-foreground hover:text-foreground",
-        focus,
-      )}
+      className={active ? "fb-chip fb-chip-on" : "fb-chip fb-chip-off"}
     >
       {children}
     </Link>
@@ -123,15 +114,8 @@ export function FilterBar({
               key={s.key}
               href={href({ sort: s.value })}
               aria-current={active ? "true" : undefined}
-              className={cn(
-                // 15px — 시안(front-v3 `.tabs`)의 정렬 탭 크기. 칩(13px `text-meta`)보다 한 단계 크게 둬 위계를 만든다.
-                "min-h-11 border-b-2 text-[0.9375rem] leading-[1.55] font-semibold transition-colors md:min-h-0 md:py-1.5",
-                active
-                  ? "border-brand text-foreground"
-                  : "text-muted-foreground hover:text-foreground border-transparent",
-                "inline-flex items-center",
-                focus,
-              )}
+              // fb-tab 15px — 시안(front-v3 `.tabs`)의 정렬 탭 크기. 칩(13px `text-meta`)보다 한 단계 크게 둬 위계를 만든다.
+              className={active ? "fb-tab fb-tab-on" : "fb-tab fb-tab-off"}
             >
               {t.sort[s.key]}
             </Link>

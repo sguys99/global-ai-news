@@ -26,8 +26,8 @@ import type { ArticleCard, IndexCard } from "@/lib/types";
 // 색인 카드(IndexCard)는 원제가 없다 — 만들 때 원제 폴백을 titleKo 에 이미 넣었다(src/lib/feedIndex.ts).
 const hrefOf = (a: Pick<ArticleCard, "id">, locale: Locale) =>
   localePath(locale, `/article/${a.id}`);
-const focus =
-  "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background";
+// 클래스는 globals.css 컴포넌트 층(`st-*`·`sg-*`) — 링크 묶음은 포커스 링을 품는다(따로 붙일 때는 `st-f`).
+// 조건부·덮어쓰기 클래스는 유틸리티로 남긴다(컴포넌트 층을 늘 이긴다).
 
 /** 스토리 변형 공통 prop. */
 interface StoryProps {
@@ -40,16 +40,12 @@ interface StoryProps {
 export function StoryLead({ article, timeBase, locale = "ko" }: StoryProps) {
   const summary = summaryOf(article, locale);
   return (
-    <Link href={hrefOf(article, locale)} className={cn("story-link flex flex-col gap-4", focus)}>
+    <Link href={hrefOf(article, locale)} className="story-link st-lead">
       <CategoryKicker category={article.category} locale={locale} />
-      <h2 className="headline text-display-xl font-serif font-bold">
-        {headlineOf(article, locale)}
-      </h2>
+      <h2 className="headline st-lead-h">{headlineOf(article, locale)}</h2>
       {summary && (
         // 모바일 17px → md 이상 19px(text-dek) — 시안 front-v3 `.lead p`. 좁은 화면에서 리드문이 첫 화면을 다 차지하지 않게.
-        <p className="text-foreground-soft md:text-dek max-w-[40em] text-[1.0625rem] leading-[1.7]">
-          {summary}
-        </p>
+        <p className="st-lead-p">{summary}</p>
       )}
       <Byline article={article} showTrend timeBase={timeBase} locale={locale} />
     </Link>
@@ -59,13 +55,10 @@ export function StoryLead({ article, timeBase, locale = "ko" }: StoryProps) {
 export function StorySecondary({ article, timeBase, locale = "ko" }: StoryProps) {
   const summary = summaryOf(article, locale);
   return (
-    <Link
-      href={hrefOf(article, locale)}
-      className={cn("story-link flex h-full flex-col gap-2.5", focus)}
-    >
+    <Link href={hrefOf(article, locale)} className="story-link st-sec">
       <CategoryKicker category={article.category} locale={locale} />
-      <h3 className="headline text-headline font-serif font-bold">{headlineOf(article, locale)}</h3>
-      {summary && <p className="text-caption text-muted-foreground line-clamp-3">{summary}</p>}
+      <h3 className="headline st-sec-h">{headlineOf(article, locale)}</h3>
+      {summary && <p className="st-sum3">{summary}</p>}
       <Byline
         article={article}
         compact
@@ -101,31 +94,21 @@ export function StorySectionItem({
     <Link
       href={hrefOf(article, locale)}
       className={cn(
-        "story-link flex h-full flex-col gap-2",
+        "story-link st-item",
         // gap-x 30px: 1fr:2fr 둘째 칸 시작 = W/3 + 20px — 2·3·4건 밴드의 둘째 칸 본문(pl-5)과 같은 x.
         wide &&
           "md:grid md:grid-cols-2 md:grid-rows-[auto_1fr] md:gap-x-7.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]",
-        focus,
       )}
     >
-      <h3
-        className={cn(
-          "headline",
-          featured
-            ? "text-headline font-serif font-bold md:text-[1.5rem] md:leading-[1.3]"
-            : "text-title font-semibold tracking-[-0.02em]",
-          wide && "md:row-span-2",
-        )}
-      >
+      <h3 className={cn("headline", featured ? "st-item-hf" : "st-ttl", wide && "md:row-span-2")}>
         {headlineOf(article, locale)}
       </h3>
       {summary && (
         <p
           className={cn(
-            "text-caption text-muted-foreground line-clamp-3",
+            // 넓은 칸(2건 밴드의 둘째·1건 밴드)에서도 읽기 폭은 한 줄 40자 남짓으로(st-item-p max-w-[42em]).
+            "st-item-p",
             !featured && "max-md:hidden",
-            // 넓은 칸(2건 밴드의 둘째·1건 밴드)에서도 읽기 폭은 한 줄 40자 남짓으로.
-            "max-w-[42em]",
             wide && "md:pt-1",
           )}
         >
@@ -153,18 +136,9 @@ export function StorySectionItem({
  */
 export function StoryBrief({ article, timeBase, locale = "ko" }: StoryProps) {
   return (
-    <Link
-      href={hrefOf(article, locale)}
-      className={cn(
-        "story-link grid min-h-11 grid-cols-1 gap-y-[3px] py-2.5",
-        "md:grid-cols-[7.5rem_minmax(0,1fr)_auto] md:items-baseline md:gap-x-4 md:py-[13px]",
-        focus,
-      )}
-    >
+    <Link href={hrefOf(article, locale)} className="story-link st-brief">
       <CategoryKicker category={article.category} className="max-md:hidden" locale={locale} />
-      <h3 className="headline md:text-title line-clamp-2 font-serif text-[0.9375rem] leading-[1.4] font-bold tracking-[-0.03em] md:line-clamp-1 md:leading-[1.5]">
-        {headlineOf(article, locale)}
-      </h3>
+      <h3 className="headline st-brief-h">{headlineOf(article, locale)}</h3>
       <Byline
         article={article}
         timeBase={timeBase}
@@ -208,21 +182,20 @@ export function StoryRadar({
         wide
           ? // 띠에 한 건뿐일 때 — md 이상 1면과 같은 8:4 분할로 펼친다: [머리·제목 | 요약](8) / 메타 레일(4).
             // 레일 세로 헤어라인이 바로 위 '지금 화제' 칼럼의 헤어라인과 같은 x 에 선다(gap-x-10 · pl-8 동일).
-            "flex flex-col gap-2.5 md:grid md:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] md:gap-x-10"
-          : // 본문 | 메타 레일 2행을 띠(RadarBand)의 행 트랙에 subgrid 로 묶는다 — 한 카드의 수치 줄이 두 줄로
+            "st-f flex flex-col gap-2.5 md:grid md:grid-cols-[minmax(0,8fr)_minmax(0,4fr)] md:gap-x-10"
+          : // 본문 | 메타 레일 2행을 띠(RadarBand)의 행 트랙에 subgrid 로 묶는다(st-radar) — 한 카드의 수치 줄이 두 줄로
             // 접혀도 같은 줄 카드들의 레일 헤어라인이 같은 높이에서 시작한다(mt-auto 바닥 정렬은 어긋났다).
-            "row-span-2 grid grid-rows-subgrid gap-y-2.5",
-        focus,
+            "st-radar",
       )}
     >
       <div
         className={cn(
-          "flex min-w-0 flex-col gap-2.5",
+          "st-radar-b",
           // 가로 한 줄: 머리(배지·키커)는 첫 줄, 제목과 요약은 둘째 줄에서 같은 높이로 시작한다.
           wide && "md:grid md:grid-cols-2 md:content-start md:gap-x-8",
         )}
       >
-        <span className={cn("flex min-w-0 items-center gap-2", wide && "md:col-start-1")}>
+        <span className={cn("st-hd", wide && "md:col-start-1")}>
           <FormatBadge format={article.format} locale={locale} />
           <CategoryKicker
             category={article.category}
@@ -232,7 +205,7 @@ export function StoryRadar({
         </span>
         <h3
           className={cn(
-            "headline text-title line-clamp-3 font-serif leading-[1.45] font-bold tracking-[-0.03em] md:text-[1.0625rem]",
+            "headline st-radar-h",
             // self-start: 줄 높이에 맞춰 늘어나면 line-clamp 상자가 커져 잘린 다음 줄이 비친다.
             wide && "md:col-start-1 md:row-start-2 md:self-start lg:text-[1.1875rem]",
           )}
@@ -242,7 +215,7 @@ export function StoryRadar({
         {summary && (
           <p
             className={cn(
-              "text-caption text-muted-foreground line-clamp-2",
+              "st-sum2",
               wide && "md:col-start-2 md:row-start-2 md:line-clamp-3 md:self-start md:pt-0.5",
             )}
           >
@@ -270,19 +243,14 @@ function RadarMetaRail({
 }) {
   const { id, stats } = radarMetaBlock(article, sourceNameOf(article, locale), locale);
   return (
-    <span
-      className={cn(
-        "border-border text-meta text-muted-foreground relative flex min-w-0 flex-col gap-[3px] border-t pt-2.5 tabular-nums",
-        wide && "md:border-t-0 md:border-l md:pt-0 md:pl-8",
-      )}
-    >
+    <span className={cn("st-rail", wide && "md:border-t-0 md:border-l md:pt-0 md:pl-8")}>
       {id && (
-        <span className="text-foreground-soft truncate font-semibold tracking-[-0.005em]">
+        <span className="st-rail-id">
           <RadarMetaText item={id} />
         </span>
       )}
       {stats.length > 0 && (
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <span className="st-stats">
           {stats.map((m) => (
             <span key={m.key} className="whitespace-nowrap">
               <RadarMetaText item={m} />
@@ -314,37 +282,29 @@ export function StoryWeekly({
   // 식별자가 없어 매체명이 식별자 자리에 왔으면(radarMetaBlock 강등) 매체를 두 번 쓰지 않는다.
   const showSource = id?.key !== "source";
   return (
-    <Link
-      href={hrefOf(item, locale)}
-      className={cn(
-        "story-link grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 gap-y-1 py-3.5 md:grid-cols-[2.75rem_minmax(0,1fr)]",
-        focus,
-      )}
-    >
+    <Link href={hrefOf(item, locale)} className="story-link st-wk">
       <span
         className={cn(
-          "row-span-3 pt-px font-serif text-[1.875rem] leading-none tracking-[-0.04em] tabular-nums",
+          "st-rank row-span-3 pt-px",
           rank <= 3 ? "text-brand font-bold" : "text-muted-foreground font-medium",
         )}
       >
         {rank}
       </span>
-      <span className="flex min-w-0 items-center gap-2">
+      <span className="st-hd">
         <FormatBadge format={item.format} locale={locale} />
         <CategoryKicker category={item.category} className="min-w-0 truncate" locale={locale} />
-        <span className="text-label text-muted-foreground ml-auto shrink-0 pl-1 whitespace-nowrap">
-          {issueDayLabel(item.issueDate, locale)}
-        </span>
+        <span className="st-wk-day">{issueDayLabel(item.issueDate, locale)}</span>
       </span>
-      <h3 className="headline md:text-title line-clamp-2 font-serif text-[0.9375rem] leading-[1.45] font-bold tracking-[-0.03em]">
+      <h3 className="headline st-wk-h">
         {/* item.title 은 한국어 제목(없으면 원제)이라 ko 는 그대로, en 은 titleEn 만 쓴다(한국어 폴백 금지). */}
         {headlineOf({ titleKo: item.title, titleEn: item.titleEn }, locale)}
       </h3>
       {/* relative: 안쪽 sr-only(absolute) 문구의 기준 상자(레이더 메타 레일과 같은 이유). */}
-      <span className="text-meta text-muted-foreground relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums">
+      <span className="st-wk-meta">
         {showSource && <span className="shrink-0">{source}</span>}
         {id && (
-          <span className="text-foreground-soft max-w-full min-w-0 truncate font-semibold tracking-[-0.005em]">
+          <span className="st-rail-id max-w-full min-w-0">
             <RadarMetaText item={id} />
           </span>
         )}
@@ -362,14 +322,10 @@ export function StoryWeekly({
 function RadarMetaText({ item }: { item: RadarMetaItem }) {
   return (
     <>
-      <span aria-hidden className="inline-flex items-center gap-1">
+      <span aria-hidden className="st-mt">
         {item.icon && <MetaIcon icon={item.icon} />}
         {item.prefix}
-        {item.numeric ? (
-          <b className="text-foreground-soft font-semibold">{item.value}</b>
-        ) : (
-          item.value
-        )}
+        {item.numeric ? <b className="sg-em">{item.value}</b> : item.value}
       </span>
       <span className="sr-only">{item.label}</span>
     </>
@@ -390,12 +346,7 @@ function MetaIcon({ icon }: { icon: string }) {
   const d = META_ICON_PATHS[icon];
   if (!d) return <span>{icon}</span>;
   return (
-    <svg
-      viewBox="0 0 12 12"
-      aria-hidden
-      data-icon={icon}
-      className="size-[11px] shrink-0 translate-y-[0.5px] fill-current"
-    >
+    <svg viewBox="0 0 12 12" aria-hidden data-icon={icon} className="st-ic">
       <path d={d} />
     </svg>
   );
@@ -417,31 +368,22 @@ export function StoryEntry({
   return (
     <Link
       href={hrefOf(article, locale)}
-      className={cn(
-        // grid-rows-[1fr_auto]: 2열 색인에서 옆 항목에 맞춰 늘어난 높이를 본문 행이 받는다 — 바이라인이 바닥에 붙어
-        // 좌우 항목의 바이라인이 같은 높이에 선다(auto 행 두 개면 여분이 반씩 나뉘어 어긋났다).
-        "story-link border-border grid grid-cols-[3.25rem_minmax(0,1fr)] grid-rows-[1fr_auto] gap-x-3 gap-y-1 border-b py-4",
-        focus,
-      )}
+      // st-entry grid-rows-[1fr_auto]: 2열 색인에서 옆 항목에 맞춰 늘어난 높이를 본문 행이 받는다 — 바이라인이 바닥에 붙어
+      // 좌우 항목의 바이라인이 같은 높이에 선다(auto 행 두 개면 여분이 반씩 나뉘어 어긋났다).
+      className="story-link st-entry"
     >
-      <span className="text-muted-foreground pt-0.5 font-serif text-[0.9375rem] font-semibold tabular-nums">
-        {formatShortDate(article.publishedAt, locale)}
-      </span>
-      <div className="flex min-w-0 flex-col gap-[3px]">
+      <span className="st-date pt-0.5">{formatShortDate(article.publishedAt, locale)}</span>
+      <div className="st-body">
         {((!hideCategory && article.category) || article.format !== "news") && (
-          <span className="flex min-w-0 items-center gap-2">
+          <span className="st-hd">
             {!hideCategory && (
               <CategoryKicker category={article.category} className="text-label" locale={locale} />
             )}
             <FormatBadge format={article.format} locale={locale} />
           </span>
         )}
-        <h3 className="headline text-title font-semibold tracking-[-0.02em]">
-          {headlineOf(article, locale)}
-        </h3>
-        {summary && (
-          <p className="text-caption text-muted-foreground mt-0.5 line-clamp-2">{summary}</p>
-        )}
+        <h3 className="headline st-ttl">{headlineOf(article, locale)}</h3>
+        {summary && <p className="st-sum2 mt-0.5">{summary}</p>}
       </div>
       <Byline
         article={article}

@@ -62,7 +62,7 @@ export function Masthead({
           <Link
             href={localePath(locale, editionPath(kstDateKey(publishedAt)))}
             title={t.permalinkTitle}
-            className="text-foreground focus-visible:ring-ring -my-3 inline-flex min-h-11 items-center font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2 md:my-0 md:min-h-0"
+            className="ed-plink"
           >
             <time dateTime={publishedAt}>{formatLongDate(publishedAt, locale)}</time>
           </Link>
@@ -113,12 +113,7 @@ export function Masthead({
           <a
             key={item.href}
             href={item.href}
-            className={
-              "text-caption focus-visible:ring-ring flex-none px-2.5 py-3 font-medium whitespace-nowrap outline-none first:pl-0 focus-visible:ring-2 " +
-              (i === 0
-                ? "text-foreground decoration-brand underline decoration-2 underline-offset-[14px]"
-                : "text-foreground-soft hover:text-foreground")
-            }
+            className={i === 0 ? "ed-nav ed-nav-on" : "ed-nav ed-nav-off"}
           >
             {item.label}
           </a>
@@ -137,19 +132,12 @@ export function Masthead({
 function IssueEar({ stats, locale }: { stats: IssueStats; locale: Locale }) {
   const t = getMessages(mastheadMessages, locale).ear;
   return (
-    <div
-      data-testid="issue-ear"
-      className="text-meta text-muted-foreground border-border flex flex-col gap-0.5 md:flex-none md:border-l md:pt-0.5 md:pb-1.5 md:pl-5"
-    >
+    <div data-testid="issue-ear" className="ed-ear">
       <span className="text-label hidden font-semibold md:block">{t.heading}</span>
       <span>
         <span className="text-foreground font-bold md:hidden">{t.prefix}</span>
-        <b className="text-foreground font-bold tabular-nums md:mr-0.5 md:font-serif md:text-[2.125rem] md:leading-[1.05] md:font-extrabold md:tracking-[-0.04em]">
-          {stats.count}
-        </b>
-        <span className="md:text-foreground md:mr-1.5 md:font-serif md:text-[1.0625rem] md:leading-none md:font-bold">
-          {plural(stats.count, t.unit.one, t.unit.other)}
-        </span>{" "}
+        <b className="ed-ear-n">{stats.count}</b>
+        <span className="ed-ear-u">{plural(stats.count, t.unit.one, t.unit.other)}</span>{" "}
         <span className="tabular-nums">{t.outlets(stats.sources)}</span>
       </span>
       {stats.formats.length > 0 && (
@@ -164,13 +152,12 @@ function IssueEar({ stats, locale }: { stats: IssueStats; locale: Locale }) {
               {locale === "en" ? (
                 // en 은 수가 앞("4 repos") — 굵은 수 뒤에 공백 + 단·복수 명사를 잇는다.
                 <span>
-                  <b className="text-foreground-soft font-semibold tabular-nums">{count}</b>
+                  <b className="sg-em tabular-nums">{count}</b>
                   {` ${formatCountNoun(format, count, locale)}`}
                 </span>
               ) : (
                 <span>
-                  {formatLabel(format, locale)}{" "}
-                  <b className="text-foreground-soft font-semibold tabular-nums">{count}</b>
+                  {formatLabel(format, locale)} <b className="sg-em tabular-nums">{count}</b>
                 </span>
               )}
             </span>

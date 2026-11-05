@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutDashboard, Search } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { useLocale, useMessages } from "@/components/LocaleProvider";
 import { localePath, splitLocalePath } from "@/lib/i18n";
 import { commonMessages } from "@/lib/messages/common";
-import { cn } from "@/lib/utils";
 
 /**
  * 모바일 하단 탭 바 (mobile-plan Phase 1·5).
@@ -19,14 +19,16 @@ import { cn } from "@/lib/utils";
  * 경로는 언어 접두어 없이 두고 링크만 localePath 로 언어판에 맞춘다 — 판정(숨김·활성)은 접두어를 뗀 지금 경로로 한다.
  * 관리자는 로컬 한국어 전용이라 영어 접두어가 붙을 일이 없다.
  */
+// 공개 탭 아이콘은 가벼운 Icon(속성은 globals.css `.ic`), 로컬 전용 콘솔 탭은 lucide 그대로.
+const HOME_ICON = <Icon name="house" className="size-5" />;
 const PUBLIC_TABS = [
-  { href: "/", key: "feed", icon: Home },
-  { href: "/search", key: "search", icon: Search },
+  { href: "/", key: "feed", icon: HOME_ICON },
+  { href: "/search", key: "search", icon: <Icon name="search" className="size-5" /> },
 ] as const;
 
 const ADMIN_TABS = [
-  { href: "/", key: "feed", icon: Home },
-  { href: "/admin", key: "console", icon: LayoutDashboard },
+  { href: "/", key: "feed", icon: HOME_ICON },
+  { href: "/admin", key: "console", icon: <LayoutDashboard className="size-5" /> },
 ] as const;
 
 export function BottomTabBar() {
@@ -42,25 +44,19 @@ export function BottomTabBar() {
   return (
     <nav
       aria-label={t.mobileNavLabel}
-      className="border-rule bg-background/90 fixed inset-x-0 bottom-0 z-50 flex border-t backdrop-blur-md md:hidden"
+      className="sh-tabs"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      {tabs.map(({ href, key, icon: Icon }) => {
+      {tabs.map(({ href, key, icon }) => {
         const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
           <Link
             key={href}
             href={localePath(locale, href)}
             aria-current={active ? "page" : undefined}
-            className={cn(
-              "focus-visible:ring-ring relative flex h-14 flex-1 flex-col items-center justify-center gap-1 text-[11px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset",
-              "before:absolute before:top-0 before:h-0.5 before:w-8 before:transition-colors",
-              active
-                ? "text-primary before:bg-brand font-semibold"
-                : "text-muted-foreground font-normal before:bg-transparent",
-            )}
+            className={active ? "sh-tb sh-tb-on" : "sh-tb sh-tb-off"}
           >
-            <Icon className="size-5" />
+            {icon}
             {t.nav[key]}
           </Link>
         );

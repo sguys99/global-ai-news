@@ -10,17 +10,17 @@ import { siteTagline } from "@/lib/site";
  * 태그라인(SITE_TAGLINE, en SITE_TAGLINE_EN)은 마스트헤드 제호 옆에서 옮겨 왔다(그 자리는 이번 호 통계 '귀').
  * 테마에 따라 색이 자동 전환된다. 서버 컴포넌트라 언어를 prop 으로 받는다(SiteShell) — 방문 줄은 컨텍스트로 읽는다.
  */
-/** 44px 터치 타깃 — 음수 마진으로 시각 높이는 유지(모바일만). */
-const footLink = "hover:text-brand -my-3 inline-flex min-h-11 items-center md:my-0 md:min-h-0";
+/** 44px 터치 타깃 — 음수 마진으로 시각 높이는 유지(모바일만, globals.css `.sh-fl`). */
+const footLink = "sh-fl";
 
 export function Footer({ locale = "ko" }: { locale?: Locale }) {
   const common = getMessages(commonMessages, locale);
   const t = getMessages(footerMessages, locale);
   return (
     <footer className="border-rule mt-auto border-t-4">
-      <div className="mx-auto grid max-w-[1240px] gap-6 px-4 pt-7 pb-10 md:grid-cols-[1fr_auto] md:items-end md:px-8">
+      <div className="sh-ft-in">
         <div className="flex flex-col gap-2">
-          <span className="font-serif text-[2.5rem] leading-none font-extrabold tracking-[-0.045em]">
+          <span className="sh-ft-np">
             <span className="text-brand">AI</span> Daybook
           </span>
           <p className="text-caption text-foreground-soft max-w-md">{siteTagline(locale)}</p>

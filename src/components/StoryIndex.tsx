@@ -10,8 +10,8 @@ import type { IndexCard } from "@/lib/types";
 /** 색인 데이터를 더 받는 중이거나 받지 못한 상태(부모가 fetch 를 맡는다). */
 export type IndexLoadState = "loading" | "error";
 
-const pill =
-  "rounded-pill border-foreground text-caption hover:bg-foreground hover:text-background focus-visible:ring-ring inline-flex min-h-12 items-center gap-2 border px-6 font-semibold transition-colors outline-none focus-visible:ring-2";
+/** 더 보기·다시 시도 pill(globals.css `.ed-pill`). */
+const pill = "ed-pill";
 
 /**
  * 전체 기사 색인 — 2열 StoryEntry 목록을 INDEX_PAGE_SIZE 건씩 점진 노출한다.

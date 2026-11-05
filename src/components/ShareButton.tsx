@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Share } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { useMessages } from "@/components/LocaleProvider";
 import { shareMessages } from "@/lib/messages/share";
 import { cn } from "@/lib/utils";
@@ -53,18 +53,10 @@ export function ShareButton({
         type="button"
         onClick={share}
         title={t.hint}
-        className={cn(
-          "text-foreground focus-visible:ring-ring inline-flex items-center gap-1 font-semibold outline-none hover:underline focus-visible:ring-2",
-          // 폴리오 한 줄 높이는 유지하면서 터치 타깃은 44px(음수 마진으로 시각 높이 상쇄).
-          "-mx-2 -my-3 min-h-11 px-2 underline-offset-4 md:my-0 md:min-h-0",
-          className,
-        )}
+        // ed-share: 폴리오 한 줄 높이는 유지하면서 터치 타깃은 44px(음수 마진으로 시각 높이 상쇄).
+        className={cn("ed-share", className)}
       >
-        {copied ? (
-          <Check aria-hidden className="size-3.5" />
-        ) : (
-          <Share aria-hidden className="size-3.5" />
-        )}
+        <Icon name={copied ? "check" : "share"} aria-hidden className="size-3.5" />
         {copied ? t.copied : t.share}
       </button>
       <span role="status" className="sr-only">

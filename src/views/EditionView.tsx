@@ -56,9 +56,7 @@ export function EditionView({ locale, date }: { locale: Locale; date: string }) 
         <section id="all" aria-label={t.index} className="scroll-mt-20">
           <div className="border-rule mb-5 flex items-baseline gap-3 border-t-2 pt-3">
             <h2 className="text-display-md font-serif font-extrabold">{t.index}</h2>
-            <span className="text-meta text-muted-foreground tabular-nums">
-              {t.count(edition.issue.length)}
-            </span>
+            <span className="ed-cnt">{t.count(edition.issue.length)}</span>
           </div>
           <StoryIndex articles={index} />
         </section>

@@ -9,8 +9,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
  */
 export function Header() {
   return (
-    <header className="border-border bg-background/85 sticky top-0 z-50 hidden border-b backdrop-blur-md md:block">
-      <div className="mx-auto flex h-13 max-w-[1240px] items-center gap-8 px-8">
+    <header className="sh-hdr">
+      <div className="sh-hdr-in">
         <HeaderWordmark />
         <div className="ml-auto flex items-center gap-6">
           <HeaderNav />

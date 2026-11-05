@@ -37,7 +37,7 @@ export function IssueBrief({
       data-testid="issue-brief"
       className={cn("mx-auto max-w-[1240px] px-4 md:px-8", className)}
     >
-      <div className="border-rule animate-rise border-y pt-3.5 pb-2 [animation-delay:40ms] md:grid md:grid-cols-[9.5rem_minmax(0,1fr)] md:gap-x-8 md:py-5 lg:grid-cols-[11rem_minmax(0,1fr)]">
+      <div className="ed-br">
         <div className="flex items-baseline gap-x-2 md:flex-col md:gap-y-1 md:pt-[3px]">
           <h2
             id="issue-brief-heading"
@@ -54,19 +54,11 @@ export function IssueBrief({
         <ol className="divide-border mt-1.5 divide-y md:mt-0 md:flex md:flex-col md:gap-y-2 md:divide-y-0">
           {lines.map((line, i) => (
             <li key={line.id}>
-              <Link
-                href={localePath(locale, `/article/${line.id}`)}
-                className="story-link focus-visible:ring-ring focus-visible:ring-offset-background grid min-h-11 grid-cols-[1.375rem_minmax(0,1fr)] items-baseline gap-x-2.5 py-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-4 md:min-h-0 md:grid-cols-[1.75rem_minmax(0,1fr)] md:py-0"
-              >
-                <span
-                  aria-hidden
-                  className="text-muted-foreground font-serif text-[0.9375rem] leading-none font-bold tabular-nums md:text-base"
-                >
+              <Link href={localePath(locale, `/article/${line.id}`)} className="story-link ed-br-a">
+                <span aria-hidden className="ed-br-n">
                   {i + 1}
                 </span>
-                <span className="headline text-title font-serif leading-[1.45] font-semibold tracking-[-0.03em] text-pretty md:text-[1.1875rem] md:leading-[1.5]">
-                  {line.text}
-                </span>
+                <span className="headline ed-br-h">{line.text}</span>
               </Link>
             </li>
           ))}
