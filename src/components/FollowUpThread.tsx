@@ -45,19 +45,13 @@ export function FollowUpThread({
   const currentDay = kstDateKey(current.issuedAt);
 
   return (
-    <section
-      aria-labelledby="thread-heading"
-      className="border-border mt-9 flex flex-col gap-1 border-t pt-7"
-    >
-      <h2
-        id="thread-heading"
-        className="text-label text-muted-foreground mb-2 font-bold tracking-[0.04em]"
-      >
+    <section aria-labelledby="thread-heading" className="ar-sect gap-1">
+      <h2 id="thread-heading" className="ar-h mb-2">
         {heading}
       </h2>
       <ol className="flex flex-col">
         {entries.map((e) => (
-          <li key={e.id} className="border-border border-b last:border-b-0">
+          <li key={e.id} className="ar-li">
             {e.relation === "current" ? (
               <div aria-current="page" className={ROW}>
                 <IssueDate iso={e.issuedAt} locale={locale} />
@@ -109,7 +103,7 @@ function IssueDate({ iso, locale }: { iso: string; locale: Locale }) {
     <time
       dateTime={iso}
       title={getMessages(followUpMessages, locale).issueTitle(formatDate(iso, locale))}
-      className="text-muted-foreground font-serif text-[0.9375rem] font-semibold tabular-nums"
+      className="st-date"
     >
       {formatShortDate(iso, locale)}
     </time>

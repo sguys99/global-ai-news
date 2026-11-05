@@ -56,7 +56,7 @@ export function SiteShell({
   return (
     <html lang={HTML_LANG[locale]} className={fontVariables} suppressHydrationWarning>
       {head ? <head>{head}</head> : null}
-      <body className="bg-background text-foreground flex min-h-screen flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] antialiased md:pb-0">
+      <body className="sh-body">
         {/* 한국어는 공급자 없이 그린다(컨텍스트 기본값 ko) — 감싸면 한국어 모든 페이지 RSC 에 클라이언트 참조가 하나 더 실린다. */}
         {locale === DEFAULT_LOCALE ? (
           shell

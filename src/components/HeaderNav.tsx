@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useLocale, useMessages } from "@/components/LocaleProvider";
 import { localePath, splitLocalePath } from "@/lib/i18n";
 import { commonMessages } from "@/lib/messages/common";
-import { cn } from "@/lib/utils";
 
 /** 언어 접두어 없는 경로 — 링크는 localePath 로, 활성 판정은 접두어를 뗀 지금 경로와 맞춘다. */
 const LINKS = [
@@ -27,12 +26,7 @@ export function HeaderNav() {
             key={href}
             href={localePath(locale, href)}
             aria-current={active ? "page" : undefined}
-            className={cn(
-              "text-caption focus-visible:ring-ring py-1 font-semibold underline-offset-[18px] outline-none focus-visible:ring-2",
-              active
-                ? "text-foreground decoration-brand underline decoration-2"
-                : "text-muted-foreground hover:text-foreground",
-            )}
+            className={active ? "sh-nav sh-nav-on" : "sh-nav sh-nav-off"}
           >
             {t.nav[key]}
           </Link>

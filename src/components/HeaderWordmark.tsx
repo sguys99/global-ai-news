@@ -58,8 +58,7 @@ export function HeaderWordmark({ className }: { className?: string }) {
       tabIndex={visible ? undefined : -1}
       aria-hidden={visible ? undefined : true}
       className={cn(
-        "focus-visible:ring-ring font-serif text-xl font-extrabold tracking-[-0.045em] whitespace-nowrap outline-none focus-visible:ring-2",
-        "transition-[opacity,transform] duration-200 ease-out",
+        "sh-wm",
         visible ? "opacity-100" : "pointer-events-none -translate-y-1 opacity-0",
         className,
       )}

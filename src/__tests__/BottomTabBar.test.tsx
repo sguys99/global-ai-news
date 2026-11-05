@@ -1,6 +1,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BottomTabBar } from "@/components/mobile/BottomTabBar";
+import { expandedClasses } from "./componentCss";
+
+/** 링크가 실제로 받는 유틸리티(컴포넌트 클래스 sh-tb-on 등은 globals.css @apply 목록으로 펼친다). */
+const utils = (el: Element) => expandedClasses(el);
 
 // usePathname을 라우트별로 갈아끼울 수 있도록 모킹한다.
 const usePathname = vi.fn();
@@ -21,9 +25,10 @@ describe("BottomTabBar", () => {
     const feed = screen.getByRole("link", { name: "피드" });
     const search = screen.getByRole("link", { name: "검색" });
 
-    expect(feed).toHaveClass("text-primary", "font-semibold");
-    expect(search).not.toHaveClass("text-primary");
-    expect(search).toHaveClass("text-muted-foreground");
+    expect(feed).toHaveClass("sh-tb-on");
+    expect(utils(feed)).toEqual(expect.arrayContaining(["text-primary", "font-semibold"]));
+    expect(utils(search)).not.toContain("text-primary");
+    expect(utils(search)).toContain("text-muted-foreground");
   });
 
   it('활성 탭에만 aria-current="page"를 부여한다(접근성, Phase 6)', () => {
@@ -41,15 +46,15 @@ describe("BottomTabBar", () => {
     const feed = screen.getByRole("link", { name: "피드" });
     const search = screen.getByRole("link", { name: "검색" });
 
-    expect(search).toHaveClass("text-primary", "font-semibold");
-    expect(feed).not.toHaveClass("text-primary");
+    expect(utils(search)).toEqual(expect.arrayContaining(["text-primary", "font-semibold"]));
+    expect(utils(feed)).not.toContain("text-primary");
   });
 
   it("쿼리스트링이 붙은 /search?q=foo 에서도 검색 탭이 active다", () => {
     usePathname.mockReturnValue("/search");
     render(<BottomTabBar />);
 
-    expect(screen.getByRole("link", { name: "검색" })).toHaveClass("text-primary");
+    expect(utils(screen.getByRole("link", { name: "검색" }))).toContain("text-primary");
   });
 
   it("상세(/article/123)에서는 렌더하지 않는다(null)", () => {
@@ -74,7 +79,7 @@ describe("BottomTabBar", () => {
 
     const console = screen.getByRole("link", { name: "콘솔" });
     expect(console).toHaveAttribute("href", "/admin");
-    expect(console).toHaveClass("text-primary", "font-semibold");
+    expect(utils(console)).toEqual(expect.arrayContaining(["text-primary", "font-semibold"]));
     expect(screen.getByRole("link", { name: "피드" })).toHaveAttribute("href", "/");
     // 공개 검색 탭은 admin 바에 노출하지 않는다
     expect(screen.queryByRole("link", { name: "검색" })).not.toBeInTheDocument();

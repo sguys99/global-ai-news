@@ -121,10 +121,7 @@ export function FeedView({
                 {plural(visible.length, t.resultCount.unit.one, t.resultCount.unit.other)}
               </span>
             )}
-            <Link
-              href={localePath(locale, "/")}
-              className="text-foreground focus-visible:ring-ring -my-3 inline-flex min-h-11 items-center font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2 md:my-0 md:min-h-0"
-            >
+            <Link href={localePath(locale, "/")} className="ed-plink">
               {t.clearFilters}
             </Link>
           </div>
@@ -216,7 +213,7 @@ function AllStories({
       {heading && (
         <div className="border-rule mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t-2 pt-3">
           <h2 className="text-display-md font-serif font-extrabold">{heading}</h2>
-          <span className="text-meta text-muted-foreground tabular-nums">
+          <span className="ed-cnt">
             {cumulative
               ? `${t.cumulative.articles(cumulative.articles)} · ${t.cumulative.sources(cumulative.sources)}`
               : t.count(visible.length)}

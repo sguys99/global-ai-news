@@ -42,21 +42,11 @@ export function CategoryKicker({
   locale?: Locale;
 }) {
   if (!category) return null;
-  return (
-    <span
-      className={cn(
-        "text-meta text-brand font-bold tracking-[0.02em] whitespace-nowrap",
-        className,
-      )}
-    >
-      {categoryLabel(category, locale)}
-    </span>
-  );
+  return <span className={cn("sg-kick", className)}>{categoryLabel(category, locale)}</span>;
 }
 
-/** 잉크 1px 아웃라인 배지 공용 클래스(형식·지역) — 코발트 금지. */
-const OUTLINE_BADGE =
-  "border-foreground text-foreground text-badge relative inline-flex h-[17px] shrink-0 items-center border px-[5px] pt-px font-sans font-bold tracking-[0.09em] whitespace-nowrap";
+/** 잉크 1px 아웃라인 배지 공용 클래스(형식·지역, globals.css `.sg-badge`) — 코발트 금지. */
+const OUTLINE_BADGE = "sg-badge";
 
 /**
  * 형식 배지 REPO·MODEL·PAPER (시안 결정 ⑪). 10.5px 굵은 대문자, 잉크 1px 테두리, 각진 면 — 코발트는 쓰지 않는다
@@ -108,7 +98,11 @@ export function RegionBadge({
   );
 }
 
-/** 중요도 1–5 도트 미터. 0(미가공)이면 렌더하지 않는다. 색만이 아니라 칸 수·라벨로도 전달. */
+/**
+ * 중요도 1–5 도트 미터. 0(미가공)이면 렌더하지 않는다. 색만이 아니라 칸 수·라벨로도 전달.
+ * 칸은 클래스 없는 `<i>` 5개 — 채움·색은 globals.css `.sg-imp[data-v]` 가 칸 순서(nth-child)로 정한다
+ * (앞 N칸 채움, 4–5는 코발트). 미터가 호 한 장에 50개 가까이 실려 칸마다 클래스를 달면 페이지가 수십 KB 무거워진다.
+ */
 export function ImportanceMeter({
   value,
   locale = "ko",
@@ -118,36 +112,26 @@ export function ImportanceMeter({
   locale?: Locale;
 }) {
   if (value <= 0) return null;
-  const high = value >= 4;
   return (
     <span
       role="img"
       aria-label={getMessages(metaMessages, locale).importance(value)}
-      className="inline-flex items-center gap-[3px]"
+      className="sg-imp"
+      // 채운 칸 수(예전 `i <= value` 와 같다) — 4 이상이면 코발트.
+      data-v={Math.min(5, Math.floor(value))}
     >
-      {[1, 2, 3, 4, 5].map((i) => (
-        <i
-          key={i}
-          className={cn(
-            "size-1.5 rounded-full border",
-            i > value
-              ? // 빈 칸 테두리 /80 — 종이(#f4f4f1) 위 3.4:1(비텍스트 AA 3:1). 시안의 70%는 2.8:1이라 올렸다.
-                "border-muted-foreground/80"
-              : high
-                ? "border-brand bg-brand"
-                : "border-foreground bg-foreground",
-          )}
-        />
-      ))}
+      <i />
+      <i />
+      <i />
+      <i />
+      <i />
     </span>
   );
 }
 
 /** 바이라인 구분 점(2px). */
 export function Dot({ className }: { className?: string }) {
-  return (
-    <span aria-hidden className={cn("size-0.5 shrink-0 rounded-full bg-current", className)} />
-  );
+  return <span aria-hidden className={cn("sg-dot", className)} />;
 }
 
 /**
@@ -198,14 +182,14 @@ export function Byline({
   const source = (
     <span
       className={cn(
-        "text-foreground-soft font-semibold",
-        compact && "max-w-full truncate",
-        truncateSource && "min-w-0 truncate",
-        showFormat && "inline-flex items-center gap-[7px]",
+        "sg-em",
+        compact && "sg-src-c",
+        truncateSource && "sg-tr",
+        showFormat && "sg-src-f",
       )}
     >
       {showFormat && <FormatBadge format={article.format} locale={locale} />}
-      <span className={cn(compact && "min-w-0 truncate")}>
+      <span className={cn(compact && "sg-tr")}>
         {sourceNameOf(article, locale, { full: fullSource })}
         <OtherSources count={relatedCountOf(article)} locale={locale} />
       </span>
@@ -218,12 +202,7 @@ export function Byline({
   );
   if (compact) {
     return (
-      <div
-        className={cn(
-          "text-meta text-muted-foreground flex flex-wrap items-center gap-x-2.5 gap-y-1 md:flex-col md:items-start",
-          className,
-        )}
-      >
+      <div className={cn("sg-by sg-byc", className)}>
         {prefix}
         {source}
         <Dot className="md:hidden" />
@@ -235,12 +214,7 @@ export function Byline({
     );
   }
   return (
-    <div
-      className={cn(
-        "text-meta text-muted-foreground flex flex-wrap items-center gap-x-2.5 gap-y-1",
-        className,
-      )}
-    >
+    <div className={cn("sg-by", className)}>
       {prefix}
       {source}
       {showDate && (
@@ -268,19 +242,15 @@ export function Byline({
 /** 같은 사건을 다룬 다른 매체 수 — "외 N곳"(en "+N more"). 대표 기사 하나로 묶인 보도의 폭을 보여 준다. */
 function OtherSources({ count, locale }: { count?: number; locale: Locale }) {
   if (!count) return null;
-  return (
-    <span className="text-muted-foreground font-normal">
-      {getMessages(metaMessages, locale).otherSources(count)}
-    </span>
-  );
+  return <span className="sg-oth">{getMessages(metaMessages, locale).otherSources(count)}</span>;
 }
 
 /** 화제 지수 0–100 바. 길이 = 값/100 (고정 스케일). */
 export function TrendBar({ value }: { value: number }) {
   const pct = Math.max(0, Math.min(100, value));
   return (
-    <span aria-hidden className="bg-border relative block h-0.5 flex-1 overflow-hidden">
-      <span className="bg-brand absolute inset-y-0 left-0" style={{ width: `${pct}%` }} />
+    <span aria-hidden className="sg-trend">
+      <span style={{ width: `${pct}%` }} />
     </span>
   );
 }
@@ -308,10 +278,7 @@ export function TagChips({
   return (
     <div className="flex flex-wrap gap-1.5">
       {shown.map((tag) => (
-        <span
-          key={tag}
-          className="border-border text-foreground-soft rounded-pill text-meta inline-flex items-center border px-2.5 py-0.5"
-        >
+        <span key={tag} className="sg-tag">
           #{tag}
         </span>
       ))}

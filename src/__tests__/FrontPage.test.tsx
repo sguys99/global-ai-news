@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { FrontPage, SectionBands, issueContents, radarSubtitle } from "@/components/Edition";
 import { buildEdition } from "@/lib/edition";
 import type { ArticleCard } from "@/lib/types";
+import { applyOf, expandedClasses } from "./componentCss";
 
 let seq = 0;
 function card(p: Partial<ArticleCard>): ArticleCard {
@@ -145,7 +146,8 @@ describe("FrontPage — Phase 6-2 시안 반영", () => {
 
     // 머리: 배지 다음 코발트 키커
     expect(within(repo).getByText("REPO")).toBeInTheDocument();
-    expect(within(repo).getByText("에이전트")).toHaveClass("text-brand");
+    expect(within(repo).getByText("에이전트")).toHaveClass("sg-kick");
+    expect(applyOf("sg-kick")).toContain("text-brand");
     expect(within(repo).getByText("저장소")).toHaveClass("sr-only");
 
     // 리포: owner/repo · ★ 7,406 · 오늘 +1,190 · 언어 — 1만 미만은 쉼표 정수
@@ -185,7 +187,8 @@ describe("FrontPage — Phase 6-2 시안 반영", () => {
     const a = edition.briefs[0];
     const link = within(first).getByRole("link");
     expect(link).toHaveAttribute("href", `/article/${a.id}`);
-    expect(link).toHaveClass("min-h-11");
+    expect(link).toHaveClass("st-brief");
+    expect(applyOf("st-brief")).toContain("min-h-11");
     // 키커는 두 번(md 칸 · 모바일 바이라인) — 각자 반대 폭에서 숨는다
     const kickers = within(first).getAllByText(
       /^(LLM|에이전트|산업·정책|연구·논문|Physical AI|오픈소스·도구)$/,
@@ -272,11 +275,9 @@ describe("RadarBand — 칸 수(1–4)에 맞춘 열, 빈 열 없음", () => {
   it("4건: lg 4열 / md 2열 / 모바일 가로 스냅(변경 없음)", () => {
     const { radar, list } = renderRadar(4);
     expect(within(list).getAllByRole("listitem")).toHaveLength(4);
-    expect(list).toHaveClass(
-      "lg:grid-cols-4",
-      "md:grid-cols-2",
-      "overflow-x-auto",
-      "auto-cols-[64%]",
+    expect(list).toHaveClass("lg:grid-cols-4", "md:grid-cols-2", "ed-rd-ul");
+    expect(applyOf("ed-rd-ul")).toEqual(
+      expect.arrayContaining(["overflow-x-auto", "auto-cols-[64%]"]),
     );
     expect(within(radar).getByText("이번 호의 저장소·모델·논문")).toBeInTheDocument();
   });
@@ -284,12 +285,14 @@ describe("RadarBand — 칸 수(1–4)에 맞춘 열, 빈 열 없음", () => {
   it("3건: md 이상 같은 폭 3열, 4열 트랙을 쓰지 않는다", () => {
     const { radar, list } = renderRadar(3);
     expect(within(list).getAllByRole("listitem")).toHaveLength(3);
-    expect(list).toHaveClass("md:grid-cols-3", "overflow-x-auto");
+    expect(list).toHaveClass("md:grid-cols-3", "ed-rd-ul");
     expect(list).not.toHaveClass("lg:grid-cols-4");
     expect(list).not.toHaveClass("md:grid-cols-2");
     // 칸마다 subgrid(본문 | 메타 레일) — 레일 헤어라인 정렬 유지
     for (const li of within(list).getAllByRole("listitem"))
-      expect(li).toHaveClass("row-span-2", "grid-rows-subgrid");
+      expect(expandedClasses(li)).toEqual(
+        expect.arrayContaining(["row-span-2", "grid-rows-subgrid"]),
+      );
     expect(within(radar).getByText("이번 호의 저장소·모델·논문")).toBeInTheDocument();
   });
 
@@ -305,7 +308,8 @@ describe("RadarBand — 칸 수(1–4)에 맞춘 열, 빈 열 없음", () => {
     const { radar, list } = renderRadar(1);
     const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(1);
-    expect(list).not.toHaveClass("overflow-x-auto");
+    expect(list).not.toHaveClass("ed-rd-ul");
+    expect(expandedClasses(list)).not.toContain("overflow-x-auto");
     expect(list.className).not.toMatch(/grid-cols-/);
     const link = within(items[0]).getByRole("link");
     expect(link).toHaveClass("md:grid", "md:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]");
@@ -315,7 +319,8 @@ describe("RadarBand — 칸 수(1–4)에 맞춘 열, 빈 열 없음", () => {
     expect(within(link).getByText("요약")).toHaveClass("md:col-start-2", "md:row-start-2");
     // 레일: 모바일은 위 가로선, md 이상은 왼쪽 세로선
     const rail = link.lastElementChild as HTMLElement;
-    expect(rail).toHaveClass("border-t", "md:border-t-0", "md:border-l");
+    expect(rail).toHaveClass("st-rail", "md:border-t-0", "md:border-l");
+    expect(applyOf("st-rail")).toContain("border-t");
     expect(within(radar).getByText("이번 호의 저장소")).toBeInTheDocument();
   });
 
@@ -369,7 +374,9 @@ describe("SectionBands — 항목이 4건 미만인 밴드도 빈 열 없이", (
     const [g1] = grids();
     const link = within(g1).getByRole("link");
     expect(link).toHaveClass("md:grid", "lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]");
-    expect(within(link).getByRole("heading")).toHaveClass("md:row-span-2", "font-serif");
+    const heading = within(link).getByRole("heading");
+    expect(heading).toHaveClass("md:row-span-2", "st-item-hf");
+    expect(applyOf("st-item-hf")).toContain("font-serif");
   });
 
   it("2건 이상 밴드의 항목은 가로 한 줄 변형을 쓰지 않는다", () => {

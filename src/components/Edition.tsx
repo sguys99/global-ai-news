@@ -54,10 +54,7 @@ export function FrontPage({
           {seconds.length > 0 && (
             <div className="animate-rise grid grid-cols-1 [animation-delay:160ms] md:grid-cols-3">
               {seconds.map((a) => (
-                <div
-                  key={a.id}
-                  className="border-border border-b py-5 md:border-b-0 md:border-l md:px-5 md:pt-6 md:pb-2 md:first:border-l-0 md:first:pl-0 md:last:pr-0"
-                >
+                <div key={a.id} className="ed-sec">
                   <StorySecondary article={a} timeBase={timeBase} locale={locale} />
                 </div>
               ))}
@@ -144,12 +141,8 @@ const RADAR_COLS: Record<number, string> = {
   4: "md:grid-cols-2 lg:grid-cols-4",
 };
 
-/** 칸 사이 세로 헤어라인(md 이상) — 줄의 첫 칸을 뺀 칸 왼쪽에 긋는다. */
-const RADAR_DIVIDERS: Record<number, string> = {
-  2: "md:[&:nth-child(2)]:border-l md:[&:nth-child(2)]:pl-5 md:last:pr-0",
-  3: "md:[&:nth-child(n+2)]:border-l md:[&:nth-child(n+2)]:pl-5 md:last:pr-0",
-  4: "md:[&:nth-child(2n)]:border-l md:[&:nth-child(2n)]:pl-5 lg:last:pr-0 lg:[&:nth-child(n+2)]:border-l lg:[&:nth-child(n+2)]:pl-5",
-};
+/** 칸 사이 세로 헤어라인(md 이상) — 줄의 첫 칸을 뺀 칸 왼쪽에 긋는다(globals.css `.ed-rd-2`~`4`). */
+const RADAR_DIVIDERS: Record<number, string> = { 2: "ed-rd-2", 3: "ed-rd-3", 4: "ed-rd-4" };
 
 /** 레이더 띠 보조 문구 — 실린 형식만 화면 표시명으로("이번 호의 저장소·논문", en "Repos and papers in this issue"). */
 export function radarSubtitle(
@@ -182,11 +175,8 @@ function RadarBand({
   const subtitle = radarSubtitle(articles, locale);
   return (
     <section aria-labelledby="radar-heading" className={cn("min-w-0", className)}>
-      <div className="border-rule mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t-2 pt-3">
-        <h2
-          id="radar-heading"
-          className="text-display-md font-serif font-extrabold whitespace-nowrap"
-        >
+      <div className="ed-bh">
+        <h2 id="radar-heading" className="ed-bh-h">
           {getMessages(frontPageMessages, locale).radar.heading}
         </h2>
         {subtitle && <span className="text-meta text-muted-foreground">{subtitle}</span>}
@@ -200,27 +190,17 @@ function RadarBand({
         </ul>
       ) : (
         <ul
-          className={cn(
-            // relative: 카드 안 sr-only(position:absolute) 문구의 기준 상자를 스크롤러로 묶는다. 없으면 초기 포함 블록 기준으로
-            // 스크롤러 클립을 벗어나 화면 오른쪽에 놓여 페이지 폭을 늘린다(360px 에서 845px).
-            // 모바일: 가로로 흐르는 2행 그리드(카드 폭 64%) — 카드마다 [본문 | 메타 레일] 2행을 subgrid 로 이어
-            // 레일 헤어라인을 같은 높이에 맞춘다(수치 줄이 접힌 카드가 있어도). md 이상은 칸 수별 열(RADAR_COLS).
-            "relative -mx-4 grid snap-x snap-mandatory scroll-px-4 auto-cols-[64%] grid-flow-col grid-rows-[auto_auto] gap-y-2.5 overflow-x-auto overscroll-x-contain px-4",
-            "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-            "md:mx-0 md:snap-none md:auto-cols-auto md:grid-flow-row md:grid-rows-none md:gap-y-7 md:overflow-visible md:px-0",
-            RADAR_COLS[n],
-          )}
+          // ed-rd-ul — relative: 카드 안 sr-only(position:absolute) 문구의 기준 상자를 스크롤러로 묶는다. 없으면 초기 포함
+          // 블록 기준으로 스크롤러 클립을 벗어나 화면 오른쪽에 놓여 페이지 폭을 늘린다(360px 에서 845px).
+          // 모바일: 가로로 흐르는 2행 그리드(카드 폭 64%) — 카드마다 [본문 | 메타 레일] 2행을 subgrid 로 이어
+          // 레일 헤어라인을 같은 높이에 맞춘다(수치 줄이 접힌 카드가 있어도). md 이상은 칸 수별 열(RADAR_COLS).
+          className={cn("ed-rd-ul", RADAR_COLS[n])}
         >
           {articles.slice(0, 4).map((a) => (
             <li
               key={a.id}
-              className={cn(
-                "border-border min-w-0 snap-start pr-4 md:pr-5",
-                // 카드(StoryRadar)의 본문·레일 2행을 띠의 행 트랙에 잇는 subgrid — 레일 헤어라인 정렬용.
-                "row-span-2 grid grid-rows-subgrid gap-y-2.5",
-                "max-md:[&:nth-child(n+2)]:border-l max-md:[&:nth-child(n+2)]:pl-4",
-                RADAR_DIVIDERS[n],
-              )}
+              // ed-rd-li: 카드(StoryRadar)의 본문·레일 2행을 띠의 행 트랙에 잇는 subgrid — 레일 헤어라인 정렬용.
+              className={cn("ed-rd-li", RADAR_DIVIDERS[n])}
             >
               <StoryRadar article={a} locale={locale} />
             </li>
@@ -256,22 +236,17 @@ export function TrendingList({
       <ol>
         {articles.map((a, i) => (
           <li key={a.id}>
-            <Link
-              href={localePath(locale, `/article/${a.id}`)}
-              className="story-link border-border focus-visible:ring-ring grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 gap-y-1.5 border-b py-3.5 outline-none focus-visible:ring-2"
-            >
+            <Link href={localePath(locale, `/article/${a.id}`)} className="story-link ed-tr">
               <span
                 className={cn(
-                  "row-span-2 font-serif text-[1.875rem] leading-none tracking-[-0.04em] tabular-nums",
+                  "st-rank row-span-2",
                   i < 3 ? "text-brand font-bold" : "text-muted-foreground font-medium",
                 )}
               >
                 {i + 1}
               </span>
-              <span className="headline line-clamp-2 text-[0.9375rem] leading-[1.45] font-semibold">
-                {headlineOf(a, locale)}
-              </span>
-              <span className="text-label text-muted-foreground flex items-center gap-2">
+              <span className="headline ed-tr-h">{headlineOf(a, locale)}</span>
+              <span className="ed-tr-m">
                 {/* 비뉴스(저장소·모델·논문)는 매체명(GitHub·Hugging Face) 대신 형식 배지 — 시안 결정 ⑥ */}
                 {a.format === "news" ? (
                   <span className="shrink-0">{sourceNameOf(a, locale)}</span>
@@ -279,9 +254,7 @@ export function TrendingList({
                   <FormatBadge format={a.format} locale={locale} />
                 )}
                 <TrendBar value={a.trendingScore} />
-                <span className="text-foreground-soft min-w-[2ch] text-right font-semibold tabular-nums">
-                  {a.trendingScore}
-                </span>
+                <span className="ed-tr-s">{a.trendingScore}</span>
               </span>
             </Link>
           </li>
@@ -349,19 +322,11 @@ function IssueContents({
       <ul>
         {rows.map((r) => (
           <li key={r.category}>
-            <a
-              href={r.href}
-              className="story-link border-border text-caption focus-visible:ring-ring flex items-baseline gap-2 border-b py-[9px] leading-[1.4] outline-none focus-visible:ring-2"
-            >
+            <a href={r.href} className="story-link ed-ic">
               <span className="headline font-semibold">{categoryLabel(r.category, locale)}</span>
-              <span
-                aria-hidden
-                className="border-input flex-1 translate-y-[3px] self-center border-b border-dotted"
-              />
+              <span aria-hidden className="ed-ic-d" />
               <span className="font-semibold tabular-nums">{t.count(r.count)}</span>
-              <span className="text-label text-muted-foreground w-[4.2em] text-right tabular-nums">
-                {r.onFront > 0 && t.onFront(r.onFront)}
-              </span>
+              <span className="ed-ic-f">{r.onFront > 0 && t.onFront(r.onFront)}</span>
             </a>
           </li>
         ))}
@@ -401,13 +366,10 @@ export function WeeklyRadarBand({
       <div className="border-rule border-t-2 pt-[3px]">
         <div className="border-rule mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t pt-3">
           <span className="text-meta text-brand font-bold whitespace-nowrap">{t.kicker}</span>
-          <h2
-            id="weekly-heading"
-            className="text-display-md font-serif font-extrabold whitespace-nowrap"
-          >
+          <h2 id="weekly-heading" className="ed-bh-h">
             {t.heading}
           </h2>
-          <span className="text-meta text-muted-foreground tabular-nums">
+          <span className="ed-cnt">
             {weekRangeLabel(weekly.start, weekly.end, locale)}
             {mix && ` · ${mix}`}
           </span>
@@ -475,30 +437,24 @@ function SectionBand({
   return (
     <section id={`section-${slug}`} aria-labelledby={headingId} className="scroll-mt-20">
       {/* 긴 분야명("오픈소스·도구")이 좁은 화면에서 링크와 겹치지 않게 — 링크가 다음 줄로 내려간다. */}
-      <div className="border-rule mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t-2 pt-3">
-        <h2 id={headingId} className="text-display-md font-serif font-extrabold whitespace-nowrap">
+      <div className="ed-bh">
+        <h2 id={headingId} className="ed-bh-h">
           {categoryLabel(section.category, locale)}
         </h2>
-        <span className="text-meta text-muted-foreground tabular-nums">
+        <span className="ed-cnt">
           {t.count(section.count)}
           {section.onFront > 0 && t.onFront(section.onFront)}
         </span>
         <Link
           href={localePath(locale, `/?category=${encodeURIComponent(section.category)}`)}
-          className="text-meta text-brand focus-visible:ring-ring -my-3 ml-auto inline-flex min-h-11 items-center font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-2 md:my-0 md:min-h-0"
+          className="ed-all"
         >
           {t.seeAll}
         </Link>
       </div>
       <div className={cn("grid grid-cols-1", SECTION_GRID[n])}>
         {items.map((a, i) => (
-          <div
-            key={a.id}
-            className={cn(
-              "border-border min-w-0 py-4 first:pt-0 max-md:border-t max-md:first:border-t-0 md:py-0",
-              SECTION_CELLS[n]?.[i],
-            )}
-          >
+          <div key={a.id} className={cn("ed-cell", SECTION_CELLS[n]?.[i])}>
             <StorySectionItem
               article={a}
               featured={i === 0}

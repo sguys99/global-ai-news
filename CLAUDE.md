@@ -48,7 +48,7 @@
 │   │   ├── SiteShell.tsx         # 문서 셸(html·body·헤더·모바일 바·푸터·테마·집계·globals.css) + siteViewport — 두 레이아웃·404 공용
 │   │   ├── fonts.ts              # next/font 인스턴스(Pretendard·Hahmlet) — SiteShell 이 쓴다
 │   │   ├── global-not-found.tsx  # 앱 전체 404(experimental.globalNotFound) — 이중 언어, /en/ 아래면 lang=en
-│   │   ├── globals.css           # Tailwind v4 + DESIGN.md 디자인 토큰
+│   │   ├── globals.css           # Tailwind v4 + DESIGN.md 디자인 토큰 + 컴포넌트 클래스(`@layer components`, sg-·st-·ed-… 접두어)
 │   │   ├── icon.svg              # 파비콘 원본(이니셜 "D.") — favicon.ico·apple-icon.png 는 여기서 래스터화
 │   │   ├── og/                   # 공유 썸네일(og:image) — 빌드타임 PNG: edition/<날짜>·article/<id>(최근 기사만)·default
 │   │   ├── sitemap.ts            # 사이트맵(/sitemap.xml) — 홈·검색·호 전체·기사 전체, 빌드타임 정적
@@ -77,6 +77,7 @@
 │   │   ├── VisitorCount.tsx      # 푸터 "누적 방문 N회"(GoatCounter TOTAL.json, VISITOR_COUNT_MIN 미만이면 숨김)
 │   │   ├── JsonLd.tsx            # 구조화 데이터(JSON-LD) 스크립트 — 홈 WebSite·상세 NewsArticle
 │   │   ├── LocaleProvider.tsx    # 클라이언트 언어 컨텍스트(useLocale·useMessages, 기본 ko) — 영어 레이아웃만 감싼다
+│   │   ├── Icon.tsx              # 공개 페이지 인라인 SVG 아이콘(lucide 도형 사본, 기본 속성은 globals.css `.ic`)
 │   │   ├── NotFoundNotice.tsx    # 404 본문 '독자 안내'(세리프 404·이중 괘선·한/영 두 단, lang-en 변형으로 순서·크기 교체)
 │   │   ├── mobile/               # 모바일 앱 셸(MobileTopBar·BottomTabBar·FilterSheet)
 │   │   ├── admin/                # Admin 전용 컴포넌트 (KpiPanel·EnglishKpiPanel(영어 커버리지·기각 사유)·SourceHealthPanel·SourceManager 등)
@@ -404,6 +405,7 @@ npx shadcn@latest add card dialog input
 - TypeScript strict 모드 준수
 - Next.js App Router: 서버 컴포넌트 기본, 인터랙션이 필요한 경우에만 `"use client"`
 - 스타일: TailwindCSS 유틸리티 + shadcn/ui 프리미티브, `cn()`으로 클래스 병합
+- 공개 페이지에 반복되는 긴 클래스 묶음은 `globals.css` `@layer components`의 짧은 컴포넌트 클래스(`<영역 2글자>-<부분>`: `sg-` 신호·`st-` 스토리·`ed-` 지면·`ar-` 기사·`fb-` 필터·`sh-` 셸·`ui-` 버튼, 규칙은 그 파일 머리 주석)로 둔다 — 정적 페이지 무게(영어판 Phase 4-1). 덮어쓰기·조건부 클래스는 유틸리티로 남기고(`@utility` 금지 — utilities 층이 이겨야 한다), 공개 페이지 아이콘은 lucide 대신 `Icon`. 이름 오타·미사용은 `componentClasses.test.ts`가 잡는다
 - UI 작업 시 `DESIGN.md`의 디자인 토큰과 원칙을 우선 적용
 - 경로 별칭 `@/*` 사용 (상대 경로 지양). 단 `scripts/`는 상대 경로
 - 소스 정의는 `configs/sources.json`으로 관리 (코드 하드코딩 금지 — GitHub 검색 쿼리도 `url`에)
