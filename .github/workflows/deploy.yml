@@ -13,6 +13,8 @@ on:
       - "data/app.db" # 일 1회 수집 결과 — 콘텐츠 갱신의 주 트리거
       - "configs/**" # 소스/프롬프트 변경
       - "src/**" # 페이지/컴포넌트 변경
+      - "scripts/**" # prebuild 색인 생성·산출물 크기 검사(size-report)
+      - "public/**" # 정적 자산(out/ 에 그대로 복사)
       - "next.config.ts" # basePath/export 설정 변경
       - "package.json" # 의존성/스크립트 변경
       - ".github/workflows/deploy.yml" # 배포 파이프라인 자체 변경

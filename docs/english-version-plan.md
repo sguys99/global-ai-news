@@ -375,7 +375,12 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
   - `site.ts` `EDITION_THUMBNAIL_WINDOW_DAYS = 30`·`hasEditionThumbnail(date, latestEditionDate)`: DB 최신 호 날짜와 그 앞 29일(KST 날짜 30개)만 참이다. 기준이 벽시계가 아니라 DB라 같은 `app.db`면 산출물이 같다.
   - 생성(`og/edition/[file]` `generateStaticParams`)과 참조(`editionMetadata`, 홈·호 고정 링크)가 이 판정 하나를 쓴다. `editionMetadata`의 새 인자 `latestEditionDate`는 필수라 빠뜨리면 타입 오류다. JSON-LD·RSS·`latest.json`은 호 PNG를 참조하지 않는다.
   - `ogEditionWindow.test.ts`: 가짜 DB 46개 호로 실제 라우트·메타데이터를 돌려 생성 PNG 30장, 모든 og:image가 생성된 PNG이거나 기본 썸네일인지 확인한다. 지금 DB(최신 호 11-05)로는 PNG 30장, 기본 썸네일 4개 호다.
-- [ ] `deploy.yml`에 산출물 크기 검사를 넣는다: 700MB면 `::warning::`, 950MB면 실패.
+- [x] `deploy.yml`에 산출물 크기 검사를 넣는다: 700MB면 `::warning::`, 950MB면 실패. (2026-11-05)
+  - `npm run size:report -- [out] [--ci] [--base <비교 out>] [--json]`(`scripts/size-report.ts`, 순수 함수 `scripts/lib/sizeReport.ts`). 파일을 기사·호 HTML/RSC, 홈, og 기사·호, `_next`, 폰트, 검색·홈 색인(분할 파일도 접두어로), 기타로 나누고 언어(`en/` 접두)별로 센다. 페이지 평균·p50·p90·최대와 가장 무거운 5쪽을 보인다.
+  - 한도는 상수 한 곳(`TOTAL_WARN_BYTES` 700MB·`TOTAL_FAIL_BYTES` 950MB, `PAGES_LIMIT_BYTES` 1GB)이다. 페이지 예산(기사 평균 ≤ 40KB·호 ≤ 150KB, 언어별)은 경고만 한다.
+  - `deploy.yml` "Check output size" 단계(빌드 뒤·업로드 전)가 `--ci`로 돌아 주석(`::warning::`/`::error::`)과 Job Summary 표를 남기고, 950MB 이상일 때만 실패한다. `--base`는 이번 Phase의 경량화 효과를 재는 데 쓴다.
+  - 같이 고친 것: `deploy.yml` 트리거 `paths`에 `scripts/**`·`public/**`가 없어 prebuild 색인 스크립트나 크기 검사만 바뀐 push는 배포되지 않았다. 둘을 더했다.
+  - Phase 3 산출물(`out-3-4`) 측정: 152.86MB·파일 2,919개. 기사 평균 96.5KB(HTML 63.2 + RSC 33.3), 호 평균 385.5KB — 두 예산 모두 초과 경고. Phase 0 대비 +3.9%(기사 +4.9%).
 - [ ] 한국어 회귀 비교(3-1)를 다시 통과하는지 확인한다. 클래스 이름 변경은 의도된 차이로 보고, 렌더 결과(스크린숏)가 같은지 확인한다.
 
 ### 4-2. 클라이언트 색인 (0-4에서 추가)
