@@ -389,7 +389,15 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 4-2. 클라이언트 색인 (0-4에서 추가)
 
-- [ ] `search-index.json`(현재 gzip 290KB)·`feed-index.json`(gzip 189KB)은 2년 뒤 언어당 gzip 5.3MB·3.4MB가 된다. 영어판 색인을 더하기 전에 월별 분할이나 필드 축소 방식을 정한다. 검색은 최근 N개월만 먼저 받고, 나머지는 필요할 때 받는다.
+- [x] `search-index.json`(현재 gzip 290KB)·`feed-index.json`(gzip 189KB)은 2년 뒤 언어당 gzip 5.3MB·3.4MB가 된다. 영어판 색인을 더하기 전에 월별 분할이나 필드 축소 방식을 정한다. 검색은 최근 N개월만 먼저 받고, 나머지는 필요할 때 받는다. (2026-11-05, 두 방식을 함께 적용)
+  - 배치: `public/{search-index,feed-index}/<locale>/manifest.json` + 호 월(`created_at` KST 월)별 `<YYYY-MM>.json`. 행은 manifest가 정한 필드 순서의 배열이고 매체명·형식은 manifest의 소스 표로 뺐다. 캐시 키는 manifest `?v=<최신 호>-<건수>`, 조각 `?v=<내용 해시 10자>` — 바뀌지 않은 지난 달 조각은 빌드가 바뀌어도 URL이 같아 브라우저가 재사용한다. 옛 단일 파일은 없앴다.
+  - 기사당 크기(원본/gzip): 검색 818→507B / 237→185B, 홈 574→429B / 155→150B. 원문 URL·다른 매체 목록(건수만 남김)·화제 메트릭·매체명·형식 필드를 뺐다.
+  - 검색: manifest + 최근 3개월(`SEARCH_RECENT_MONTHS`)을 먼저 받는다. 범위가 덜 실렸으면 머리에 "2026년 9월 이후 기사 중"을 적고, 결과 끝의 괘선 아래 버튼 "지난 기사에서도 찾기 · 2026년 9월 이전 기사 317건"(44px, 상자·채움 없음, hover 때 글자만 코발트)이 나머지를 받는다. 최근 범위에 결과가 0건이면 자동으로 받는다. 첫 화면 전송 358.7→203.5KB, 2년 뒤에도 약 0.45MB로 일정하다(이전 방식은 5.3MB).
+  - 홈: 기본 정렬이 최신순이 아니라 화제순이라 2쪽부터 모든 달의 기사가 섞인다. 그래서 manifest에 SSG 30건 다음 120건(`head`, 4쪽)을 싣는다. "더 보기" 1~4회는 manifest만 받고(240.3→23.5KB), 그 뒤나 필터·정렬은 모든 조각을 받는다(지금과 같다). 순서 동점은 `id ASC`로 명시했다(SQLite가 이미 그렇게 내던 순서와 1,277건 모두 같다).
+  - **버그 수정:** FlexSearch가 필드당 결과를 100건에서 잘랐다. 기존 검색은 "에이전트" 321건 중 186건, "모델" 432건 중 205건만 보였다. `SEARCH_RESULT_LIMIT`를 색인 크기 위로 올렸다.
+  - 브라우저 확인(같은 DB, nginx 두 벌): 홈 "더 보기" 8회의 270개 id·"남은 N건" 문구, `?category=physical` 133건·`?category=agent&sort=latest` 258건이 기준선과 같다. 검색 결과는 상한 수정만큼 늘었고 기준선 결과를 모두 포함한다. 한국어 대표 12페이지 정적 HTML은 기준선과 같다.
+  - 영어판: `src/lib/indexShards.ts` `INDEX_LOCALE.en`과 `scripts/lib/indexShards.ts` `INDEX_BUILD_LOCALES`에 `"en"`을 넣으면 된다(영어 본문 있는 기사만 거르기·영어 행·영어 매체명이 이미 들어 있다).
+  - 상세: [phase4/4-2-client-index.md](english-version/phase4/4-2-client-index.md)
 
 ### 4-3. 2단계 — 보관 등급 (출시 후 6개월 안)
 
@@ -456,6 +464,7 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - [ ] RSS: `/en/feed.xml`(영어 제목·요약, `language en`)을 만들고, 영어 페이지 머리에 RSS 링크를 단다.
 - [ ] 구조화 데이터: 영어 페이지는 `inLanguage: "en"`, WebSite(영어 설명), NewsArticle(영어 headline·description, `isBasedOn` 원문).
 - [ ] 공유 썸네일 영어판: `/og/en/edition/[date].png`·`/og/en/article/[id].png`·`/og/en/default.png`(`src/lib/ogImage.tsx` 영어 텍스트 폭 추정 확인).
+  - 한국어판과 같은 창을 쓴다(Phase 4-1): 호 PNG는 `hasEditionThumbnail`(최근 30일), 기사 PNG는 `hasArticleThumbnail`(7일). 창 밖은 영어 기본 썸네일이다. `size:report`는 `og/en/…`를 영어로 센다.
 
 ### 6-3. 검색엔진 등록·확인
 
