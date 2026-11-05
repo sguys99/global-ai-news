@@ -39,6 +39,13 @@ export function siteTagline(locale: Locale = "ko"): string {
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 /**
+ * 정적 export 서브경로(`/global-ai-news`) — next.config 가 프로덕션 빌드에만 넣는다(dev 는 "").
+ * next/link 를 거치지 않는 일반 `<a>`(보관 호로 가는 호 이동, 빌드 후 보관 지면)가 앞에 붙인다.
+ * 빌드 후처리(scripts/postbuild.ts)는 Next 밖이라 같은 빌드의 out/index.html 에서 읽어 이 환경변수를 채운다.
+ */
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+/**
  * 방문자 집계(GoatCounter, 쿠키 없음 → 동의 배너 불필요). 대시보드는 로그인 사용자만 본다.
  * 사이트 설정 "Allow adding visitor counts on your website"가 켜져 있어야 `/counter/TOTAL.json`이 열린다.
  */

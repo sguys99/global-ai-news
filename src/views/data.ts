@@ -1,4 +1,5 @@
 import {
+  type EditionRef,
   getActiveTags,
   getArticle,
   getEditionRefs,
@@ -12,6 +13,7 @@ import {
   getWeekRadarCandidates,
   toListCards,
 } from "@/lib/db";
+import { isArchivedIssueDate } from "@/lib/archive";
 import { buildEdition, selectIssueBrief } from "@/lib/edition";
 import { INDEX_PAGE_SIZE, buildFeedIndex } from "@/lib/feedIndex";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
@@ -97,6 +99,9 @@ export function loadHome(locale: Locale) {
 
 // ─── 호 고정 링크 ─────────────────────────────────────────────────────────────
 
+/** 호 이동(EditionPager)이 가리키는 호 — 보관 호(`archived`)면 RSC 가 없어 일반 `<a>` 로 잇는다. */
+export type PagerEdition = EditionRef & { archived?: boolean };
+
 /** 호 고정 링크 지면 — 그 호와 앞뒤 호, 1면 편집, 세 줄 요약. 목록 밖 날짜면 null(정적 404). 라우트 메타도 쓴다. */
 export function loadEdition(locale: Locale, date: string) {
   const refs = localeEditionRefs(locale);
@@ -104,10 +109,14 @@ export function loadEdition(locale: Locale, date: string) {
   if (i < 0) return null;
   const ref = refs[i];
   const edition = buildEdition(localeArticles(locale, getIssueArticles(ref.date)));
+  // 앞뒤 호가 보관 지면(src/lib/archive.ts)이면 호 이동이 next/link 대신 일반 `<a>` 를 쓴다 — 보관 호에는 RSC 가 없다.
+  const latest = getLatestEditionRef()?.date ?? null;
+  const pagerRef = (r: EditionRef | undefined): PagerEdition | null =>
+    r ? { ...r, archived: isArchivedIssueDate(r.date, latest) } : null;
   return {
     ref,
-    prev: refs[i - 1] ?? null,
-    next: refs[i + 1] ?? null,
+    prev: pagerRef(refs[i - 1]),
+    next: pagerRef(refs[i + 1]),
     edition,
     brief: selectIssueBrief(edition, getIssueBriefs(ref.date)),
   };

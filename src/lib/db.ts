@@ -13,6 +13,7 @@ import {
   type EnglishCoverage,
   type EnglishKpi,
 } from "@/lib/englishKpi";
+import { planArchive, type ArchivePlan } from "@/lib/archive";
 import { DB_PATH } from "@/lib/paths";
 import {
   assessSourceHealth,
@@ -896,4 +897,19 @@ export function getAllArticleIds(conn: DatabaseType = getDb()): number[] {
     id: number;
   }[];
   return rows.map((r) => r.id);
+}
+
+/**
+ * 보관 계획(english-version-plan Phase 4-3, 규칙은 src/lib/archive.ts): 전체 페이지로 낼 기사·호와 보관 지면으로 낼 기사·호.
+ * 기준은 DB 최신 호(getLatestEditionRef 와 같은 값). 상세·호 라우트의 generateStaticParams 와 빌드 후처리
+ * (scripts/lib/archive.ts)가 이 함수 하나를 써서 둘이 어긋나지 않는다.
+ */
+export function getArchivePlan(conn: DatabaseType = getDb()): ArchivePlan {
+  const refs = getEditionRefs(conn);
+  return planArchive({
+    latestEditionDate: refs.at(-1)?.date ?? null,
+    articleIds: getAllArticleIds(conn),
+    articleIssueDates: getIssueDates(conn),
+    editionDates: refs.map((r) => r.date),
+  });
 }

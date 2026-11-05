@@ -3,6 +3,7 @@
  * 실행: npm run size:report -- [outDir=out] [--ci] [--base <기준 outDir>] [--json]
  *
  *   (인자 없음)  out/ 을 걸어 분류별 크기, 기사·호 페이지 평균·p50·p90·최대, 가장 무거운 5쪽을 콘솔 표로 낸다.
+ *                보관 지면(Phase 4-3, HTML 머리의 보관 표지)은 "보관 기사·보관 호"로 따로 센다(쪽마다 8KB·40KB 예산).
  *                종료 코드 0(디렉터리가 없을 때만 2) — 로컬에서 경량화 효과를 잴 때 쓴다.
  *   --ci         deploy.yml 의 "Check output size" 스텝이 쓴다: 콘솔 표 + `::warning::`/`::error::` 주석,
  *                $GITHUB_STEP_SUMMARY 에 Markdown 표를 붙인다. 전체 950MB 이상일 때만 종료 코드 1
@@ -14,12 +15,23 @@
  *   npm run build && npm run size:report
  *   npm run size:report -- data/regress/out-worktree --base data/regress/out-p4-base
  */
-import { appendFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import {
+  appendFileSync,
+  closeSync,
+  existsSync,
+  openSync,
+  readSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
 import path from "node:path";
 import {
   assessSizeReport,
   buildSizeReport,
+  ARCHIVE_SNIFF_BYTES,
   ciExitCode,
+  isArchiveHtml,
+  isPageHtmlPath,
   sizeAnnotations,
   sizeComparison,
   sizeConsole,
@@ -36,11 +48,28 @@ function walk(root: string): FileEntry[] {
     for (const d of readdirSync(path.join(root, rel), { withFileTypes: true })) {
       const childRel = rel ? `${rel}/${d.name}` : d.name;
       if (d.isDirectory()) stack.push(childRel);
-      else if (d.isFile())
-        files.push({ path: childRel, bytes: statSync(path.join(root, childRel)).size });
+      else if (d.isFile()) {
+        const abs = path.join(root, childRel);
+        const entry: FileEntry = { path: childRel, bytes: statSync(abs).size };
+        // 기사·호 HTML 은 머리를 읽어 보관 지면(Phase 4-3)인지 가린다 — 같은 경로라 경로로는 모른다.
+        if (isPageHtmlPath(childRel) && isArchiveHtml(readHead(abs))) entry.archive = true;
+        files.push(entry);
+      }
     }
   }
   return files.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+/** 파일 앞 ARCHIVE_SNIFF_BYTES 바이트(보관 표지는 `<head>` 맨 앞쪽). */
+function readHead(file: string): string {
+  const fd = openSync(file, "r");
+  try {
+    const buf = Buffer.alloc(ARCHIVE_SNIFF_BYTES);
+    const n = readSync(fd, buf, 0, buf.length, 0);
+    return buf.subarray(0, n).toString("utf8");
+  } finally {
+    closeSync(fd);
+  }
 }
 
 function isDir(p: string): boolean {

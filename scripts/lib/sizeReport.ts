@@ -5,8 +5,17 @@
  * 페이지 예산(기사 1쪽 HTML+RSC 평균 40KB, 호 1쪽 평균 150KB)은 경고만 낸다 — 배포는 계속한다.
  * 분류·단위는 phase0/0-4-size-build.md 와 같다: KB = 1,000 B, MB = 10^6 B, 1GB = 10^9 B(보수적).
  *
+ * 보관 지면(Phase 4-3 — 90일 지난 기사·호의 가벼운 정적 HTML)은 같은 경로(`article/<id>/index.html`)라 경로로 가를 수 없다.
+ * CLI 가 페이지 HTML 머리의 표지(`ARCHIVE_GENERATOR_META`)를 보고 `FileEntry.archive` 를 달면 따로 센다(기사 ≤ 8KB·호 ≤ 40KB,
+ * 쪽마다 — 평균이 아니다, 경고만).
+ *
  * 순수 함수만 둔다(경로 문자열·바이트 목록 → 보고서·문자열). 파일 시스템·환경변수는 CLI 가 다룬다.
  */
+import {
+  ARCHIVE_ARTICLE_BUDGET_BYTES,
+  ARCHIVE_EDITION_BUDGET_BYTES,
+  ARCHIVE_GENERATOR_META,
+} from "../../src/lib/archive";
 
 // ── 기준값(단일 출처) ───────────────────────────────────────────────────────
 
@@ -20,6 +29,19 @@ export const TOTAL_FAIL_BYTES = 950_000_000;
 export const ARTICLE_PAGE_BUDGET_BYTES = 40_000;
 /** 호 1쪽(index.html + index.txt) 평균 예산 — 넘으면 경고만. Phase 0 기준 382KB. */
 export const EDITION_PAGE_BUDGET_BYTES = 150_000;
+/** 보관 기사 1쪽(index.html 뿐) 예산 — 쪽마다 본다, 넘으면 경고만(Phase 4-3, 값은 src/lib/archive.ts). */
+export const ARCHIVE_ARTICLE_PAGE_BUDGET_BYTES = ARCHIVE_ARTICLE_BUDGET_BYTES;
+/** 보관 호 1쪽 예산 — 쪽마다 본다, 넘으면 경고만(Phase 4-3, 값은 src/lib/archive.ts). */
+export const ARCHIVE_EDITION_PAGE_BUDGET_BYTES = ARCHIVE_EDITION_BUDGET_BYTES;
+/**
+ * 보관 호 예산 예외 — 출시 전 대량 수집 호(148·149·167건, 보관 지면 약 67~76KB). 사용자 결정(2026-11-05)으로 한도를 넘어도
+ * 그대로 둔다. 정상 운영의 호는 35건 이하(MAX_PICKS_PER_RUN)라 다시 생기지 않는다.
+ */
+export const ARCHIVE_BUDGET_EXEMPT: ReadonlySet<string> = new Set([
+  "2026-06-09",
+  "2026-07-07",
+  "2026-10-06",
+]);
 
 // ── 분류 ────────────────────────────────────────────────────────────────
 
@@ -31,6 +53,8 @@ export const SIZE_CLASSES = [
   "article-txt",
   "edition-html",
   "edition-txt",
+  "article-archive",
+  "edition-archive",
   "home",
   "og-article",
   "og-edition",
@@ -47,6 +71,8 @@ export const SIZE_CLASS_LABELS: Record<SizeClass, string> = {
   "article-txt": "기사 RSC(.txt)",
   "edition-html": "호 HTML",
   "edition-txt": "호 RSC(.txt)",
+  "article-archive": "보관 기사 HTML",
+  "edition-archive": "보관 호 HTML",
   home: "홈(html+txt)",
   "og-article": "og 기사 PNG",
   "og-edition": "og 호 PNG",
@@ -60,8 +86,29 @@ export const SIZE_CLASS_LABELS: Record<SizeClass, string> = {
 /** 언어판과 무관하게 한 벌만 있는 분류 — 보고서에서 언어 대신 "공용"으로 표시한다. */
 export const SHARED_CLASSES: ReadonlySet<SizeClass> = new Set(["next-static", "fonts"]);
 
-export type PageKind = "article" | "edition";
+/** 페이지 종류 — 보관 지면(`*-archive`, HTML 한 장)은 전체 페이지와 따로 센다. */
+export type PageKind = "article" | "edition" | "article-archive" | "edition-archive";
+export const PAGE_KINDS: PageKind[] = ["article", "edition", "article-archive", "edition-archive"];
 export type PagePart = "html" | "txt";
+
+/** 페이지 HTML 머리(앞 1KB 남짓)가 보관 지면인지 — CLI 가 `FileEntry.archive` 를 달 때 쓴다. */
+export function isArchiveHtml(head: string): boolean {
+  return head.includes(ARCHIVE_GENERATOR_META);
+}
+
+/** 보관 지면 판별에 읽을 머리 바이트 수(표지는 charset 바로 뒤). */
+export const ARCHIVE_SNIFF_BYTES = 1024;
+
+/** 이 경로가 보관 지면일 수 있는 페이지 HTML 인지(CLI 가 이것만 머리를 읽는다). */
+export function isPageHtmlPath(relPath: string): boolean {
+  const p = relPath
+    .replace(/\\/g, "/")
+    .replace(/^\.\//, "")
+    .replace(/^\/+/, "")
+    .replace(/^en\//, "");
+  const m = PAGE_RE.exec(p);
+  return Boolean(m && m[3] === "html");
+}
 
 export interface Classified {
   cls: SizeClass;
@@ -81,8 +128,9 @@ const OG_RE = /^og\/(?:en\/)?(article|edition)\/[^/]+\.png$/i;
  * 영어판은 `en/` 접두(`en/article/<id>/…`, `en/edition/…`, `en/index.html`)와 `og/en/…` 를 영어로 센다.
  * 검색·홈 색인은 나눠 낸 파일(`search-index/ko/2026-11.json`, `feed-index/…`)도 접두로 넓게 받는다.
  * 월별 조각(Phase 4-2)은 언어가 디렉터리라(`search-index/en/…`) 그 자리의 `en` 도 영어로 센다.
+ * `archive` 가 참이면(CLI 가 HTML 머리의 보관 표지를 봤다) 기사·호 HTML 을 보관 지면(`article-archive`·`edition-archive`)으로 센다.
  */
-export function classifyPath(relPath: string): Classified {
+export function classifyPath(relPath: string, archive = false): Classified {
   let p = relPath.replace(/\\/g, "/").replace(/^\.\//, "").replace(/^\/+/, "");
   let lang: Lang = "ko";
   if (p.startsWith("en/")) {
@@ -92,9 +140,13 @@ export function classifyPath(relPath: string): Classified {
 
   const page = PAGE_RE.exec(p);
   if (page) {
-    const kind = page[1] as PageKind;
+    const base = page[1] as "article" | "edition";
     const part = page[3] as PagePart;
-    return { cls: `${kind}-${part}`, lang, page: { kind, id: page[2], part } };
+    if (archive && part === "html") {
+      const kind: PageKind = `${base}-archive`;
+      return { cls: kind, lang, page: { kind, id: page[2], part } };
+    }
+    return { cls: `${base}-${part}`, lang, page: { kind: base, id: page[2], part } };
   }
   if (HOME_RE.test(p)) return { cls: "home", lang };
 
@@ -152,6 +204,8 @@ export interface FileEntry {
   /** out/ 기준 상대 경로. */
   path: string;
   bytes: number;
+  /** 보관 지면 HTML(머리에 보관 표지) — CLI 가 단다. 없으면 경로로만 가른다. */
+  archive?: boolean;
 }
 
 export interface ClassRow {
@@ -178,6 +232,10 @@ export interface PageStats {
   txt: Dist;
   /** 합계 기준 무거운 순 상위 HEAVIEST_N 쪽. */
   heaviest: PageSize[];
+  /** 쪽마다 보는 예산(보관 지면)을 넘은 쪽 — 예외(ARCHIVE_BUDGET_EXEMPT) 빼고, 무거운 순. 평균 예산 종류는 빈 배열. */
+  overBudget: PageSize[];
+  /** 예산을 넘었지만 예외로 둔 쪽 수. */
+  exempt: number;
 }
 
 export interface SizeReport {
@@ -198,7 +256,7 @@ export function buildSizeReport(files: FileEntry[]): SizeReport {
 
   for (const f of files) {
     totalBytes += f.bytes;
-    const c = classifyPath(f.path);
+    const c = classifyPath(f.path, f.archive);
     const lang = SHARED_CLASSES.has(c.cls) ? null : c.lang;
     const key = `${c.cls}|${lang ?? ""}`;
     const row = classMap.get(key) ?? { cls: c.cls, lang, bytes: 0, files: 0 };
@@ -227,12 +285,16 @@ export function buildSizeReport(files: FileEntry[]): SizeReport {
   );
 
   const pages: PageStats[] = [];
-  for (const kind of ["article", "edition"] as PageKind[]) {
+  for (const kind of PAGE_KINDS) {
     for (const lang of LANGS) {
       const sizes = [...pageMap.values()]
         .filter((e) => e.kind === kind && e.lang === lang)
         .map((e) => e.size);
       if (sizes.length === 0) continue;
+      const perPage = PAGE_BUDGET_MODE[kind] === "page";
+      const over = perPage ? sizes.filter((p) => p.total > PAGE_BUDGETS[kind]) : [];
+      const isExempt = (p: PageSize) =>
+        kind === "edition-archive" && ARCHIVE_BUDGET_EXEMPT.has(p.id);
       pages.push({
         kind,
         lang,
@@ -242,6 +304,10 @@ export function buildSizeReport(files: FileEntry[]): SizeReport {
         heaviest: [...sizes]
           .sort((a, b) => b.total - a.total || a.id.localeCompare(b.id))
           .slice(0, HEAVIEST_N),
+        overBudget: over
+          .filter((p) => !isExempt(p))
+          .sort((a, b) => b.total - a.total || a.id.localeCompare(b.id)),
+        exempt: over.filter(isExempt).length,
       });
     }
   }
@@ -262,6 +328,16 @@ export function totalLevel(bytes: number): TotalLevel {
 export const PAGE_BUDGETS: Record<PageKind, number> = {
   article: ARTICLE_PAGE_BUDGET_BYTES,
   edition: EDITION_PAGE_BUDGET_BYTES,
+  "article-archive": ARCHIVE_ARTICLE_PAGE_BUDGET_BYTES,
+  "edition-archive": ARCHIVE_EDITION_PAGE_BUDGET_BYTES,
+};
+
+/** 예산을 평균으로 볼지(전체 페이지) 쪽마다 볼지(보관 지면 — "≤ 8KB 라이트 페이지"는 쪽마다의 약속이다). */
+export const PAGE_BUDGET_MODE: Record<PageKind, "avg" | "page"> = {
+  article: "avg",
+  edition: "avg",
+  "article-archive": "page",
+  "edition-archive": "page",
 };
 
 export interface Finding {
@@ -277,7 +353,12 @@ export interface SizeAssessment {
   findings: Finding[];
 }
 
-const KIND_LABELS: Record<PageKind, string> = { article: "기사", edition: "호" };
+const KIND_LABELS: Record<PageKind, string> = {
+  article: "기사",
+  edition: "호",
+  "article-archive": "보관 기사",
+  "edition-archive": "보관 호",
+};
 
 export function assessSizeReport(report: SizeReport): SizeAssessment {
   const level = totalLevel(report.totalBytes);
@@ -301,6 +382,17 @@ export function assessSizeReport(report: SizeReport): SizeAssessment {
 
   for (const s of report.pages) {
     const budget = PAGE_BUDGETS[s.kind];
+    if (PAGE_BUDGET_MODE[s.kind] === "page") {
+      if (s.overBudget.length > 0) {
+        const top = s.overBudget[0];
+        findings.push({
+          level: "warning",
+          title: "페이지 예산 초과",
+          message: `${KIND_LABELS[s.kind]} 페이지(${s.lang}) ${s.overBudget.length.toLocaleString("en-US")}쪽 > 예산 ${formatKB(budget)}/쪽 (최대 ${formatKB(top.total)} ${top.id}, 전체 ${s.combined.count.toLocaleString("en-US")}쪽${s.exempt ? ` · 예외 ${s.exempt}쪽 제외` : ""})`,
+        });
+      }
+      continue;
+    }
     if (s.combined.avg > budget) {
       findings.push({
         level: "warning",
@@ -399,6 +491,10 @@ function pageTitle(s: PageStats): string {
 
 function budgetCell(s: PageStats): string {
   const budget = PAGE_BUDGETS[s.kind];
+  if (PAGE_BUDGET_MODE[s.kind] === "page") {
+    const exempt = s.exempt ? ` (예외 ${s.exempt})` : "";
+    return `${formatKB(budget)}/쪽 ${s.overBudget.length ? `${s.overBudget.length}쪽 초과` : "이내"}${exempt}`;
+  }
   return `${formatKB(budget)} ${s.combined.avg > budget ? "초과" : "이내"}`;
 }
 
@@ -435,11 +531,13 @@ export function sizeConsole(
     lines.push("페이지당 크기 (KB = 1,000 B)");
     const rows: string[][] = [];
     for (const s of report.pages) {
-      for (const [part, d] of [
+      // 보관 지면은 HTML 한 장이라 합계 줄만.
+      const parts = [
         ["합계", s.combined],
         ["HTML", s.html],
         ["RSC", s.txt],
-      ] as const) {
+      ] as const;
+      for (const [part, d] of PAGE_BUDGET_MODE[s.kind] === "page" ? parts.slice(0, 1) : parts) {
         rows.push([
           part === "합계" ? pageTitle(s) : "",
           part,
@@ -582,11 +680,13 @@ export function sizeComparison(base: SizeReport, cand: SizeReport): string {
   const rows: string[][] = [];
   for (const s of cand.pages) {
     const b = basePages.get(pageKey(s));
-    for (const [part, pick] of [
+    const parts = [
       ["합계", (x: PageStats) => x.combined],
       ["HTML", (x: PageStats) => x.html],
       ["RSC", (x: PageStats) => x.txt],
-    ] as const) {
+    ] as const;
+    // 보관 지면은 HTML 한 장이라 합계 줄만.
+    for (const [part, pick] of PAGE_BUDGET_MODE[s.kind] === "page" ? parts.slice(0, 1) : parts) {
       const before = b ? pick(b).avg : 0;
       const after = pick(s).avg;
       rows.push([

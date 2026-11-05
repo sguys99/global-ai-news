@@ -1,6 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
+  ARCHIVE_ARTICLE_PAGE_BUDGET_BYTES,
+  ARCHIVE_BUDGET_EXEMPT,
+  ARCHIVE_EDITION_PAGE_BUDGET_BYTES,
   ARTICLE_PAGE_BUDGET_BYTES,
   EDITION_PAGE_BUDGET_BYTES,
   PAGES_LIMIT_BYTES,
@@ -13,6 +16,8 @@ import {
   displayWidth,
   distOf,
   formatBytes,
+  isArchiveHtml,
+  isPageHtmlPath,
   percentile,
   sizeAnnotations,
   sizeComparison,
@@ -361,5 +366,82 @@ describe("출력", () => {
     expect(text).toMatch(/기사\(ko\)\s+합계\s+91\.0 KB\s+31\.0 KB\s+-60\.0 KB\s+-65\.9%/);
     // 후보에서 사라진 분류(호 RSC)도 0 으로 보인다
     expect(text).toMatch(/호 RSC\(\.txt\)\s+ko\s+120\.0 KB\s+0 B\s+-120\.0 KB\s+-100\.0%/);
+  });
+});
+
+describe("보관 지면(Phase 4-3)", () => {
+  it("HTML 머리의 보관 표지로 가린다 — 경로만으로는 전체 페이지와 같다", () => {
+    expect(
+      isArchiveHtml(
+        '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="generator" content="daybook-archive">',
+      ),
+    ).toBe(true);
+    expect(isArchiveHtml('<!DOCTYPE html><html><head><meta charSet="utf-8"/>')).toBe(false);
+    expect(isPageHtmlPath("article/12/index.html")).toBe(true);
+    expect(isPageHtmlPath("en/edition/2026-06-07/index.html")).toBe(true);
+    expect(isPageHtmlPath("article/12/index.txt")).toBe(false);
+    expect(isPageHtmlPath("index.html")).toBe(false);
+    expect(classifyPath("article/12/index.html", true)).toEqual({
+      cls: "article-archive",
+      lang: "ko",
+      page: { kind: "article-archive", id: "12", part: "html" },
+    });
+    expect(classifyPath("en/edition/2026-06-07/index.html", true)).toMatchObject({
+      cls: "edition-archive",
+      lang: "en",
+    });
+    // .txt 는 보관 표지와 무관(보관 지면에는 없다)
+    expect(classifyPath("article/12/index.txt", true).cls).toBe("article-txt");
+  });
+
+  it("따로 센다 — 전체 기사·호 평균에 섞이지 않는다", () => {
+    const r = buildSizeReport([
+      { path: "article/1/index.html", bytes: 30_000 },
+      { path: "article/2/index.html", bytes: 7_000, archive: true },
+      { path: "edition/2026-06-07/index.html", bytes: 20_000, archive: true },
+    ]);
+    expect(r.pages.map((p) => [p.kind, p.lang, p.combined.count, p.combined.avg])).toEqual([
+      ["article", "ko", 1, 30_000],
+      ["article-archive", "ko", 1, 7_000],
+      ["edition-archive", "ko", 1, 20_000],
+    ]);
+    expect(r.classes.map((c) => c.cls)).toEqual([
+      "article-html",
+      "article-archive",
+      "edition-archive",
+    ]);
+  });
+
+  it("예산은 쪽마다(기사 8KB·호 40KB) — 넘은 쪽 수·최대를 경고, 출시 전 대량 호는 예외", () => {
+    expect(ARCHIVE_ARTICLE_PAGE_BUDGET_BYTES).toBe(8_000);
+    expect(ARCHIVE_EDITION_PAGE_BUDGET_BYTES).toBe(40_000);
+    expect([...ARCHIVE_BUDGET_EXEMPT]).toEqual(["2026-06-09", "2026-07-07", "2026-10-06"]);
+
+    const ok = assessSizeReport(
+      buildSizeReport([
+        { path: "article/1/index.html", bytes: 8_000, archive: true },
+        { path: "edition/2026-06-09/index.html", bytes: 70_000, archive: true }, // 예외
+        { path: "edition/2026-06-07/index.html", bytes: 13_000, archive: true },
+      ]),
+    );
+    expect(ok.findings).toEqual([]);
+
+    const over = buildSizeReport([
+      { path: "article/1/index.html", bytes: 7_000, archive: true },
+      { path: "article/2/index.html", bytes: 8_001, archive: true },
+      { path: "article/3/index.html", bytes: 9_500, archive: true },
+      { path: "edition/2026-06-09/index.html", bytes: 70_000, archive: true },
+      { path: "edition/2027-01-01/index.html", bytes: 41_000, archive: true },
+    ]);
+    const a = assessSizeReport(over);
+    expect(ciExitCode(a)).toBe(0);
+    expect(sizeAnnotations(a)).toEqual([
+      "::warning title=페이지 예산 초과::보관 기사 페이지(ko) 2쪽 > 예산 8.0 KB/쪽 (최대 9.5 KB 3, 전체 3쪽)",
+      "::warning title=페이지 예산 초과::보관 호 페이지(ko) 1쪽 > 예산 40.0 KB/쪽 (최대 41.0 KB 2027-01-01, 전체 2쪽 · 예외 1쪽 제외)",
+    ]);
+    const text = sizeConsole(over, a);
+    expect(text).toContain("보관 기사(ko)");
+    expect(text).toContain("8.0 KB/쪽 2쪽 초과");
+    expect(text).toContain("40.0 KB/쪽 1쪽 초과 (예외 1)");
   });
 });

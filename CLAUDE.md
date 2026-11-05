@@ -75,7 +75,7 @@
 │   │   ├── FeedView.tsx / FeedClient.tsx # 홈 지면+색인 렌더 / useSearchParams 필터 래퍼 + FeedFallback(정적 HTML 지면, FeedClient 와 props 공유)
 │   │   ├── SearchClient.tsx      # 검색 인덱스 fetch + FlexSearch + 필터·정렬
 │   │   ├── FilterBar.tsx         # 정렬 탭 + 분야/매체/태그 필터 칩
-│   │   ├── EditionPager.tsx      # 지난 호 이전/다음
+│   │   ├── EditionPager.tsx      # 지난 호 이전/다음 — 보관 호(Phase 4-3)로 가는 링크는 RSC 가 없어 next/link 대신 일반 <a>
 │   │   ├── HeaderWordmark.tsx    # 헤더 워드마크(홈에선 제호를 지나면 등장)
 │   │   ├── SearchInput.tsx       # 라이브 검색 입력 (디바운스)
 │   │   ├── Analytics.tsx         # 방문 집계(GoatCounter count.js, 쿠키 없음) — 경로 전환마다 직접 집계
@@ -112,6 +112,9 @@
 │   │   ├── searchIndex.ts        # FlexSearch 문서 빌드·추가·질의(필드당 상한 없음)
 │   │   ├── site.ts               # 사이트 정체성(이름·검색 제목·설명)·공유 메타(OG/카카오톡)·canonical·검색엔진 소유 확인 값 단일 출처
 │   │   ├── seo.ts                # 사이트맵·RSS·JSON-LD 빌더(순수 함수)
+│   │   ├── pageMetadata.ts       # 페이지 metadata 빌더(서버 전용): KO_LAYOUT_METADATA·articlePageMetadata·editionPageMetadata — 전체 페이지 라우트와 보관 지면 공용
+│   │   ├── archive.ts            # 보관 등급 규칙 단일 출처: ARCHIVE_WINDOW_DAYS(90)·isArchivedIssueDate(DB 최신 호 기준)·planArchive·보관 표지 메타
+│   │   ├── archivePage.ts        # 보관 지면 렌더러(순수 문자열 템플릿, locale 인자): 기사 ≤8KB·호 헤드라인 목록 ≤40KB, metadata→<head> 태그(metadataTags)
 │   │   ├── ogImage.tsx           # 공유 썸네일 렌더러(next/og + Google Fonts 정적 TTF)
 │   │   ├── paths.ts              # 프로젝트 경로 상수 (DB_PATH·EVAL_DIR 등)
 │   │   ├── auth.ts               # HMAC 서명 쿠키 인증
@@ -130,8 +133,8 @@
 │   ├── export-feed-index.ts      # public/feed-index/<언어>/ — 홈 전체 기사 색인 월별 조각 + manifest.json(색인 머리 포함, prebuild)
 │   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터, prebuild)
 │   ├── kpi.ts                    # KPI CLI (npm run kpi) + baseline 하위 명령(콘텐츠 개편 지표) + health(소스 헬스, --ci 는 collect.yml 요약)
-│   ├── postbuild.ts              # npm postbuild 훅(next build 직후): out/ 후처리 단계 목록(lib/postbuild.ts) — 지금은 기사 RSC index.txt 삭제, 멱등·out/ 없으면 실패
-│   ├── size-report.ts            # out/ 크기 보고(분류별·기사/호 페이지 평균·p90·무거운 쪽, --base 비교) — --ci 는 deploy.yml 검사(700MB 경고·950MB 실패, 기준값은 lib/sizeReport.ts)
+│   ├── postbuild.ts              # npm postbuild 훅(next build 직후): out/ 후처리 단계 목록(lib/postbuild.ts) — ① 기사 RSC index.txt 삭제 ② 보관 지면 쓰기(lib/archive.ts, 같은 빌드의 out/index.html 에서 CSS·폰트·사이트 주소를 읽는다 — lib/archiveAssets.ts), 멱등·out/ 없거나 보관 판정이 어긋나면 실패
+│   ├── size-report.ts            # out/ 크기 보고(분류별·기사/호 페이지 평균·p90·무거운 쪽, 보관 지면은 HTML 머리 표지로 따로, --base 비교) — --ci 는 deploy.yml 검사(700MB 경고·950MB 실패, 기준값은 lib/sizeReport.ts)
 │   └── lib/
 │       ├── schema.ts             # 선별·가공·재보도 출력 스키마(zod/v4), CATEGORIES 재수출(정의는 src/lib/labels.ts)
 │       ├── schema.sql            # SQLite DDL + FTS5 트리거
@@ -196,7 +199,7 @@
 3. **LLM 선별 → 가공 → 재보도 검사** — 선별 1회로 최대 `MAX_PICKS_PER_RUN`(35)건을 고르고 같은 사건을 묶고 중요도(1~5, 형식 안에서 상대 평가)를 매긴다. 선정 기사만 10건씩 묶어 한국어 제목·요약·분야·태그와 영어 제목·요약(같은 호출, 화면 미노출 — 영어판 Phase 1)을 생성한 뒤, 재보도 검사 1회로 새 전개 없는 재보도를 뺀다. 이어서 코드만으로(LLM 호출 없음) 오늘 게재 뉴스끼리 같은 사건을 다시 대조해, 선별이 묶지 못한 보도를 대표 기사의 `related`로 합치고, 최종 게재분의 영어를 코드로 검사해 기각된 기사는 영어만 비운다(한국어 게재는 그대로). 모든 호출은 Message Batches API(50% 할인, 시간 초과 시 일반 호출로 대체), 실행당 비용 상한 `MAX_COST_USD_PER_RUN`($0.1). 회차당 LLM 호출은 보통 6회(선별 1·가공 4·재보도 1). 선별 출력의 세 줄 요약(`brief`)은 합친 뒤 게재분·내용·수치를 코드로 대조해 남은 줄만 `collection_runs.brief_json`에 저장한다(별도 호출 없음, fail-open).
 4. **저장** — 선정 기사는 `articles`(+`related_json`: 묶인 다른 매체 보도)·`tags`/`article_tags`, 미선정·재보도 후보와 같은 사건으로 합쳐진 기사는 `seen_items`에 키만 기록. 실행 통계(`llm_calls`/토큰/비용/상태)와 notes(소스별 결과, `형식별 후보→풀→게재`, `할당 미달/초과`, `재보도 제외 N건`, `같은 사건 합침 N건`, `영어 가공 N/M건` 등)를 `collection_runs`에 1행 기록(notes 구분자 `; `). 공개 페이지는 가공을 마친 기사(`summary_ko IS NOT NULL`)만 노출한다.
 
-결과 `data/app.db`를 `deploy/github-pages`에 커밋하고 `deploy.yml`을 dispatch → `npm run build`(prebuild: `initDb --existing`(스키마·sources 동기화) → `export-search-index` → `export-feed-index`(언어별 호 월 조각) → `export-latest`) → `next build` → postbuild(`scripts/postbuild.ts`: 기사 `article/<id>/index.txt` 삭제) → `out/`을 GitHub Pages에 배포합니다.
+결과 `data/app.db`를 `deploy/github-pages`에 커밋하고 `deploy.yml`을 dispatch → `npm run build`(prebuild: `initDb --existing`(스키마·sources 동기화) → `export-search-index` → `export-feed-index`(언어별 호 월 조각) → `export-latest`) → `next build` → postbuild(`scripts/postbuild.ts`: 기사 `article/<id>/index.txt` 삭제 → 90일 지난 기사·호의 보관 지면 쓰기·확인) → `out/`을 GitHub Pages에 배포합니다.
 
 ### 호(issue)와 1면
 
@@ -205,21 +208,22 @@
 - **주간 레이더(일요일 호만, `buildWeeklyRadar` + `getWeekRadarCandidates`)** — 그 일요일로 끝나는 KST 월~일 7개 호의 비뉴스를 LLM 없이 집계한 상위 ≤10 순위표(1면 아래·섹션 밴드 위, 내비 "주간 레이더"). 같은 대상(owner/repo·org/model·arXiv ID·원제)은 한 번, 형식마다 2건 확보, 4건 미만이거나 한 호에서만 왔으면 숨긴다. 홈과 `/edition/<일요일>`이 같은 함수로 같은 밴드를 만든다.
 - 마스트헤드 '귀'는 이번 호 통계(`issueStats`: "이번 호 N건 · 매체 M곳" + 형식 구성), 발행이 늦으면 `IssueDelayNotice`가 "발행 전/발행 지연" 줄을 띄운다.
 - **세 줄 요약(`IssueBrief`, 마스트헤드 바로 아래 전폭 띠)** — 그 호 날짜 실행들의 `brief_json`(`getIssueBriefs`)에서 `selectIssueBrief`가 고른다: 이 호 공개 기사를 가리키는 줄만, 같은 날 재수집이면 1면 본문을 더 많이 덮는 후보(같으면 최신), 표시는 1면 위계 순(리드 줄이 첫 줄), 최대 3줄. 2줄 미만이면 띠를 숨긴다(이 기능 전 지난 호 전부). 홈·호 고정 링크 og:description(리드 줄 제외)과 `latest.json`의 `brief`도 같은 줄이다. 1면 슬롯 "오늘의 브리핑"(`Edition.briefs`)과는 다른 것.
+- **보관 지면(영어판 Phase 4-3, `src/lib/archive.ts`)** — 호 날짜가 **DB 최신 호보다 90일 이상 앞**인 기사·호(나이 0~89일은 전체 페이지, 벽시계가 아니라 DB 기준이라 같은 app.db 면 산출물이 같다 — 호 썸네일 창과 같은 셈)는 같은 주소에 가벼운 정적 HTML 로 낸다: 기사 ≤ 8KB(폴리오 "보관 지면 · 날짜 · 제N호"·제목·원제·바이라인·요약·원문 버튼·다른 매체 5곳까지·글자 태그·"이 호의 다른 기사 N건", 원문 발췌 없음), 호 ≤ 40KB(마스트헤드 축소판·세 줄 요약·분야별 헤드라인 목록 + "1면" 표시·호 이동). RSC·`_next` 스크립트 없이 공유 CSS·테마 스크립트·GoatCounter 한 줄만. 상세·호 라우트의 `generateStaticParams`가 `getArchivePlan()`으로 보관 대상을 빼고, `npm run build`의 postbuild(`scripts/lib/archive.ts`)가 같은 계획으로 보관 지면을 쓴 뒤 둘이 맞는지 확인한다(어긋나면 빌드 실패). 보관 호로 가는 링크는 일반 `<a>`(`EditionPager`·`loadEdition`의 `archived`), 기사 링크는 원래 `ArticleLink`. 사이트맵·검색 색인은 모든 주소를 그대로 싣는다. 출시 전 대량 수집 호 3개(06-09·07-07·10-06, 약 67~76KB)는 예산 예외. 시안 `docs/design/mockups/archive-article.html`·`archive-edition.html`. 2026-11 기준 06-07·06-09·07-07 호와 그 317건이 이미 보관이고 나머지는 2027-01 부터 차례로 넘어간다.
 - **지면 렌더와 페이로드(영어판 Phase 4-1)** — 지면 밴드를 서버 컴포넌트로 그리면 렌더 트리가 RSC 페이로드(`index.txt` + HTML 인라인 두 벌)에 통째로 실린다. 그래서 호 고정 링크는 1면·주간 레이더·섹션 밴드·이 호의 기사를 클라이언트 섬 `EditionBody` 하나로 그리고, 서버는 `buildEdition` 결과를 `packEdition`으로 넘긴다(매체 표 + 색인 조각과 같은 행 인코딩 + 슬롯별 id, 레이더만 URL·메트릭, 태그·원제·묶인 보도 목록 없음). 홈은 Suspense fallback(`FeedFallback`)도 클라이언트 컴포넌트라 FeedClient 와 같은 props 객체를 React Flight 가 한 번만 싣는다. 정적 HTML 은 같은 컴포넌트의 SSR 이라 그대로다 — 섬 안 컴포넌트(Edition·Story·StoryIndex)에 서버 전용 import(db·fs)를 넣지 않는다.
 
 ### 라우트 & 렌더링
 
-| 경로                                                                | 페이지                    | 렌더링 / 접근                    | 배포 포함    |
-| ------------------------------------------------------------------- | ------------------------- | -------------------------------- | ------------ |
-| `/`                                                                 | 홈(최신 호 지면 + 색인)   | SSG(빌드타임) + 클라 필터 · 공개 | ✅           |
-| `/article/[id]`                                                     | 상세                      | SSG(generateStaticParams) · 공개 | ✅           |
-| `/search`                                                           | 검색                      | 정적 셸 + 클라이언트 검색 · 공개 | ✅           |
-| `/edition/[date]`                                                   | 호 고정 링크(지난 호)     | SSG(generateStaticParams) · 공개 | ✅           |
-| `/og/edition/[date].png`, `/og/article/[id].png`, `/og/default.png` | 공유 썸네일(og:image)     | 빌드타임 정적 PNG · 공개         | ✅           |
-| `/sitemap.xml`, `/feed.xml`                                         | 사이트맵 / RSS            | 빌드타임 정적 XML · 공개         | ✅           |
-| `/admin`                                                            | 운영 콘솔                 | 로컬 전용(`next dev`) · 인증     | ❌ 배포 제외 |
-| `/api/admin/sources`, `/api/admin/collect`                          | 소스 커밋 / 재수집 트리거 | 로컬 전용                        | ❌ 배포 제외 |
-| `/api/health`                                                       | 헬스체크                  | 로컬 전용                        | ❌ 배포 제외 |
+| 경로                                                                | 페이지                    | 렌더링 / 접근                                                           | 배포 포함    |
+| ------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------- | ------------ |
+| `/`                                                                 | 홈(최신 호 지면 + 색인)   | SSG(빌드타임) + 클라 필터 · 공개                                        | ✅           |
+| `/article/[id]`                                                     | 상세                      | SSG(generateStaticParams) · 공개 — 90일 지난 기사는 postbuild 보관 지면 | ✅           |
+| `/search`                                                           | 검색                      | 정적 셸 + 클라이언트 검색 · 공개                                        | ✅           |
+| `/edition/[date]`                                                   | 호 고정 링크(지난 호)     | SSG(generateStaticParams) · 공개 — 90일 지난 호는 postbuild 보관 지면   | ✅           |
+| `/og/edition/[date].png`, `/og/article/[id].png`, `/og/default.png` | 공유 썸네일(og:image)     | 빌드타임 정적 PNG · 공개                                                | ✅           |
+| `/sitemap.xml`, `/feed.xml`                                         | 사이트맵 / RSS            | 빌드타임 정적 XML · 공개                                                | ✅           |
+| `/admin`                                                            | 운영 콘솔                 | 로컬 전용(`next dev`) · 인증                                            | ❌ 배포 제외 |
+| `/api/admin/sources`, `/api/admin/collect`                          | 소스 커밋 / 재수집 트리거 | 로컬 전용                                                               | ❌ 배포 제외 |
+| `/api/health`                                                       | 헬스체크                  | 로컬 전용                                                               | ❌ 배포 제외 |
 
 URL 필터: `?category=<분야 키>`(예: `physical`, 구 값 `Language%20Models`도 받아 줌)·`?source=`·`?tag=`·`?sort=`. 필터가 있으면 지면을 생략하고 결과 목록만 보인다.
 
@@ -262,7 +266,7 @@ npm run dev       # http://localhost:3000 (export·basePath 미적용, admin/api
 ### 빌드
 
 ```bash
-npm run build     # prebuild(initDb --existing·검색 인덱스·latest.json) → 정적 export out/ → postbuild(기사 RSC .txt 삭제)
+npm run build     # prebuild(initDb --existing·검색 인덱스·latest.json) → 정적 export out/ → postbuild(기사 RSC .txt 삭제·보관 지면)
 npm run size:report -- [out] [--base <기준 out>]  # 산출물 크기 표(분류별·페이지 평균 대 예산 기사 40KB·호 150KB), --base 로 경량화 전후 비교, --json
 ```
 
@@ -420,7 +424,8 @@ npx shadcn@latest add card dialog input
 - 분야·형식 키/표시명은 `src/lib/labels.ts`, 분야 정의는 `configs/prompts/categories.md`에서만 관리
 - 화면 문구는 `src/lib/messages/<영역>.ts`(`defineMessages({ ko, en })`)에만 둔다 — 컴포넌트·뷰에 한글을 직접 쓰면 `noHardcodedHangul.test.ts`가 실패한다. 서버 컴포넌트는 `locale` prop, 클라이언트 컴포넌트는 `useLocale()`·`useMessages()`, 내부 링크는 `localePath(locale, …)`
 - 공개 페이지 무게(Phase 4-1): 모든 페이지에 반복되는 클라이언트 조각은 섬 하나로 묶는다(셸 = `ShellChrome`) — 클라이언트 컴포넌트마다 RSC 에 모듈 참조 행(약 270B)이 붙고, 서버 컴포넌트의 렌더 트리는 RSC 에 통째로 실린다. 반복 목록을 서버에서 그릴지 섬에 값으로 넘길지는 RSC 크기로 고른다(`RelatedStories`)
-- 기사 페이지 링크는 `ArticleLink`(일반 `<a>`, prefetch 없음 — `next/link`·`router` 로 기사에 가지 않는다) — 기사 `.txt` 는 빌드 후 지운다(`scripts/postbuild.ts`). `ArticleLink.test.tsx`가 `/article/` 내부 경로를 직접 만드는 코드를 막는다
+- 기사 페이지 링크는 `ArticleLink`(일반 `<a>`, prefetch 없음 — `next/link`·`router` 로 기사에 가지 않는다) — 기사 `.txt` 는 빌드 후 지운다(`scripts/postbuild.ts`). `ArticleLink.test.tsx`가 `/article/` 내부 경로를 직접 만드는 코드를 막는다. 호 링크를 새로 그릴 때는 보관 호(`isArchivedIssueDate`)면 일반 `<a>`(`BASE_PATH` + 경로)로 — 보관 지면에는 `.txt` 가 없다
+- 보관 지면(`src/lib/archivePage.ts`)은 Tailwind 유틸리티를 쓰지 않고 `@layer components` 클래스만 쓴다(globals.css 끝 "보관 지면" 블록) — `archivePage.test.ts`가 검사
 - 런타임 경로 상수는 `src/lib/paths.ts`, 설정 파일은 `configs/`에서 관리
 - DB 조회는 `src/lib/db.ts`를 통해 readonly로 접근
 - 환경 변수는 `.env.local` 사용 (git에 커밋하지 않음)

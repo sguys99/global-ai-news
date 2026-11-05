@@ -11,6 +11,7 @@ import {
   runPostbuild,
   type PostbuildStep,
 } from "../../scripts/lib/postbuild";
+import { archiveStep } from "../../scripts/lib/archive";
 
 let out: string;
 
@@ -120,11 +121,28 @@ describe("runPostbuild", () => {
     );
   });
 
-  it("기본 단계 목록의 첫 단계가 기사 RSC 삭제다(Phase 4-3 라이트 페이지가 뒤에 붙는다)", () => {
+  it("기본 단계 목록: 기사 RSC 삭제 → 보관 지면(Phase 4-3)", () => {
     fixture();
+    expect(POSTBUILD_STEPS.map((s) => s.name)).toEqual(["기사 RSC(.txt) 삭제", "보관 지면"]);
     expect(POSTBUILD_STEPS[0].run).toBe(removeArticleRsc);
-    const report = runPostbuild(out);
-    expect(report.steps[0]).toMatchObject({ files: 3, bytes: 18 });
-    expect(runPostbuild(out).steps[0]).toMatchObject({ files: 0, bytes: 0 });
+    expect(POSTBUILD_STEPS[1].run).toBe(archiveStep);
+    // 보관 지면 단계는 DB·같은 빌드의 out/index.html 이 필요하다(archiveWrite.test.ts) — 여기서는 첫 단계만 돌린다.
+    const first = [POSTBUILD_STEPS[0]];
+    expect(runPostbuild(out, first).steps[0]).toMatchObject({ files: 3, bytes: 18 });
+    expect(runPostbuild(out, first).steps[0]).toMatchObject({ files: 0, bytes: 0 });
+  });
+
+  it("쓰는 단계는 +바이트와 설명을 요약에 붙인다", () => {
+    fixture();
+    const report = runPostbuild(out, [
+      { name: "rsc", run: () => ({ files: 2, bytes: 2_000_000 }) },
+      {
+        name: "보관 지면",
+        run: () => ({ files: 3, bytes: 0, addedBytes: 1_250_000, detail: "기사 2·호 1" }),
+      },
+    ]);
+    expect(formatPostbuildSummary(report)).toBe(
+      "postbuild: rsc 2개 −2.00 MB · 보관 지면 3개 +1.25 MB(기사 2·호 1) (합계 5개 −2.00 MB +1.25 MB)",
+    );
   });
 });

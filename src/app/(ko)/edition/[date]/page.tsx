@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { getEditionRefs, getLatestEditionRef } from "@/lib/db";
-import { formatLongDate } from "@/lib/labels";
-import { SITE_NAME, editionMetadata, editionPath } from "@/lib/site";
+import { getArchivePlan, getLatestEditionRef } from "@/lib/db";
+import { editionPageMetadata } from "@/lib/pageMetadata";
 import { EditionView } from "@/views/EditionView";
 import { loadEdition } from "@/views/data";
 
@@ -11,7 +10,8 @@ import { loadEdition } from "@/views/data";
  * 이 라우트는 경로 목록·메타만 두고 본문은 src/views/EditionView.tsx(언어판 공용).
  */
 export function generateStaticParams() {
-  return getEditionRefs().map((ref) => ({ date: ref.date }));
+  // 보관 호(최신 호보다 90일 이상 앞, src/lib/archive.ts)는 빌드 후처리가 가벼운 보관 지면으로 쓴다.
+  return getArchivePlan().liveEditionDates.map((date) => ({ date }));
 }
 
 /** 목록 밖 날짜는 산출물에 없어 정적 404. */
@@ -23,16 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = loadEdition("ko", (await params).date);
   if (!data) return {};
   const { ref, edition, brief } = data;
-  return {
-    title: `${formatLongDate(ref.publishedAt)} AI 뉴스 브리핑 제${ref.issueNo}호 — ${SITE_NAME}`,
-    ...editionMetadata(
-      edition,
-      ref,
-      editionPath(ref.date),
-      getLatestEditionRef()?.date ?? null,
-      brief,
-    ),
-  };
+  return editionPageMetadata(ref, edition, getLatestEditionRef()?.date ?? null, brief);
 }
 
 export default async function EditionPage({ params }: Props) {

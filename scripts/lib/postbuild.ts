@@ -1,19 +1,23 @@
 /**
  * 정적 export 후처리(`npm run build` 직후 npm `postbuild` 훅 → scripts/postbuild.ts) — 순수 로직·단계 목록.
  *
- * 단계는 **순서 있는 목록**(`POSTBUILD_STEPS`)이다. 지금은 하나뿐이고, 보관 등급(english-version-plan Phase 4-3:
- * 90일 지난 기사·호의 라이트 페이지)이 같은 목록에 단계를 더한다. 단계마다 지운·바꾼 파일 수와 바이트를 돌려준다.
+ * 단계는 **순서 있는 목록**(`POSTBUILD_STEPS`)이다: ① 기사 RSC(.txt) 삭제(Phase 4-1) ② 보관 지면 쓰기(Phase 4-3 —
+ * 90일 지난 기사·호의 가벼운 정적 HTML, scripts/lib/archive.ts). 단계마다 지운·쓴 파일 수와 바이트를 돌려준다.
  * 모든 단계는 멱등이어야 한다 — 같은 out/ 에 두 번 돌려도 결과가 같고, 두 번째는 0건이다.
  *
  * deploy.yml·Dockerfile·html-regress(Docker 빌드)는 모두 `npm run build` 를 거치므로 이 후처리를 함께 탄다.
  */
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
+import { archiveStep } from "./archive";
 
-/** 한 단계의 결과 — 지운(또는 바꾼) 파일 수와 줄어든 바이트. */
+/** 한 단계의 결과 — 지운(또는 쓴) 파일 수와 줄어든 바이트(`bytes`)·늘어난 바이트(`addedBytes`, 쓰는 단계). */
 export interface StepResult {
   files: number;
   bytes: number;
+  addedBytes?: number;
+  /** 요약 줄에 덧붙일 짧은 설명(예: 보관 지면 "기사 317·호 3"). */
+  detail?: string;
 }
 
 export interface PostbuildStep {
@@ -65,6 +69,7 @@ export function removeArticleRsc(outDir: string): StepResult {
 /** 후처리 단계 — 순서대로 돈다. */
 export const POSTBUILD_STEPS: readonly PostbuildStep[] = [
   { name: "기사 RSC(.txt) 삭제", run: removeArticleRsc },
+  { name: "보관 지면", run: archiveStep },
 ];
 
 export interface PostbuildReport {
@@ -92,14 +97,23 @@ export function runPostbuild(
   return { outDir, steps: steps.map((s) => ({ name: s.name, ...s.run(outDir) })) };
 }
 
-/** 한 줄 요약: `postbuild: 기사 RSC(.txt) 삭제 1,277개 −31.29 MB (합계 1,277개 −31.29 MB)`. */
+/** 한 줄 요약: `postbuild: 기사 RSC(.txt) 삭제 1,277개 −31.29 MB · 보관 지면 320개 +2.31 MB(기사 317·호 3) (합계 …)`. */
 export function formatPostbuildSummary(report: PostbuildReport): string {
   const mb = (b: number) => `${(b / 1_000_000).toFixed(2)} MB`;
   const n = (x: number) => x.toLocaleString("en-US");
   const total = report.steps.reduce(
-    (acc, s) => ({ files: acc.files + s.files, bytes: acc.bytes + s.bytes }),
-    { files: 0, bytes: 0 },
+    (acc, s) => ({
+      files: acc.files + s.files,
+      bytes: acc.bytes + s.bytes,
+      added: acc.added + (s.addedBytes ?? 0),
+    }),
+    { files: 0, bytes: 0, added: 0 },
   );
-  const parts = report.steps.map((s) => `${s.name} ${n(s.files)}개 −${mb(s.bytes)}`);
-  return `postbuild: ${parts.join(" · ")} (합계 ${n(total.files)}개 −${mb(total.bytes)})`;
+  const sizes = (removed: number, added: number) =>
+    added > 0 ? `${removed > 0 ? `−${mb(removed)} ` : ""}+${mb(added)}` : `−${mb(removed)}`;
+  const parts = report.steps.map(
+    (s) =>
+      `${s.name} ${n(s.files)}개 ${sizes(s.bytes, s.addedBytes ?? 0)}${s.detail ? `(${s.detail})` : ""}`,
+  );
+  return `postbuild: ${parts.join(" · ")} (합계 ${n(total.files)}개 ${sizes(total.bytes, total.added)})`;
 }

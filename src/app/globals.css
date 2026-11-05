@@ -643,3 +643,224 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * ───────────────────────────── 보관 지면 (english-version-plan Phase 4-3) ─────────────────────────────
+ * 90일 지난 기사·호의 가벼운 정적 HTML(src/lib/archivePage.ts, 빌드 후처리 scripts/lib/archive.ts) 전용 컴포넌트 클래스.
+ * 시안: docs/design/mockups/archive-article.html · archive-edition.html. 보관 지면은 Tailwind 유틸리티를 쓰지 않고
+ * 이 블록과 기존 컴포넌트 클래스(sg-*·ar-h1·ar-sum·ed-br·ed-ear…)만 쓴다 — `@layer components` 규칙은 사용처 스캔과 무관하게
+ * 늘 컴파일되지만 유틸리티는 다른 화면에서 빠지는 순간 사라진다. 이름 규칙은 위 블록과 같다(`<영역>-<부분>`).
+ *   셸: 얇은 머리 띠(sh-lh·sh-ln, 클라이언트 메뉴·테마 버튼 없음) + 짧은 푸터(sh-lf). 하단 탭 바가 없어 sh-body 대신 sh-lb.
+ *   기사: ar-lt 본문 · ar-fo 폴리오 · ar-go 원문 버튼(모든 폭에서 본문 흐름 안) · ar-cv 다른 매체 · ar-tg 글자 태그 · ar-nx 이 호로.
+ *   호: ed-lt 본문 · ed-lm 마스트헤드 축소판 · ed-lg/ed-ll/ed-lr 분야별 헤드라인 목록(subgrid 바이라인 칸) · ed-pg 호 이동.
+ */
+@layer components {
+  /* ── sh- 보관 셸 ── */
+  .sh-lb {
+    @apply bg-background text-foreground flex flex-col antialiased;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  .sh-lh {
+    @apply border-border border-b;
+  }
+  .sh-lh > div {
+    @apply mx-auto flex h-13 max-w-[1240px] items-center px-4 md:px-8;
+  }
+  /* 머리 띠 워드마크 — sh-wm 의 크기만 줄인다(줄 높이는 sh-wm 그대로) */
+  .sh-lh .sh-wm {
+    @apply mr-auto text-[1.125rem] md:text-xl;
+  }
+  .sh-ln {
+    @apply text-caption text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex min-h-11 items-center px-2.5 font-semibold outline-none last:pr-0 focus-visible:ring-2 md:min-h-0 md:py-1;
+  }
+  .sh-lf {
+    @apply border-rule mt-auto border-t-4;
+  }
+  .sh-lf > div {
+    @apply mx-auto flex max-w-[1240px] flex-wrap items-baseline gap-x-5 gap-y-2 px-4 pt-6 pb-9 md:px-8;
+  }
+  .sh-lf-np {
+    @apply font-serif text-2xl leading-none font-extrabold tracking-[-0.045em] whitespace-nowrap;
+  }
+  .sh-lf p {
+    @apply text-caption text-foreground-soft;
+  }
+  .sh-lf small {
+    @apply text-label text-muted-foreground basis-full md:ml-auto md:basis-auto;
+  }
+
+  /* ── ar- 보관 기사 ── */
+  .ar-lt {
+    @apply mx-auto flex w-full max-w-[720px] flex-col px-4 pt-5 pb-14 md:px-6 md:pt-9 md:pb-18;
+  }
+  /* 폴리오: "보관 지면 · 날짜(호 링크) · 제N호" + 2px 잉크 괘선 — 마스트헤드 폴리오의 축소판 */
+  .ar-fo {
+    @apply border-rule text-meta text-muted-foreground flex flex-wrap items-center gap-x-3.5 gap-y-1 border-b-2 pb-2.5 tabular-nums;
+  }
+  .ar-fo > b,
+  .ed-lm-f > b {
+    @apply text-foreground font-bold tracking-[0.02em];
+  }
+  .ar-hd {
+    @apply flex flex-col gap-3.5 pt-6 md:pt-8;
+  }
+  .ar-hd .sg-by {
+    @apply mt-0.5;
+  }
+  /* 원제 — lang 은 실제 언어로(한국 매체는 한국어) */
+  .ar-ot {
+    @apply text-caption text-muted-foreground;
+  }
+  .ar-sm {
+    @apply mt-8 flex flex-col gap-3;
+  }
+  /* 원문 버튼 — 잉크 채움 pill. 전체 상세의 ar-cta(모바일 숨김 + 고정 바)와 달리 모든 폭에서 요약 바로 아래 */
+  .ar-go {
+    @apply bg-primary text-primary-foreground rounded-pill text-caption focus-visible:ring-ring mt-7 inline-flex min-h-12 items-center gap-2 self-start px-6 font-semibold transition-opacity outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2;
+  }
+  .ar-go .ic {
+    @apply size-4;
+  }
+  /* 같은 소식, 다른 매체 — ar-sect·ar-li·ar-cov 재사용 */
+  .ar-cv {
+    @apply gap-1;
+  }
+  .ar-cv > h2 {
+    @apply mb-2;
+  }
+  .ar-cov-h {
+    @apply text-caption min-w-0 flex-1;
+  }
+  /* 6곳 이상이면 5곳만 링크하고 나머지는 셈만 */
+  .ar-cv-m {
+    @apply text-meta text-muted-foreground py-2.5;
+  }
+  /* 태그 — 알약 대신 글자 링크(모바일 44px 행) */
+  .ar-tg {
+    @apply mt-6 flex flex-wrap gap-x-4;
+  }
+  .ar-tg > a {
+    @apply text-meta text-foreground-soft hover:text-brand focus-visible:ring-ring inline-flex min-h-11 items-center outline-none focus-visible:ring-2 md:min-h-8;
+  }
+  /* 이 호로 가는 한 줄 — 호 이동(ed-pg-a)과 같은 부품, 2px 괘선 위 */
+  .ar-nx {
+    @apply border-rule mt-12 border-t-2 pt-4;
+  }
+
+  /* ── ed- 보관 호 ── */
+  .ed-lt {
+    @apply mx-auto flex w-full max-w-[1240px] flex-col gap-10 px-4 pb-14 md:gap-12 md:px-8 md:pb-18;
+  }
+  /* 마스트헤드 축소판: 폴리오 → [날짜 h1 | 귀] → 4px+1px 이중 괘선 */
+  .ed-lm {
+    @apply pt-5 md:pt-7;
+  }
+  .ed-lm-f {
+    @apply text-meta text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 tabular-nums;
+  }
+  .ed-lm-f > :last-child {
+    @apply ml-auto hidden md:inline;
+  }
+  .ed-lm-r {
+    @apply mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between md:gap-8;
+  }
+  .ed-lm-h {
+    @apply text-display-lg font-serif font-extrabold;
+  }
+  .ed-dbl {
+    @apply border-rule mt-4 h-1.5 border-t-4 border-b md:mt-5;
+  }
+  /* 귀 보조 — Masthead IssueEar 의 유틸리티 묶음과 같은 값 */
+  .ed-ear-l {
+    @apply text-label hidden font-semibold md:block;
+  }
+  .ed-ear-m {
+    @apply text-foreground font-bold md:hidden;
+  }
+  .ed-ear-f {
+    @apply flex flex-wrap gap-x-1 md:mt-0.5;
+  }
+  .ed-ear-f > i {
+    @apply not-italic opacity-60;
+  }
+  /* 세 줄 요약 머리·목록 — IssueBrief 의 유틸리티 묶음과 같은 값 */
+  .ed-br-hd {
+    @apply flex items-baseline gap-x-2 md:flex-col md:gap-y-1 md:pt-[3px];
+  }
+  .ed-br-hd > h2 {
+    @apply font-serif text-[1.0625rem] leading-none font-extrabold tracking-[-0.03em];
+  }
+  .ed-br-hd > span,
+  .ed-br-hd > i {
+    @apply text-label text-muted-foreground not-italic;
+  }
+  .ed-br-hd > i {
+    @apply md:hidden;
+  }
+  .ed-br-ol {
+    @apply mt-1.5 md:mt-0 md:flex md:flex-col md:gap-y-2;
+  }
+  .ed-br-ol > li + li {
+    @apply border-border border-t md:border-t-0;
+  }
+  /* 헤드라인 목록: 분야 묶음 [분야 칸 | 목록], 묶음 사이 1px 잉크 괘선, 행 사이 헤어라인 */
+  .ed-lg {
+    @apply border-rule grid gap-y-1 border-t pt-3.5 pb-6 md:grid-cols-[9.5rem_minmax(0,1fr)] md:gap-x-8 md:pb-7 lg:grid-cols-[11rem_minmax(0,1fr)];
+  }
+  .ed-lg-hd {
+    @apply flex items-baseline gap-2 md:flex-col md:gap-1;
+  }
+  .ed-lg-hd > h3 {
+    @apply font-serif text-xl leading-[1.3] font-extrabold tracking-[-0.04em];
+  }
+  /* 바이라인 칸 최소 폭을 묶음마다 같게 — 묶음이 바뀌어도 매체 열이 한 x 에서 시작한다(md 이상) */
+  .ed-ll {
+    @apply grid grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_minmax(15rem,auto)] md:gap-x-8;
+  }
+  .ed-ll > li {
+    @apply col-span-full grid grid-cols-subgrid;
+  }
+  .ed-ll > li + li {
+    @apply border-border border-t;
+  }
+  .ed-lr {
+    @apply focus-visible:ring-ring col-span-full grid min-h-11 grid-cols-subgrid items-baseline gap-y-1 py-2.5 outline-none focus-visible:ring-2 md:py-[0.6875rem];
+  }
+  .ed-lr-h {
+    @apply md:text-title font-serif text-[0.9375rem] leading-[1.45] font-bold tracking-[-0.03em] text-pretty md:leading-[1.5];
+  }
+  .ed-lr-h > .sg-badge {
+    @apply mr-2 align-[0.0625rem];
+  }
+  .ed-lr .sg-by {
+    @apply md:flex-nowrap md:whitespace-nowrap;
+  }
+  /* 1면 게재 표지 — 잉크 굵은 라벨(코발트 금지: 강조는 키커·순위 몫) */
+  .ed-lr-f {
+    @apply text-foreground text-label font-bold tracking-[0.02em];
+  }
+  /* 호 이동 — EditionPager 와 같은 값. 보관 기사 끝 ar-nx 도 같은 부품 */
+  .ed-pg {
+    @apply border-rule grid grid-cols-2 gap-6 border-t-2 pt-4;
+  }
+  .ed-pg-a {
+    @apply focus-visible:ring-ring flex min-h-11 flex-col items-start gap-1 outline-none focus-visible:ring-2;
+  }
+  .ed-pg-a + .ed-pg-a,
+  .ed-pg-n {
+    @apply col-start-2 items-end text-right;
+  }
+  .ed-pg-l {
+    @apply text-meta text-muted-foreground font-semibold;
+  }
+  .ed-pg-h {
+    @apply font-serif text-xl font-extrabold tracking-[-0.03em] transition-colors;
+  }
+  .ed-pg-a:hover .ed-pg-h {
+    @apply text-brand;
+  }
+  .ed-pg-d {
+    @apply text-caption text-foreground-soft tabular-nums;
+  }
+}
