@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>시안 · 보관 호 (Phase 4-3)</title>
+<!--
+  시안 · Phase 4-3 보관 등급 — 호
+  (english-version-plan.md 4-3: 게재 90일이 지난 기사 ≤ 8KB · 호 ≤ 40KB 정적 HTML, RSC·_next 스크립트 없음, 같은 URL·자기 canonical)
+
+  이 파일은 홀로 그려지도록 CSS 를 인라인했다. 프로덕션 보관 페이지는 <body> 마크업은 아래와 같고(주석·시안 크롬 제외),
+  <head> 는 다음과 같다 — 공유 CSS 는 생성기가 같은 빌드의 전체 페이지 하나에서 href·<html class> 를 읽어 온다:
+
+  <html lang="ko" class="__variable_33a67b __variable_96ca31">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>2026년 11월 4일 수요일 AI 뉴스 브리핑 제141호 — AI Daybook</title>
+  <meta name="description" content="글로벌·한국 AI 뉴스·오픈소스·모델·논문을 매일 아침 한국어로 요약하는 데일리 브리핑. Daily AI news, open source, models and papers, summarized every morning.">
+  <link rel="canonical" href="https://sguys99.github.io/global-ai-news/edition/2026-11-04/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="OpenAI, GPT-6 Astra로 하드웨어 기기 설계를 1주일 내 완성">
+  <meta property="og:description" content="AI Daybook 11월 4일(수) 제141호 — Fal, AI 추론 스타트업으로 밸류에이션 160억 달러 달성 · CoworkOS, 실제 자동화를 위한 에이전트 협업 프레임워크 공개">
+  <meta property="og:url" content="https://sguys99.github.io/global-ai-news/edition/2026-11-04/">
+  <meta property="og:site_name" content="AI Daybook">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:image" content="https://sguys99.github.io/global-ai-news/og/default.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="600">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f4f1">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1118">
+  <link rel="icon" href="/global-ai-news/favicon.ico" sizes="16x16">
+  <link rel="icon" href="/global-ai-news/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/global-ai-news/apple-icon.png">
+  <link rel="alternate" type="application/rss+xml" title="AI Daybook" href="https://sguys99.github.io/global-ai-news/feed.xml">
+  <link rel="preload" href="/global-ai-news/_next/static/media/ff840cfebfb63b0c-s.p.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/global-ai-news/_next/static/css/3ad5445a001bfb5f.css"><link rel="stylesheet" href="/global-ai-news/_next/static/css/3c6fbe3f8c5c3eee.css">
+  <script>try{var t=localStorage.getItem("theme");if(t=="dark"||t=="system"&&matchMedia("(prefers-color-scheme: dark)").matches){var d=document.documentElement;d.classList.add("dark");d.style.colorScheme="dark"}}catch(e){}</script>
+  <body class="sh-lb"> … </body>
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+@font-face { font-family: "Pretendard Variable"; src: url("../../../public/fonts/PretendardVariable.woff2") format("woff2"); font-weight: 45 920; font-display: swap; }
+/* ─────────────────────────────────────────────────────────────────────────────
+   [A] 기존 자산의 사본 — 실제 페이지는 이 블록을 싣지 않는다.
+   프로덕션 보관 페이지는 같은 빌드의 공유 CSS 두 장(_next/static/css/<폰트>.css · <tailwind>.css)을
+   <link> 로 걸고, <html class="__variable_… __variable_…"> 로 폰트 변수를 받는다. 아래는 그 CSS 가
+   이미 갖고 있는 것(토큰·preflight·base·컴포넌트 클래스)을 시안이 홀로 그려지도록 옮긴 것이다.
+   재사용 클래스: sh-wm · sg-kick · sg-badge · sg-imp · sg-dot · sg-em · sg-oth · sg-by · st-hd · sr-only · ic
+                 ar-h1 · ar-lbl · ar-sum · ar-sect · ar-h · ar-li · ar-cov · ar-cov-s
+                 ed-plink · ed-br · ed-br-a · ed-br-n · ed-br-h · ed-ear · ed-ear-n · ed-ear-u · ed-bh · ed-bh-h · ed-cnt
+                 story-link(@utility) · headline(표지 클래스) · text-brand(유틸리티 — 워드마크의 "AI")
+   ───────────────────────────────────────────────────────────────────────────── */
+:root {
+  --background: #f4f4f1; --foreground: #141519; --foreground-soft: #3a3c43; --card: #fbfbf9;
+  --primary: #141519; --primary-foreground: #f4f4f1; --muted: #eaeae5; --muted-foreground: #66686f;
+  --brand: #2140e8; --border: #d8d8d2; --input: #c9c9c2; --rule: #141519; --ring: #2140e8;
+  --font-hahmlet: "Hahmlet"; --font-pretendard: "Pretendard Variable"; /* next/font 가 <html class> 로 주는 변수의 대역 */
+}
+.dark {
+  --background: #0f1118; --foreground: #eceae4; --foreground-soft: #bcbbb5; --card: #151823;
+  --primary: #eceae4; --primary-foreground: #0f1118; --muted: #1c1f2b; --muted-foreground: #8d8f9a;
+  --brand: #93a3ff; --border: #2a2d39; --input: #3a3e4d; --rule: #eceae4; --ring: #93a3ff;
+  color-scheme: dark;
+}
+/* preflight + base (globals.css @layer base) */
+*, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; border: 0 solid var(--border); }
+html { -webkit-text-size-adjust: 100%; line-height: 1.5; font-family: var(--font-sans); }
+body { background: var(--background); color: var(--foreground); font-family: var(--font-sans); letter-spacing: -0.01em; word-break: keep-all; overflow-wrap: anywhere; }
+a { color: inherit; text-decoration: inherit; }
+ol, ul { list-style: none; }
+h1, h2, h3, p { font-size: inherit; font-weight: inherit; }
+h1, h2, h3 { text-wrap: balance; }
+b { font-weight: bolder; }
+svg { display: block; vertical-align: middle; }
+::selection { background: var(--brand); color: #fff; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border-width: 0; }
+.ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.text-brand { color: var(--brand); }
+@keyframes rise { from { opacity: 0.001; transform: translateY(10px); } }
+@keyframes draw { from { transform: scaleX(0.001); } }
+
+/* story-link: 카드 링크 hover — 제목(.headline)만 코발트 */
+.story-link .headline { transition: color 0.15s ease-out; }
+.story-link:hover .headline { color: var(--brand); }
+
+/* sh- 셸 */
+.sh-wm { font-family: var(--font-serif); font-size: 1.25rem; line-height: 1.4; font-weight: 800; letter-spacing: -0.045em; white-space: nowrap; }
+
+/* sg- 신호 */
+.sg-kick { font-size: 0.8125rem; line-height: 1.4; color: var(--brand); font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+.sg-badge { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; height: 17px; padding: 1px 5px 0; border: 1px solid var(--foreground); color: var(--foreground); font-family: var(--font-sans); font-size: 0.65625rem; line-height: 1; font-weight: 700; letter-spacing: 0.09em; white-space: nowrap; }
+.sg-imp { display: inline-flex; align-items: center; gap: 3px; }
+.sg-imp > i { width: 0.375rem; height: 0.375rem; border-radius: 9999px; border: 1px solid color-mix(in oklab, var(--muted-foreground) 80%, transparent); }
+.sg-imp[data-v="1"] > i:first-child, .sg-imp[data-v="2"] > i:nth-child(-n + 2), .sg-imp[data-v="3"] > i:nth-child(-n + 3) { border-color: var(--foreground); background: var(--foreground); }
+.sg-imp[data-v="4"] > i:nth-child(-n + 4), .sg-imp[data-v="5"] > i { border-color: var(--brand); background: var(--brand); }
+.sg-dot { width: 0.125rem; height: 0.125rem; flex-shrink: 0; border-radius: 9999px; background: currentColor; }
+.sg-em { color: var(--foreground-soft); font-weight: 600; }
+.sg-oth { color: var(--muted-foreground); font-weight: 400; }
+.sg-by { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.625rem; font-size: 0.8125rem; line-height: 1.4; color: var(--muted-foreground); }
+.st-hd { display: flex; min-width: 0; align-items: center; gap: 0.5rem; }
+
+/* ar- 기사 상세 */
+.ar-h1 { font-family: var(--font-serif); font-size: clamp(1.875rem, 3.6vw, 2.75rem); line-height: 1.2; letter-spacing: -0.04em; font-weight: 800; animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.ar-lbl { font-size: 0.75rem; line-height: 1.3; color: var(--brand); font-weight: 700; letter-spacing: 0.04em; }
+.ar-sum { font-size: 1.1875rem; line-height: 1.7; }
+.ar-sect { margin-top: 2.25rem; display: flex; flex-direction: column; border-top: 1px solid var(--border); padding-top: 1.75rem; }
+.ar-h { font-size: 0.75rem; line-height: 1.3; color: var(--muted-foreground); font-weight: 700; letter-spacing: 0.04em; }
+.ar-li { border-bottom: 1px solid var(--border); }
+.ar-li:last-child { border-bottom-width: 0; }
+.ar-cov { display: flex; min-height: 2.75rem; align-items: baseline; gap: 0.75rem; padding: 0.625rem 0; outline: none; }
+.ar-cov:focus-visible { box-shadow: 0 0 0 2px var(--ring); }
+.ar-cov-s { width: 6rem; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8125rem; line-height: 1.4; color: var(--foreground-soft); font-weight: 600; }
+
+/* ed- 지면 */
+.ed-plink { display: inline-flex; min-height: 2.75rem; margin: -0.75rem 0; align-items: center; color: var(--foreground); font-weight: 600; text-underline-offset: 4px; outline: none; }
+.ed-plink:hover { text-decoration-line: underline; }
+.ed-plink:focus-visible { box-shadow: 0 0 0 2px var(--ring); }
+.ed-br { border-block: 1px solid var(--rule); padding: 0.875rem 0 0.5rem; animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) 40ms both; }
+.ed-br-a { display: grid; min-height: 2.75rem; grid-template-columns: 1.375rem minmax(0, 1fr); align-items: baseline; column-gap: 0.625rem; padding: 0.5rem 0; outline: none; }
+.ed-br-a:focus-visible { box-shadow: 0 0 0 4px var(--background), 0 0 0 6px var(--ring); }
+.ed-br-n { font-family: var(--font-serif); font-size: 0.9375rem; line-height: 1; font-weight: 700; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.ed-br-h { font-family: var(--font-serif); font-size: 1rem; line-height: 1.45; font-weight: 600; letter-spacing: -0.03em; text-wrap: pretty; }
+.ed-ear { display: flex; flex-direction: column; gap: 0.125rem; font-size: 0.8125rem; line-height: 1.4; color: var(--muted-foreground); }
+.ed-ear-n { color: var(--foreground); font-weight: 700; font-variant-numeric: tabular-nums; }
+.ed-bh { margin-bottom: 1.25rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; border-top: 2px solid var(--rule); padding-top: 0.75rem; }
+.ed-bh-h { font-family: var(--font-serif); font-size: clamp(1.625rem, 2.6vw, 1.875rem); line-height: 1.2; letter-spacing: -0.045em; font-weight: 800; white-space: nowrap; }
+.ed-cnt { font-size: 0.8125rem; line-height: 1.4; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+@media (min-width: 48rem) {
+  .ar-sum { font-size: 1.25rem; line-height: 1.75; }
+  .ed-plink { min-height: 0; margin: 0; }
+  .ed-br { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); column-gap: 2rem; padding: 1.25rem 0; }
+  .ed-br-a { min-height: 0; grid-template-columns: 1.75rem minmax(0, 1fr); padding: 0; }
+  .ed-br-n { font-size: 1rem; }
+  .ed-br-h { font-size: 1.1875rem; line-height: 1.5; }
+  .ed-ear { flex: none; border-left: 1px solid var(--border); padding: 0.125rem 0 0.375rem 1.25rem; }
+  .ed-ear-n { margin-right: 0.125rem; font-family: var(--font-serif); font-size: 2.125rem; line-height: 1.05; font-weight: 800; letter-spacing: -0.04em; }
+  .ed-ear-u { margin-right: 0.375rem; color: var(--foreground); font-family: var(--font-serif); font-size: 1.0625rem; line-height: 1; font-weight: 700; }
+}
+@media (min-width: 64rem) {
+  .ed-br { grid-template-columns: 11rem minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   [B] 새 컴포넌트 클래스 제안 — globals.css `@layer components` 에 `@apply` 로 옮길 것(값은 모두 기존 토큰).
+   보관 페이지는 Tailwind 유틸리티를 쓰지 않는다: 생성기가 src/ 밖(빌드 후 단계)에 있으면 Tailwind 가 그
+   클래스를 스캔하지 못하고, 유틸리티가 다른 화면에서 빠지는 순간 보관 페이지만 조용히 깨진다.
+   @layer components 의 클래스는 사용 여부와 무관하게 늘 컴파일되므로 보관 페이지는 아래 이름과
+   기존 컴포넌트 클래스만 쓴다. 미디어 피벗 md = 48rem, lg = 64rem (사이트와 같음).
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* 서체 별칭 — 시안·유사본 전용. globals.css 의 `@theme inline` 은 --font-serif/--font-sans 를 변수로 내보내지 않으므로
+   실제 구현은 font-family 대신 `@apply font-serif` / `font-sans` 를 쓴다(값은 같다). */
+:root {
+  --font-serif: var(--font-hahmlet), "Noto Serif KR", AppleMyungjo, Batang, serif;
+  --font-sans: var(--font-pretendard), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+
+/* ── sh- 보관 셸: 얇은 머리 띠(클라이언트 메뉴·테마 버튼 없음) + 짧은 푸터. 하단 탭 바가 없으므로 sh-body 대신 sh-lb ── */
+.sh-lb { display: flex; min-height: 100vh; min-height: 100dvh; flex-direction: column; background: var(--background); color: var(--foreground); -webkit-font-smoothing: antialiased; }
+.sh-lh { border-bottom: 1px solid var(--border); }
+.sh-lh > div { margin: 0 auto; display: flex; max-width: 1240px; height: 3.25rem; align-items: center; padding: 0 1rem; }
+.sh-lh .sh-wm { margin-right: auto; font-size: 1.125rem; }
+.sh-ln { display: inline-flex; min-height: 2.75rem; align-items: center; padding: 0 0.625rem; font-size: 0.875rem; line-height: 1.55; font-weight: 600; color: var(--muted-foreground); }
+.sh-ln:last-child { padding-right: 0; }
+.sh-ln:hover { color: var(--foreground); }
+.sh-lf { margin-top: auto; border-top: 4px solid var(--rule); }
+.sh-lf > div { margin: 0 auto; display: flex; max-width: 1240px; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1.25rem; padding: 1.5rem 1rem 2.25rem; }
+.sh-lf-np { font-family: var(--font-serif); font-size: 1.5rem; line-height: 1; font-weight: 800; letter-spacing: -0.045em; white-space: nowrap; }
+.sh-lf p { font-size: 0.875rem; line-height: 1.55; color: var(--foreground-soft); }
+.sh-lf small { flex-basis: 100%; font-size: 0.75rem; line-height: 1.5; color: var(--muted-foreground); }
+.sh-wm:focus-visible, .sh-ln:focus-visible, .ar-go:focus-visible, .ar-tg a:focus-visible, .ed-lr:focus-visible, .ed-pg-a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* ── ar- 보관 기사 ── */
+.ar-lt { margin: 0 auto; display: flex; width: 100%; max-width: 720px; flex-direction: column; padding: 1.25rem 1rem 3.5rem; }
+/* 폴리오: "보관 지면 · 날짜(호 링크) · 제N호" + 2px 잉크 괘선 — 마스트헤드 폴리오의 축소판 */
+.ar-fo { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.875rem; border-bottom: 2px solid var(--rule); padding-bottom: 0.625rem; font-size: 0.8125rem; line-height: 1.4; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.ar-fo b, .ed-lm-f b { color: var(--foreground); font-weight: 700; letter-spacing: 0.02em; }
+.ar-hd { display: flex; flex-direction: column; gap: 0.875rem; padding-top: 1.5rem; }
+.ar-hd .sg-by { margin-top: 0.125rem; }
+/* 원제(한국 매체는 한국어 — lang 은 실제 언어로) */
+.ar-ot { font-size: 0.875rem; line-height: 1.55; color: var(--muted-foreground); }
+.ar-sm { margin-top: 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+/* 원문 CTA — 잉크 채움 pill. 전체 상세의 ar-cta(모바일 숨김 + 고정 바)와 달리 모든 폭에서 본문 흐름 안 */
+.ar-go { margin-top: 1.75rem; display: inline-flex; min-height: 3rem; align-self: flex-start; align-items: center; gap: 0.5rem; border-radius: 9999px; background: var(--primary); color: var(--primary-foreground); padding: 0 1.5rem; font-size: 0.875rem; line-height: 1.55; font-weight: 600; }
+.ar-go:hover { opacity: 0.9; }
+.ar-go .ic { width: 1rem; height: 1rem; }
+/* 같은 소식, 다른 매체 — ar-sect + ar-li + ar-cov 재사용, 제목 칸만 새 이름 */
+.ar-cv { gap: 0.25rem; }
+.ar-cv > h2 { margin-bottom: 0.5rem; }
+.ar-cov-h { min-width: 0; flex: 1; font-size: 0.875rem; line-height: 1.55; }
+/* 6곳 이상이면 5곳만 링크하고 나머지는 셈만(최악 11곳·긴 구글 뉴스 URL 로 8KB 를 넘는다) */
+.ar-cv-m { padding: 0.625rem 0; font-size: 0.8125rem; line-height: 1.4; color: var(--muted-foreground); }
+/* 태그 — 알약 대신 글자 링크(44px 행) */
+.ar-tg { margin-top: 1.5rem; display: flex; flex-wrap: wrap; column-gap: 1rem; }
+.ar-tg a { display: inline-flex; min-height: 2.75rem; align-items: center; font-size: 0.8125rem; line-height: 1.4; color: var(--foreground-soft); }
+.ar-tg a:hover { color: var(--brand); }
+/* 이 호로 가는 한 줄 — 지난 호 이동(ed-pg)과 같은 문법, 괘선 위 */
+.ar-nx { margin-top: 3rem; border-top: 2px solid var(--rule); padding-top: 1rem; }
+
+/* ── ed- 보관 호 ── */
+.ed-lt { margin: 0 auto; display: flex; width: 100%; max-width: 1240px; flex-direction: column; gap: 2.5rem; padding: 0 1rem 3.5rem; }
+/* 마스트헤드 축소판: 폴리오 → [날짜 h1 | 귀] → 4px+1px 이중 괘선 */
+.ed-lm { padding-top: 1.25rem; }
+.ed-lm-f { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; font-size: 0.8125rem; line-height: 1.4; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.ed-lm-f > :last-child { display: none; margin-left: auto; }
+.ed-lm-r { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.ed-lm-h { font-family: var(--font-serif); font-size: clamp(1.875rem, 3.6vw, 2.75rem); line-height: 1.2; letter-spacing: -0.04em; font-weight: 800; }
+.ed-dbl { margin-top: 1rem; height: 0.375rem; border-top: 4px solid var(--rule); border-bottom: 1px solid var(--rule); }
+/* 귀 보조(전체 마스트헤드의 유틸리티 묶음을 이름으로 — Masthead 도 같이 옮기면 이득) */
+.ed-ear-l { display: none; font-size: 0.75rem; line-height: 1.3; font-weight: 600; }
+.ed-ear-m { color: var(--foreground); font-weight: 700; }
+.ed-ear-f { display: flex; flex-wrap: wrap; column-gap: 0.25rem; }
+.ed-ear-f i { font-style: normal; opacity: 0.6; }
+/* 세 줄 요약 머리·목록(IssueBrief 의 유틸리티 묶음을 이름으로) */
+.ed-br-hd { display: flex; align-items: baseline; column-gap: 0.5rem; }
+.ed-br-hd h2 { font-family: var(--font-serif); font-size: 1.0625rem; line-height: 1; font-weight: 800; letter-spacing: -0.03em; }
+.ed-br-hd span, .ed-br-hd i { font-size: 0.75rem; line-height: 1.3; font-style: normal; color: var(--muted-foreground); }
+.ed-br-ol { margin-top: 0.375rem; }
+.ed-br-ol > li + li { border-top: 1px solid var(--border); }
+/* 헤드라인 목록: 분야 묶음 [분야 칸 | 목록], 묶음 사이 1px 잉크 괘선, 행 사이 헤어라인 */
+.ed-lg { display: grid; row-gap: 0.25rem; border-top: 1px solid var(--rule); padding: 0.875rem 0 1.5rem; }
+.ed-lg-hd { display: flex; align-items: baseline; gap: 0.5rem; }
+.ed-lg-hd h3 { font-family: var(--font-serif); font-size: 1.25rem; line-height: 1.3; font-weight: 800; letter-spacing: -0.04em; }
+.ed-ll { display: grid; grid-template-columns: minmax(0, 1fr); }
+.ed-ll > li { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }
+.ed-ll > li + li { border-top: 1px solid var(--border); }
+.ed-lr { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; row-gap: 0.25rem; min-height: 2.75rem; padding: 0.625rem 0; }
+.ed-lr-h { font-family: var(--font-serif); font-size: 0.9375rem; line-height: 1.45; font-weight: 700; letter-spacing: -0.03em; text-wrap: pretty; }
+.ed-lr-h .sg-badge { margin-right: 0.5rem; vertical-align: 0.0625rem; }
+/* 1면 게재 표지 — 잉크 굵은 라벨(코발트 금지: 강조는 키커·순위 몫) */
+.ed-lr-f { color: var(--foreground); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; }
+/* 호 이동(현 EditionPager 의 유틸리티 묶음을 이름으로) — 보관 기사 끝 ar-nx 도 같은 부품 */
+.ed-pg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; border-top: 2px solid var(--rule); padding-top: 1rem; }
+.ed-pg-a { display: flex; min-height: 2.75rem; flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+.ed-pg-a + .ed-pg-a, .ed-pg-n { grid-column: 2; align-items: flex-end; text-align: right; }
+.ed-pg-l { font-size: 0.8125rem; line-height: 1.4; font-weight: 600; color: var(--muted-foreground); }
+.ed-pg-h { font-family: var(--font-serif); font-size: 1.25rem; line-height: 1.4; font-weight: 800; letter-spacing: -0.03em; transition: color 0.15s ease-out; }
+.ed-pg-a:hover .ed-pg-h { color: var(--brand); }
+.ed-pg-d { font-size: 0.875rem; line-height: 1.55; color: var(--foreground-soft); font-variant-numeric: tabular-nums; }
+
+@media (min-width: 48rem) {
+  .sh-lh > div, .sh-lf > div { padding-left: 2rem; padding-right: 2rem; }
+  .sh-lh .sh-wm { font-size: 1.25rem; }
+  .sh-ln { min-height: 0; padding-block: 0.25rem; }
+  .sh-lf small { flex-basis: auto; margin-left: auto; }
+  .ar-lt { padding: 2.25rem 1.5rem 4.5rem; }
+  .ar-hd { padding-top: 2rem; }
+  .ar-tg a { min-height: 2rem; }
+  .ed-lt { gap: 3rem; padding: 0 2rem 4.5rem; }
+  .ed-lm { padding-top: 1.75rem; }
+  .ed-lm-f > :last-child { display: inline; }
+  .ed-lm-r { flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 2rem; }
+  .ed-dbl { margin-top: 1.25rem; }
+  .ed-ear-l { display: block; }
+  .ed-ear-m, .ed-br-hd i { display: none; }
+  .ed-ear-f { margin-top: 0.125rem; }
+  .ed-br-hd { flex-direction: column; row-gap: 0.25rem; padding-top: 3px; }
+  .ed-br-ol { margin-top: 0; display: flex; flex-direction: column; row-gap: 0.5rem; }
+  .ed-br-ol > li + li { border-top: 0; }
+  .ed-lg { grid-template-columns: 9.5rem minmax(0, 1fr); column-gap: 2rem; padding-bottom: 1.75rem; }
+  .ed-lg-hd { flex-direction: column; gap: 0.25rem; }
+  /* 바이라인 칸 최소 폭을 묶음마다 같게 — 분야 묶음이 바뀌어도 매체 열이 한 x 에서 시작한다 */
+  .ed-ll { grid-template-columns: minmax(0, 1fr) minmax(15rem, auto); column-gap: 2rem; }
+  .ed-lr { padding: 0.6875rem 0; }
+  .ed-lr-h { font-size: 1rem; line-height: 1.5; }
+  .ed-lr .sg-by { flex-wrap: nowrap; white-space: nowrap; }
+}
+@media (min-width: 64rem) {
+  .ed-lg { grid-template-columns: 11rem minmax(0, 1fr); }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   [P] 시안 크롬(디자인 아님): 상단 툴바·주석 패널. ?bare 로 숨기고 ?theme=dark 로 다크를 연다.
+   ───────────────────────────────────────────────────────────────────────────── */
+.proto-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 16px; background: #111216; color: #a9abb3; font: 500 12px/1.2 system-ui, sans-serif; letter-spacing: 0; }
+.proto-bar b { color: #fff; }
+.proto-bar button { border: 0; border-radius: 99px; background: #24262d; color: #d0d2d8; font: inherit; padding: 6px 12px; cursor: pointer; }
+.proto-bar button[aria-pressed="true"] { background: #fff; color: #111; }
+.proto-bar a { margin-left: auto; color: #a9abb3; }
+.notes { max-width: 1240px; width: 100%; margin: 0 auto; padding: 8px 16px 64px; font: 400 13.5px/1.6 system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; letter-spacing: 0; color: var(--foreground-soft); }
+.notes > h2 { margin: 24px 0 6px; padding-top: 12px; border-top: 3px dashed var(--muted-foreground); font-size: 20px; color: var(--foreground); }
+.notes h3 { margin: 22px 0 6px; font-size: 15px; color: var(--foreground); }
+.notes ul { list-style: disc; padding-left: 20px; display: grid; gap: 3px; }
+.notes code { font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--muted); padding: 1px 4px; }
+.notes table { border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+.notes th, .notes td { text-align: left; padding: 5px 14px 5px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+.notes th { color: var(--muted-foreground); font-weight: 600; }
+.notes pre { overflow-x: auto; background: var(--muted); padding: 10px 12px; font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+html.bare .proto-bar, html.bare .notes { display: none; }
+
+</style>
+<script>
+/* 시안 전용: ?theme=dark|light 와 ?bare. 그 뒤의 한 줄이 프로덕션에 그대로 실릴 테마 스크립트(약 200B) —
+   사이트(next-themes: defaultTheme="light", enableSystem)와 같은 규칙: 저장값 dark → 다크, system → OS 설정, 없으면 라이트. */
+(function () { var q = new URLSearchParams(location.search), t = q.get("theme"); if (q.has("bare")) document.documentElement.classList.add("bare");
+  if (t) try { localStorage.setItem("theme", t); } catch (e) {} })();
+try{var t=localStorage.getItem("theme");if(t=="dark"||t=="system"&&matchMedia("(prefers-color-scheme: dark)").matches){var d=document.documentElement;d.classList.add("dark");d.style.colorScheme="dark"}}catch(e){}</script>
+</head>
+<body class="sh-lb">
+<div class="proto-bar"><b>시안 · 보관 호</b><span>Phase 4-3</span>
+  <button type="button" data-theme-btn="light">라이트</button><button type="button" data-theme-btn="dark">다크</button>
+  <a href="index.html">시안 목록</a></div>
+<header class="sh-lh"><div><a class="sh-wm" href="https://sguys99.github.io/global-ai-news/" aria-label="AI Daybook 홈"><span class="text-brand">AI</span> Daybook</a><nav aria-label="주 메뉴"><a class="sh-ln" href="https://sguys99.github.io/global-ai-news/">오늘의 지면</a><a class="sh-ln" href="https://sguys99.github.io/global-ai-news/search/">검색</a></nav></div></header>
+<main class="ed-lt"><header class="ed-lm"><p class="ed-lm-f"><b>보관 지면</b><span>제141호</span><span>매일 06:00 KST 발행</span></p><div class="ed-lm-r"><h1 class="ed-lm-h"><time datetime="2026-11-04">2026년 11월 4일 수요일</time></h1><p class="ed-ear"><span class="ed-ear-l">이번 호</span><span><span class="ed-ear-m">이번 호 </span><b class="ed-ear-n">23</b><span class="ed-ear-u">건</span> · 매체 15곳</span><span class="ed-ear-f"><span>뉴스 <b class="sg-em">17</b></span><i aria-hidden="true">·</i><span>저장소 <b class="sg-em">1</b></span><i aria-hidden="true">·</i><span>논문 <b class="sg-em">5</b></span></span></p></div><div class="ed-dbl" aria-hidden="true"></div></header><section class="ed-br" aria-labelledby="br"><div class="ed-br-hd"><h2 id="br">세 줄 요약</h2><i aria-hidden="true">·</i><span>이번 호 핵심</span></div><ol class="ed-br-ol"><li><a class="story-link ed-br-a" href="https://sguys99.github.io/global-ai-news/article/1334/"><span class="ed-br-n" aria-hidden="true">1</span><span class="headline ed-br-h">OpenAI, GPT-6 Astra로 하드웨어 장치를 1주일 내 설계 완료</span></a></li><li><a class="story-link ed-br-a" href="https://sguys99.github.io/global-ai-news/article/1333/"><span class="ed-br-n" aria-hidden="true">2</span><span class="headline ed-br-h">Fal, AI 추론 스타트업으로 밸류에이션 160억 달러 달성</span></a></li><li><a class="story-link ed-br-a" href="https://sguys99.github.io/global-ai-news/article/1335/"><span class="ed-br-n" aria-hidden="true">3</span><span class="headline ed-br-h">CoworkOS, 실제 자동화를 위한 에이전트 협업 프레임워크 공개</span></a></li></ol></section><section aria-labelledby="ix"><div class="ed-bh"><h2 id="ix" class="ed-bh-h">이 호의 기사</h2><span class="ed-cnt">23건 · 분야별</span></div><div class="ed-lg"><div class="ed-lg-hd"><h3 id="c-llm">LLM</h3><span class="ed-cnt">2건</span></div><ul class="ed-ll" aria-labelledby="c-llm"><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1334/"><span class="headline ed-lr-h">OpenAI, GPT-6 Astra로 하드웨어 기기 설계를 1주일 내 완성</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">The Decoder</span><i class="sg-dot"></i><span class="sg-imp" data-v="5" role="img" aria-label="중요도 5/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1348/"><span class="headline ed-lr-h">LLM이 신경망 가중치 읽고 쓰기…&#x27;Weight Space Programming&#x27;</span><span class="sg-by"><span class="sg-em">Latent Space<span class="sg-oth"> 외 1곳</span></span><i class="sg-dot"></i><span class="sg-imp" data-v="3" role="img" aria-label="중요도 3/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li></ul></div><div class="ed-lg"><div class="ed-lg-hd"><h3 id="c-agent">에이전트</h3><span class="ed-cnt">10건</span></div><ul class="ed-ll" aria-labelledby="c-agent"><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1336/"><span class="headline ed-lr-h"><span class="sg-badge"><span aria-hidden="true">REPO</span><span class="sr-only">저장소</span></span>Worktrunk, AI 에이전트 병렬 워크플로우용 Git 관리 CLI</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">GitHub Trending</span><i class="sg-dot"></i><span class="sg-imp" data-v="4" role="img" aria-label="중요도 4/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1335/"><span class="headline ed-lr-h"><span class="sg-badge"><span aria-hidden="true">PAPER</span><span class="sr-only">논문</span></span>CoworkOS, 장시간 작업 에이전트 오케스트레이션 프레임워크 공개</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">Hugging Face</span><i class="sg-dot"></i><span class="sg-imp" data-v="4" role="img" aria-label="중요도 4/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1338/"><span class="headline ed-lr-h"><span class="sg-badge"><span aria-hidden="true">PAPER</span><span class="sr-only">논문</span></span>CUA-Master, 오픈월드 데이터로 컴퓨터 조작 에이전트 스케일링</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">Hugging Face</span><i class="sg-dot"></i><span class="sg-imp" data-v="4" role="img" aria-label="중요도 4/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1337/"><span class="headline ed-lr-h">Anthropic, Message Threads로 긴 대화 첫 응답 시간 35% 단축</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">The Decoder</span><i class="sg-dot"></i><span class="sg-imp" data-v="4" role="img" aria-label="중요도 4/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1345/"><span class="headline ed-lr-h">딥시크, 자연어로 AI 에이전트 플러그인 자동 생성</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">AI타임스</span><i class="sg-dot"></i><span class="sg-imp" data-v="3" role="img" aria-label="중요도 3/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1346/"><span class="headline ed-lr-h">Google Antigravity, 화학 정보학으로 신약 개발 가속</span><span class="sg-by"><span class="sg-em">Google DeepMind</span><i class="sg-dot"></i><span class="sg-imp" data-v="3" role="img" aria-label="중요도 3/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1342/"><span class="headline ed-lr-h">SETI 연구소, AI 에이전트로 외계 신호 탐지 자동화</span><span class="sg-by"><span class="sg-em">The Decoder</span><i class="sg-dot"></i><span class="sg-imp" data-v="3" role="img" aria-label="중요도 3/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1349/"><span class="headline ed-lr-h">위버스브레인, 행동하는 AI 에이전트 출시…교육·판매 활용</span><span class="sg-by"><span class="sg-em">바이라인네트워크</span><i class="sg-dot"></i><span class="sg-imp" data-v="3" role="img" aria-label="중요도 3/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1344/"><span class="headline ed-lr-h">역게임이론으로 AI 에이전트 행동 제어…안전 연구 동향</span><span class="sg-by"><span class="sg-em">MIT Tech Review</span><i class="sg-dot"></i><span class="sg-imp" data-v="3" role="img" aria-label="중요도 3/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1350/"><span class="headline ed-lr-h">Apple, Siri에 서드파티 앱 연동 기능 추가</span><span class="sg-by"><span class="sg-em">The Verge AI</span><i class="sg-dot"></i><span class="sg-imp" data-v="2" role="img" aria-label="중요도 2/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li></ul></div><div class="ed-lg"><div class="ed-lg-hd"><h3 id="c-physical">Physical AI</h3><span class="ed-cnt">5건</span></div><ul class="ed-ll" aria-labelledby="c-physical"><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1340/"><span class="headline ed-lr-h">샤오미 휴머노이드, 첫 8시간 자동차 공장 근무 시작</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">Google News</span><i class="sg-dot"></i><span class="sg-imp" data-v="4" role="img" aria-label="중요도 4/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1339/"><span class="headline ed-lr-h"><span class="sg-badge"><span aria-hidden="true">PAPER</span><span class="sr-only">논문</span></span>DiVeR, 결정 중요도 학습으로 VLA 추론 성능 향상</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">arXiv</span><i class="sg-dot"></i><span class="sg-imp" data-v="4" role="img" aria-label="중요도 4/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1341/"><span class="headline ed-lr-h">정부, 2027년 로봇산업 1477억원 투입…휴머노이드 200대 보급</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">로봇신문</span><i class="sg-dot"></i><span class="sg-imp" data-v="3" role="img" aria-label="중요도 3/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1354/"><span class="headline ed-lr-h">벡트로보틱스, 로보월드 2026서 피지컬 AI 비전 공개</span><span class="sg-by"><span class="sg-em">로봇신문</span><i class="sg-dot"></i><span class="sg-imp" data-v="2" role="img" aria-label="중요도 2/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1355/"><span class="headline ed-lr-h"><span class="sg-badge"><span aria-hidden="true">PAPER</span><span class="sr-only">논문</span></span>D&amp;A, VLM 기반 로봇 보상 모델의 편향 제거 기법 제안</span><span class="sg-by"><span class="sg-em">Takara TLDR</span><i class="sg-dot"></i><span class="sg-imp" data-v="2" role="img" aria-label="중요도 2/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li></ul></div><div class="ed-lg"><div class="ed-lg-hd"><h3 id="c-oss">오픈소스·도구</h3><span class="ed-cnt">1건</span></div><ul class="ed-ll" aria-labelledby="c-oss"><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1343/"><span class="headline ed-lr-h">OpenAI, 모노레포 Git 백엔드 Pando 공개…푸시 지연 80% 단축</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">MarkTechPost<span class="sg-oth"> 외 1곳</span></span><i class="sg-dot"></i><span class="sg-imp" data-v="3" role="img" aria-label="중요도 3/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li></ul></div><div class="ed-lg"><div class="ed-lg-hd"><h3 id="c-research">연구·논문</h3><span class="ed-cnt">2건</span></div><ul class="ed-ll" aria-labelledby="c-research"><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1347/"><span class="headline ed-lr-h"><span class="sg-badge"><span aria-hidden="true">PAPER</span><span class="sr-only">논문</span></span>FLAMIA, Blackwell GPU에서 어텐션 연산 1.1~1.4배 가속</span><span class="sg-by"><span class="sg-em">Hugging Face</span><i class="sg-dot"></i><span class="sg-imp" data-v="3" role="img" aria-label="중요도 3/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1353/"><span class="headline ed-lr-h">Stanford 연구진, LLM 연구 주장 44% 이미 &#x27;만료&#x27; 발견</span><span class="sg-by"><span class="sg-em">The Decoder</span><i class="sg-dot"></i><span class="sg-imp" data-v="2" role="img" aria-label="중요도 2/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li></ul></div><div class="ed-lg"><div class="ed-lg-hd"><h3 id="c-industry">산업·정책</h3><span class="ed-cnt">3건</span></div><ul class="ed-ll" aria-labelledby="c-industry"><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1333/"><span class="headline ed-lr-h">Fal, 인프런스 수요 급증으로 기업가치 160억 달러로 2배 상향</span><span class="sg-by"><span class="ed-lr-f">1면</span><i class="sg-dot"></i><span class="sg-em">TechCrunch</span><i class="sg-dot"></i><span class="sg-imp" data-v="5" role="img" aria-label="중요도 5/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1351/"><span class="headline ed-lr-h">Apple, watchOS 27.3 베타에 음성 지능 기능 추가</span><span class="sg-by"><span class="sg-em">The Verge AI</span><i class="sg-dot"></i><span class="sg-imp" data-v="2" role="img" aria-label="중요도 2/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li><li><a class="story-link ed-lr" href="https://sguys99.github.io/global-ai-news/article/1352/"><span class="headline ed-lr-h">OpenAI, 버그 바운티 최대 17.2만 달러로 확대</span><span class="sg-by"><span class="sg-em">The Decoder<span class="sg-oth"> 외 1곳</span></span><i class="sg-dot"></i><span class="sg-imp" data-v="2" role="img" aria-label="중요도 2/5"><i></i><i></i><i></i><i></i><i></i></span></span></a></li></ul></div></section><nav class="ed-pg" aria-label="호 이동"><a class="ed-pg-a" href="https://sguys99.github.io/global-ai-news/edition/2026-11-03/"><span class="ed-pg-l">← 이전 호</span><span class="ed-pg-h">제140호</span><span class="ed-pg-d">11월 3일(화)</span></a><a class="ed-pg-a ed-pg-n" href="https://sguys99.github.io/global-ai-news/edition/2026-11-05/"><span class="ed-pg-l">다음 호 →</span><span class="ed-pg-h">제142호</span><span class="ed-pg-d">11월 5일(목)</span></a></nav></main>
+<footer class="sh-lf"><div><span class="sh-lf-np"><span class="text-brand">AI</span> Daybook</span><p>세계와 한국의 AI 소식을 매일 아침, 한국어로 요약해 전합니다.</p><small>90일이 지난 지면은 가벼운 보관판으로 싣습니다. © 2026 Nasica Inc.</small></div></footer>
+<section class="notes" aria-label="시안 주석">
+
+<h2>주석 — 보관 호</h2>
+<p>실제 데이터: 2026-11-04 제141호 23건(세 줄 요약 3줄). 묶음 순서는 <code>CATEGORIES</code>, 묶음 안은 편집 순(중요도 → 화제 → 최신 → id — 지금 '이 호의 기사' 순서와 같다).</p>
+<h3>구성</h3>
+<ul>
+  <li><b>마스트헤드 축소판</b> — 폴리오(보관 지면 · 제N호 · 매일 06:00 KST 발행), 제호 대신 <b>날짜가 h1</b>(display-lg 세리프, 제호는 머리 띠 워드마크가 맡는다), 귀는 <code>ed-ear</code> 그대로(이번 호 N건 · 매체 M곳 + 형식 구성), 4px+1px 이중 괘선. 공유 버튼·발행 지연 줄·섹션 내비 없음.</li>
+  <li><b>세 줄 요약</b> — <code>ed-br</code> 띠 그대로(2줄 미만이면 숨김, 2줄이면 "두 줄 요약").</li>
+  <li><b>이 호의 기사</b> — 밴드 머리(<code>ed-bh</code>) 아래 분야 묶음. md 이상 [분야 칸 9.5rem(lg 11rem) | 목록]으로 세 줄 요약의 머리 칸과 x 가 같다. 묶음 사이 1px 잉크 괘선, 행 사이 헤어라인. 행 = 형식 배지 + 세리프 700 제목(말줄임 없음) | 바이라인 칸(1면 · 매체 외 N곳 · 중요도). 바이라인 칸은 subgrid 라 묶음 안에서 표처럼 한 x 에 선다.</li>
+  <li><b>1면 표지</b> — 그 호 1면(리드·서브·브리핑·레이더, <code>frontArticles()</code>)에 실린 기사는 바이라인 앞에 잉크 굵은 "1면". 지면 위계를 카드 없이 남기는 가장 싼 방법.</li>
+  <li><b>호 이동</b> — 지금 <code>EditionPager</code> 모양 그대로(유틸리티 묶음을 <code>ed-pg*</code> 이름으로).</li>
+  <li><b>뺌</b> — 1면 리드·서브 카드, 지금 화제, 이 호의 지면, 레이더 띠·메타 레일, 주간 레이더, 섹션 밴드, 요약문, 날짜 칼럼, 모바일 탭 바. 기사 요약은 각 보관 기사가 갖는다.</li>
+  <li>영어판 폴리오: <code>From the archive · No. 141 · Published daily at 06:00 KST</code>, 귀 <code>This issue 23 stories · 15 outlets</code>.</li>
+</ul>
+<h3>클래스</h3>
+<table>
+<tr><th>재사용</th><td><code>ed-ear</code> <code>ed-ear-n</code> <code>ed-ear-u</code> · <code>ed-br</code> <code>ed-br-a</code> <code>ed-br-n</code> <code>ed-br-h</code> · <code>ed-bh</code> <code>ed-bh-h</code> <code>ed-cnt</code> · <code>sg-badge</code> <code>sg-imp</code> <code>sg-by</code> <code>sg-em</code> <code>sg-oth</code> <code>sg-dot</code> · <code>story-link</code> <code>headline</code></td></tr>
+<tr><th>새로(제안)</th><td><code>ed-lt</code> <code>ed-lm</code> <code>ed-lm-f</code> <code>ed-lm-r</code> <code>ed-lm-h</code> <code>ed-dbl</code> <code>ed-ear-l</code> <code>ed-ear-m</code> <code>ed-ear-f</code> <code>ed-br-hd</code> <code>ed-br-ol</code> <code>ed-lg</code> <code>ed-lg-hd</code> <code>ed-ll</code> <code>ed-lr</code> <code>ed-lr-h</code> <code>ed-lr-f</code> <code>ed-pg</code> <code>ed-pg-a</code> <code>ed-pg-n</code> <code>ed-pg-l</code> <code>ed-pg-h</code> <code>ed-pg-d</code> (+ 셸 <code>sh-lb</code> <code>sh-lh</code> <code>sh-ln</code> <code>sh-lf</code>). <code>ed-ear-*</code>·<code>ed-br-hd/ol</code>·<code>ed-pg*</code>·<code>ed-dbl</code> 은 지금 Masthead·IssueBrief·EditionPager 의 유틸리티 묶음과 같은 값이라 전체 지면도 옮기면 이득.</td></tr>
+</table>
+<h3>바이트(프로덕션 유사본)</h3>
+<table>
+<tr><th>이 호(23건)</th><td>16,552 B (16.16 KiB)</td></tr>
+<tr><th>35건 호(상한)</th><td>21,895 B (21.38 KiB)</td></tr>
+<tr><th>개업 전 대량 호 2026-10-06(167건)</th><td>75,231 B (73.47 KiB) — 예산 초과(이런 호가 3개: 10-06 167·07-07 149·06-09 148)</td></tr>
+</table>
+<h3>열린 질문</h3>
+<ul>
+  <li>35건에도 18KB 여유가 있다 — 행마다 요약 첫 문장(약 400B)을 넣을까? 35건 ≈ 36KB 로 들어가지만 "헤드라인 목록"의 밀도가 깨진다.</li>
+  <li>개업 전 대량 호 3개(≈ 74KB)는 예외로 둘까(합계 0.2MB, 1GB 계산에 무의미), 아니면 100건 넘는 호는 중요도 미터를 빼고 제목·매체만?</li>
+  <li>1면 표지를 둘까, 아니면 '1면' 묶음을 맨 앞에 따로 둘까(전체 지면의 1면 → 섹션 순서와 더 닮지만 분야 묶음과 이중 계산).</li>
+</ul>
+
+</section>
+<script>
+document.querySelectorAll("[data-theme-btn]").forEach(function (b) {
+  var sync = function () { document.querySelectorAll("[data-theme-btn]").forEach(function (x) {
+    x.setAttribute("aria-pressed", String(document.documentElement.classList.contains("dark") === (x.dataset.themeBtn === "dark"))); }); };
+  b.addEventListener("click", function () { var d = b.dataset.themeBtn === "dark"; document.documentElement.classList.toggle("dark", d);
+    document.documentElement.style.colorScheme = d ? "dark" : ""; try { localStorage.setItem("theme", b.dataset.themeBtn); } catch (e) {} sync(); });
+  sync();
+});
+</script>
+</body>
+</html>
