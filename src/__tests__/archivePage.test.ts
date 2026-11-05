@@ -228,6 +228,22 @@ describe("보관 기사", () => {
     expect(html).toContain("같은 소식, 다른 매체 · 7곳");
   });
 
+  it("다른 매체 링크를 0곳까지 줄이면 목록 없이 제목의 매체 수만 남긴다", () => {
+    const related = [
+      { source: "전자신문 AI", url: "https://example.com/1", title: "같은 사건 보도" },
+    ];
+    const body = archiveArticleBody(
+      { article: card({ related }), issue, issueDate: REF.date },
+      "ko",
+      0,
+    );
+    expect(body).toContain(
+      '<section class="ar-sect ar-cv" aria-labelledby="cv"><h2 id="cv" class="ar-h">같은 소식, 다른 매체 · 1곳</h2></section>',
+    );
+    expect(body).not.toContain("ar-cv-m");
+    expect(body).not.toContain('class="story-link ar-cov"');
+  });
+
   it("이스케이프 — 제목·요약·URL 의 <>&\"' 와 javascript: 링크", () => {
     const body = archiveArticleBody({
       article: card({

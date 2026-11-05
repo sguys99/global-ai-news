@@ -65,7 +65,7 @@ export { ARCHIVE_GENERATOR_META };
 /**
  * 같은 소식 다른 매체 — 이만큼만 링크하고 나머지는 "외 N곳"(시안 결정). 구글 뉴스 리다이렉트 URL 이 250~600자라
  * 5곳이 2.5KB 가 되기도 한다 — 그래서 문서가 기사 예산(ARCHIVE_ARTICLE_BUDGET_BYTES)을 넘으면 넘지 않을 때까지 한 곳씩 줄인다
- * (최소 1곳, 나머지는 셈만 — renderArchiveArticle).
+ * (0곳까지 — 그때는 목록 없이 제목의 매체 수만, renderArchiveArticle).
  */
 export const ARCHIVE_COVERAGE_MAX = 5;
 
@@ -361,8 +361,11 @@ export function archiveArticleBody(
         : `<li class="ar-li"><span class="ar-cov">${inner}</span></li>`;
     });
     const more = related.length - Math.min(coverageMax, related.length);
-    if (more > 0) items.push(`<li class="ar-li ar-cv-m">${esc(t.moreOutlets(more))}</li>`);
-    coverage = `<section class="ar-sect ar-cv" aria-labelledby="cv"><h2 id="cv" class="ar-h">${esc(a.coverage(related.length))}</h2><ul>${items.join("")}</ul></section>`;
+    // 링크를 하나도 못 실으면(예산 최후 수단) 목록 없이 제목의 매체 수만 남긴다 — "외 N곳" 한 줄만 있는 목록은 어색하다.
+    if (more > 0 && items.length > 0)
+      items.push(`<li class="ar-li ar-cv-m">${esc(t.moreOutlets(more))}</li>`);
+    const list = items.length > 0 ? `<ul>${items.join("")}</ul>` : "";
+    coverage = `<section class="ar-sect ar-cv" aria-labelledby="cv"><h2 id="cv" class="ar-h">${esc(a.coverage(related.length))}</h2>${list}</section>`;
   }
 
   const tags = visibleTagsOf(article.tags, locale);
@@ -395,10 +398,10 @@ export function renderArchiveArticle(
   const head = [...metadataTags(articlePageMetadata(input.article)), ld];
   const render = (coverageMax: number) =>
     documentHtml({ locale, assets, head, body: archiveArticleBody(input, locale, coverageMax) });
-  // 예산을 넘으면 다른 매체 링크를 한 곳씩 줄인다(1곳까지) — 줄인 곳은 "외 N곳"으로 센다. 그래도 넘으면 그대로 낸다
-  // (요약·제목이 유난히 긴 기사 — 크기 보고가 경고한다).
+  // 예산을 넘으면 다른 매체 링크를 한 곳씩 줄인다 — 줄인 곳은 "외 N곳"으로 센다. 0곳까지 줄면 제목의 매체 수만 남는다
+  // (요약이 유난히 긴 기사, 예: #919). 그래도 넘으면 그대로 낸다(크기 보고가 경고한다).
   let html = render(ARCHIVE_COVERAGE_MAX);
-  for (let max = ARCHIVE_COVERAGE_MAX - 1; max >= 1; max--) {
+  for (let max = ARCHIVE_COVERAGE_MAX - 1; max >= 0; max--) {
     if (utf8Bytes(html) <= ARCHIVE_ARTICLE_BUDGET_BYTES) break;
     if ((input.article.related?.length ?? 0) <= max) continue;
     html = render(max);
