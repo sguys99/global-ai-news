@@ -52,6 +52,13 @@ jobs:
       - name: Build static export
         run: npm run build
 
+      # 산출물 크기 검사(english-version-plan Phase 4-1, scripts/size-report.ts). GitHub Pages 사이트 한도는 1GB다.
+      #   out/ 전체가 700MB 이상이면 ::warning::, 950MB 이상이면 ::error:: 와 함께 실패해 업로드 전에 멈춘다.
+      #   기사 1쪽(HTML+RSC) 평균 40KB·호 1쪽 평균 150KB 예산을 넘으면 경고만 낸다(배포는 계속).
+      #   분류별 크기·페이지 평균/p90·1GB 까지 남은 여유를 잡 요약($GITHUB_STEP_SUMMARY)에 붙인다.
+      - name: Check output size
+        run: npm run --silent size:report -- out --ci
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

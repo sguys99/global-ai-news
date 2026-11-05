@@ -122,6 +122,7 @@
 │   ├── export-feed-index.ts      # public/feed-index.json — 홈 전체 기사 색인 누적분(IndexCard, prebuild)
 │   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터, prebuild)
 │   ├── kpi.ts                    # KPI CLI (npm run kpi) + baseline 하위 명령(콘텐츠 개편 지표) + health(소스 헬스, --ci 는 collect.yml 요약)
+│   ├── size-report.ts            # out/ 크기 보고(분류별·기사/호 페이지 평균·p90·무거운 쪽, --base 비교) — --ci 는 deploy.yml 검사(700MB 경고·950MB 실패, 기준값은 lib/sizeReport.ts)
 │   └── lib/
 │       ├── schema.ts             # 선별·가공·재보도 출력 스키마(zod/v4), CATEGORIES 재수출(정의는 src/lib/labels.ts)
 │       ├── schema.sql            # SQLite DDL + FTS5 트리거
@@ -167,7 +168,7 @@
 ├── .github/workflows/
 │   ├── collect.yml               # 외부 크론 dispatch + schedule 백업 → 수집 → app.db 커밋 → deploy dispatch → 소스 헬스 요약
 │   ├── backfill-en.yml           # 수동: 영어 백필 dry-run/apply(collect 와 같은 concurrency, 03:50~07:30 KST apply 거부) → app.db 커밋 → deploy dispatch
-│   └── deploy.yml                # 정적 빌드 → GitHub Pages 배포
+│   └── deploy.yml                # 정적 빌드 → 산출물 크기 검사(size:report --ci) → GitHub Pages 배포
 ├── data/
 │   ├── app.db                    # SQLite DB (db:init/collect로 생성)
 │   └── eval/                     # collect --no-save 스냅숏 (git 제외)
@@ -251,6 +252,7 @@ npm run dev       # http://localhost:3000 (export·basePath 미적용, admin/api
 
 ```bash
 npm run build     # prebuild(initDb --existing·검색 인덱스·latest.json) → 정적 export out/
+npm run size:report -- [out] [--base <기준 out>]  # 산출물 크기 표(분류별·페이지 평균 대 예산 기사 40KB·호 150KB), --base 로 경량화 전후 비교, --json
 ```
 
 `output:'export'`라 `npm run start`(`next start`)는 쓰지 않는다. 산출물은 `out/`을 `/global-ai-news` 서브경로로 서빙해 확인한다([WORK-PLAN-github-pages.md](docs/WORK-PLAN-github-pages.md) "전체 검증 방법").
