@@ -170,6 +170,19 @@ export type IndexCard = Pick<
 };
 
 /**
+ * 지면 스토리(1면·섹션 밴드·오늘의 브리핑·지금 화제·색인)가 그리는 카드 — 색인 카드 + 있으면 쓰는 원제·영어 필드.
+ * ArticleCard·IndexCard 모두 이 타입을 만족한다. 호 고정 링크 지면은 클라이언트 섬(EditionBody)이 행으로 받은
+ * 카드(src/lib/editionPayload.ts)로 그리므로 스토리 컴포넌트는 ArticleCard 전체를 요구하지 않는다(영어판 Phase 4-1).
+ */
+export type StoryCard = IndexCard &
+  Partial<Pick<ArticleCard, "titleOriginal" | "titleEn" | "summaryEn" | "related">>;
+
+/** 레이더 카드(StoryRadar) — 메타 레일(owner/repo·arXiv ID·수치)이 원문 URL 과 메트릭을 읽는다. */
+export type RadarCard = StoryCard &
+  Pick<ArticleCard, "url"> &
+  Partial<Pick<ArticleCard, "engagement">>;
+
+/**
  * 최근 수집분 피드(public/latest.json) 한 항목 — 외부 소비용(자랑터 AI 큐레이터 「한입뉴스」).
  * 검색 인덱스 항목에 분야 표시명과 수집 시각을 더한다. 게시 시각(publishedAt)은 GitHub Trending 처럼 오래된 값일 수 있다.
  * `category` 는 분야 키(예: "physical"), `categoryLabel` 은 그 표시명(예: "Physical AI") — 소비자가 표시명 맵을 따로 두지 않게 한다.

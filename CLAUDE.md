@@ -62,7 +62,8 @@
 │   │   ├── IssueDelayNotice.tsx  # 발행 지연 줄 "발행 전/발행 지연"(브라우저 KST 시각으로 판정)
 │   │   ├── IssueBrief.tsx        # 세 줄 요약 띠(마스트헤드 아래, 1면 위계 순 번호 줄 ≤3, 2줄 미만이면 숨김)
 │   │   ├── ShareButton.tsx       # 호 공유(모바일 공유 시트·데스크톱 링크 복사) — 호 고정 링크를 공유
-│   │   ├── Edition.tsx           # FrontPage(리드·서브·오늘의 브리핑)·RadarBand·TrendingList(지금 화제)·이 호의 지면·SectionBands
+│   │   ├── Edition.tsx           # FrontPage(리드·서브·오늘의 브리핑)·RadarBand·TrendingList(지금 화제)·이 호의 지면·SectionBands — 카드 타입은 StoryCard(ArticleCard 전체 불필요)
+│   │   ├── EditionBody.tsx       # 호 고정 링크 본문 클라이언트 섬: 1면·주간 레이더·섹션 밴드·이 호의 기사를 기사 한 벌의 행 페이로드(editionPayload)로 그린다
 │   │   ├── Story.tsx             # 스토리 변형 7종(Lead/Secondary/SectionItem/Brief/Radar/Weekly/Entry)
 │   │   ├── ArticleLink.tsx       # 기사 링크 = 일반 <a>(basePath·localePath, prefetch 없음 — 기사 index.txt 는 postbuild 가 지운다)
 │   │   ├── ShellChrome.tsx       # 고정 크롬 클라이언트 섬 하나(테마·Header·MobileTopBar·Footer·BottomTabBar·Analytics, 영어면 LocaleProvider) — RSC 참조 1줄
@@ -71,7 +72,7 @@
 │   │   ├── ArticleMeta.tsx       # 신호: 키커·FormatBadge·중요도 미터·바이라인·화제 바·태그
 │   │   ├── FollowUpThread.tsx    # 상세 사건 타임라인(이전 보도·후속 보도 — follow_up_of 양방향)
 │   │   ├── RelativeTime.tsx      # 상대 시각("3시간 전") — 정적 HTML은 호 발행 시각 기준, 마운트 후 실시각
-│   │   ├── FeedView.tsx / FeedClient.tsx # 홈 지면+색인 렌더 / useSearchParams 필터 래퍼
+│   │   ├── FeedView.tsx / FeedClient.tsx # 홈 지면+색인 렌더 / useSearchParams 필터 래퍼 + FeedFallback(정적 HTML 지면, FeedClient 와 props 공유)
 │   │   ├── SearchClient.tsx      # 검색 인덱스 fetch + FlexSearch + 필터·정렬
 │   │   ├── FilterBar.tsx         # 정렬 탭 + 분야/매체/태그 필터 칩
 │   │   ├── EditionPager.tsx      # 지난 호 이전/다음
@@ -88,8 +89,8 @@
 │   │   └── ui/                   # shadcn/ui 프리미티브
 │   ├── views/                    # 페이지 본문(언어판 공용, `locale` prop) — 라우트는 경로 목록·메타만 두고 `<XView locale=… />`를 그린다
 │   │   ├── data.ts               # 뷰 데이터 로더(loadHome·loadEdition·loadArticlePage·loadSearch) — 언어판에 실을 기사 범위의 단일 자리(localeArticles, 영어 거르기는 Phase 5)
-│   │   ├── HomeView.tsx          # 홈 — JSON-LD + Suspense(FeedView 서버 fallback / FeedClient)
-│   │   ├── EditionView.tsx       # 호 고정 링크 — 마스트헤드·세 줄 요약·지난 호 안내·1면·주간 레이더·섹션·이 호의 기사·호 이동
+│   │   ├── HomeView.tsx          # 홈 — JSON-LD + Suspense(FeedFallback / FeedClient — 둘 다 클라이언트라 RSC 에는 같은 props 한 벌만)
+│   │   ├── EditionView.tsx       # 호 고정 링크 — 마스트헤드·세 줄 요약·지난 호 안내(서버) + EditionBody 섬(1면·주간 레이더·섹션·이 호의 기사) + 호 이동
 │   │   ├── ArticleView.tsx       # 상세 — 신호 패널·요약·사건 타임라인·다른 매체 보도·원문 발췌·원문 CTA·같은 분야 기사
 │   │   └── SearchView.tsx        # 검색 정적 셸(머리 + SearchClient)
 │   ├── lib/
@@ -105,6 +106,7 @@
 │   │   ├── sourceHealth.ts       # 소스 헬스 판정(notes 소스별 결과 → 연속 실패 2회=오류·연속 0건 3회=경고) — admin·kpi·CI 공용
 │   │   ├── weeklyRadar.ts        # 주간 레이더(일요일 특집): 주 경계·같은 대상 합치기·형식 혼합·순위(buildWeeklyRadar)
 │   │   ├── feedFilter.ts         # 클라 필터·정렬 + URL 옵션 파싱(구 분야값 URL 호환)
+│   │   ├── editionPayload.ts     # 호 지면 섬 페이로드: packEdition(편집 → 매체 표·행·슬롯 id, 레이더만 URL·메트릭)·unpackEdition·packWeekly — 행은 색인 조각 인코딩(indexShards)
 │   │   ├── feedIndex.ts          # 홈 색인: IndexCard 변환·첫 페이지/머리/전체 합치기·FEED_HEAD_SIZE(목록에 싣는 다음 4페이지)
 │   │   ├── indexShards.ts        # 검색·홈 색인 월별 조각: 행 인코딩(encodeRow·decodeRow)·호 월·최근 N개월 나누기·목록/조각 URL·받기(1회 캐시)·기본 정렬 합치기, 언어 고르기 INDEX_LOCALE
 │   │   ├── searchIndex.ts        # FlexSearch 문서 빌드·추가·질의(필드당 상한 없음)
@@ -203,6 +205,7 @@
 - **주간 레이더(일요일 호만, `buildWeeklyRadar` + `getWeekRadarCandidates`)** — 그 일요일로 끝나는 KST 월~일 7개 호의 비뉴스를 LLM 없이 집계한 상위 ≤10 순위표(1면 아래·섹션 밴드 위, 내비 "주간 레이더"). 같은 대상(owner/repo·org/model·arXiv ID·원제)은 한 번, 형식마다 2건 확보, 4건 미만이거나 한 호에서만 왔으면 숨긴다. 홈과 `/edition/<일요일>`이 같은 함수로 같은 밴드를 만든다.
 - 마스트헤드 '귀'는 이번 호 통계(`issueStats`: "이번 호 N건 · 매체 M곳" + 형식 구성), 발행이 늦으면 `IssueDelayNotice`가 "발행 전/발행 지연" 줄을 띄운다.
 - **세 줄 요약(`IssueBrief`, 마스트헤드 바로 아래 전폭 띠)** — 그 호 날짜 실행들의 `brief_json`(`getIssueBriefs`)에서 `selectIssueBrief`가 고른다: 이 호 공개 기사를 가리키는 줄만, 같은 날 재수집이면 1면 본문을 더 많이 덮는 후보(같으면 최신), 표시는 1면 위계 순(리드 줄이 첫 줄), 최대 3줄. 2줄 미만이면 띠를 숨긴다(이 기능 전 지난 호 전부). 홈·호 고정 링크 og:description(리드 줄 제외)과 `latest.json`의 `brief`도 같은 줄이다. 1면 슬롯 "오늘의 브리핑"(`Edition.briefs`)과는 다른 것.
+- **지면 렌더와 페이로드(영어판 Phase 4-1)** — 지면 밴드를 서버 컴포넌트로 그리면 렌더 트리가 RSC 페이로드(`index.txt` + HTML 인라인 두 벌)에 통째로 실린다. 그래서 호 고정 링크는 1면·주간 레이더·섹션 밴드·이 호의 기사를 클라이언트 섬 `EditionBody` 하나로 그리고, 서버는 `buildEdition` 결과를 `packEdition`으로 넘긴다(매체 표 + 색인 조각과 같은 행 인코딩 + 슬롯별 id, 레이더만 URL·메트릭, 태그·원제·묶인 보도 목록 없음). 홈은 Suspense fallback(`FeedFallback`)도 클라이언트 컴포넌트라 FeedClient 와 같은 props 객체를 React Flight 가 한 번만 싣는다. 정적 HTML 은 같은 컴포넌트의 SSR 이라 그대로다 — 섬 안 컴포넌트(Edition·Story·StoryIndex)에 서버 전용 import(db·fs)를 넣지 않는다.
 
 ### 라우트 & 렌더링
 

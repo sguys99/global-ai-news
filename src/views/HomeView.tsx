@@ -1,6 +1,5 @@
 import { Suspense } from "react";
-import { FeedClient } from "@/components/FeedClient";
-import { FeedView } from "@/components/FeedView";
+import { FeedClient, FeedFallback } from "@/components/FeedClient";
 import { JsonLd } from "@/components/JsonLd";
 import type { Locale } from "@/lib/i18n";
 import { websiteJsonLd } from "@/lib/seo";
@@ -16,9 +15,10 @@ export function HomeView({ locale }: { locale: Locale }) {
 
   /*
    * useSearchParams는 정적 export에서 Suspense 경계가 필수이고, 해당 하위 트리는
-   * 클라이언트 전용으로 bailout된다. fallback에 기본 옵션 FeedView(서버 렌더)를 두어
+   * 클라이언트 전용으로 bailout된다. fallback에 기본 옵션 FeedView(FeedFallback)를 두어
    * 정적 HTML에 지면이 담기도록 한다(LCP·SEO). 기본 URL에선 fallback==클라 결과라 무깜빡임.
-   * FeedClient(클라이언트)에는 locale 을 넘기지 않는다 — 레이아웃의 LocaleProvider 컨텍스트로 읽는다(props 는 RSC 에 실린다).
+   * fallback 도 클라이언트 컴포넌트라 RSC 에는 렌더 트리 대신 props 가 실리고, FeedClient 와 같은 배열을 넘기므로 한 벌만 실린다.
+   * 둘 다 locale 을 넘기지 않는다 — 레이아웃의 LocaleProvider 컨텍스트로 읽는다(props 는 RSC 에 실린다).
    */
   return (
     <>
@@ -26,13 +26,7 @@ export function HomeView({ locale }: { locale: Locale }) {
       <JsonLd data={websiteJsonLd()} />
       <Suspense
         fallback={
-          <FeedView
-            {...feed}
-            index={index.indexHead}
-            indexTotal={index.indexTotal}
-            options={{}}
-            locale={locale}
-          />
+          <FeedFallback {...feed} indexHead={index.indexHead} indexTotal={index.indexTotal} />
         }
       >
         <FeedClient {...feed} {...index} />

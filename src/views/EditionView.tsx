@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FrontPage, SectionBands, WeeklyRadarBand } from "@/components/Edition";
+import { EditionBody } from "@/components/EditionBody";
 import { EditionPager } from "@/components/EditionPager";
 import { IssueBrief } from "@/components/IssueBrief";
 import { Masthead } from "@/components/Masthead";
-import { StoryIndex } from "@/components/StoryIndex";
-import { toListCards } from "@/lib/db";
 import { issueStats } from "@/lib/edition";
+import { packEdition, packWeekly } from "@/lib/editionPayload";
 import { getMessages, localePath, type Locale } from "@/lib/i18n";
 import { editionMessages } from "@/lib/messages/edition";
 import { loadEdition, loadWeeklyRadar } from "@/views/data";
@@ -21,8 +20,6 @@ export function EditionView({ locale, date }: { locale: Locale; date: string }) 
   if (!data) notFound();
   const { ref, prev, next, edition, brief } = data;
   const t = getMessages(editionMessages, locale);
-  // 색인(StoryIndex)은 클라이언트 컴포넌트라 props 가 페이지에 실린다 → 목록용 카드로.
-  const index = toListCards(edition.issue);
   // 주간 레이더: 일요일 호만(아니면 null) — 그날 홈과 같은 함수·같은 입력이라 같은 밴드가 실린다.
   const weekly = loadWeeklyRadar(locale, ref.date);
 
@@ -50,16 +47,8 @@ export function EditionView({ locale, date }: { locale: Locale; date: string }) 
         </p>
       )}
       <main className="mx-auto flex max-w-[1240px] flex-col gap-14 px-4 pb-16 md:gap-16 md:px-8">
-        <FrontPage edition={edition} locale={locale} />
-        {weekly && <WeeklyRadarBand weekly={weekly} locale={locale} />}
-        <SectionBands sections={edition.sections} locale={locale} />
-        <section id="all" aria-label={t.index} className="scroll-mt-20">
-          <div className="border-rule mb-5 flex items-baseline gap-3 border-t-2 pt-3">
-            <h2 className="text-display-md font-serif font-extrabold">{t.index}</h2>
-            <span className="ed-cnt">{t.count(edition.issue.length)}</span>
-          </div>
-          <StoryIndex articles={index} />
-        </section>
+        {/* 1면·주간 레이더·섹션 밴드·이 호의 기사 = 클라이언트 섬 하나(기사 한 벌의 행 페이로드 — src/lib/editionPayload.ts). */}
+        <EditionBody edition={packEdition(edition, locale)} weekly={packWeekly(weekly, locale)} />
         <EditionPager prev={prev} next={next} locale={locale} />
       </main>
     </>
