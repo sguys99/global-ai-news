@@ -138,9 +138,14 @@ export function FeedClient({
   const index = useMemo(
     () =>
       all
-        ? mergeIndex(indexHead, head, all, issueArticles.map(toIndexCard))
+        ? mergeIndex(
+            indexHead,
+            head,
+            all,
+            issueArticles.map((a) => toIndexCard(a, locale)),
+          )
         : mergeIndex(indexHead, head),
-    [all, head, indexHead, issueArticles],
+    [all, head, indexHead, issueArticles, locale],
   );
 
   return (

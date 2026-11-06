@@ -272,6 +272,15 @@ export function hasHangul(text: string): boolean {
 }
 
 /**
+ * 언어판에 보일 태그 — en 은 한글이 섞인 태그를 뺀다(english-version-plan 기본값: 영어판은 라틴 문자 태그만), ko 는 그대로.
+ * 화면(ArticleMeta `visibleTags`)·영어 목록 카드(db.ts `toListCard`)·영어 색인 행(indexShards `encodeRow`)·
+ * 영어 필터 칩(views/data.ts)이 같은 규칙을 쓴다.
+ */
+export function localeTags(tags: string[], locale: Locale = "ko"): string[] {
+  return locale === "en" ? tags.filter((tag) => !hasHangul(tag)) : tags;
+}
+
+/**
  * 언어별 매체 표시명. `full` 이면 원래 이름(툴팁·상세 신호 패널), 아니면 축약명(바이라인·칩).
  *  - ko: 지금 그대로 — 축약 `shortSourceName(name)`, 전체 `name`.
  *  - en: 축약명 맵에 라틴 문자 이름이 있으면 그것(예: "HuggingFace 트렌딩 모델" → "Hugging Face"),

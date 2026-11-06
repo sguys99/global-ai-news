@@ -68,3 +68,37 @@ describe("queryMatchingIds", () => {
     expect(queryMatchingIds(index, "존재하지않는키워드xyz")).toEqual([]);
   });
 });
+
+describe("영어 색인(en) — forward 토큰화 + latin:simple", () => {
+  const en = (id: number, titleEn: string, summaryEn = "", tags: string[] = []) => ({
+    ...entry({ id, tags }),
+    titleEn,
+    summaryEn,
+  });
+  const enIndex = buildSearchDocument(
+    [
+      en(1, "OpenAI launches lockdown mode for ChatGPT", "Security feature."),
+      en(2, "Café robots: Naver's GPT-5 rival", "Résumé agents ship.", ["robotics"]),
+      en(3, "Agentic coding with MCP servers"),
+    ],
+    "en",
+  );
+
+  it("낱말 앞부분 일치(open → OpenAI, agent → agents·Agentic), 대소문자 무시", () => {
+    expect(queryMatchingIds(enIndex, "open")).toEqual([1]);
+    expect(queryMatchingIds(enIndex, "AGENT").sort()).toEqual([2, 3]);
+    expect(queryMatchingIds(enIndex, "chatgpt")).toEqual([1]);
+  });
+
+  it("악센트를 접는다(cafe → Café, resume → Résumé), 태그도 찾는다", () => {
+    expect(queryMatchingIds(enIndex, "cafe")).toEqual([2]);
+    expect(queryMatchingIds(enIndex, "resume")).toEqual([2]);
+    expect(queryMatchingIds(enIndex, "robotics")).toEqual([2]);
+  });
+
+  it("한국어 제목·요약 필드는 색인하지 않는다(영어 색인은 영어 필드만)", () => {
+    const idx = buildSearchDocument([{ ...en(9, "English"), titleKo: "한국어 제목" }], "en");
+    expect(queryMatchingIds(idx, "한국어")).toEqual([]);
+    expect(queryMatchingIds(idx, "english")).toEqual([9]);
+  });
+});

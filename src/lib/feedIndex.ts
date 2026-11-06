@@ -9,6 +9,7 @@
  */
 import { filterAndSortFeed } from "@/lib/feedFilter";
 import type { Locale } from "@/lib/i18n";
+import { hasHangul, localeTags } from "@/lib/labels";
 import type { ArticleCard, IndexCard } from "@/lib/types";
 
 /**
@@ -35,9 +36,24 @@ export function relatedCountOf(article: {
   return article.related?.length ?? article.relatedCount ?? 0;
 }
 
-/** 카드 → 색인 카드. 원제 폴백(titleKo 가 비면 원제)을 미리 적용하고, 묶인 보도는 개수만 남긴다. */
-export function toIndexCard(article: ArticleCard | IndexCard): IndexCard {
-  const a: IndexCard & Partial<ArticleCard> = article;
+/**
+ * 색인 카드 + 언어판 필드 — 영어 색인 카드(`toIndexCard(…, "en")`)는 영어 제목·요약을 이 선택 필드에 싣는다
+ * (조각을 되돌린 카드 indexShards `DecodedCard` 와 같은 모양). IndexCard 를 만족하므로 색인 컴포넌트·필터가 그대로 받는다.
+ */
+export type LocaleIndexCard = IndexCard &
+  Partial<Pick<ArticleCard, "titleOriginal" | "titleEn" | "summaryEn">>;
+
+/**
+ * 카드 → 색인 카드. 원제 폴백(titleKo 가 비면 원제)을 미리 적용하고, 묶인 보도는 개수만 남긴다.
+ * en(영어판 Phase 5-2)은 한국어 가공 텍스트를 비우고(titleKo·summaryKo = "") 영어 제목·요약, 매체 영문명·지역
+ * (KOREA 표시·Korea Desk), 라틴 문자 태그만 싣는다. 영어 제목이 없을 때만 한글 없는 원제를 싣는다(headlineOf en 폴백).
+ */
+export function toIndexCard(
+  article: ArticleCard | LocaleIndexCard,
+  locale: Locale = "ko",
+): LocaleIndexCard {
+  const a: LocaleIndexCard & Partial<ArticleCard> = article;
+  if (locale === "en") return toEnglishIndexCard(a);
   const card: IndexCard = {
     id: a.id,
     source: { id: a.source.id, name: a.source.name },
@@ -55,42 +71,59 @@ export function toIndexCard(article: ArticleCard | IndexCard): IndexCard {
   return card;
 }
 
+/** 영어 색인 카드(toIndexCard en). 값이 없는 선택 필드는 키를 두지 않는다(RSC 가 `"$undefined"` 를 적지 않게). */
+function toEnglishIndexCard(a: LocaleIndexCard & Partial<ArticleCard>): LocaleIndexCard {
+  const source: IndexCard["source"] = { id: a.source.id, name: a.source.name };
+  if (a.source.nameEn) source.nameEn = a.source.nameEn;
+  if (a.source.region) source.region = a.source.region;
+  const card: LocaleIndexCard = {
+    id: a.id,
+    source,
+    titleKo: "",
+    summaryKo: "",
+    category: a.category,
+    format: a.format,
+    tags: localeTags(a.tags, "en"),
+    trendingScore: a.trendingScore,
+    importance: a.importance,
+    publishedAt: a.publishedAt,
+  };
+  if (a.titleEn) card.titleEn = a.titleEn;
+  else if (a.titleOriginal && !hasHangul(a.titleOriginal)) card.titleOriginal = a.titleOriginal;
+  if (a.summaryEn) card.summaryEn = a.summaryEn;
+  const related = relatedCountOf(a);
+  if (related) card.relatedCount = related;
+  return card;
+}
+
 /**
  * 목록 한 줄(StoryEntry) 카드 — 색인 카드에서 태그를 뺐다. StoryEntry 는 태그를 그리지 않는다.
  * 영어판은 영어 제목·요약·원제·영문 매체명을 더 싣는다(articleText 헬퍼가 en 일 때 읽는 필드).
  */
-export type EntryCard = Omit<IndexCard, "tags"> &
-  Partial<Pick<ArticleCard, "titleOriginal" | "titleEn" | "summaryEn">>;
+export type EntryCard = Omit<LocaleIndexCard, "tags">;
 
 /**
  * 상세 "같은 분야 기사"(RelatedStories 클라이언트 섬)에 넘기는 카드(Phase 4-1 페이지 무게, 분석 순위 5).
  * 서버 렌더면 RSC 에 카드마다 렌더된 요소 트리(클래스·미터·바이라인, 약 1.2KB)가 실리는데, 섬에 props 로 넘기면
  * 그 언어로 화면에 쓰는 값만 실린다. 값이 없는 선택 필드는 키를 두지 않는다(RSC 가 `"$undefined"` 를 적지 않게).
- * ko 는 toIndexCard 와 같은 값(원제 폴백 포함)이라 서버 렌더와 HTML 이 같다.
+ * ko 는 toIndexCard 와 같은 값(원제 폴백 포함)이라 서버 렌더와 HTML 이 같다. en 은 toIndexCard en 과 같은 값.
  */
 export function toEntryCard(article: ArticleCard, locale: Locale = "ko"): EntryCard {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { tags, ...card } = toIndexCard(article);
-  if (locale !== "en") return card;
-  const { titleOriginal, titleEn, summaryEn, source } = article;
-  return {
-    ...card,
-    titleKo: "",
-    summaryKo: "",
-    source: source.nameEn ? { ...card.source, nameEn: source.nameEn } : card.source,
-    // headlineOf(en)은 영어 제목이 없을 때만 원제를 읽는다.
-    ...(titleEn ? { titleEn } : { titleOriginal }),
-    ...(summaryEn ? { summaryEn } : {}),
-  };
+  const { tags, ...card } = toIndexCard(article, locale);
+  return card;
 }
 
 /**
  * 누적 카드 → 색인 카드 배열(기본 정렬 = 화제순, 클라 `filterAndSortFeed`와 같은 비교자).
  * 페이지의 첫 페이지(`.slice(0, INDEX_PAGE_SIZE)`)·색인 머리·월별 조각이 같은 함수로 만들어져,
- * 첫 페이지 + 머리는 언제나 누적 전체의 앞부분이다.
+ * 첫 페이지 + 머리는 언제나 누적 전체의 앞부분이다. `locale` 은 카드 언어(toIndexCard).
  */
-export function buildFeedIndex(articles: readonly (ArticleCard | IndexCard)[]): IndexCard[] {
-  return filterAndSortFeed(articles.map(toIndexCard));
+export function buildFeedIndex(
+  articles: readonly (ArticleCard | LocaleIndexCard)[],
+  locale: Locale = "ko",
+): LocaleIndexCard[] {
+  return filterAndSortFeed(articles.map((a) => toIndexCard(a, locale)));
 }
 
 /**

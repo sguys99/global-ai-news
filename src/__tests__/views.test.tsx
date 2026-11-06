@@ -26,7 +26,7 @@ vi.mock("@/components/SearchClient", () => ({ SearchClient: () => null }));
 
 import { EditionView } from "@/views/EditionView";
 import { SearchView } from "@/views/SearchView";
-import { loadEdition, loadSearch, localeArticles } from "@/views/data";
+import { localeArticles } from "@/views/data";
 
 function ref(date: string, issueNo: number): EditionRef {
   return {
@@ -96,11 +96,10 @@ describe("뷰 로더 — 언어판 데이터 범위", () => {
     expect(localeArticles("ko", list)).toBe(list);
   });
 
-  it("en 은 거르기(hasEnglish, Phase 5)가 생기기 전까지 빌드를 멈춘다 — 한국어가 영어 페이지에 새지 않게", () => {
-    db.refs = [ref("2026-11-04", 3)];
-    expect(() => localeArticles("en", [card(1)])).toThrow(/Phase 5/);
-    expect(() => loadEdition("en", "2026-11-04")).toThrow(/Phase 5/);
-    expect(() => loadSearch("en")).toThrow(/Phase 5/);
+  it("en 은 영어 제목·요약이 모두 있는 기사만 남긴다(hasEnglish) — 세부는 viewsEn.test", () => {
+    const en = { ...card(2), titleEn: "Story", summaryEn: "Summary." };
+    const titleOnly = { ...card(3), titleEn: "Title only", summaryEn: "" };
+    expect(localeArticles("en", [card(1), en, titleOnly])).toEqual([en]);
   });
 });
 

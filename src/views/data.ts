@@ -1,26 +1,37 @@
+import { hasEnglish } from "@/lib/articleText";
 import {
   type EditionRef,
   getActiveTags,
+  getArchivePlan,
   getArticle,
   getEditionRefs,
+  getEnglishArticleIds,
   getFeed,
   getFollowUpThread,
   getIssueArticles,
   getIssueBriefs,
+  getIssueDates,
   getLatestEditionRef,
   getLatestPublishedAt,
+  getSourceNameEnMap,
   getSourcesWithCounts,
   getWeekRadarCandidates,
   toListCards,
 } from "@/lib/db";
 import { isArchivedIssueDate } from "@/lib/archive";
-import { buildEdition, selectIssueBrief } from "@/lib/edition";
+import {
+  buildEdition,
+  ISSUE_BRIEF_LIMITS,
+  selectIssueBrief,
+  type IssueBriefLine,
+} from "@/lib/edition";
+import type { SourceOption } from "@/lib/feedFilter";
 import { INDEX_PAGE_SIZE, buildFeedIndex } from "@/lib/feedIndex";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 import { indexBuildVersion } from "@/lib/indexShards";
-import { issueDelayDays } from "@/lib/labels";
+import { hasHangul, issueDelayDays, localeTags } from "@/lib/labels";
 import { hasArticleThumbnail, ogArticleImagePath } from "@/lib/site";
-import type { ArticleCard } from "@/lib/types";
+import type { ArticleCard, FollowUpEntry, RelatedCoverage } from "@/lib/types";
 import { buildWeeklyRadar } from "@/lib/weeklyRadar";
 
 /*
@@ -33,37 +44,149 @@ import { buildWeeklyRadar } from "@/lib/weeklyRadar";
  * (selectIssueBrief 는 지면에 실린 기사 줄만 고른다)·마스트헤드 통계가 함께 따라간다.
  *
  * DB 조회는 빌드타임 동기(better-sqlite3)라 로더도 뷰도 동기다 — 뷰를 일반 함수 컴포넌트로 테스트할 수 있다.
- * generateStaticParams(어떤 경로를 만들지)는 라우트에 그대로 둔다. Phase 5 영어 라우트는 영어가 있는 호·기사만
- * 내야 하므로 그때 이 파일에 언어판 경로 목록을 더한다(아래 호 목록 `localeEditionRefs` 와 같은 기준).
+ * 어떤 경로를 만들지(generateStaticParams)도 여기 언어판 경로 목록(`localeArticleIds`·`localeEditionDates`)이 정한다 —
+ * 한국어 라우트와 Phase 5 영어 라우트가 같은 함수를 부른다.
+ *
+ * 영어판(Phase 5-2 데이터 틈)에서 지키는 것: 영어가 없는 기사·호는 싣지 않고(경로도 없다), 목록 카드는 영어 필드만
+ * 남기며(db.ts `toListCard(…, "en")`), 태그는 라틴 문자만, 매체는 영문명·지역(KOREA·Korea Desk)을 싣는다.
+ * 한국어판 출력은 바뀌지 않는다 — ko 분기는 예전 식 그대로다.
  */
 
 /**
- * 언어판에 실을 기사만 남긴다 — 영어판 거르기의 단일 자리.
- * 지금은 한국어판뿐이라 입력을 그대로 돌려준다. Phase 5 에서 en 은 `articles.filter(hasEnglish)`(src/lib/articleText.ts)가
- * 된다 — 목록용 카드(toListCards)는 영어 필드를 떼므로 반드시 그 **전에** 거른다(이 파일의 로더가 그 순서를 지킨다).
- * 거르기가 생기기 전에 en 으로 부르면 한국어 가공 텍스트가 영어 페이지에 새므로 빌드를 멈춘다.
+ * 언어판에 실을 기사만 남긴다 — 영어판 거르기의 단일 자리. ko 는 입력을 그대로(같은 배열) 돌려주고, en 은 영어 제목·
+ * 요약이 모두 있는 기사만(`hasEnglish`, src/lib/articleText.ts). 목록용 카드(toListCards)는 언어에 따라 필드를 떼므로
+ * 반드시 그 **전에** 거른다(이 파일의 로더가 그 순서를 지킨다).
  */
 export function localeArticles<T extends ArticleCard>(locale: Locale, articles: T[]): T[] {
-  assertLocaleReady(locale);
-  return articles;
+  return locale === DEFAULT_LOCALE ? articles : articles.filter(hasEnglish);
 }
 
-/** 아직 데이터 범위가 정해지지 않은 언어판이면 멈춘다(Phase 5 에서 en 거르기와 함께 푼다). */
-function assertLocaleReady(locale: Locale): void {
-  if (locale !== DEFAULT_LOCALE) {
-    throw new Error(
-      `언어판 데이터 범위가 아직 없다(locale=${locale}) — 영어판은 Phase 5 에서 src/views/data.ts 에 hasEnglish 거르기를 넣고 연다`,
-    );
+/** 영어판 기사가 1건 이상 실린 호 날짜(호 날짜 = created_at 의 KST 날짜, getIssueDates). */
+function englishIssueDates(): Set<string> {
+  const dates = getIssueDates();
+  const out = new Set<string>();
+  for (const id of getEnglishArticleIds()) {
+    const d = dates.get(id);
+    if (d) out.add(d);
   }
+  return out;
 }
 
 /**
- * 언어판의 호 목록(오름차순). 지금은 전체 그대로 — Phase 5 영어판은 영어 기사가 있는 호만 남겨
- * 지난 호 이동(이전·다음)이 빈 호를 가리키지 않게 한다.
+ * 언어판의 호 목록(오름차순). ko 는 전체 그대로, en 은 영어 기사가 1건 이상인 호만 — 지난 호 이동(이전·다음)이 빈 영어
+ * 호를 가리키지 않게 한다. 호수(issueNo)는 언어와 상관없이 같은 호의 번호(한국어판 순번) 그대로다.
  */
-function localeEditionRefs(locale: Locale) {
-  assertLocaleReady(locale);
-  return getEditionRefs();
+export function localeEditionRefs(locale: Locale): EditionRef[] {
+  const refs = getEditionRefs();
+  if (locale === DEFAULT_LOCALE) return refs;
+  const dates = englishIssueDates();
+  return refs.filter((r) => dates.has(r.date));
+}
+
+/** 언어판의 최신 호(홈 지면) — ko 는 DB 최신 호, en 은 영어 기사가 있는 가장 최근 호. 없으면 null. */
+export function localeLatestEditionRef(locale: Locale): EditionRef | null {
+  return locale === DEFAULT_LOCALE
+    ? getLatestEditionRef()
+    : (localeEditionRefs(locale).at(-1) ?? null);
+}
+
+// ─── 경로 목록(generateStaticParams) ──────────────────────────────────────────
+
+/**
+ * 언어판 기사 상세로 사전 생성할 id(오름차순). 보관 대상(src/lib/archive.ts — 빌드 후처리가 보관 지면으로 쓴다)은 뺀다.
+ * ko = `getArchivePlan().liveArticleIds` 그대로, en = 그중 영어판에 실을 기사(`hasEnglish`)만.
+ * 영어 보관 지면은 아직 없다(postbuild 는 한국어만 쓴다) — 영어판 경로에서 보관 기사는 빠진다.
+ */
+export function localeArticleIds(locale: Locale): number[] {
+  const live = getArchivePlan().liveArticleIds;
+  if (locale === DEFAULT_LOCALE) return live;
+  const english = new Set(getEnglishArticleIds());
+  return live.filter((id) => english.has(id));
+}
+
+/**
+ * 언어판 호 고정 링크로 사전 생성할 날짜(오름차순). 보관 호는 뺀다. ko = `liveEditionDates` 그대로,
+ * en = 그중 영어 기사가 있는 호(`localeEditionRefs` 와 같은 기준).
+ */
+export function localeEditionDates(locale: Locale): string[] {
+  const live = getArchivePlan().liveEditionDates;
+  if (locale === DEFAULT_LOCALE) return live;
+  const dates = englishIssueDates();
+  return live.filter((d) => dates.has(d));
+}
+
+// ─── 필터 칩(매체·태그) ───────────────────────────────────────────────────────
+
+/** 홈·검색 필터 칩에 싣는 태그 수. */
+const FILTER_TAG_LIMIT = 8;
+
+/**
+ * 언어판 필터 칩의 매체·태그. ko 는 DB 집계 그대로(getSourcesWithCounts·getActiveTags — 한국어 RSC 무변화).
+ * en 은 영어판 기사(`articles`, 이미 거른 목록)로 센다: 매체는 영어 기사 수 + 영문명·지역, 태그는 라틴 문자 태그만
+ * 사용 빈도 순(동률은 이름 순).
+ */
+function localeFilterOptions(
+  locale: Locale,
+  articles: readonly ArticleCard[],
+): { sources: SourceOption[]; tags: string[] } {
+  if (locale === DEFAULT_LOCALE) {
+    return { sources: getSourcesWithCounts(), tags: getActiveTags(FILTER_TAG_LIMIT) };
+  }
+  return { sources: sourceOptionsOf(articles), tags: activeTagsOf(articles, locale) };
+}
+
+/** 기사 목록 → 매체 칩 옵션(기사 수 내림차순, 동률은 id 순). 영문명·지역은 있을 때만. */
+export function sourceOptionsOf(articles: readonly ArticleCard[]): SourceOption[] {
+  const byId = new Map<string, SourceOption>();
+  for (const a of articles) {
+    const s = byId.get(a.source.id);
+    if (s) {
+      s.count = (s.count ?? 0) + 1;
+      continue;
+    }
+    const opt: SourceOption = { id: a.source.id, name: a.source.name, count: 1 };
+    if (a.source.nameEn) opt.nameEn = a.source.nameEn;
+    if (a.source.region) opt.region = a.source.region;
+    byId.set(a.source.id, opt);
+  }
+  return [...byId.values()].sort(
+    (x, y) => (y.count ?? 0) - (x.count ?? 0) || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0),
+  );
+}
+
+/** 기사 목록 → 사용 빈도 상위 태그(언어판에 보이는 태그만 — en 은 라틴 문자). 동률은 이름 순. */
+export function activeTagsOf(
+  articles: readonly ArticleCard[],
+  locale: Locale,
+  limit = FILTER_TAG_LIMIT,
+): string[] {
+  const counts = new Map<string, number>();
+  for (const a of articles) {
+    for (const tag of localeTags(a.tags, locale)) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort(([a, x], [b, y]) => y - x || (a < b ? -1 : a > b ? 1 : 0))
+    .slice(0, limit)
+    .map(([tag]) => tag);
+}
+
+// ─── 세 줄 요약 ───────────────────────────────────────────────────────────────
+
+/**
+ * 언어판 세 줄 요약 줄. ko 는 고른 줄 그대로. en 은 같은 줄 id 기사의 영어 제목(`titleEn`)으로 바꾸고(추가 호출 없음 —
+ * english-version-plan 아키텍처 결정), 영어 제목이 없는 줄은 뺀다. 남은 줄이 최소(2줄)보다 적으면 띠를 숨긴다(빈 배열).
+ */
+export function localeBrief(
+  locale: Locale,
+  lines: IssueBriefLine[],
+  articles: readonly { id: number; titleEn?: string }[],
+): IssueBriefLine[] {
+  if (locale === DEFAULT_LOCALE) return lines;
+  const titles = new Map(articles.map((a) => [a.id, a.titleEn ?? ""]));
+  const out = lines
+    .map((line) => ({ id: line.id, text: titles.get(line.id) ?? "" }))
+    .filter((line) => line.text.trim());
+  return out.length >= ISSUE_BRIEF_LIMITS.min ? out : [];
 }
 
 // ─── 홈 ───────────────────────────────────────────────────────────────────────
@@ -72,19 +195,27 @@ function localeEditionRefs(locale: Locale) {
  * 홈(최신 호 지면 + 전체 기사 색인). 빌드타임 1회 SSG: 이번 호 카드(1면·섹션 밴드)·전체 기사 색인 첫 페이지·
  * 소스·태그와 이번 호 정보를 클라이언트 셸에 넘긴다. 페이지(정적 HTML·RSC 페이로드)에는 첫 화면이 그리는 만큼만
  * 싣는다 — 누적 전체는 prebuild 가 만든 feed-index/<언어>/ 월별 조각으로 FeedClient 가 "더 보기"·필터·정렬 때 받는다
- * (src/lib/feedIndex.ts·indexShards.ts — 영어 조각은 Phase 5). 필터/정렬은 브라우저에서 수행한다.
+ * (src/lib/feedIndex.ts·indexShards.ts). 필터/정렬은 브라우저에서 수행한다.
  */
 export function loadHome(locale: Locale) {
-  const feed = buildFeedIndex(localeArticles(locale, getFeed()));
+  const all = localeArticles(locale, getFeed());
+  const feed = buildFeedIndex(all, locale);
   const indexHead = feed.slice(0, INDEX_PAGE_SIZE);
   const indexTotal = feed.length;
-  const sources = getSourcesWithCounts();
-  const tags = getActiveTags(8);
-  const ref = getLatestEditionRef();
+  const { sources, tags } = localeFilterOptions(locale, all);
+  const ref = localeLatestEditionRef(locale);
   const editionInfo = { issueNo: ref?.issueNo ?? 0, publishedAt: ref?.publishedAt ?? null };
-  const issueArticles = ref ? toListCards(localeArticles(locale, getIssueArticles(ref.date))) : [];
+  const issueArticles = ref
+    ? toListCards(localeArticles(locale, getIssueArticles(ref.date)), locale)
+    : [];
   // 세 줄 요약(마스트헤드 아래 띠): 줄 id·문장만 넘긴다. 없으면 빈 배열 → 띠를 숨긴다.
-  const brief = ref ? selectIssueBrief(buildEdition(issueArticles), getIssueBriefs(ref.date)) : [];
+  const brief = ref
+    ? localeBrief(
+        locale,
+        selectIssueBrief(buildEdition(issueArticles), getIssueBriefs(ref.date)),
+        issueArticles,
+      )
+    : [];
   // 발행 지연 안내의 초기 상태 = 빌드 시점 판단. 빌드 자체가 낡았으면 정적 HTML 에 안내가 이미 들어간다.
   const initialDelayGap = ref ? issueDelayDays(ref.date, Date.now()) : 0;
   // 주간 레이더: 최신 호가 일요일일 때만(아니면 null). 호 고정 링크 지면과 같은 함수 — 그날 홈과 /edition/<일요일> 이 같다.
@@ -118,7 +249,7 @@ export function loadEdition(locale: Locale, date: string) {
     prev: pagerRef(refs[i - 1]),
     next: pagerRef(refs[i + 1]),
     edition,
-    brief: selectIssueBrief(edition, getIssueBriefs(ref.date)),
+    brief: localeBrief(locale, selectIssueBrief(edition, getIssueBriefs(ref.date)), edition.issue),
   };
 }
 
@@ -165,9 +296,58 @@ export function loadArticlePage(locale: Locale, id: number) {
         .slice(0, RELATED_LIMIT)
     : [];
   // 같은 사건의 앞선·뒤이은 보도(후속 보도 연결). 연결이 없으면 빈 배열이라 섹션이 그려지지 않는다.
-  // Phase 5: FollowUpEntry 에는 영어 제목이 없다 — 영어판은 여기서 영어 제목을 붙이고 영어 없는 보도를 뺀다.
-  const thread = getFollowUpThread(article.id);
-  return { article, thumbnail: articleThumbnail(article), related, thread };
+  const thread = localeThread(locale, getFollowUpThread(article.id));
+  return {
+    article: locale === DEFAULT_LOCALE ? article : englishArticleDetail(article),
+    thumbnail: articleThumbnail(article),
+    related,
+    thread,
+  };
+}
+
+/**
+ * 언어판 사건 타임라인. ko 는 영어판 필드(titleEn·sourceNameEn)를 떼고 예전 모양 그대로. en 은 영어판에 실린
+ * 기사(`titleEn` 이 있는 줄 — db.ts 가 hasEnglish 로 붙인다)와 보고 있는 기사만 남긴다(영어 페이지가 없는 기사로
+ * 링크하지 않게). 앞뒤 관계(relation)는 그대로다 — 남은 줄이 보고 있는 기사뿐이면 컴포넌트가 섹션을 그리지 않는다.
+ */
+export function localeThread(locale: Locale, thread: FollowUpEntry[]): FollowUpEntry[] {
+  if (locale === DEFAULT_LOCALE) {
+    return thread.map((e) => {
+      const ko = { ...e };
+      delete ko.titleEn;
+      delete ko.sourceNameEn;
+      return ko;
+    });
+  }
+  return thread.filter((e) => e.relation === "current" || Boolean(e.titleEn));
+}
+
+/**
+ * 영어 상세 본문용 기사 — 묶인 보도(related_json)의 매체를 영문명으로 바꾸고(저장값은 매체 표시명 문자열이라 이름으로
+ * 찾는다, db.ts `getSourceNameEnMap`), 한글이 든 제목은 비운다. 매체도 제목도 라틴 문자로 낼 수 없는 보도는 뺀다.
+ * 원제·원문 발췌의 한글 처리는 뷰(ArticleView)가 한다 — 원제는 `lang="ko"` 병기, 한글 발췌는 숨김.
+ */
+function englishArticleDetail(article: ArticleCard): ArticleCard {
+  if (!article.related?.length) return article;
+  const names = getSourceNameEnMap();
+  return { ...article, related: englishRelated(article.related, names) };
+}
+
+/** 묶인 보도 → 영어판 표시용(매체 영문명, 한글 제목은 빈 문자열, 둘 다 비면 뺀다). */
+export function englishRelated(
+  related: readonly RelatedCoverage[],
+  nameEn: ReadonlyMap<string, string>,
+): RelatedCoverage[] {
+  return related
+    .map((r) => {
+      const name = nameEn.get(r.source) ?? r.source;
+      return {
+        source: hasHangul(name) ? "" : name,
+        url: r.url,
+        title: hasHangul(r.title) ? "" : r.title,
+      };
+    })
+    .filter((r) => r.source || r.title);
 }
 
 // ─── 검색 ─────────────────────────────────────────────────────────────────────
@@ -175,14 +355,14 @@ export function loadArticlePage(locale: Locale, id: number) {
 /**
  * 검색 페이지 정적 셸 데이터 — 소스·태그(필터 칩·추천 검색어)와 검색 색인 목록 캐시 키만. 실제 검색은 SearchClient 가
  * search-index/<언어>/ 월별 조각으로 한다(언어 고르기는 src/lib/indexShards.ts `INDEX_LOCALE`).
- * Phase 5 영어판은 한글 태그 숨김을 여기서 정한다.
+ * 영어판은 영어 기사로 센 매체·라틴 문자 태그(`localeFilterOptions`)와 영어 기사 수로 만든 캐시 키를 싣는다.
  */
 export function loadSearch(locale: Locale) {
-  assertLocaleReady(locale);
-  const total = localeArticles(locale, getFeed()).length;
+  const all = localeArticles(locale, getFeed());
+  const { sources, tags } = localeFilterOptions(locale, all);
   return {
-    sources: getSourcesWithCounts(),
-    tags: getActiveTags(8),
-    indexVersion: indexBuildVersion(getLatestEditionRef()?.date, total),
+    sources,
+    tags,
+    indexVersion: indexBuildVersion(localeLatestEditionRef(locale)?.date, all.length),
   };
 }

@@ -129,9 +129,70 @@ describe("buildSearchIndex — 호 월별 조각", () => {
   });
 });
 
+describe("buildSearchIndex en — 영어 색인(영어판 Phase 5-2)", () => {
+  const HANGUL = /[\uac00-\ud7af]/;
+
+  /** 기사 1 = 한국 매체(한국어 원제·한글 태그 포함)의 영어 기사, 기사 2 = 영어 없음. */
+  function englishSeed() {
+    db.prepare(
+      "UPDATE sources SET name = 'AI타임스', name_en = 'AI Times', region = 'kr' WHERE id = 'hackernews'",
+    ).run();
+    db.prepare(
+      "UPDATE articles SET title_en = 'English A', summary_en = 'English summary A.', title_original = '한국어 원제' WHERE id = 1",
+    ).run();
+    db.prepare("INSERT INTO tags (id, name) VALUES (3, '에이전트')").run();
+    db.prepare("INSERT INTO article_tags (article_id, tag_id) VALUES (1, 3)").run();
+  }
+
+  it("영어 본문이 있는 기사만, 제목·요약은 영어, 태그는 라틴 문자만, 한국어 원제는 비운다", () => {
+    englishSeed();
+    const built = buildSearchIndex(db, "en");
+    expect(built.manifest).toMatchObject({ locale: "en", total: 1 });
+    expect(cardsOf(built)).toEqual([
+      {
+        id: 1,
+        source: { id: "hackernews", name: "AI타임스", nameEn: "AI Times", region: "kr" },
+        titleKo: "",
+        summaryKo: "",
+        titleEn: "English A",
+        summaryEn: "English summary A.",
+        titleOriginal: "",
+        category: "agent",
+        format: "news",
+        tags: ["llm", "agent"],
+        trendingScore: 90,
+        importance: 4,
+        publishedAt: "2026-01-03T00:00:00Z",
+        relatedCount: 1,
+      },
+    ]);
+    // 조각 행에는 한글이 없다(매체 한국어 이름은 목록의 매체 표에만 — 화면은 영문명을 쓴다).
+    expect(HANGUL.test(JSON.stringify(built.shards))).toBe(false);
+  });
+
+  it("writeSearchIndex 는 <dir>/en/ 에 영어 색인을, <dir>/ko/ 에는 영어 없는 한국어 색인을 쓴다", () => {
+    englishSeed();
+    expect(writeSearchIndex(dir, db)).toEqual({ ko: 2, en: 1 });
+    const en = JSON.parse(
+      readFileSync(path.join(dir, "en", "manifest.json"), "utf-8"),
+    ) as IndexManifest;
+    expect(en.sources.hackernews).toEqual({
+      name: "AI타임스",
+      format: "news",
+      nameEn: "AI Times",
+      region: "kr",
+    });
+    expect(readdirSync(path.join(dir, "en")).sort()).toEqual(["2026-01.json", "manifest.json"]);
+    const ko = readdirSync(path.join(dir, "ko"))
+      .map((f) => readFileSync(path.join(dir, "ko", f), "utf-8"))
+      .join("\n");
+    for (const s of ["AI Times", "English", "region"]) expect(ko).not.toContain(s);
+  });
+});
+
 describe("writeSearchIndex — 파일 배치", () => {
   it("<dir>/ko/ 에 목록과 월별 조각을 쓰고, 지난 빌드의 다른 달 조각은 남기지 않는다", () => {
-    expect(writeSearchIndex(dir, db)).toEqual({ ko: 2 });
+    expect(writeSearchIndex(dir, db)).toEqual({ ko: 2, en: 0 });
     expect(readdirSync(path.join(dir, "ko")).sort()).toEqual([
       "2026-01.json",
       "2026-02.json",

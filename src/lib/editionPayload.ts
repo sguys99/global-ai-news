@@ -50,6 +50,8 @@ export function packEdition(edition: Edition<ArticleCard>, locale: Locale): Edit
     // 형식은 소스 속성(sources.format)이라 같은 매체의 기사는 형식이 같다(색인 조각 매체 표와 같은 전제).
     const s: ManifestSource = { name: a.source.name, format: a.format };
     if (locale === "en" && a.source.nameEn) s.nameEn = a.source.nameEn;
+    // 지역(KOREA 표시·Korea Desk)도 영어판에만.
+    if (locale === "en" && a.source.region) s.region = a.source.region;
     sources[a.source.id] = s;
   }
   return {
@@ -99,11 +101,15 @@ export function unpackEdition(payload: EditionPayload, locale: Locale): Edition<
 }
 
 /**
- * 주간 레이더를 섬 props 로 — 한국어판은 그리지 않는 영어 제목·영문 매체명을 뗀다(영어판은 그대로).
+ * 주간 레이더를 섬 props 로 — 한국어판은 그리지 않는 영어 제목·영문 매체명을 뗀다. 영어판은 거꾸로 한국어 제목
+ * (`title` — 영어판은 titleEn 만 그린다)을 비운다(영어 페이지 RSC 에 한국어가 실리지 않게).
  * 순위·식별자·수치는 그대로라 밴드 렌더는 같다.
  */
 export function packWeekly(weekly: WeeklyRadar | null, locale: Locale): WeeklyRadar | null {
-  if (!weekly || locale === "en") return weekly;
+  if (!weekly) return weekly;
+  if (locale === "en") {
+    return { ...weekly, items: weekly.items.map((item) => ({ ...item, title: "" })) };
+  }
   return {
     ...weekly,
     items: weekly.items.map((item) => {

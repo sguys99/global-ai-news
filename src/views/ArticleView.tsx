@@ -15,7 +15,7 @@ import { RelatedStories } from "@/components/RelatedStories";
 import { headlineOf, sourceNameOf, summaryOf } from "@/lib/articleText";
 import { toEntryCard } from "@/lib/feedIndex";
 import { getMessages, localePath, type Locale } from "@/lib/i18n";
-import { categoryLabel, formatDate, shortSourceName } from "@/lib/labels";
+import { categoryLabel, formatDate, hasHangul, sourceDisplayName } from "@/lib/labels";
 import { articleMessages } from "@/lib/messages/article";
 import { commonMessages } from "@/lib/messages/common";
 import { articleJsonLd } from "@/lib/seo";
@@ -26,6 +26,10 @@ import { loadArticlePage } from "@/views/data";
  * 라우트는 generateStaticParams·메타만 두고 `<ArticleView locale=… id=… />` 를 그린다. 실을 기사·관련 기사·타임라인은
  * 로더(src/views/data.ts `loadArticlePage`)가 정하고, 범위 밖 id 는 404.
  * 제목·요약·매체명은 articleText 헬퍼로 고른다 — ko 는 예전 식 그대로(`titleKo || titleOriginal`·`summaryKo`·축약명).
+ *
+ * 영어판 한글 새기 막기(Phase 5-2): 한국 매체의 한국어 원제는 "Original article in Korean" 표지와 함께 `lang="ko"` 로
+ * 병기하고, 한글 원문 발췌는 숨기며, 묶인 보도는 한글 제목을 빼고 매체명만 둔다(로더가 매체를 영문명으로 바꾼다).
+ * 한국어판 마크업은 그대로다.
  */
 export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
   const data = loadArticlePage(locale, id);
@@ -41,6 +45,11 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
   // 매체 축약명(신호 패널)·원래 이름(툴팁).
   const sourceShort = sourceNameOf(article, locale);
   const sourceFull = sourceNameOf(article, locale, { full: true });
+  // 영어판에서 한글이 든 원문 텍스트(한국 매체 원제·발췌·묶인 보도 제목) 판정. 한국어판은 언제나 거짓.
+  const koreanInEnglish = (text: string) => locale === "en" && hasHangul(text);
+  const koreanOriginal = koreanInEnglish(article.titleOriginal);
+  // 한국어판은 원래 값 그대로(빈 문자열까지 — RSC 페이로드가 바뀌지 않게), 영어판은 한글 발췌만 뺀다.
+  const excerpt = koreanInEnglish(article.contentRaw ?? "") ? undefined : article.contentRaw;
 
   return (
     <main className="ar-main">
@@ -61,11 +70,18 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
             </span>
           )}
           <h1 className="ar-h1">{title}</h1>
-          {showOriginalTitle && (
-            <p lang="en" className="text-caption text-muted-foreground">
-              {article.titleOriginal}
-            </p>
-          )}
+          {showOriginalTitle &&
+            (koreanOriginal ? (
+              <p className="text-caption text-muted-foreground flex flex-wrap gap-x-1.5">
+                <span>{t.originalInKorean}</span>
+                <span aria-hidden>·</span>
+                <span lang="ko">{article.titleOriginal}</span>
+              </p>
+            ) : (
+              <p lang="en" className="text-caption text-muted-foreground">
+                {article.titleOriginal}
+              </p>
+            ))}
         </header>
 
         <dl className="ar-sigs">
@@ -126,9 +142,15 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
                     rel="noopener noreferrer"
                     className="story-link ar-cov"
                   >
-                    {/* 저장된 매체 표시명(related_json) — 영어 매체명 찾기는 Phase 5(이름 → sourceDisplayName). */}
-                    <span className="ar-cov-s">{shortSourceName(r.source)}</span>
-                    <span className="headline text-caption min-w-0 flex-1">{r.title}</span>
+                    {/* 저장된 매체 표시명(related_json) — 영어판은 로더가 영문명으로 바꿔 둔다(views/data.ts). */}
+                    <span className="ar-cov-s">
+                      {koreanInEnglish(r.source)
+                        ? ""
+                        : sourceDisplayName({ name: r.source }, locale)}
+                    </span>
+                    <span className="headline text-caption min-w-0 flex-1">
+                      {koreanInEnglish(r.title) ? "" : r.title}
+                    </span>
                     <Icon
                       name="arrowUpRight"
                       className="text-muted-foreground size-3.5 shrink-0 self-center"
@@ -140,13 +162,14 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
           </section>
         )}
 
-        {article.contentRaw && (
+        {/* 영어판은 한글 발췌(한국 매체)를 싣지 않는다 — 영어 페이지다. */}
+        {excerpt && (
           <section aria-labelledby="original-heading" className="ar-sect gap-3">
             <h2 id="original-heading" className="ar-h">
               {t.excerpt}
             </h2>
             <p lang="en" className="text-body text-foreground-soft">
-              {article.contentRaw}
+              {excerpt}
             </p>
           </section>
         )}

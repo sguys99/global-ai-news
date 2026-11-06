@@ -73,7 +73,7 @@ export function FollowUpThread({
                     </span>
                     <span aria-hidden>·</span>
                     <span className="min-w-0 truncate">
-                      {sourceDisplayName({ name: e.sourceName }, locale)}
+                      {sourceDisplayName({ name: e.sourceName, nameEn: e.sourceNameEn }, locale)}
                     </span>
                     <span aria-hidden>·</span>
                     <span className="shrink-0 tabular-nums">

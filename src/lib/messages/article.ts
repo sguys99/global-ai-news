@@ -19,6 +19,11 @@ export const articleMessages = defineMessages({
     coverage: (n: number) => `같은 소식, 다른 매체 · ${n}곳`,
     /** 원문 발췌(contentRaw) 머리 — 발췌는 원문 언어 그대로다. */
     excerpt: "원문 발췌 · English",
+    /**
+     * 한국 매체 원제 병기 표지(영어판 — 원제가 한국어일 때 원제 앞에 붙인다). 한국어판은 원제를 표지 없이 병기하므로
+     * 이 값을 그리지 않는다(키 모양을 맞추려고 둔다).
+     */
+    originalInKorean: "한국어 원문 기사",
     readOriginal: "원문 기사 읽기",
     /** 같은 분야 기사 머리 — 인자는 분야 표시명(categoryLabel). */
     moreInCategory: (category: string) => `${category}의 다른 기사`,
@@ -34,6 +39,7 @@ export const articleMessages = defineMessages({
     summary: "Summary",
     coverage: (n: number) => `Also reported by ${n} ${plural(n, "outlet", "outlets")}`,
     excerpt: "Original excerpt",
+    originalInKorean: "Original article in Korean",
     readOriginal: "Read the original",
     moreInCategory: (category: string) => `More in ${category}`,
     seeAll: "See all →",

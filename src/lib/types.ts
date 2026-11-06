@@ -130,6 +130,13 @@ export interface FollowUpEntry {
   titleOriginal: string;
   /** 매체 표시명(sources.name) — 화면은 shortSourceName 으로 줄인다. */
   sourceName: string;
+  /**
+   * 영어판 전용(영어판 Phase 5-2): 영어 제목 — 그 기사가 영어판에 실릴 때(`hasEnglish`)만 있다. 영어 타임라인은 이 값이
+   * 없는 항목(영어 페이지가 없는 기사)을 뺀다. 한국어판 로더(views/data.ts)는 영어 필드를 떼어 넘긴다.
+   */
+  titleEn?: string;
+  /** 영어판 전용: 영문 매체명(sources.name_en, 한글 이름 매체만). */
+  sourceNameEn?: string;
   /** 게재 시각(created_at, UTC ISO) — 이 시각의 KST 날짜가 호 날짜다. */
   issuedAt: string;
   /** 보고 있는 기사 기준: 앞선 보도 / 이 기사 / 뒤이은 보도. */
@@ -144,6 +151,13 @@ export interface FollowUpEntry {
  * 클라이언트 검색 색인은 Phase 4-2 부터 이 모양이 아니라 월별 조각의 행이다(src/lib/indexShards.ts SearchCard).
  */
 export type SearchIndexEntry = Omit<ArticleCard, "contentRaw" | "titleEn" | "summaryEn">;
+
+/**
+ * 언어판 목록·지면용 카드(db.ts `toListCard(article, locale)`). ko 는 SearchIndexEntry(영어 필드 없음)이고,
+ * en 은 영어 제목·요약·매체 영문명·지역을 남기고 한국어 가공 텍스트(titleKo·summaryKo)를 빈 문자열로 둔다
+ * (영어판 Phase 5-2 — 영어 페이지 RSC 에 한국어가 실리지 않게).
+ */
+export type ListCard = Omit<ArticleCard, "contentRaw">;
 
 /**
  * 전체 기사 색인(StoryEntry)·피드 필터/정렬에 필요한 필드만 남긴 카드 — 홈 색인의 첫 페이지(정적 HTML)와
