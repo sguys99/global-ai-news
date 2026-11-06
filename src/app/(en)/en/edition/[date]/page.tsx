@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { englishEditionPageMetadata } from "@/lib/pageMetadata";
+import { englishEditionPageMetadata, withLanguageAlternates } from "@/lib/pageMetadata";
 import { EditionView } from "@/views/EditionView";
-import { loadEdition, localeEditionDates } from "@/views/data";
+import { languageAlternates, loadEdition, localeEditionDates } from "@/views/data";
 
 /**
  * 영어 호 고정 링크(`/en/edition/YYYY-MM-DD/`). 한국어 라우트((ko)/edition/[date])와 같은 뷰에 locale="en" 을 넘긴다.
@@ -19,7 +19,10 @@ type Props = { params: Promise<{ date: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = loadEdition("en", (await params).date);
   if (!data) return {};
-  return englishEditionPageMetadata(data.ref, data.brief);
+  return withLanguageAlternates(
+    englishEditionPageMetadata(data.ref, data.brief),
+    languageAlternates({ kind: "edition", date: data.ref.date }),
+  );
 }
 
 export default async function EnglishEditionPage({ params }: Props) {

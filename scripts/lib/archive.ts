@@ -39,6 +39,7 @@ import { DEFAULT_LOCALE, localePath, type Locale } from "../../src/lib/i18n";
 import { BASE_PATH, SITE_URL } from "../../src/lib/site";
 import {
   englishRelated,
+  languageAlternates,
   loadArticle,
   localeArchivePlan,
   localeArticles,
@@ -238,6 +239,7 @@ export function dbArchiveSource(): ArchiveSource {
         article,
         issueDate,
         issue: ref ? { ref, count: count.get(issueDate) ?? 0 } : null,
+        languages: languageAlternates({ kind: "article", id }),
       };
     },
     edition(date, locale) {
@@ -253,6 +255,7 @@ export function dbArchiveSource(): ArchiveSource {
         prev: refs[i - 1] ?? null,
         next: refs[i + 1] ?? null,
         latestEditionDate,
+        languages: languageAlternates({ kind: "edition", date }),
       };
     },
   };

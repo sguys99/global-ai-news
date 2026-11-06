@@ -46,6 +46,7 @@ import {
   type Format,
 } from "@/lib/labels";
 import { archiveMessages } from "@/lib/messages/archive";
+import { localeSwitchMessages } from "@/lib/messages/localeSwitch";
 import { articleMessages } from "@/lib/messages/article";
 import { commonMessages } from "@/lib/messages/common";
 import { editionMessages } from "@/lib/messages/edition";
@@ -60,6 +61,7 @@ import {
   editionPageMetadata,
   englishArticlePageMetadata,
   englishEditionPageMetadata,
+  withLanguageAlternates,
 } from "@/lib/pageMetadata";
 import { articleJsonLd, jsonLdHtml } from "@/lib/seo";
 import {
@@ -260,11 +262,13 @@ function documentHtml({
   assets,
   head,
   body,
+  languages,
 }: {
   locale: Locale;
   assets: BuildAssets;
   head: string[];
   body: string;
+  languages?: LanguageAlternates | null;
 }): string {
   const stylesheetTags = assets.stylesheets.map((h) => `<link rel="stylesheet" href="${esc(h)}">`);
   return [
@@ -279,7 +283,7 @@ function documentHtml({
     `<script>${THEME_SCRIPT}</script>`,
     ANALYTICS_SCRIPT,
     `</head><body class="sh-lb">`,
-    shellHeader(locale),
+    shellHeader(locale, languages),
     body,
     shellFooter(locale),
     "</body></html>",
@@ -290,12 +294,25 @@ function documentHtml({
 
 const WORDMARK = '<span class="text-brand">AI</span> Daybook';
 
-function shellHeader(locale: Locale): string {
+/**
+ * 언어 전환 링크(english-version-plan 5-3) — 전체 페이지 셸(LocaleSwitch)과 같은 글자·속성. 보관 지면에는 스크립트가 없어
+ * 빌드가 정한 주소를 그대로 쓴다: 같은 페이지의 다른 언어판(`languages`, 있을 때만 — 보관 지면이어도 같은 주소에 있다),
+ * 없으면 그 언어 홈.
+ */
+function localeSwitchLink(locale: Locale, languages?: LanguageAlternates | null): string {
+  const target: Locale = locale === "en" ? "ko" : "en";
+  const t = getMessages(localeSwitchMessages, target);
+  const lang = HTML_LANG[target];
+  const to = languages?.[target] ? `${BASE_PATH}${languages[target]}` : href(target, "/");
+  return `<a class="sh-ln" href="${esc(to)}" lang="${lang}" hreflang="${lang}" aria-label="${esc(t.title)}" title="${esc(t.title)}">${esc(t.label)}</a>`;
+}
+
+function shellHeader(locale: Locale, languages?: LanguageAlternates | null): string {
   const c = getMessages(commonMessages, locale);
   return (
     `<header class="sh-lh"><div><a class="sh-wm" href="${href(locale, "/")}" aria-label="${esc(c.homeLabel)}">${WORDMARK}</a>` +
     `<nav aria-label="${esc(c.mainNavLabel)}"><a class="sh-ln" href="${href(locale, "/")}">${esc(c.nav.today)}</a>` +
-    `<a class="sh-ln" href="${href(locale, "/search/")}">${esc(c.nav.search)}</a></nav></div></header>`
+    `<a class="sh-ln" href="${href(locale, "/search/")}">${esc(c.nav.search)}</a>${localeSwitchLink(locale, languages)}</nav></div></header>`
   );
 }
 
@@ -310,8 +327,16 @@ function shellFooter(locale: Locale, year = new Date().getFullYear()): string {
 
 // ─── 보관 기사 ────────────────────────────────────────────────────────────────
 
+/**
+ * 같은 페이지의 두 언어판 주소(basePath 제외) — src/views/data.ts `languageAlternates` 결과. 있으면 `<head>` 에 hreflang 짝을
+ * 싣고 머리 띠 언어 전환 링크가 그리로 간다. null·없음이면 hreflang 없음·전환 링크는 상대 언어 홈.
+ */
+export type LanguageAlternates = Readonly<Record<Locale, string>>;
+
 export interface ArchiveArticleInput {
   article: ArticleCard;
+  /** 두 언어판 짝(hreflang·언어 전환). */
+  languages?: LanguageAlternates | null;
   /** 기사가 실린 호(호 날짜의 EditionRef)와 그 호의 기사 수 — 호를 모르면 null(폴리오 날짜만, 호 링크 없음). */
   issue: { ref: Pick<EditionRef, "date" | "issueNo" | "publishedAt">; count: number } | null;
   /** 기사 호 날짜(KST) — issue 가 없을 때 폴리오 날짜. */
@@ -422,11 +447,14 @@ export function archiveArticleBody(
  * 요약이 meta description·og:description·본문에 이미 있어 네 번째 사본이다(약 0.5KB — 보관 기사 8KB 예산의 최대치를 넘기던
  * 몫, 필수 속성 아님).
  */
-function koreanArticleHead(article: ArticleCard): string[] {
+function koreanArticleHead(article: ArticleCard, languages?: LanguageAlternates | null): string[] {
   const { description: _description, ...jsonLd } = articleJsonLd(article);
   void _description;
   const ld = `<script type="application/ld+json">${jsonLdHtml(jsonLd)}</script>`;
-  return [...metadataTags(articlePageMetadata(article)), ld];
+  return [
+    ...metadataTags(withLanguageAlternates(articlePageMetadata(article), languages ?? null)),
+    ld,
+  ];
 }
 
 /** 보관 기사 문서 전체. metadata·JSON-LD 는 전체 페이지와 같은 빌더(보관 기사는 늘 7일 썸네일 창 밖 → 기본 썸네일). */
@@ -438,10 +466,22 @@ export function renderArchiveArticle(
   // 영어판: 제목·설명만(영어 레이아웃 병합) — 구조화 데이터는 한국어 값뿐이라 싣지 않는다(영어 값은 Phase 6).
   const head =
     locale === "en"
-      ? metadataTags(englishArticlePageMetadata(input.article), EN_LAYOUT_METADATA)
-      : koreanArticleHead(input.article);
+      ? metadataTags(
+          withLanguageAlternates(
+            englishArticlePageMetadata(input.article),
+            input.languages ?? null,
+          ),
+          EN_LAYOUT_METADATA,
+        )
+      : koreanArticleHead(input.article, input.languages);
   const render = (coverageMax: number) =>
-    documentHtml({ locale, assets, head, body: archiveArticleBody(input, locale, coverageMax) });
+    documentHtml({
+      locale,
+      assets,
+      head,
+      body: archiveArticleBody(input, locale, coverageMax),
+      languages: input.languages,
+    });
   // 예산을 넘으면 다른 매체 링크를 한 곳씩 줄인다 — 줄인 곳은 "외 N곳"으로 센다. 0곳까지 줄면 제목의 매체 수만 남는다
   // (요약이 유난히 긴 기사, 예: #919). 그래도 넘으면 그대로 낸다(크기 보고가 경고한다).
   let html = render(ARCHIVE_COVERAGE_MAX);
@@ -465,6 +505,8 @@ export interface ArchiveEditionInput {
   next: Pick<EditionRef, "date" | "issueNo" | "publishedAt"> | null;
   /** DB 최신 호 날짜 — 공유 썸네일 판정(editionMetadata). */
   latestEditionDate: string | null;
+  /** 두 언어판 짝(hreflang·언어 전환). */
+  languages?: LanguageAlternates | null;
 }
 
 /** 분야 묶음 — CATEGORIES 순서, 묶음 안은 편집 순(edition.issue 순서 그대로). 6개 밖의 값은 뒤에 원래 이름으로. */
@@ -595,14 +637,24 @@ export function renderArchiveEdition(
 ): string {
   const head =
     locale === "en"
-      ? metadataTags(englishEditionPageMetadata(input.ref, input.brief), EN_LAYOUT_METADATA)
+      ? metadataTags(
+          withLanguageAlternates(
+            englishEditionPageMetadata(input.ref, input.brief),
+            input.languages ?? null,
+          ),
+          EN_LAYOUT_METADATA,
+        )
       : metadataTags(
-          editionPageMetadata(input.ref, input.edition, input.latestEditionDate, input.brief),
+          withLanguageAlternates(
+            editionPageMetadata(input.ref, input.edition, input.latestEditionDate, input.brief),
+            input.languages ?? null,
+          ),
         );
   return documentHtml({
     locale,
     assets,
     head,
+    languages: input.languages,
     body: archiveEditionBody(input, locale),
   });
 }

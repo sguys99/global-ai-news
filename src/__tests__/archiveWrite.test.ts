@@ -284,9 +284,13 @@ describe("writeArchivePages — 영어판(Phase 5-2)", () => {
     put("en/article/10/index.html", "<!DOCTYPE html><html lang=en><head></head></html>");
     put("en/edition/2026-11-05/index.html", "<!DOCTYPE html><html lang=en><head></head></html>");
   }
-  /** lang="ko" 요소를 뺀 글자에 한글이 있는지(영어 페이지의 한글 허용은 원제 한 줄). */
+  /** lang="ko" 요소를 뺀 글자에 한글이 있는지(영어 페이지의 한글 허용은 원제 한 줄·언어 전환 링크 `한국어`). */
   const leaksHangul = (html: string) =>
-    HANGUL.test(html.replace(/<span class="ar-orig-t" lang="ko">[^<]*<\/span>/g, ""));
+    HANGUL.test(
+      html
+        .replace(/<span class="ar-orig-t" lang="ko">[^<]*<\/span>/g, "")
+        .replace(/<a class="sh-ln" [^>]*lang="ko"[^>]*>[^<]*<\/a>/g, ""),
+    );
 
   it("두 언어판을 같은 계획 규칙으로 쓴다 — 영어는 en/ 아래, 영어 범위의 보관 대상만", () => {
     bothFullPages();

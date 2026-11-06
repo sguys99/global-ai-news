@@ -80,6 +80,21 @@ export function editionPageMetadata(
   };
 }
 
+/**
+ * 페이지 metadata 에 두 언어판 짝(`alternates.languages` → `<link rel="alternate" hreflang="ko|en">`)을 더한다
+ * (english-version-plan 5-3 — 6-2 hreflang 중 ko·en 짝만 먼저). `languages` 는 src/views/data.ts `languageAlternates` 결과 —
+ * null(짝이 없는 페이지)이면 metadata 를 **그대로**(같은 객체) 돌려준다. 기존 alternates(canonical·RSS)는 그대로 두고
+ * languages 만 얹는다(Next 는 최상위 키 단위로 병합하므로 alternates 객체를 통째로 만든다). x-default·canonical(영어)·
+ * 사이트맵 xhtml:link 는 Phase 6. 셸의 언어 전환 링크(src/lib/localeSwitch.ts)가 이 `<link>` 를 읽는다.
+ */
+export function withLanguageAlternates(
+  metadata: Metadata,
+  languages: Readonly<Record<string, string>> | null,
+): Metadata {
+  if (!languages) return metadata;
+  return { ...metadata, alternates: { ...metadata.alternates, languages: { ...languages } } };
+}
+
 // ─── 영어판(Phase 5-2) — 제목·설명만. 공유 메타·canonical·hreflang 은 Phase 6 ─────────────────────
 
 /**

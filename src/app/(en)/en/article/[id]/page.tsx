@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { englishArticlePageMetadata } from "@/lib/pageMetadata";
+import { englishArticlePageMetadata, withLanguageAlternates } from "@/lib/pageMetadata";
 import { ArticleView } from "@/views/ArticleView";
-import { loadArticle, localeArticleIds } from "@/views/data";
+import { languageAlternates, loadArticle, localeArticleIds } from "@/views/data";
 
 /*
  * 영어 기사 상세(`/en/article/[id]/`) 라우트 — 경로 목록·메타만 두고 본문은 src/views/ArticleView.tsx(언어판 공용).
@@ -23,8 +23,11 @@ export async function generateMetadata({
   const { id } = await params;
   const article = loadArticle("en", Number(id));
   if (!article) return {};
-  // 제목·설명만 — 공유 메타·canonical·hreflang 은 Phase 6.
-  return englishArticlePageMetadata(article);
+  // 제목·설명 + 한국어판 짝(hreflang, 5-3) — 공유 메타·canonical·x-default 는 Phase 6.
+  return withLanguageAlternates(
+    englishArticlePageMetadata(article),
+    languageAlternates({ kind: "article", id: article.id }),
+  );
 }
 
 export default async function EnglishArticlePage({ params }: { params: Promise<{ id: string }> }) {
