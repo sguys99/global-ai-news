@@ -24,6 +24,7 @@ export const articleMessages = defineMessages({
      * 이 값을 그리지 않는다(키 모양을 맞추려고 둔다).
      */
     originalInKorean: "한국어 원문 기사",
+    originalTitle: "원제",
     /**
      * 영어판 묶인 보도 중 한국어 제목만 있는 보도(제목 대신 쓰는 안내)·원문 언어 안내(원문 버튼·묶인 보도 옆
      * `aitimes.com · in Korean`). 한국어판은 그리지 않는다(키 모양을 맞추려고 둔다).
@@ -46,6 +47,7 @@ export const articleMessages = defineMessages({
     coverage: (n: number) => `Also reported by ${n} ${plural(n, "outlet", "outlets")}`,
     excerpt: "Original excerpt",
     originalInKorean: "Original article in Korean",
+    originalTitle: "Original title",
     koreanReport: "Korean-language report",
     inKorean: "in Korean",
     readOriginal: "Read the original",

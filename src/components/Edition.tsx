@@ -557,7 +557,7 @@ export function KoreaDeskBand({
           {noteRest(desk.korean)}
         </p>
       </div>
-      <ul className="ed-dk-g">
+      <ul className={cn("ed-dk-g", desk.items.length === 1 && "ed-dk-g1")}>
         {desk.items.map((a) => (
           <li key={a.id} className="ed-dk-c">
             <StoryDesk article={a} timeBase={timeBase} locale={locale} />

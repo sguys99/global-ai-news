@@ -267,6 +267,10 @@
   .sg-by {
     @apply text-meta text-muted-foreground flex flex-wrap items-center gap-x-2.5 gap-y-1;
   }
+  /* 영어 오늘의 브리핑 메타: 시각 · 중요도 묶음 — 모바일은 키커 · 매체 줄 아래 한 줄로 따로 서고, md+ 격자에선 풀어 쓴다 */
+  .sg-grp {
+    @apply flex basis-full items-center gap-x-2 md:contents;
+  }
   /* compact 바이라인 — sg-by 뒤에 둔다(md 에서 items-start 가 이긴다) */
   .sg-byc {
     @apply md:flex-col md:items-start;
@@ -497,6 +501,13 @@
   .ar-sigs {
     @apply border-t-rule border-b-border mt-7 grid grid-cols-2 border-t-2 border-b md:grid-cols-4;
   }
+  /* 영어판 화제 지수 칸을 뺀 3칸 */
+  .ar-sigs-3 {
+    @apply md:grid-cols-3;
+  }
+  .ar-sigs-3 > .ar-sig:last-child {
+    @apply max-md:col-span-2;
+  }
   .ar-sig {
     @apply border-border flex min-w-0 flex-col gap-1 py-3.5 pr-3 max-md:even:border-l max-md:even:pl-4 max-md:nth-[n+3]:border-t md:border-l md:pl-4 md:first:border-l-0 md:first:pl-0;
   }
@@ -544,7 +555,7 @@
     @apply font-serif text-2xl font-extrabold tracking-[-0.04em];
   }
   .ar-all {
-    @apply text-meta text-brand -my-3 ml-auto inline-flex min-h-11 items-center font-semibold hover:underline md:my-0 md:min-h-0;
+    @apply text-meta text-brand -my-3 ml-auto inline-flex min-h-11 items-center font-semibold hover:underline md:my-0 md:min-h-6;
   }
 
   /* ── fb- 필터 바 (FilterBar) ───────────── */
@@ -627,8 +638,17 @@
     @apply text-meta text-foreground-soft focus-visible:ring-ring inline-flex min-h-11 items-center px-2.5 font-semibold whitespace-nowrap outline-none focus-visible:ring-2;
   }
   /* 한국어 페이지 영어 안내 줄 — 헤더 바로 아래 헤어라인 한 줄(배경 없음), 화살표만 코발트, 닫기 44px */
+  /* 마운트 뒤에 나타나는 줄이라 흐름에 넣으면 본문이 밀린다(CLS) — 화면 아래에 고정: 모바일은 하단 탭 바(3.5rem + safe-area) 바로 위, md+ 는 맨 아래.
+     z-30 은 탭 바(50)·필터 시트(60)·원문 바(40) 아래, 본문 위. 닫으면 사라진다. */
   .sh-rie {
-    @apply border-border border-b;
+    @apply fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 md:bottom-0;
+  }
+  /* 상세: 탭 바가 없고 원문 버튼 바(ar-bar, 4.5rem)가 맨 아래에 선다 */
+  .sh-rie-art {
+    @apply max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom))];
+  }
+  .sh-rie-bar {
+    @apply border-rule bg-background border-t;
   }
   .sh-rie-in {
     @apply mx-auto flex min-h-11 max-w-[1240px] items-center gap-2.5 px-4 md:px-8;
@@ -691,7 +711,7 @@
  *  - 하이픈: 제목 없음, 좁은 칸 요약(레이더·섹션 항목·데스크)만 auto(7자 이상 단어, 앞 4·뒤 3자). 요약·리드문은 pretty.
  *  - 자간: 라틴 Hahmlet 은 한국어 값이면 붙는다 — display-xl −0.028em, display-md·밴드 −0.03em, headline −0.018em,
  *    세리프 16px 제목 −0.01em, 본문 −0.003em. 제호 `AI Daybook` 만 −0.045em 그대로.
- *  - 크기·줄 수: 리드 clamp(32px, 4.1vw, 52px)/1.1·리드문 34em · 서브 20px/1.3 · 브리핑 md+ 2줄(키커 칸 9rem)·모바일 메타
+ *  - 크기·줄 수: 리드 clamp(32px, 4.1vw, 52px)/1.1·리드문 34em · 서브 20px/1.3 · 브리핑 모바일 제한 없음·md+ 3줄(키커 칸 9rem)·모바일 메타
  *    항목 단위 줄바꿈 · 레이더 제목 ≤4줄·요약 ≤3줄 · 밴드 제목 줄바꿈 허용 · 섹션 넓은 칸 요약 36em · 색인 날짜 칸 3.75rem.
  */
 @layer base {
@@ -759,6 +779,22 @@
   .ed-dk-g {
     @apply lg:border-border grid min-w-0 grid-cols-1 content-start md:grid-cols-2 lg:border-l lg:pl-8;
   }
+  /* 기사 1건 — 2열 격자의 한 칸이 아니라 칸 전폭 '특집': 큰 세리프 제목 + 풀어 쓴 요약, 위 괘선 없음(lg 에선 머리 칸 옆 세로 괘선이 구획) */
+  .ed-dk-g1 {
+    @apply md:grid-cols-1;
+  }
+  .ed-dk-g1 > .ed-dk-c {
+    @apply md:pr-0 lg:pt-4;
+  }
+  .ed-dk-g1 .st-desk {
+    @apply gap-3;
+  }
+  .ed-dk-g1 .st-desk-h {
+    @apply text-[1.5rem] leading-[1.18] tracking-[-0.025em] lg:text-[1.875rem];
+  }
+  .ed-dk-g1 .st-sum3 {
+    @apply text-body text-foreground-soft line-clamp-none max-w-[36em];
+  }
   .ed-dk-c {
     @apply border-border min-w-0 border-t py-[18px] md:pt-5 md:pr-6 md:pb-[22px] md:even:border-l md:even:pr-0 md:even:pl-6 lg:[&:nth-child(-n+2)]:border-t-0;
   }
@@ -798,7 +834,7 @@
 :root[lang="en"] :is(.st-item-p, .st-radar .st-sum2, .st-desk .st-sum3) {
   hyphens: auto;
   -webkit-hyphens: auto;
-  hyphenate-limit-chars: 7 4 3;
+  hyphenate-limit-chars: 10 5 5;
 }
 /* 레이더: 제목 ≤ 4줄, 요약 ≤ 3줄(논문 영어 제목이 90자 안팎) */
 :root[lang="en"] .st-radar-h {
@@ -815,6 +851,15 @@
 }
 :root[lang="en"] .st-date {
   white-space: nowrap;
+}
+/* 오늘의 브리핑 제목: 영어는 한국어보다 약 1.5배 길어 모바일에서 2줄 말줄임이 제목을 잘랐다 — 모바일은 줄 수 제한 없음(md+ 는 아래 3줄) */
+:root[lang="en"] .st-brief-h {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  /* 전역 balance 는 3줄 제목을 칸의 80% 폭으로 좁혀 오른쪽을 비운다 */
+  text-wrap: pretty;
 }
 /* 오늘의 브리핑 모바일: 메타 줄을 항목 단위로 꺾는다(영어 키커가 매체명을 말줄임으로 지우지 않게) */
 @media (max-width: 767.98px) {
@@ -851,8 +896,11 @@
     display: none;
   }
   :root[lang="en"] .st-brief-h {
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     font-size: 1rem;
     line-height: 1.45;
   }
@@ -1132,11 +1180,13 @@
     @apply text-label text-center;
   }
 
-  /* 영어 크기·자간 — h1 최대 42px/1.14(영어 제목이 약 1.5배 길다), 요약 19→20px/1.7, 묶인 보도 매체 칸 8.5rem */
+  /* 영어 크기·자간 — h1 최대 37px/1.16(영어 제목이 약 1.5배 길다), 요약 19→20px/1.7, 묶인 보도 매체 칸 8.5rem */
   :root[lang="en"] .ar-h1 {
-    font-size: clamp(1.8125rem, 3.6vw, 2.625rem);
-    line-height: 1.14;
+    font-size: clamp(1.75rem, 3.2vw, 2.3125rem);
+    line-height: 1.16;
     letter-spacing: -0.025em;
+    /* 전역 balance 는 줄 길이를 고르게 맞추느라 긴 영어 제목을 본문 칸(672px)보다 훨씬 좁게 꺾는다 */
+    text-wrap: pretty;
   }
   :root[lang="en"] .ar-sum {
     @apply text-[1.1875rem] leading-[1.65] tracking-[-0.003em] text-pretty md:text-[1.25rem] md:leading-[1.7];

@@ -53,6 +53,8 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
   // 표시 제목이 원제와 다를 때만 원제를 병기한다(ko: 한국어 제목이 있고 원제와 다를 때 — 예전 조건과 같다).
   const showOriginalTitle = Boolean(title) && title !== article.titleOriginal;
   const summary = summaryOf(article, locale);
+  // 영어판: 화제 지수가 없으면 "Trending —" 칸을 빼 3칸으로(빈 데이터처럼 보인다). 한국어판은 그대로 "—".
+  const hideTrending = locale === "en" && !(article.trendingScore > 0);
   // 매체 축약명(신호 패널)·원래 이름(툴팁).
   const sourceShort = sourceNameOf(article, locale);
   const sourceFull = sourceNameOf(article, locale, { full: true });
@@ -121,6 +123,14 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
                   {article.titleOriginal}
                 </span>
               </p>
+            ) : locale === "en" ? (
+              // 영어판 해외 기사: 한국 매체 원제 줄과 같은 꼴(들임 + 작은 라벨)로 "Original title" 을 밝힌다.
+              <p className="ar-orig">
+                <span className="ar-orig-l">{t.originalTitle}</span>
+                <span lang="en" className="text-caption text-foreground-soft leading-[1.5]">
+                  {article.titleOriginal}
+                </span>
+              </p>
             ) : (
               <p lang="en" className="text-caption text-muted-foreground">
                 {article.titleOriginal}
@@ -128,7 +138,7 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
             ))}
         </header>
 
-        <dl className="ar-sigs">
+        <dl className={hideTrending ? "ar-sigs ar-sigs-3" : "ar-sigs"}>
           {/* 사이트 전체와 같은 매체 축약명 — 피드 구분("GitHub (topic:llm)")은 독자에게 매체가 아니다. 원래 이름은 툴팁. */}
           <Signal label={t.signals.source}>
             <span title={sourceFull !== sourceShort ? sourceFull : undefined}>{sourceShort}</span>
@@ -148,16 +158,18 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
               "—"
             )}
           </Signal>
-          <Signal label={t.signals.trending}>
-            {article.trendingScore > 0 ? (
-              <span className="flex items-center gap-2">
-                <span className="tabular-nums">{article.trendingScore}</span>
-                <TrendBar value={article.trendingScore} />
-              </span>
-            ) : (
-              "—"
-            )}
-          </Signal>
+          {!hideTrending && (
+            <Signal label={t.signals.trending}>
+              {article.trendingScore > 0 ? (
+                <span className="flex items-center gap-2">
+                  <span className="tabular-nums">{article.trendingScore}</span>
+                  <TrendBar value={article.trendingScore} />
+                </span>
+              ) : (
+                "—"
+              )}
+            </Signal>
+          )}
         </dl>
 
         {summary && (

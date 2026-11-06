@@ -353,10 +353,11 @@ describe("ArticleView — 영어 상세의 한글 새기 막기", () => {
     expect(HANGUL.test(visibleText(container))).toBe(false);
   });
 
-  it("라틴 원제는 예전처럼 lang=en 한 줄, 영어 발췌는 그대로", () => {
+  it("라틴 원제는 'Original title' 라벨 + lang=en 한 줄, 영어 발췌는 그대로", () => {
     db.articles[2] = card(3, { titleOriginal: "Original T3", contentRaw: "English excerpt." });
     const { container } = render(<ArticleView locale="en" id={3} />, { wrapper: en });
-    expect(container.querySelector('p[lang="en"]')?.textContent).toBe("Original T3");
+    expect(container.querySelector('.ar-orig [lang="en"]')?.textContent).toBe("Original T3");
+    expect(screen.getByText("Original title")).toBeInTheDocument();
     expect(screen.getByText("English excerpt.")).toBeInTheDocument();
     expect(screen.queryByText("Original article in Korean")).toBeNull();
   });

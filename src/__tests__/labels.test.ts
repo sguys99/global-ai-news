@@ -526,10 +526,10 @@ describe("labels — 영어판 상대 시각 (한국어판과 같은 경계)", (
     expect(en("2026-10-25T21:00:01Z")).toBe("23 hours ago");
   });
 
-  it("KST 달력상 전날 → 'yesterday, HH:mm KST'", () => {
-    // 2026-10-25T21:00Z = 10-26 06:00 KST, 기준 10-27 06:00 KST → 정확히 24시간, 전날
-    expect(en("2026-10-25T21:00:00Z")).toBe("yesterday, 06:00 KST");
-    expect(en("2026-10-25T15:10:00Z")).toBe("yesterday, 00:10 KST");
+  it("24~48시간은 'N hours ago' 로 이어 간다(24시간제·KST 'yesterday' 를 쓰지 않는다)", () => {
+    expect(en("2026-10-25T21:00:00Z")).toBe("24 hours ago");
+    expect(en("2026-10-25T15:10:00Z")).toBe("29 hours ago");
+    expect(en("2026-10-24T21:00:01Z")).toBe("47 hours ago");
   });
 
   it("그보다 오래되면 같은 해 'Oct 24', 다른 해 'Dec 30, 2025'", () => {

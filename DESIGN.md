@@ -445,6 +445,8 @@ v1 화면에 대한 피드백(2026-10-04)은 네 가지로 수렴한다.
 
 **Korea Desk 밴드** — 1면(레이더 포함) 바로 아래·섹션 밴드 위(일요일은 주간 레이더 다음). 2px 잉크 괘선으로 열고 1px로 닫는 '지면 속 지면', 박스·배경 없음. lg 4:8(왼쪽 머리 칸: 코발트 라벨 `From Seoul`·세리프 제목 `Korea Desk`·dek `What Korea's tech press is reporting, summarized in English.`·`Elsewhere in this issue` 목록·안내 한 줄 / 오른쪽 2×2 기사), md 머리 한 줄 + 2×2, 모바일 목록(Elsewhere 숨김). 선정은 그 호 한국 매체 기사 중 1면 게재분을 빼고 **한국 주제(영어 본문에 Korea·Korean·Seoul·KRW·용어집 한국 기관·기업) 우선**, 남으면 편집 순 ≤ 4건. 데스크 게재분은 영어 섹션 밴드에서 빠지고 밴드 머리에 건수를 적는다(`7 stories · 2 on the front page · 2 at the Korea Desk`). 섹션 내비 `Front page` 다음, '이 호의 지면'(In this issue)에는 넣지 않는다.
 
+**Korea Desk 기사 수에 따른 배치** — 4·3건은 2×2 격자 그대로. 2건은 한 줄 2열(`content-start` 라 칸이 머리 칸 높이로 늘지 않는다). **1건은 격자 칸이 아니라 칸 전폭 '특집'**(`ed-dk-g1`): 제목 세리프 24→30px, 요약은 줄임 없이 본문 17px·36em으로 풀어 쓴다 — 빈 칸이 아니라 의도한 큰 한 건으로 읽히게(괘선만, 박스·그림자 없음). 영어 시각 표기는 48시간 안 `N hours ago`로 통일(24시간제·KST `yesterday` 없음), 그 뒤 `Nov 3`.
+
 **언어 전환** — 대상 언어 이름을 그 언어로: 영어 페이지 `한국어`(`lang="ko"`), 한국어 페이지 `EN`. 데스크톱은 내비 뒤 헤어라인으로 나눈 흐린 글자, 모바일은 검색 아이콘 앞 글자 링크(44px). 한국어 페이지의 `Read AI Daybook in English →` 안내 줄은 헤더 바로 아래 헤어라인 한 줄(배경 없음, 화살표만 코발트, 닫기 44px, 마운트 후만).
 
 **영어 타이포그래피**

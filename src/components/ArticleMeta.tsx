@@ -240,6 +240,24 @@ export function Byline({
       </div>
     );
   }
+  if (locale === "en" && truncateSource) {
+    // 영어 오늘의 브리핑: 시각·중요도를 한 묶음(sg-grp)으로 — 좁은 폭에서 "·" 가 줄 끝에 남거나 도트가 혼자 떨어지지 않게.
+    return (
+      <div className={cn("sg-by", className)}>
+        {prefix}
+        {source}
+        <span className="sg-grp">
+          {showDate && when}
+          {article.importance > 0 && (
+            <>
+              {showDate && <Dot />}
+              <ImportanceMeter value={article.importance} locale={locale} />
+            </>
+          )}
+        </span>
+      </div>
+    );
+  }
   return (
     <div className={cn("sg-by", className)}>
       {prefix}

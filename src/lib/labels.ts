@@ -454,7 +454,7 @@ const DAY = 24 * HOUR;
  * 1분 미만(시계 오차로 미래인 경우 포함) '방금' → 'N분 전' → 24시간 미만 'N시간 전'
  * → KST 달력상 전날이면 '어제 HH:mm' → 같은 해 'M.D' / 다른 해 'YYYY.M.D'.
  * en 은 같은 경계로 'just now' → '1 minute ago'·'N minutes ago' → '1 hour ago'·'N hours ago'
- * → 'yesterday, HH:mm KST'(시각이 보이는 유일한 자리라 KST 를 붙인다) → 'Nov 3' / 'Nov 3, 2025'.
+ * → 48시간 안은 'N hours ago' → 'Nov 3' / 'Nov 3, 2025'.
  * 바이라인 중간에 들어가므로 소문자로 시작한다.
  * 정적 빌드에서 값이 고정되도록 `now`는 호출자가 넘긴다(호 발행 시각 등).
  */
@@ -478,13 +478,16 @@ export function formatRelativeKst(
     const h = Math.floor(diff / HOUR);
     return en ? `${h} ${h === 1 ? "hour" : "hours"} ago` : `${h}시간 전`;
   }
+  // 영어는 48시간까지 '시간 전'으로 통일한다 — 같은 줄 카드가 "yesterday, 18:00 KST"(24시간제·KST)와
+  // "17 hours ago" 로 섞이지 않게(영어 독자에게 24시간제가 낯설다). 한국어는 그대로 '어제 HH:mm'.
+  if (en && diff < 2 * DAY) return `${Math.floor(diff / HOUR)} hours ago`;
 
   const p = kstParts(t)!;
   const q = kstParts(n)!;
   // '어제'는 UTC가 아니라 KST 달력 날짜 차이로 판정한다.
   const dayGap = (Date.UTC(q.y, q.m - 1, q.d) - Date.UTC(p.y, p.m - 1, p.d)) / DAY;
   const time = `${pad(p.hh)}:${pad(p.mm)}`;
-  if (dayGap === 1) return en ? `yesterday, ${time} KST` : `어제 ${time}`;
+  if (!en && dayGap === 1) return `어제 ${time}`;
   if (en) return p.y === q.y ? enMonthDay(p) : enDate(p);
   return p.y === q.y ? `${p.m}.${p.d}` : `${p.y}.${p.m}.${p.d}`;
 }
