@@ -816,25 +816,39 @@
 :root[lang="en"] .st-date {
   white-space: nowrap;
 }
+/* 오늘의 브리핑 모바일: 메타 줄을 항목 단위로 꺾는다(영어 키커가 매체명을 말줄임으로 지우지 않게) */
+@media (max-width: 767.98px) {
+  :root[lang="en"] .st-brief .sg-by {
+    flex-wrap: wrap;
+    row-gap: 2px;
+    white-space: normal;
+  }
+  :root[lang="en"] .st-brief .sg-by > * {
+    white-space: nowrap;
+  }
+}
 /*
- * 오늘의 브리핑 메타 줄: 항목 단위로 꺾는다 — 모바일은 영어 키커가, md+ 는 `KOREA ·`·`+2 more`·절대 날짜(지난 호
- * `Oct 30, 2026`)가 16.5rem 칸을 넘겨 매체명을 말줄임(`iRobot…`·`ETNe…`)으로 지우지 않게(5-4 육안 확인).
+ * 오늘의 브리핑 md+: 한 줄 말줄임 대신 2줄, 키커 칸 9rem("Industry & Policy"), 바이라인 칸은 내용 폭이되 16.5rem 까지.
+ * 메타는 오른쪽 정렬 두 줄(매체 / 시각 · 중요도) — 한 줄이면 `KOREA ·`·`+2 more`·지난 호 절대 날짜(`Oct 30, 2026`)가
+ * 칸을 넘겨 매체명이 `iRobot…`·`ETNe…` 로 잘렸다(5-4 육안 확인). 두 줄이면 칸도 좁아져 제목이 말줄임 없이 2줄에 든다.
  */
-:root[lang="en"] .st-brief .sg-by {
-  flex-wrap: wrap;
-  row-gap: 2px;
-  white-space: normal;
-}
-:root[lang="en"] .st-brief .sg-by > * {
-  white-space: nowrap;
-}
-/* 오늘의 브리핑 md+: 한 줄 말줄임 대신 2줄, 키커 칸 9rem("Industry & Policy"), 바이라인 칸은 내용 폭이되 16.5rem 까지(넘치면 위 규칙으로 꺾여 오른쪽 정렬 두 줄) */
 @media (min-width: 768px) {
   :root[lang="en"] .st-brief {
     grid-template-columns: 9rem minmax(0, 1fr) fit-content(16.5rem);
   }
+  /* 격자라야 칸의 내용 폭(fit-content)이 두 줄 중 넓은 쪽이 된다(flex 꺾기는 한 줄 폭으로 잡혀 제목 칸을 빼앗는다) */
   :root[lang="en"] .st-brief .sg-by {
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    justify-items: end;
+    align-items: center;
+    row-gap: 1px;
+  }
+  :root[lang="en"] .st-brief .sg-by > .sg-em {
+    grid-column: 1 / -1;
+  }
+  :root[lang="en"] .st-brief .sg-by > .sg-em + .sg-dot {
+    display: none;
   }
   :root[lang="en"] .st-brief-h {
     -webkit-line-clamp: 2;
