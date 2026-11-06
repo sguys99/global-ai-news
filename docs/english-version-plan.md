@@ -448,6 +448,10 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ## Phase 5: 영어판 화면 (시안 → 구현)
 
+> **진행 방식(2026-11-06).** 영어 페이지는 Phase 6(hreflang·canonical·한국어 메타 정리)과 Phase 7(통합 검증) 전에 공개하면 안 되므로, Phase 5는 기능 브랜치 `feat/en-pages`에 쌓고 **Phase 7 출시 때 `deploy/github-pages`에 병합**한다. 세부 항목마다 이 문서에 기록하고 그 브랜치에 커밋·푸시한다.
+>
+> **계획 보정(2026-11-06):** ① 색인 파일은 Phase 4-2에서 `public/search-index/<언어>/`·`public/feed-index/<언어>/` 월별 조각으로 바뀌었으므로 5-2의 `*.en.json`은 `…/en/` 조각으로 읽는다. ② Phase 4-3 보관 지면(90일 지난 기사·호)의 영어판이 빠져 있었다 → 5-2에 추가. ③ Korea Desk는 홈과 호 고정 링크가 같은 함수로 같은 밴드를 그린다(주간 레이더와 같은 규칙) → `/en/edition/[date]/`에도 싣는다.
+
 ### 5-1. 시안
 
 - [ ] `docs/design/mockups/en-front.html`: 영어 마스트헤드(폴리오 `Tuesday, November 3, 2026 · No. 140 · Published daily at 06:00 KST`), 귀(`This issue 31 stories · 18 outlets`), Korea Desk 밴드, `KOREA` 표시, 언어 전환, 영어 제목 길이(한국어보다 약 1.5배 길다)가 1면·모바일에서 어떻게 줄바꿈되는지.
@@ -459,8 +463,9 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - [ ] `/en/` 홈: 같은 `buildEdition`에 영어 본문이 있는 기사만 넣는다. 1면 → **Korea Desk**(그 호의 `region=kr` 기사 ≤4건, 1면 게재분 제외) → 섹션 밴드 → 색인. 주간 레이더(일요일)도 넣는다.
 - [ ] `/en/edition/[date]/`: 호 고정 링크와 지난 호 이동.
 - [ ] `/en/article/[id]/`: 영어 제목·요약·원문 링크. 한국 매체는 `Original article in Korean` 표기, 원제 병기. 관련 기사·사건 타임라인도 영어로 표시한다.
-- [ ] `/en/search/`: `public/search-index.en.json`(prebuild에서 생성)과 영어 FlexSearch 설정.
-- [ ] 홈 색인 누적분 `public/feed-index.en.json`(prebuild).
+- [ ] `/en/search/`: `public/search-index/en/` 월별 조각(prebuild에서 생성, Phase 4-2 구조)과 영어 FlexSearch 설정.
+- [ ] 홈 색인 누적분 `public/feed-index/en/` 월별 조각(prebuild).
+- [ ] **(추가) 보관 지면 영어판:** 90일 지난 영어 기사·호(`/en/article/[id]/`·`/en/edition/[date]/`)도 postbuild가 같은 보관 계획으로 라이트 지면을 쓴다(`src/lib/archivePage.ts`는 이미 `locale` 인자를 받는다). 영어 라우트의 `generateStaticParams`도 보관 대상을 빼고, postbuild 확인이 두 언어를 함께 본다.
 - [ ] 세 줄 요약 띠 영어판: 같은 줄 id의 `title_en`을 쓰고, 2줄 미만이면 숨긴다(한국어판과 같은 규칙).
 - [ ] 공통 요소 영어판: 헤더·모바일 상단 바·하단 탭 바·필터 시트·푸터 태그라인·누적 방문(`1,234 visits`)·공유 버튼·발행 지연 줄·404.
 - [ ] **Phase 3에서 넘어온 데이터 틈(3-4 코드 리뷰) — 영어 페이지를 열기 전에 먼저 막는다.** 빌드는 통과하고 화면만 비거나 한국어가 새는 함정이다.
