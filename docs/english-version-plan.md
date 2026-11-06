@@ -490,8 +490,11 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 5-3. 언어 전환
 
-- [ ] 헤더·모바일 바에 `EN` / `한국어` 전환 링크를 둔다. 같은 페이지의 다른 언어판으로 가고, 없으면 그 언어의 홈으로 간다.
-- [ ] 한국어 페이지에서 브라우저 언어가 `ko`가 아니면 상단에 `Read AI Daybook in English →` 안내 줄을 띄운다(닫기 가능, `localStorage`에 기억, 정적 HTML에는 없고 마운트 후 표시, 리다이렉트 없음).
+- [x] 헤더·모바일 바에 `EN` / `한국어` 전환 링크를 둔다. 같은 페이지의 다른 언어판으로 가고, 없으면 그 언어의 홈으로 간다. (2026-11-06 `066f5b6`)
+  - **상대판 판정 = hreflang.** 정적 HTML에서 죽은 링크가 나오지 않게, 페이지마다 상대 언어판이 있을 때만 `<link rel="alternate" hreflang="ko|en">`을 낸다(`languageAlternates(page)` 단일 자리 — 홈·검색은 늘, 호는 영어 기사가 있으면, 기사는 `hasEnglish`면, 보관 지면도 같은 주소라 포함. `localeArchivePlan("en")`과 일치를 테스트). 라우트 8개가 `withLanguageAlternates`로 메타에 합친다. **Phase 6-2의 ko/en 쌍을 앞당긴 것**이고 x-default·canonical·사이트맵 `xhtml:link`는 Phase 6에 남는다.
+  - 전환 링크(`LocaleSwitch`, ShellChrome 섬 안 — 페이지 RSC 참조 추가 없음): SSR href는 늘 상대 언어 홈, 마운트·경로 변경·클릭 때 위 alternate를 읽어 같은 페이지로 올린다(검색은 `?q` 유지). 일반 `<a>`(언어가 다르면 전체 새로 고침), `lang`·`hreflang` = 대상 언어. 데스크톱 헤더(헤어라인 뒤 흐린 글자)·모바일 상단 바(44px)·푸터 내비. 문구 사전은 **대상 언어로** 고른다(`한국어`는 ko 잎). 보관 지면도 머리 띠에 정적 전환 링크 + hreflang.
+  - **한국어 HTML 변화(Docker 회귀 `458a7ea`)**: 대표 11페이지 모두 `+5 -0` — 상대판이 있으면 hreflang 2줄 + `EN` 링크 3곳(헤더·모바일 바·푸터)뿐. 그 밖은 같다.
+- [x] 한국어 페이지에서 브라우저 언어가 `ko`가 아니면 상단에 `Read AI Daybook in English →` 안내 줄을 띄운다(닫기 가능, `localStorage`에 기억, 정적 HTML에는 없고 마운트 후 표시, 리다이렉트 없음). (2026-11-06 `066f5b6` — `EnglishNotice`, 셸이 한국어일 때만. `navigator.languages`에 `ko*`가 없으면 마운트 후 헤더 아래 헤어라인 한 줄, 화살표만 코발트, 닫기 44px·`localStorage` `en-notice-dismissed`(try/catch). 링크는 전환과 같은 규칙)
 
 ### 5-4. 확인
 
