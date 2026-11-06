@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>시안 · 영어판 1면 (en-front)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+/* 로컬 폴백: 저장소의 자체 호스팅 Pretendard(사이트와 같은 파일) */
+@font-face {
+  font-family: "Pretendard Variable";
+  src: url("../../../public/fonts/PretendardVariable.woff2") format("woff2");
+  font-weight: 45 920; font-display: swap;
+}
+
+/* =====================================================================
+   시안 외부(프로토타입 크롬): 툴바·프레임·주석. 디자인 토큰과 무관한 중립 톤. (front-v3 와 같은 틀)
+   ===================================================================== */
+* { box-sizing: border-box; }
+html { background: #e4e4df; color-scheme: light; }
+html[data-proto="dark"] { background: #07080c; color-scheme: dark; }
+body { margin: 0; font: 400 14px/1.55 system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #1b1c20; word-break: keep-all; overflow-wrap: anywhere; }
+html[data-proto="dark"] body { color: #d9dae0; }
+
+.proto-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 16px; background: #111216; color: #a9abb3; font: 500 12px/1.2 system-ui, sans-serif; position: sticky; top: 0; z-index: 50; }
+.proto-bar .ttl { color: #fff; font-weight: 700; margin-right: 6px; }
+.proto-bar .ttl small { color: #8b8e99; font-weight: 500; margin-left: 6px; }
+.proto-bar .grp { display: inline-flex; align-items: center; gap: 6px; }
+.proto-bar .lbl { opacity: 0.7; }
+.seg { display: inline-flex; background: #24262d; border-radius: 99px; padding: 2px; }
+.seg button { border: 0; background: transparent; color: #a9abb3; font: inherit; padding: 6px 10px; border-radius: 99px; cursor: pointer; min-height: 28px; }
+.seg button:hover { color: #fff; }
+.seg button[aria-pressed="true"] { background: #fff; color: #111; }
+.proto-bar a { color: #a9abb3; text-decoration: none; }
+.proto-bar a:hover { color: #fff; }
+.proto-bar .links { margin-left: auto; display: inline-flex; gap: 14px; }
+
+.proto-stage { padding: 24px 16px 8px; }
+.proto-cap { max-width: 1280px; margin: 0 auto 10px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 12px; color: #6d6f78; }
+.proto-cap b { color: #1b1c20; font-size: 13px; }
+html[data-proto="dark"] .proto-cap b { color: #fff; }
+.frame-d { width: min(1280px, 100%); margin: 0 auto; outline: 1px solid rgb(0 0 0 / 0.12); }
+.phones { display: flex; flex-wrap: wrap; justify-content: center; gap: 28px; }
+.phone-w { display: flex; flex-direction: column; gap: 8px; max-width: 100%; }
+.phone-w .proto-cap { margin: 0; }
+.phone { width: 360px; max-width: 100%; height: 760px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; outline: 1px solid rgb(0 0 0 / 0.18); border-radius: 18px; scrollbar-width: none; position: relative; }
+.phone::-webkit-scrollbar { display: none; }
+body[data-view="desktop"] .v-mobile, body[data-view="mobile"] .v-desktop { display: none; }
+
+.notes { max-width: 1280px; margin: 48px auto 0; padding: 0 16px 96px; }
+.notes > header { border-top: 3px solid #1b1c20; padding-top: 14px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; }
+html[data-proto="dark"] .notes > header { border-color: #d9dae0; }
+.notes h2 { margin: 0; font-size: 22px; letter-spacing: -0.02em; }
+.notes > header p { margin: 0; color: #6d6f78; font-size: 13px; }
+.note { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 16px 28px; padding: 22px 0; border-bottom: 1px solid rgb(0 0 0 / 0.12); }
+html[data-proto="dark"] .note { border-color: rgb(255 255 255 / 0.12); }
+.note.wide { grid-template-columns: minmax(0, 1fr); }
+.note h3 { margin: 0 0 6px; font-size: 15.5px; letter-spacing: -0.015em; display: flex; gap: 8px; align-items: baseline; }
+.note h3 .no { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #d6246e; color: #fff; font-size: 12px; transform: translateY(-1px); }
+.note h3 .tag { margin-left: 6px; white-space: nowrap; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: #fde7f0; color: #a3164f; }
+.note h3 .tag.plan { background: #e7e9f0; color: #3d4252; }
+html[data-proto="dark"] .note h3 .tag { background: #3a1626; color: #ff9cc4; }
+html[data-proto="dark"] .note h3 .tag.plan { background: #23262f; color: #b5b9c6; }
+.note p, .note li { margin: 0; color: #43464f; font-size: 13.5px; }
+.note p + p { margin-top: 6px; }
+html[data-proto="dark"] .note p, html[data-proto="dark"] .note li { color: #b6b8c1; }
+.note ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 3px; }
+.note .ask { margin-top: 8px; font-weight: 600; color: #1b1c20; }
+html[data-proto="dark"] .note .ask { color: #fff; }
+.note code { font-size: 12.5px; }
+.specs { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; min-width: 0; }
+.spec { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
+.spec figcaption { font-size: 12px; color: #6d6f78; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.spec figcaption b { color: #1b1c20; font-size: 12.5px; }
+html[data-proto="dark"] .spec figcaption b { color: #fff; }
+.spec figcaption .rec { color: #a3164f; font-weight: 700; }
+html[data-proto="dark"] .spec figcaption .rec { color: #ff9cc4; }
+.spec > .ed { outline: 1px solid rgb(0 0 0 / 0.1); padding: 14px 16px; }
+.spec > .ed.flush { padding: 0; }
+.w328 { width: 328px; max-width: 100%; }
+.w360 { width: 360px; max-width: 100%; }
+.w400 { width: 400px; max-width: 100%; }
+.w560 { width: 560px; max-width: 100%; }
+.w720 { width: 720px; max-width: 100%; }
+.w1000 { width: 1000px; max-width: 100%; }
+.optgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.optcol { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.optcol > h4 { margin: 0; font-size: 14px; display: flex; gap: 8px; align-items: baseline; }
+.optcol > h4 .rec { font-size: 11px; color: #a3164f; font-weight: 700; }
+html[data-proto="dark"] .optcol > h4 .rec { color: #ff9cc4; }
+.optcol > p { margin: 0; font-size: 13px; color: #43464f; }
+html[data-proto="dark"] .optcol > p { color: #b6b8c1; }
+.optcol .spec > .ed { width: 100%; }
+@media (max-width: 1100px) { .optgrid { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .note { grid-template-columns: 1fr; } }
+
+body.bare .proto-bar, body.bare .proto-cap, body.bare .notes, body.bare .v-mobile { display: none !important; }
+body.bare .proto-stage { padding: 0; }
+body.bare .frame-d { width: 100%; outline: 0; }
+
+/* =====================================================================
+   시안(디자인) — src/app/globals.css 토큰 값 그대로. .ed 가 컨테이너 쿼리 기준(md 768 / lg 1024 = 사이트 피벗).
+   영어판 전용 규칙은 [EN] 주석으로 표시 — 한국어판 값과 다른 곳만이다(5-1-mockup.md "영어 타이포그래피").
+   ===================================================================== */
+.ed {
+  --background: #f4f4f1; --foreground: #141519; --foreground-soft: #3a3c43; --card: #fbfbf9;
+  --muted: #eaeae5; --muted-foreground: #66686f; --brand: #2140e8; --brand-soft: rgb(33 64 232 / 0.08);
+  --border: #d8d8d2; --input: #c9c9c2; --rule: #141519; --ring: #2140e8;
+  --serif: "Hahmlet", "Noto Serif KR", AppleMyungjo, Batang, serif;
+  --sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  /* [EN] 라틴 헤드라인 자간 — 한국어(-0.03 ~ -0.045em)의 절반 남짓. 제호만 브랜드 값 -0.045em 그대로. */
+  --tr-xl: -0.028em; --tr-md: -0.03em; --tr-hl: -0.018em; --tr-tt: -0.01em;
+  container-type: inline-size;
+  background: var(--background); color: var(--foreground);
+  font: 400 16px/1.5 var(--sans); letter-spacing: -0.003em;
+  /* [EN] keep-all/anywhere 대신 단어 단위 줄바꿈 + 넘치는 토큰(owner/repo·URL)만 끊는다 */
+  word-break: normal; overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased; text-align: left;
+  font-kerning: normal; font-variant-ligatures: common-ligatures;
+}
+.ed[data-theme="dark"] {
+  --background: #0f1118; --foreground: #eceae4; --foreground-soft: #bcbbb5; --card: #151823;
+  --muted: #1c1f2b; --muted-foreground: #8d8f9a; --brand: #93a3ff; --brand-soft: rgb(147 163 255 / 0.1);
+  --border: #2a2d39; --input: #3a3e4d; --rule: #eceae4; --ring: #93a3ff;
+  color-scheme: dark;
+}
+.ed *, .ed *::before, .ed *::after { box-sizing: border-box; }
+.ed a { color: inherit; text-decoration: none; }
+.ed h1, .ed h2, .ed h3, .ed p, .ed ol, .ed ul { margin: 0; padding: 0; }
+.ed ol, .ed ul { list-style: none; }
+/* [EN] 제목은 균형 줄바꿈 + 하이픈 없음, 요약은 pretty(마지막 줄 외톨이 단어 방지) */
+.ed h1, .ed h2, .ed h3 { text-wrap: balance; hyphens: manual; }
+.ed p { text-wrap: pretty; }
+/* [EN] 좁은 칸(레이더·섹션·데스크 요약)만 자동 하이픈 — 7자 이상 단어, 앞 4·뒤 3자 */
+.ed .hy { hyphens: auto; -webkit-hyphens: auto; hyphenate-limit-chars: 7 4 3; }
+.ed [lang="ko"] { word-break: keep-all; overflow-wrap: anywhere; }
+.ed button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.ed :focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+.ed .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ed .hl { transition: color 0.15s ease-out; }
+.ed a:hover .hl { color: var(--brand); }
+.ed .num { font-variant-numeric: tabular-nums; }
+.ed .wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; }
+.ed .d-only { display: none; }
+.ed .lg-only { display: none; }
+.ed svg.ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── 신호 프리미티브 ── */
+.ed .kk { font-size: 13px; line-height: 1.4; font-weight: 700; color: var(--brand); letter-spacing: 0.01em; white-space: nowrap; }
+.ed .byl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; line-height: 1.4; color: var(--muted-foreground); }
+.ed .byl .src { color: var(--foreground-soft); font-weight: 600; }
+.ed .byl .bsrc { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.ed .byl .oth { color: var(--muted-foreground); font-weight: 400; }
+.ed .dt { width: 2px; height: 2px; border-radius: 50%; background: currentColor; flex: none; }
+.ed .mt { display: inline-flex; align-items: center; gap: 3px; }
+.ed .mt i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--muted-foreground) 80%, transparent); }
+.ed .mt i.on { background: var(--foreground); border-color: var(--foreground); }
+.ed .mt.hi i.on { background: var(--brand); border-color: var(--brand); }
+/* FormatBadge — 잉크 1px 아웃라인, 각진 면, 코발트 없음 (sg-badge) */
+.ed .fb {
+  position: relative; display: inline-flex; align-items: center; flex: none; height: 17px; padding: 1px 5px 0;
+  border: 1px solid var(--foreground); color: var(--foreground);
+  font: 700 10.5px/1 var(--sans); letter-spacing: 0.09em; white-space: nowrap;
+}
+/* KOREA 표시 — 세 안 */
+.ed .kb { position: relative; display: inline-flex; align-items: center; flex: none; height: 17px; font: 700 10.5px/1 var(--sans); letter-spacing: 0.09em; white-space: nowrap; color: var(--foreground); }
+.ed .kb-a { padding: 1px 5px 0; border: 1px solid var(--foreground); }                       /* A 형식 배지와 같은 아웃라인 칩 */
+.ed .kb-b { padding-top: 1px; }                                                              /* B 글자만(배지 글꼴, 테두리 없음) */
+.ed .kb-c { padding: 1px 5px 0; background: var(--foreground); color: var(--background); }   /* C 반전(잉크 면) */
+.ed .bar { position: relative; display: block; height: 2px; flex: 1; background: var(--border); overflow: hidden; }
+.ed .bar > span { position: absolute; inset: 0 auto 0 0; background: var(--brand); }
+.ed .rm svg { width: 11px; height: 11px; flex: none; fill: currentColor; stroke: none; transform: translateY(0.5px); }
+
+/* ── 전역 헤더(데스크톱) / 모바일 상단 바 / 하단 탭 바 ── */
+.ed .hdr { display: none; position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 85%, transparent); backdrop-filter: blur(12px); }
+.ed .hdr .wrap { height: 52px; display: flex; align-items: center; gap: 24px; }
+.ed .wm { font: 800 22px/1 var(--serif); letter-spacing: -0.045em; white-space: nowrap; }
+.ed .wm.hide { visibility: hidden; }
+.ed .wm em { font-style: normal; color: var(--brand); }
+.ed .hnav { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: 14px; font-weight: 600; }
+.ed .hnav a { color: var(--muted-foreground); padding: 4px 0; }
+.ed .hnav a:hover { color: var(--foreground); }
+.ed .hnav a.on { color: var(--foreground); text-decoration: underline; text-decoration-color: var(--brand); text-decoration-thickness: 2px; text-underline-offset: 18px; }
+/* 언어 전환 — 대상 언어 이름만, 그 언어로(lang 속성). 내비와 헤어라인으로 나눈다. 코발트 없음 */
+.ed .lsw { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding-left: 18px; border-left: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--muted-foreground); white-space: nowrap; }
+.ed .lsw:hover { color: var(--foreground); }
+.ed .lsw svg { width: 15px; height: 15px; }
+.ed .ibtn { display: inline-grid; place-items: center; width: 40px; height: 40px; color: var(--foreground-soft); }
+.ed .mtop { position: sticky; top: 0; z-index: 20; height: 52px; display: flex; align-items: center; justify-content: space-between; padding-inline: 16px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 85%, transparent); backdrop-filter: blur(12px); }
+.ed .mtop .ibtns { display: flex; align-items: center; margin-right: -10px; }
+.ed .mtop .ibtn { width: 44px; height: 44px; }
+.ed .mtop .mlsw { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 10px; font-size: 13px; font-weight: 600; color: var(--foreground-soft); }
+.ed .tabbar { position: sticky; bottom: 0; z-index: 20; display: flex; border-top: 1px solid var(--rule); background: color-mix(in srgb, var(--background) 90%, transparent); backdrop-filter: blur(12px); }
+.ed .tabbar a { position: relative; flex: 1; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; color: var(--muted-foreground); }
+.ed .tabbar a.on { color: var(--foreground); font-weight: 600; }
+.ed .tabbar a.on::before { content: ""; position: absolute; top: 0; width: 32px; height: 2px; background: var(--brand); }
+
+/* "Read in English" 안내 줄(한국어 페이지 전용) */
+.ed .rie { border-bottom: 1px solid var(--border); }
+.ed .rie .wrap { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.ed .rie a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; line-height: 1.4; font-weight: 600; color: var(--foreground); }
+.ed .rie a .arr { color: var(--brand); }
+.ed .rie a:hover .t { text-decoration: underline; text-decoration-color: var(--brand); text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.ed .rie .lbl { flex: none; font: 700 10.5px/1 var(--sans); letter-spacing: 0.09em; color: var(--muted-foreground); }
+.ed .rie .x { margin-left: auto; margin-right: -12px; display: inline-grid; place-items: center; width: 44px; height: 44px; color: var(--muted-foreground); }
+.ed .rie .x svg { width: 16px; height: 16px; }
+
+/* ── 마스트헤드 ── */
+.ed .mast { padding-top: 20px; }
+.ed .folio { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; font-size: 13px; line-height: 1.4; color: var(--muted-foreground); }
+.ed .folio .fdate { color: var(--foreground); font-weight: 600; }
+.ed .share { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-block: -12px; font-size: 13px; font-weight: 600; color: var(--foreground-soft); }
+.ed .share svg { width: 14px; height: 14px; }
+.ed .npr { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.ed .np { font: 800 clamp(48px, 8.4cqi, 120px)/0.95 var(--serif); letter-spacing: -0.045em; white-space: nowrap; }
+.ed .np em { font-style: normal; color: var(--brand); }
+.ed .ear { display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.4; color: var(--muted-foreground); }
+.ed .ear .ear-l { display: none; }
+.ed .ear .ear-n b { font-weight: 700; color: var(--foreground); }
+.ed .ear .ear-f { display: inline-flex; flex-wrap: wrap; gap: 0 4px; }
+.ed .ear .ear-f b { font-weight: 600; color: var(--foreground-soft); font-variant-numeric: tabular-nums; }
+.ed .ear .ear-f i { font-style: normal; opacity: 0.6; }
+.ed .rules { margin-top: 16px; height: 6px; border-top: 4px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.ed .snav { display: flex; gap: 4px; overflow-x: auto; margin-inline: -16px; padding-inline: 16px; scrollbar-width: none; }
+.ed .snav::-webkit-scrollbar { display: none; }
+.ed .snav a { flex: none; padding: 12px 10px; font-size: 14px; line-height: 1.55; font-weight: 500; color: var(--foreground-soft); white-space: nowrap; }
+.ed .snav a:first-child { padding-left: 0; color: var(--foreground); text-decoration: underline; text-decoration-color: var(--brand); text-decoration-thickness: 2px; text-underline-offset: 14px; }
+
+/* ── 세 줄 요약(Three things to know) ── */
+.ed .ibr { border-block: 1px solid var(--rule); padding: 14px 0 8px; }
+.ed .ibr-h { display: flex; align-items: baseline; gap: 8px; }
+.ed .ibr-h h2 { font: 800 17px/1.15 var(--serif); letter-spacing: -0.02em; }
+.ed .ibr-h span { font-size: 12px; line-height: 1.3; color: var(--muted-foreground); }
+.ed .ibr-h .m { display: inline; }
+.ed .ibr ol { margin-top: 6px; }
+.ed .ibr li + li { border-top: 1px solid var(--border); }
+.ed .ibr a { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: baseline; column-gap: 10px; min-height: 44px; padding-block: 8px; }
+.ed .ibr .n { font: 700 15px/1 var(--serif); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.ed .ibr .hl { font: 600 16px/1.42 var(--serif); letter-spacing: var(--tr-tt); }
+
+/* ── 1면 ── */
+.ed .front { display: grid; grid-template-columns: minmax(0, 1fr); padding-top: 24px; }
+.ed .lead { display: flex; flex-direction: column; gap: 14px; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
+/* [EN] 리드: 한국어(최대 60px/1.14)보다 한 단 작게, 줄 간격은 좁게 — 영어 제목이 1.5배 길어 3줄을 넘지 않게 */
+.ed .lead h2 { font: 700 clamp(32px, 4.1cqi, 52px)/1.1 var(--serif); letter-spacing: var(--tr-xl); }
+/* [EN] 리드문 읽기 폭 34em(≈ 68자) — 한국어 40em 은 영어로 80자를 넘는다 */
+.ed .lead p { font-size: 17px; line-height: 1.6; color: var(--foreground-soft); max-width: 34em; }
+.ed .secs { display: grid; grid-template-columns: minmax(0, 1fr); }
+.ed .sec { display: flex; flex-direction: column; gap: 10px; padding-block: 20px; border-bottom: 1px solid var(--border); }
+.ed .sec h3 { font: 700 20px/1.3 var(--serif); letter-spacing: var(--tr-hl); }
+.ed .sec p { font-size: 14px; line-height: 1.55; color: var(--muted-foreground); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ed .sec .byl { margin-top: auto; padding-top: 2px; }
+
+/* 오늘의 브리핑 — 모바일: 제목(2줄) → 병합 메타 줄 */
+.ed .briefs { padding-top: 16px; }
+.ed .bh { display: flex; align-items: baseline; gap: 10px; padding-bottom: 4px; }
+.ed .bh h2 { font-size: 13px; line-height: 1.4; font-weight: 700; letter-spacing: 0.01em; }
+.ed .briefs li + li { border-top: 1px solid var(--border); }
+.ed .brief { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; padding-block: 10px; min-height: 44px; }
+.ed .brief > .kk { display: none; }
+.ed .brief h3 { font: 700 15px/1.4 var(--serif); letter-spacing: var(--tr-tt); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* [EN] 모바일 브리핑 메타: 한국어는 nowrap + 매체명 말줄임이지만, 영어 키커("Industry & Policy")가 두 배 길어
+   360에서 매체명이 "The D…"로 지워진다 → 줄바꿈 허용(항목 단위로만 꺾임) */
+.ed .brief .byl { flex-wrap: wrap; gap: 2px 8px; min-width: 0; }
+.ed .brief .byl > * { white-space: nowrap; }
+.ed .brief .byl .bsrc { overflow: hidden; }
+.ed .brief .byl .src { overflow: hidden; text-overflow: ellipsis; }
+
+/* 지금 화제 */
+.ed .hot { margin-top: 40px; min-width: 0; }
+.ed .hot-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 2px solid var(--rule); }
+.ed .hot-h h2 { font: 800 24px/1.2 var(--serif); letter-spacing: var(--tr-md); }
+.ed .hot-h span { font-size: 12px; line-height: 1.3; color: var(--muted-foreground); }
+.ed .tr { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 6px 8px; padding-block: 14px; border-bottom: 1px solid var(--border); }
+.ed .tr .rn { grid-row: span 2; font: 500 30px/1 var(--serif); letter-spacing: -0.04em; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.ed .tr .rn.top { font-weight: 700; color: var(--brand); }
+.ed .tr .hl { font-size: 15px; line-height: 1.42; font-weight: 600; letter-spacing: -0.006em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ed .tr .ts { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 1.3; color: var(--muted-foreground); }
+.ed .tr .ts .src { flex: none; }
+.ed .tr .ts b { color: var(--foreground-soft); font-weight: 600; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+
+/* 이 호의 지면 */
+.ed .inside { margin-top: 36px; }
+.ed .inside-h { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 8px; border-bottom: 2px solid var(--rule); }
+.ed .inside-h h2 { font: 800 20px/1.2 var(--serif); letter-spacing: var(--tr-md); }
+.ed .inside-h span { font-size: 12px; color: var(--muted-foreground); }
+.ed .inside a { display: flex; align-items: baseline; gap: 8px; padding-block: 9px; border-bottom: 1px solid var(--border); font-size: 14px; line-height: 1.4; }
+.ed .inside a .nm { font-weight: 600; white-space: nowrap; }
+.ed .inside a .ld { flex: 1; align-self: center; border-bottom: 1px dotted var(--input); transform: translateY(3px); }
+.ed .inside a .n { font-weight: 600; font-variant-numeric: tabular-nums; min-width: 1.2em; text-align: right; }
+.ed .inside a .f { width: 4.2em; text-align: right; font-size: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.ed .inside a:hover .nm { color: var(--brand); }
+
+/* 밴드 머리(레이더·데스크·섹션·색인) */
+.ed .band { margin-top: 48px; min-width: 0; }
+.ed .band-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding-top: 12px; margin-bottom: 20px; border-top: 2px solid var(--rule); }
+/* [EN] 밴드 제목은 줄바꿈 허용 — "Open source & papers radar"가 360에서 한 줄을 넘는다(한국어는 nowrap) */
+.ed .band-h h2 { font: 800 clamp(26px, 2.6cqi, 30px)/1.15 var(--serif); letter-spacing: var(--tr-md); }
+.ed .band-h .n { font-size: 13px; line-height: 1.4; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.ed .band-h .more { margin-left: auto; font-size: 13px; line-height: 1.4; font-weight: 600; color: var(--brand); white-space: nowrap; }
+
+/* 레이더 */
+.ed .rlist { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; margin-inline: -16px; padding-inline: 16px; scrollbar-width: none; overscroll-behavior-x: contain; }
+.ed .rlist::-webkit-scrollbar { display: none; }
+.ed .rlist > li { flex: none; width: 66%; min-width: 0; scroll-snap-align: start; padding-right: 16px; }
+.ed .rlist > li + li { border-left: 1px solid var(--border); padding-left: 16px; }
+.ed .rc { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.ed .rc-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ed .rc-top .kk { overflow: hidden; text-overflow: ellipsis; }
+.ed .rc h3 { font: 700 16px/1.38 var(--serif); letter-spacing: var(--tr-tt); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.ed .rc p { font-size: 14px; line-height: 1.55; color: var(--muted-foreground); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ed .rm { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 3px; font-size: 13px; line-height: 1.4; color: var(--muted-foreground); font-variant-numeric: tabular-nums; min-width: 0; }
+.ed .rm .rm-id { color: var(--foreground-soft); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed .rm .rm-st { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.ed .rm .rm-st > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.ed .rm .rm-st b { color: var(--foreground-soft); font-weight: 600; }
+
+/* ── Korea Desk (영어판 전용) ──
+   2px 잉크 괘선으로 열고 1px 잉크 괘선으로 닫는 '지면 속 지면'. 박스·배경 없음.
+   lg: [데스크 머리 칸 | 2×2 기사], md: 머리 한 줄 → 2×2, 모바일: 머리 → 목록 */
+.ed .desk { margin-top: 56px; border-top: 2px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.ed .desk-h { padding: 14px 0 18px; display: flex; flex-direction: column; gap: 6px; }
+.ed .desk-h .dl { font-size: 13px; line-height: 1.4; font-weight: 700; color: var(--brand); letter-spacing: 0.01em; }
+.ed .desk-h h2 { font: 800 clamp(30px, 3.2cqi, 40px)/1.05 var(--serif); letter-spacing: -0.035em; }
+.ed .desk-h .dek { font: 500 16px/1.45 var(--serif); letter-spacing: -0.005em; color: var(--foreground-soft); max-width: 22em; }
+.ed .desk-x { display: none; margin-top: 14px; }
+.ed .desk-x h3 { font-size: 12px; line-height: 1.3; font-weight: 700; letter-spacing: 0.01em; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.ed .desk-x a { display: grid; gap: 2px; padding-block: 9px; border-bottom: 1px solid var(--border); }
+.ed .desk-x .hl { font-size: 14px; line-height: 1.42; font-weight: 600; letter-spacing: -0.006em; }
+.ed .desk-x .w { font-size: 12px; line-height: 1.3; color: var(--muted-foreground); }
+.ed .desk-x .w b { font-weight: 600; color: var(--foreground-soft); }
+.ed .desk-h .dm { margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--muted-foreground); }
+.ed .desk-h .dm b { color: var(--foreground-soft); font-weight: 600; }
+.ed .desk-g { display: grid; grid-template-columns: minmax(0, 1fr); }
+.ed .desk-g > div { min-width: 0; padding-block: 18px; border-top: 1px solid var(--border); }
+.ed .di { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.ed .di h3 { font: 700 19px/1.3 var(--serif); letter-spacing: var(--tr-hl); }
+.ed .di p { font-size: 14px; line-height: 1.55; color: var(--muted-foreground); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ed .di .byl { margin-top: auto; padding-top: 2px; }
+
+/* 섹션 밴드 */
+.ed .sb-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+.ed .sb-grid > div { min-width: 0; padding-block: 16px; border-top: 1px solid var(--border); }
+.ed .sb-grid > div:first-child { padding-top: 0; border-top: 0; }
+.ed .si { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.ed .si h3 { font-size: 16px; line-height: 1.45; font-weight: 600; letter-spacing: -0.008em; }
+.ed .si.feat h3 { font: 700 20px/1.3 var(--serif); letter-spacing: var(--tr-hl); }
+.ed .si p { font-size: 14px; line-height: 1.55; color: var(--muted-foreground); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; max-width: 36em; }
+.ed .si:not(.feat) p { display: none; }
+.ed .si .byl { margin-top: auto; padding-top: 4px; }
+
+/* 전체 기사 색인 */
+.ed .ix-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; margin-bottom: 4px; }
+.ed .tabs { display: flex; gap: 18px; }
+.ed .tabs span { padding: 6px 0; font-size: 15px; font-weight: 600; color: var(--muted-foreground); border-bottom: 2px solid transparent; }
+.ed .tabs span.on { color: var(--foreground); border-color: var(--brand); }
+.ed .chips { display: none; flex-wrap: wrap; gap: 6px; }
+.ed .chip { font-size: 13px; line-height: 1; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); color: var(--foreground-soft); white-space: nowrap; }
+.ed .chip.on { background: var(--foreground); color: var(--background); border-color: var(--foreground); }
+.ed .fbtn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid var(--foreground); border-radius: 999px; font-size: 14px; font-weight: 600; margin-left: auto; }
+.ed .fbtn svg { width: 16px; height: 16px; }
+.ed .ix { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 40px; }
+/* [EN] 날짜 칼럼 "Nov 3" — 한국어 MM.DD(3.25rem)보다 넓다 */
+.ed .en { display: grid; grid-template-columns: 3.75rem minmax(0, 1fr); grid-template-rows: 1fr auto; gap: 4px 12px; padding-block: 16px; border-bottom: 1px solid var(--border); }
+.ed .en-d { font: 600 14px/1.55 var(--serif); color: var(--muted-foreground); font-variant-numeric: tabular-nums; padding-top: 1px; white-space: nowrap; }
+.ed .en-c { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ed .en-k { display: flex; align-items: center; gap: 8px; }
+.ed .en-k .kk { font-size: 12px; line-height: 1.3; }
+.ed .en h3 { font-size: 16px; line-height: 1.45; font-weight: 600; letter-spacing: -0.008em; }
+.ed .en p { font-size: 14px; line-height: 1.55; color: var(--muted-foreground); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; }
+.ed .en .byl { grid-column: 2; margin-top: 4px; }
+.ed .morebtn { display: flex; justify-content: center; padding-top: 24px; }
+.ed .morebtn span { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 22px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 14px; font-weight: 600; }
+.ed .morebtn span i { font-style: normal; font-weight: 400; opacity: 0.75; }
+
+.ed .foot { margin-top: 64px; border-top: 4px solid var(--rule); }
+.ed .foot .wrap { display: grid; gap: 20px; padding-block: 28px 40px; }
+.ed .foot .fnp { font: 800 40px/1 var(--serif); letter-spacing: -0.045em; }
+.ed .foot .fnp em { font-style: normal; color: var(--brand); }
+.ed .foot .tg { margin-top: 10px; font-size: 14px; line-height: 1.55; color: var(--foreground-soft); max-width: 30em; }
+.ed .foot .col { margin-top: 6px; font-size: 13px; line-height: 1.45; color: var(--muted-foreground); max-width: 30em; }
+.ed .foot .cp { margin-top: 6px; font-size: 12px; color: var(--muted-foreground); }
+.ed .foot nav { display: flex; gap: 24px; font-size: 14px; font-weight: 600; }
+
+/* ── md (≥768) ── */
+@container (min-width: 768px) {
+  .ed .wrap { padding-inline: 32px; }
+  .ed .snav { margin-inline: 0; padding-inline: 0; }
+  .ed .d-only { display: initial; }
+  .ed .m-only { display: none !important; }
+  .ed .hdr { display: block; }
+  .ed .mtop, .ed .tabbar { display: none; }
+  .ed .mast { padding-top: 28px; }
+  .ed .folio .push { margin-left: auto; }
+  .ed .folio .push + .share { margin-left: 0; }
+  .ed .npr { flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 32px; }
+  .ed .ear { gap: 2px; padding: 2px 0 6px 20px; border-left: 1px solid var(--border); flex: none; }
+  .ed .ear .ear-l { display: block; font-size: 12px; color: var(--muted-foreground); font-weight: 600; }
+  .ed .ear .ear-n b { font: 800 34px/1.05 var(--serif); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; margin-right: 0; }
+  .ed .ear .ear-n .unit { font: 700 17px/1 var(--serif); color: var(--foreground); margin-right: 6px; letter-spacing: -0.01em; }
+  .ed .ear .ear-f { margin-top: 2px; }
+  .ed .rules { margin-top: 20px; }
+  .ed .ibr { display: grid; grid-template-columns: 11rem minmax(0, 1fr); column-gap: 32px; padding-block: 20px; }
+  .ed .ibr-h { flex-direction: column; gap: 6px; padding-top: 3px; }
+  .ed .ibr-h .m { display: none; }
+  .ed .ibr ol { margin-top: 0; display: flex; flex-direction: column; gap: 8px; }
+  .ed .ibr li + li { border-top: 0; }
+  .ed .ibr a { grid-template-columns: 28px minmax(0, 1fr); min-height: 0; padding-block: 0; }
+  .ed .ibr .n { font-size: 16px; }
+  .ed .ibr .hl { font-size: 19px; line-height: 1.45; }
+  .ed .front { padding-top: 32px; }
+  .ed .lead p { font-size: 19px; line-height: 1.6; }
+  .ed .secs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ed .sec { padding: 24px 20px 4px; border-bottom: 0; border-left: 1px solid var(--border); }
+  .ed .sec:first-child { padding-left: 0; border-left: 0; }
+  .ed .sec:last-child { padding-right: 0; }
+  .ed .byl.cmp { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .ed .byl.cmp .dt.x { display: none; }
+  .ed .briefs { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--border); }
+  /* [EN] 브리핑 md+: 한 줄 말줄임 대신 최대 2줄 — 영어 제목은 한 줄에 절반도 안 들어간다 */
+  .ed .brief { grid-template-columns: 9rem minmax(0, 1fr) 15.5rem; align-items: baseline; column-gap: 16px; padding-block: 12px; }
+  .ed .brief > .kk { display: block; overflow: hidden; text-overflow: ellipsis; }
+  .ed .brief h3 { font-size: 16px; line-height: 1.45; }
+  .ed .brief .byl .mkk, .ed .brief .byl .mkd { display: none; }
+  .ed .brief .byl { justify-content: flex-end; }
+  .ed .rlist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 28px; overflow: visible; margin-inline: 0; padding-inline: 0; scroll-snap-type: none; }
+  .ed .rlist > li { width: auto; padding-right: 20px; }
+  .ed .rlist > li + li { border-left: 0; padding-left: 0; }
+  .ed .rlist > li:nth-child(2n) { border-left: 1px solid var(--border); padding-left: 20px; }
+  .ed .rc h3 { font-size: 17px; }
+  .ed .band { margin-top: 56px; }
+  .ed .desk { margin-top: 64px; }
+  .ed .desk-h { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 16px; padding-bottom: 20px; }
+  .ed .desk-h .dl { flex-basis: 100%; }
+  .ed .desk-g { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ed .desk-g > div { padding: 20px 24px 22px 0; }
+  .ed .desk-g > div:nth-child(2n) { border-left: 1px solid var(--border); padding: 20px 0 22px 24px; }
+  .ed .sb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 24px; }
+  .ed .sb-grid > div { padding: 0 20px 0 0; border-top: 0; }
+  .ed .sb-grid > div:nth-child(2n) { border-left: 1px solid var(--border); padding-left: 20px; }
+  .ed .sb-grid.n3 > div:first-child { grid-column: span 2; padding-right: 0; }
+  .ed .sb-grid.n3 > div:nth-child(2n) { border-left: 0; padding-left: 0; }
+  .ed .sb-grid.n3 > div:nth-child(3) { border-left: 1px solid var(--border); padding-left: 20px; }
+  .ed .si:not(.feat) p { display: -webkit-box; }
+  .ed .si.feat h3 { font-size: 23px; line-height: 1.25; letter-spacing: -0.022em; }
+  .ed .fbtn { display: none; }
+  .ed .chips { display: flex; }
+  .ed .foot .wrap { grid-template-columns: 1fr auto; align-items: end; }
+}
+/* ── lg (≥1024) ── */
+@container (min-width: 1024px) {
+  .ed .lg-only { display: block; }
+  .ed .front { grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); column-gap: 40px; }
+  .ed .hot { margin-top: 0; padding-left: 32px; border-left: 1px solid var(--border); }
+  .ed .rlist { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ed .rlist > li + li { border-left: 1px solid var(--border); padding-left: 20px; }
+  .ed .rlist > li:last-child { padding-right: 0; }
+  .ed .desk { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); column-gap: 40px; }
+  .ed .desk-h { flex-direction: column; flex-wrap: nowrap; padding: 16px 0 24px; gap: 10px; }
+  .ed .desk-h .dl { flex-basis: auto; }
+  .ed .desk-x { display: block; }
+  .ed .desk-h .dm { margin-top: auto; padding-top: 16px; }
+  .ed .desk-g { border-left: 1px solid var(--border); padding-left: 32px; }
+  .ed .desk-g > div:nth-child(-n+2) { border-top: 0; }
+  .ed .di h3 { font-size: 20px; }
+  .ed .sb-grid { grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); }
+  .ed .sb-grid.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ed .sb-grid.n3 > div:first-child { grid-column: auto; padding-right: 20px; }
+  .ed .sb-grid > div + div, .ed .sb-grid.n3 > div + div { border-left: 1px solid var(--border); padding-left: 20px; }
+  .ed .sb-grid > div:last-child { padding-right: 0; }
+  .ed .ix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body data-view="desktop">
+
+<div class="proto-bar" role="toolbar" aria-label="시안 보기 설정">
+  <span class="ttl">영어판 1면 · /en/<small>Phase 5-1</small></span>
+  <span class="grp"><span class="lbl">테마</span><span class="seg" data-key="theme"><button data-v="light">라이트</button><button data-v="dark">다크</button></span></span>
+  <span class="grp"><span class="lbl">화면</span><span class="seg" data-key="view"><button data-v="desktop">데스크톱 1280</button><button data-v="mobile">모바일 360</button></span></span>
+  <span class="grp"><span class="lbl">KOREA 표시</span><span class="seg" data-key="kr"><button data-v="a">A 아웃라인</button><button data-v="b">B 글자</button><button data-v="c">C 반전</button></span></span>
+  <span class="links"><a href="en-article.html">기사 시안 →</a><a href="index.html">시안 목록 ↗</a></span>
+</div>
+
+<main class="proto-stage">
+  <section class="v-desktop" aria-label="데스크톱 시안">
+    <div class="proto-cap"><b>데스크톱</b><span>1280px · /en/ 필터 없음 · 1면 → 레이더 → <b style="font-size:12px">Korea Desk</b> → 섹션 밴드(LLM·Physical AI·Industry &amp; Policy만 그림) → 전체 기사</span></div>
+    <div class="frame-d"><div class="ed" id="ed-d" lang="en"></div></div>
+  </section>
+  <section class="v-mobile" aria-label="모바일 시안">
+    <div class="phones">
+      <div class="phone-w"><div class="proto-cap"><b>모바일 360</b><span>첫 화면</span></div><div class="phone" id="ph1"><div class="ed" id="ed-m1" lang="en"></div></div></div>
+      <div class="phone-w"><div class="proto-cap"><b>모바일 360</b><span>스크롤 — 서브·브리핑</span></div><div class="phone" id="ph2"><div class="ed" id="ed-m2" lang="en"></div></div></div>
+      <div class="phone-w"><div class="proto-cap"><b>모바일 360</b><span>스크롤 — Korea Desk</span></div><div class="phone" id="ph3"><div class="ed" id="ed-m3" lang="en"></div></div></div>
+    </div>
+  </section>
+</main>
+
+<section class="notes" aria-labelledby="notes-h">
+  <header><h2 id="notes-h">결정 사항 / 비교</h2><p>번호로 답해 주세요 — 예: "1번 B안, 2번 문구 그대로, 4번 보류". <span style="color:#a3164f;font-weight:700">제안</span> = 계획서에 없던 것, <span style="font-weight:700">계획</span> = Phase 5 항목의 구체화. 데이터는 실제 DB 영어 제목·요약(11-03 제140호 뉴스·논문 + 11-02 저장소 4건으로 레이더 형식 섞음).</p></header>
+  <div id="notes"></div>
+</section>
+
+<script>
+/* =====================================================================
+   데이터 — data/app.db 실제 title_en·summary_en (2026-11-03 제140호, 저장소 4건은 11-02 호에서 빌림).
+   when = 호 발행 시각(06:08 KST) 기준 정적 HTML 상대 시각.
+   ===================================================================== */
+const CAT = { llm: "LLM", agent: "Agents", physical: "Physical AI", oss: "Open Source & Tools", research: "Research", industry: "Industry & Policy" };
+const CAT_ORDER = ["llm", "agent", "physical", "oss", "research", "industry"];
+const FB = { oss: ["REPO", "Repo"], model: ["MODEL", "Model"], paper: ["PAPER", "Paper"] };
+
+const A = {
+  1301: { cat: "industry", t: "Anthropic commits to $900 billion in AI spending ahead of IPO", s: "Anthropic has announced $900 billion in AI infrastructure spending commitments ahead of its initial public offering.", src: "Hacker News", rel: 3, when: "1 hour ago", imp: 5 },
+  1302: { cat: "research", t: "42AI emerges from stealth with $62.5M and a world model that predicts human behavior", s: "42AI unveiled a world model claiming to predict human behavior and raised $62.5 million in funding. The company emerged from stealth mode with technology designed to forecast actions even in novel situations.", src: "TechCrunch", when: "4 hours ago", imp: 5 },
+  1303: { cat: "physical", kr: 1, t: "Agility Robotics raises $465 million through SPAC merger, plans Nasdaq listing", s: "Humanoid robot maker Agility Robotics announced a SPAC merger with Churchill Capital Corp XI to raise approximately $465 million and pursue a Nasdaq listing. Foxconn led a private investment in the public equity (PIPE) component of the financing.", src: "iRobotNews", when: "4 hours ago", imp: 4 },
+  1304: { cat: "industry", t: "Oracle files to issue $20 billion in stock and bonds for AI data center buildout", s: "Oracle filed with regulators to sell $20 billion in new stock and bonds to finance its AI infrastructure expansion.", src: "Hacker News", when: "1 hour ago", imp: 4 },
+  1305: { cat: "industry", t: "Saudi Aramco takes 49 percent stake in AI firm Humain for $2.6 billion", src: "The Decoder", when: "9 hours ago", imp: 4 },
+  1306: { cat: "llm", t: "Deep Principle releases Hydrogen-1.0, a 753B open-weight model for scientific discovery", src: "MarkTechPost", when: "2 hours ago", imp: 4 },
+  1308: { cat: "agent", t: "NVIDIA releases Auto Ontology, an open semantic layer for AI agent SQL", src: "MarkTechPost", when: "13 hours ago", imp: 4 },
+  1307: { cat: "industry", t: "OpenAI launches Grid Protectors Program to support grid reliability", s: "OpenAI introduced the Grid Protectors Program to work with utilities on making future compute campuses support grid reliability and protect consumer electricity costs.", src: "OpenAI News", rel: 1, when: "6 hours ago", imp: 4 },
+  1309: { cat: "physical", kr: 1, t: "NEURA Robotics and Technical University of Munich open physical AI robot training center", s: "NEURA Robotics and the Technical University of Munich (TUM) opened TUM RoboGym, a joint research and training facility for physical AI robot development near Munich airport. The facility spans more than 2,300 square meters.", src: "iRobotNews", when: "4 hours ago", imp: 4 },
+  1311: { cat: "industry", kr: 1, t: "Anthropic expands into life sciences and drug discovery ahead of IPO", s: "Anthropic identified life sciences and drug discovery as key growth drivers in its SEC filing for an initial public offering. The company is expanding from software coding and enterprise AI into pharmaceutical and biotech markets.", src: "AI Times", when: "3 hours ago", imp: 3 },
+  1312: { cat: "industry", t: "Goldman Sachs restricts AI coding tools to engineers, limiting trader access", s: "Goldman Sachs restricted AI coding tools including Claude Code and GitHub Copilot to engineers only, revoking access for traders and bankers. The bank cited productivity and risk management as reasons for the reversal.", src: "The Decoder", when: "1 hour ago", imp: 3 },
+  1317: { cat: "physical", t: "Tutor Intelligence raises Series B to scale robot training and deployments", s: "Tutor Intelligence secured Series B funding to further develop its picking robots, networked intelligence platform, and commercial deployments.", src: "The Robot Report", when: "1 hour ago", imp: 3 },
+  1318: { cat: "llm", t: "Astra improves Qwen by reading and writing model weights", s: "Astra, a weight-space programming technique, improves the Qwen model by reading and writing weights to enhance performance.", src: "Hacker News", rel: 1, when: "2 hours ago", imp: 3 },
+  1326: { cat: "llm", t: "Claude Opus 5.5 generates permit-level architectural drawings", s: "Claude Opus 5.5 demonstrates the ability to create architectural drawings suitable for building permit applications.", src: "Hacker News", when: "4 hours ago", imp: 2, tr: 43 },
+  1327: { cat: "llm", t: "LongCat-2.5 offers native multimodality for agentic tasks", s: "LongCat-2.5 is a natively multimodal model designed for agentic task execution.", src: "Hacker News", when: "6 hours ago", imp: 2, tr: 43 },
+  1322: { cat: "industry", kr: 1, t: "South Korean companies pursue AI guardrails market for generative AI and agents", s: "As generative AI and AI agents proliferate, South Korean software companies are entering the market for AI guardrails—safety mechanisms that constrain model inputs, outputs, and actions within policy boundaries.", src: "AI Times", when: "3 hours ago", imp: 2 },
+  1323: { cat: "industry", kr: 1, t: "Naver Cloud and Army Logistics Command build AI-powered military supply system", s: "Naver Cloud signed a partnership with South Korea's Army Logistics Command to integrate artificial intelligence across military supply operations, including procurement, maintenance, and logistics.", src: "Electronic Times AI", when: "15 hours ago", imp: 2 },
+  1324: { cat: "physical", kr: 1, t: "YouTuber Geekble enters character robot market with entertainment focus", s: "Geekble, a YouTuber with 1.19 million subscribers, rebranded as Luddynamics and launched a character robot business targeting the entertainment market. The company develops its own software to reduce costs and aims for KRW 1 billion in monthly revenue.", src: "AI Times", when: "2 hours ago", imp: 2 },
+  1325: { cat: "physical", kr: 1, t: "Swing shared e-scooter operator enters autonomous vehicle operations", s: "Swing, a shared e-scooter and bike operator, is entering autonomous vehicle operations by recruiting former ThorDrive executives. The company plans to focus on managing autonomous vehicle fleets and collecting operational data.", src: "Byline Network", when: "13 hours ago", imp: 2 },
+  1328: { cat: "industry", kr: 1, t: "Cisco assigns 27-year-old engineer to rewrite 98% of legacy code with unlimited AI tokens", s: "Cisco granted unlimited AI tokens to a 27-year-old engineer to rewrite 98% of the company's legacy software code within two years.", src: "AI Times", when: "4 hours ago", imp: 2 },
+  1314: { fmt: "paper", cat: "physical", t: "HiFOR: hierarchical foresight framework improves vision-language-action robotic models", s: "The authors propose HiFOR, a hierarchical foresight framework for vision-language-action models that jointly predicts short-term state evolution, semantic milestones, and final goal states.", src: "Hugging Face", when: "Oct 28", imp: 3, tr: 12 },
+  // 레이더·화제·색인
+  1274: { fmt: "oss", cat: "oss", t: "hex, a local voice dictation tool for Mac, Windows, and Linux", s: "hex is a local voice dictation tool that works on Mac, Windows, and Linux without cloud connectivity.", src: "GitHub", id: "anomalyco/hex", eng: { stars: 3125, stars_today: 1329, language: "Rust" }, tr: 68, imp: 4, d: "Nov 3" },
+  1288: { fmt: "oss", cat: "agent", t: "AiSOC, an open-source AI Security Operations Center with LLM agent triage", s: "AiSOC is a self-hosted, open-source security operations center where LLM agents fuse alerts, triage them, and investigate using the MITRE ATT&CK framework.", src: "GitHub", id: "beenuar/AiSOC", eng: { stars: 6129, stars_today: 436, language: "Python" }, tr: 62, imp: 3, d: "Nov 3" },
+  1310: { fmt: "paper", cat: "physical", t: "REA: routed embodied agent runtime achieves 95.9 percent success on robotic control tasks", s: "REA coordinates deliberative reasoning, embodied routing, and reactive policies without stalling fast execution. On 3,000 test episodes across 60 LIBERO-Pro tasks it reached 95.9 percent success.", src: "Hugging Face", id: "2610.42053", eng: { ups: 43 }, tr: 14, imp: 4, d: "Nov 3" },
+  1319: { fmt: "paper", cat: "research", t: "R^2Orch: recursive self-play orchestration outperforms baselines on reasoning tasks", s: "An inner loop improves the orchestrator on self-chosen tasks; an outer loop improves how the inner loop improves. R^2Orch beats baselines across QA, math, code and interactive tasks.", src: "Hugging Face", id: "2610.22740", eng: { ups: 86 }, tr: 16, imp: 3, d: "Nov 3" },
+  1279: { fmt: "oss", cat: "oss", t: "FreeToken brings datacenter-scale model serving to your desktop", s: "FreeToken enables running large models locally and efficiently on a desktop, supporting models like DeepSeek, Qwen, and GLM.", src: "GitHub", tr: 59, imp: 3, d: "Nov 3", when: "yesterday, 06:05 KST" },
+  1297: { fmt: "oss", cat: "oss", t: "kornia, a geometric computer vision library for spatial AI", s: "kornia is a PyTorch-based Python library for geometric computer vision and spatial AI.", src: "GitHub", tr: 54, imp: 2, d: "Nov 3" },
+};
+const ISSUE = { date: "Tuesday, November 3, 2026", no: 140, count: 31, outlets: 18, mix: [["repo", 4, "repos"], ["paper", 5, "papers"]] };
+const FIELD = { llm: [4, 1], agent: [4, 2], physical: [7, 2], oss: [3, 1], research: [4, 2], industry: [9, 3] };
+const BRIEF = [1301, 1302, 1303];
+const LEAD = 1301, SECONDS = [1302, 1303, 1304], BRIEFS = [1305, 1306, 1308];
+const RADAR = [1274, 1310, 1288, 1319];
+const TRENDING = [1274, 1288, 1326, 1327, 1319];
+/* Korea Desk — 계획서 규칙 그대로: 이 호 region=kr, 1면 제외, 편집 순(중요도 → 화제 → 최신) ≤ 4 */
+const DESK = [1309, 1311, 1324, 1322];
+const KR_IN_ISSUE = 8;
+/* 데스크 밖의 나머지 한국 매체 기사 — 머리 칸(lg)에 제목만, 그 기사가 실린 자리와 함께 */
+const DESK_ELSEWHERE = [[1303, "Front page"], [1328, "Industry & Policy"], [1325, "Physical AI"], [1323, "Industry & Policy"]];
+/* 섹션 밴드 — 1면·Korea Desk 게재분 제외(제안), 편집 순 ≤ 4. 목업은 세 분야만. */
+const BANDS = [
+  { cat: "llm", items: [1318, 1326, 1327] },
+  { cat: "physical", desk: 2, items: [1314, 1317, 1325] },
+  { cat: "industry", desk: 2, items: [1307, 1312, 1328, 1323] },
+];
+const INDEX = [1274, 1288, 1279, 1297, 1326, 1327];
+
+/* =====================================================================
+   렌더 헬퍼
+   ===================================================================== */
+const IC = {
+  search: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  moon: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+  share: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
+  home: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>',
+  sliders: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
+  x: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  star: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 .8l1.6 3.4 3.7.4-2.8 2.5.8 3.7L6 9 2.7 10.8l.8-3.7L.7 4.6l3.7-.4z"/></svg>',
+  up: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5 11 10H1z"/></svg>',
+};
+let KR = "a"; // 현재 KOREA 표시 안
+const fmtNum = (n) => n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e4 ? (n / 1e3).toFixed(1).replace(/\.0$/, "") + "k" : n.toLocaleString("en-US");
+const badge = (f) => FB[f] ? `<span class="fb"><span aria-hidden="true">${FB[f][0]}</span><span class="sr">${FB[f][1]}</span></span>` : "";
+const kmark = (style = KR) => `<span class="kb kb-${style}"><span aria-hidden="true">KOREA</span><span class="sr">Korean outlet</span></span>`;
+const kicker = (c, cls = "") => `<span class="kk ${cls}">${CAT[c]}</span>`;
+const meter = (v) => `<span class="mt${v >= 4 ? " hi" : ""}" role="img" aria-label="Importance ${v} of 5">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= v ? "on" : ""}"></i>`).join("")}</span>`;
+const DT = '<span class="dt" aria-hidden="true"></span>';
+const src = (a) => `<span class="src">${a.src}${a.rel ? `<span class="oth"> +${a.rel} more</span>` : ""}</span>`;
+/* 매체 묶음: [형식 배지] [KOREA] 매체 — B 안은 KOREA 뒤에 점 구분 */
+function srcGroup(a, { fb = false, kr = true, style = KR } = {}) {
+  const parts = [];
+  if (fb && FB[a.fmt]) parts.push(badge(a.fmt));
+  if (kr && a.kr) parts.push(style === "b" ? `${kmark(style)}${DT}` : kmark(style));
+  parts.push(src(a));
+  return parts.length > 1 ? `<span class="bsrc"${style === "b" && kr && a.kr ? ' style="gap:8px"' : ""}>${parts.join("")}</span>` : parts[0];
+}
+function byline(a, { trend = false, cmp = false, when = true, fb = false, kr = true, style = KR } = {}) {
+  const head = srcGroup(a, { fb, kr, style });
+  const tail = [];
+  if (when && a.when) tail.push(`<span class="num">${a.when}</span>`);
+  if (a.imp) tail.push(meter(a.imp));
+  if (trend && a.tr) tail.push(`<span class="num">Trending ${a.tr}</span>`);
+  if (cmp) return `<span class="byl cmp">${head}<span class="dt x"></span><span style="display:inline-flex;align-items:center;gap:10px">${tail.join(DT)}</span></span>`;
+  return `<span class="byl">${[head, ...tail].join(DT)}</span>`;
+}
+function radarMeta(a) {
+  const e = a.eng || {};
+  let id = "", st = [];
+  if (a.fmt === "oss") {
+    id = a.id || "";
+    if (e.stars != null) st.push(`<span>${IC.star}<b>${fmtNum(e.stars)}</b></span>`);
+    if (e.stars_today) st.push(`<span>Today <b>+${e.stars_today.toLocaleString("en-US")}</b></span>`);
+    if (e.language) st.push(`<span>${e.language}</span>`);
+  } else if (a.fmt === "paper") {
+    id = a.id ? `arXiv ${a.id}` : "";
+    if (e.ups) st.push(`<span>${IC.up}<b>${fmtNum(e.ups)}</b></span>`);
+  }
+  return `<span class="rm">${id ? `<span class="rm-id">${id}</span>` : ""}${st.length ? `<span class="rm-st">${st.join("")}</span>` : ""}</span>`;
+}
+const radarCard = (a) => `<a class="rc" href="#"><span class="rc-top">${badge(a.fmt)}${kicker(a.cat)}</span><h3 class="hl">${a.t}</h3><p class="hy">${a.s}</p>${radarMeta(a)}</a>`;
+function briefRow(a, style = KR) {
+  return `<a class="brief" href="#">${kicker(a.cat)}<h3 class="hl">${a.t}</h3><span class="byl">${kicker(a.cat, "mkk m-only")}<span class="dt mkd m-only" aria-hidden="true"></span>${srcGroup(a, { style })}${DT}<span class="num">${a.when}</span>${DT}${meter(a.imp)}</span></a>`;
+}
+function trendRow(a, i) {
+  const lead = FB[a.fmt] ? badge(a.fmt) : `<span class="src">${a.src}</span>`;
+  return `<li><a class="tr" href="#"><span class="rn${i < 3 ? " top" : ""}">${i + 1}</span><span class="hl">${a.t}</span><span class="ts">${lead}<span class="bar" aria-hidden="true"><span style="width:${a.tr}%"></span></span><b>${a.tr}</b></span></a></li>`;
+}
+const sectionItem = (a, featured, style = KR) => `<a class="si${featured ? " feat" : ""}" href="#"><h3 class="hl">${a.t}</h3><p class="hy">${a.s}</p>${byline(a, { fb: true, cmp: !featured, style })}</a>`;
+const deskItem = (a) => `<a class="di" href="#">${kicker(a.cat)}<h3 class="hl">${a.t}</h3><p class="hy">${a.s}</p>${byline(a, { kr: false })}</a>`;
+const entryRow = (a, style = KR) => `<a class="en" href="#"><span class="en-d">${a.d || "Nov 3"}</span><span class="en-c"><span class="en-k">${kicker(a.cat)}${badge(a.fmt)}</span><h3 class="hl">${a.t}</h3><p>${a.s}</p></span>${byline(a, { trend: true, when: false, style })}</a>`;
+
+function header(locale = "en", { wmVisible = false, nav = true } = {}) {
+  const en = locale === "en";
+  const sw = en ? `<a class="lsw" href="#" lang="ko" hreflang="ko">한국어</a>` : `<a class="lsw" href="#" lang="en" hreflang="en">EN</a>`;
+  const wm = `<span class="wm${wmVisible ? "" : " hide"}"><em>AI</em> Daybook</span>`;
+  return `<header class="hdr"><div class="wrap">${wm}<nav class="hnav" aria-label="${en ? "Main menu" : "주 메뉴"}"><a class="on" href="#">${en ? "Today's issue" : "오늘의 지면"}</a><a href="#">${en ? "Search" : "검색"}</a>${sw}<button class="ibtn" aria-label="${en ? "Toggle theme" : "테마 전환"}">${IC.moon}</button></nav></div></header>
+  <header class="mtop">${wm.replace('class="wm', 'style="font-size:18px" class="wm')}<span class="ibtns">${en ? `<a class="mlsw" href="#" lang="ko" hreflang="ko">한국어</a>` : `<a class="mlsw" href="#" lang="en" hreflang="en">EN</a>`}<a class="ibtn" href="#" aria-label="${en ? "Search" : "검색"}">${IC.search}</a><button class="ibtn" aria-label="${en ? "Toggle theme" : "테마 전환"}">${IC.moon}</button></span></header>`;
+}
+
+function renderEdition() {
+  const I = ISSUE;
+  const lead = A[LEAD];
+  return `
+  ${header("en")}
+  <div class="wrap">
+    <header class="mast">
+      <div class="folio">
+        <a class="fdate" href="#" title="Permalink to this issue"><time datetime="2026-11-03">${I.date}</time></a><span class="num">No. ${I.no}</span>
+        <span class="push d-only">Published daily at 06:00 KST</span>
+        <button class="share">${IC.share}Share</button>
+      </div>
+      <div class="npr">
+        <h1 class="np"><em>AI</em> Daybook</h1>
+        <div class="ear" aria-label="This issue: ${I.count} stories from ${I.outlets} outlets">
+          <span class="ear-l">This issue</span>
+          <span class="ear-n"><span class="m-only" style="font-weight:700;color:var(--foreground)">This issue </span><b class="num">${I.count}</b> <span class="unit">stories</span> <span class="num">· ${I.outlets} outlets</span></span>
+          <span class="ear-f">${I.mix.map(([k, v, w], j) => `${j ? "<i>·</i>" : ""}<span><b>${v}</b> ${w}</span>`).join("")}</span>
+        </div>
+      </div>
+      <div class="rules" aria-hidden="true"></div>
+      <nav class="snav" aria-label="Sections"><a href="#">Front page</a><a href="#">Korea Desk</a>${CAT_ORDER.map((c) => `<a href="#">${CAT[c]}</a>`).join("")}<a href="#">All stories</a></nav>
+    </header>
+
+    <section class="ibr" aria-labelledby="ibr-h">
+      <div class="ibr-h"><h2 id="ibr-h">Three things to know</h2><span class="m" aria-hidden="true">·</span><span>This issue at a glance</span></div>
+      <ol>${BRIEF.map((id, i) => `<li><a href="#"><span class="n" aria-hidden="true">${i + 1}</span><span class="hl">${A[id].t}</span></a></li>`).join("")}</ol>
+    </section>
+
+    <section class="front" aria-label="Front page">
+      <div style="min-width:0">
+        <a class="lead" href="#">${kicker(lead.cat)}<h2 class="hl">${lead.t}</h2><p>${lead.s}</p>${byline(lead)}</a>
+        <div class="secs">${SECONDS.map((id) => { const a = A[id]; return `<a class="sec" href="#">${kicker(a.cat)}<h3 class="hl">${a.t}</h3><p>${a.s}</p>${byline(a, { cmp: true })}</a>`; }).join("")}</div>
+        <section class="briefs" aria-labelledby="bh">
+          <div class="bh"><h2 id="bh">Today's briefing</h2></div>
+          <ul>${BRIEFS.map((id) => `<li>${briefRow(A[id])}</li>`).join("")}</ul>
+        </section>
+      </div>
+      <div style="min-width:0">
+        <aside class="hot" aria-labelledby="hh">
+          <div class="hot-h"><h2 id="hh">Trending now</h2><span>Community buzz, 0–100</span></div>
+          <ol>${TRENDING.map((id, i) => trendRow(A[id], i)).join("")}</ol>
+        </aside>
+        <nav class="inside lg-only" aria-label="In this issue">
+          <div class="inside-h"><h2>In this issue</h2><span>Stories · Front</span></div>
+          ${CAT_ORDER.map((c) => `<a href="#"><span class="nm">${CAT[c]}</span><span class="ld"></span><span class="n">${FIELD[c][0]}</span><span class="f">Front ${FIELD[c][1]}</span></a>`).join("")}
+        </nav>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="rh">
+      <div class="band-h"><h2 id="rh">Open source &amp; papers radar</h2><span class="n">Repos and papers in this issue</span></div>
+      <ul class="rlist">${RADAR.map((id) => `<li>${radarCard(A[id])}</li>`).join("")}</ul>
+    </section>
+
+    <section class="desk" id="desk" aria-labelledby="dh">
+      <div class="desk-h">
+        <span class="dl">From Seoul</span>
+        <h2 id="dh">Korea Desk</h2>
+        <p class="dek">What Korea’s tech press is reporting, summarized in English.</p>
+        <nav class="desk-x" aria-labelledby="dxh"><h3 id="dxh">Elsewhere in this issue</h3>${DESK_ELSEWHERE.map(([id, where]) => `<a href="#"><span class="hl">${A[id].t}</span><span class="w"><b>${A[id].src}</b> · ${where}</span></a>`).join("")}</nav>
+        <p class="dm"><b>${KR_IN_ISSUE} stories</b> in this issue come from Korean outlets; those outside the desk carry a KOREA mark. Originals are in Korean.</p>
+      </div>
+      <div class="desk-g">${DESK.map((id) => `<div>${deskItem(A[id])}</div>`).join("")}</div>
+    </section>
+
+    ${BANDS.map((b) => `
+    <section class="band" aria-labelledby="sb-${b.cat}">
+      <div class="band-h"><h2 id="sb-${b.cat}">${CAT[b.cat]}</h2><span class="n">${FIELD[b.cat][0]} stories · ${FIELD[b.cat][1]} on the front page${b.desk ? ` · ${b.desk} at the Korea Desk` : ""}</span><a class="more" href="#">All stories in this section →</a></div>
+      <div class="sb-grid n${b.items.length}">${b.items.map((id, i) => `<div>${sectionItem(A[id], i === 0)}</div>`).join("")}</div>
+    </section>`).join("")}
+
+    <section class="band" aria-labelledby="ixh">
+      <div class="band-h"><h2 id="ixh">All stories</h2><span class="n">1,262 stories to date · 38 outlets</span></div>
+      <div class="ix-tools">
+        <div class="tabs" role="group" aria-label="Sort"><span class="on">Trending</span><span>Latest</span><span>Importance</span></div>
+        <div class="chips"><span class="chip on">All</span>${CAT_ORDER.map((c) => `<span class="chip">${CAT[c]}</span>`).join("")}</div>
+        <span class="fbtn">${IC.sliders}Filters</span>
+      </div>
+      <div class="ix">${INDEX.map((id) => entryRow(A[id])).join("")}</div>
+      <div class="morebtn"><span>More stories <i>(1,232 left)</i></span></div>
+    </section>
+  </div>
+
+  <footer class="foot"><div class="wrap"><div><div class="fnp"><em>AI</em> Daybook</div><p class="tg">The world's AI news, and Korea's, edited every morning in Seoul.</p><p class="col">Collected from global and Korean sources every day at 06:00 KST, then summarized and classified by an LLM.</p><p class="cp">© 2026 Nasica Inc. All rights reserved. · 8,214 visits</p></div><nav><a href="#">Today's issue</a><a href="#">Search</a><a href="#" lang="ko">한국어</a></nav></div></footer>
+  <nav class="tabbar" aria-label="Mobile navigation"><a class="on" href="#">${IC.home}Today</a><a href="#">${IC.search}Search</a></nav>`;
+}
+
+/* =====================================================================
+   주석 — 비교 스펙
+   ===================================================================== */
+const S = (cap, body, { w = "", rec = false, cls = "", lang = "en" } = {}) =>
+  `<figure class="spec"><figcaption><b>${cap}</b>${rec ? '<span class="rec">권장</span>' : ""}</figcaption><div class="ed ${w} ${cls}" lang="${lang}" data-spec>${body}</div></figure>`;
+
+const OPTS = [
+  { k: "a", name: "A · 아웃라인 칩", rec: false, body: "형식 배지(sg-badge)와 같은 잉크 1px 아웃라인. Phase 1 admin RegionBadge 그대로라 구현이 가장 싸다. 대신 상자 대문자 = '형식'이라는 약속이 흐려진다 — 지역은 형식이 아닌데 REPO·PAPER와 같은 모양이다. 섹션 바이라인에 비뉴스 배지가 함께 서면 상자 두 개가 나란히 선다." },
+  { k: "b", name: "B · 글자만", rec: true, body: "배지 글꼴(10.5px 700 대문자, 자간 0.09em)을 테두리 없이 잉크로. 신문 데이트라인(SEOUL —)처럼 바이라인 맨 앞에 서고, 점으로 매체와 나뉜다. 상자는 계속 '형식' 몫으로 남고, 한 호 8건에 붙어도 지면이 시끄럽지 않다. 크기·색이 배지와 같아 같은 신호 가족으로 읽힌다." },
+  { k: "c", name: "C · 반전(잉크 면)", rec: false, body: "잉크 면에 종이색 글자 — 신문의 반전 라벨. 가장 잘 보이지만 카드에서 가장 진한 점이 돼 제목·키커보다 먼저 눈에 걸린다(지면 위계 원칙 1 위반 소지). 다크에서는 밝은 면이 되어 더 튄다. 코발트 금지는 지키지만 '대담함은 한 곳에'와 부딪친다." },
+];
+
+const krSpecs = (k) => {
+  const sub = A[1303], brief = A[1309], band = A[1328], entry = { ...A[1323], d: "Nov 3", tr: 0 }, repo = { ...A[1274], kr: 1, src: "GitHub" };
+  return S("서브 카드 (1면)", `<a class="sec" href="#" style="padding:0;border:0">${kicker(sub.cat)}<h3 class="hl">${sub.t}</h3><p>${sub.s}</p>${byline(sub, { cmp: true, style: k })}</a>`, { w: "w328" }) +
+    S("오늘의 브리핑 — 모바일 메타 줄", `<ul class="briefs" style="padding:0"><li>${briefRow(brief, k)}</li></ul>`, { w: "w328" }) +
+    S("섹션 밴드 항목", sectionItem(band, false, k), { w: "w328" }) +
+    S("전체 기사 색인 행", entryRow(entry, k), { w: "w328" }) +
+    S("(가상) 한국 매체 + 비뉴스 — 배지와 나란히", `<span class="byl">${srcGroup(repo, { fb: true, style: k })}${DT}<span class="num">2 hours ago</span>${DT}${meter(3)}</span>`, { w: "w328" });
+};
+
+const switchSpecs = () =>
+  S("영어 페이지 · 데스크톱 헤더", header("en", { wmVisible: true }), { w: "w1000", cls: "flush" }) +
+  S("한국어 페이지 · 데스크톱 헤더", header("ko", { wmVisible: true }), { w: "w1000", cls: "flush", lang: "ko" }) +
+  S("영어 페이지 · 모바일 상단 바", header("en", { wmVisible: true }), { w: "w360", cls: "flush" }) +
+  S("한국어 페이지 · 모바일 상단 바", header("ko", { wmVisible: true }), { w: "w360", cls: "flush", lang: "ko" });
+
+const rieStrip = (mobile) => `<div class="rie" lang="en"><div class="wrap"><a href="#" hreflang="en"><span class="t">Read AI Daybook in English</span><span class="arr" aria-hidden="true">→</span></a><button class="x" aria-label="Dismiss">${IC.x}</button></div></div>`;
+const koMastSnippet = `<div class="wrap"><header class="mast" lang="ko" style="padding-bottom:12px"><div class="folio"><a class="fdate" href="#">2026년 11월 3일 화요일</a><span class="num">제140호</span><span class="push d-only">매일 06:00 KST 발행</span><button class="share">${IC.share}공유</button></div><div class="npr"><h1 class="np" style="font-size:clamp(40px,7cqi,72px)"><em>AI</em> Daybook</h1></div></header></div>`;
+const rieSpecs = () =>
+  S("한국어 홈 · 데스크톱 — 헤더 바로 아래", header("ko", { wmVisible: true }) + rieStrip(false) + koMastSnippet, { w: "w1000", cls: "flush", lang: "ko" }) +
+  S("한국어 홈 · 모바일 360", header("ko", { wmVisible: true }) + rieStrip(true) + koMastSnippet, { w: "w360", cls: "flush", lang: "ko" });
+
+const NOTES = [
+  { n: 1, tag: "계획", wide: true, title: "KOREA 표시 — 세 안 비교 (상단 툴바 ‘KOREA 표시’로 전체 지면에서도 바꿔 볼 수 있습니다)",
+    body: `<p>표시는 <b>바이라인의 매체명 바로 앞</b>에 둡니다 — 지역은 기사 내용이 아니라 매체의 속성이라서입니다(형식 배지가 레이더 머리에 서는 것과 다른 자리). Korea Desk 안에서는 머리가 이미 말하므로 붙이지 않습니다. 스크린리더는 <code>Korean outlet</code>을 읽습니다(labels.ts REGION_LABELS_EN). 세 안 모두 코발트를 쓰지 않습니다.</p>`,
+    specs: () => `<div class="optgrid">${OPTS.map((o) => `<div class="optcol"><h4>${o.name}${o.rec ? '<span class="rec">권장</span>' : ""}</h4><p>${o.body}</p>${krSpecs(o.k)}</div>`).join("")}</div>` },
+  { n: 2, tag: "제안", title: "Korea Desk — 자리·문구·구성",
+    body: `<p><b>자리:</b> 1면(레이더 띠 포함) 바로 아래, 섹션 밴드 위. 일요일엔 주간 레이더 다음(특집 → 데스크 → 섹션). 섹션 내비 <code>Front page</code> 다음에 <code>Korea Desk</code>.</p>
+      <p><b>모양:</b> 2px 잉크 괘선으로 열고 1px 잉크 괘선으로 닫는 '지면 속 지면'. lg는 1면과 같은 4:8 — 왼쪽 데스크 머리 칸(코발트 라벨 · 세리프 제목 · 세리프 dek · 출처 안내), 오른쪽 2×2 기사(키커 · 세리프 제목 · 요약 3줄 · 바이라인). 주간 레이더의 이중 괘선과는 다른 문법이라 두 특집이 섞이지 않습니다.</p>
+      <ul><li>라벨 <b>From Seoul</b> — 호 정체성(서울 아침 06:00)과 같은 말.</li><li>제목 <b>Korea Desk</b>.</li><li>dek <b>What Korea’s tech press is reporting, summarized in English.</b> — 규칙이 '한국 매체'라 'Korean AI news'라고 약속하지 않습니다(아래 3).</li><li>안내 <b>8 stories in this issue come from Korean outlets; the rest are marked KOREA across the page. Originals are in Korean.</b></li></ul>
+      <p class="ask">대안 dek: “Korean AI news, from Korean newsrooms.”(짧고 강하지만 아래 3의 해외 기업 기사와 어긋남) / “AI news from Korean newsrooms, in English.”</p>` },
+  { n: 3, tag: "제안", title: "Korea Desk 선정 — '한국 매체' ≠ '한국 소식'",
+    body: `<p>계획 규칙(region=kr · 1면 제외 · 편집 순 ≤4)을 이 호에 돌리면 데스크 4건 중 2건이 해외 기업 소식입니다: NEURA·TUM(독일), Anthropic 신약(미국). 한국 매체가 해외 소식도 많이 옮기기 때문입니다. 정작 해외 독자에게 새로운 <b>네이버클라우드·육군</b>, <b>스윙</b>은 섹션 밴드로 밀립니다.</p>
+      <ul><li><b>안 1 (계획 그대로)</b> — dek 를 매체 기준으로 쓴다(지금 시안).</li><li><b>안 2 (코드만, LLM 0)</b> — 같은 후보 안에서 영어 제목·요약에 Korea/Korean/Seoul/KRW 또는 glossary.en.md 한국 기관·기업명이 있는 기사를 먼저 싣는다. 이 호: guardrails · Naver Cloud · Geekble(KRW) · NEURA.</li></ul>
+      <p class="ask">안 2를 Phase 5-2에 넣을지 정해 주세요. 넣으면 dek 를 “Korean AI news …”로 바꿀 수 있습니다.</p>` },
+  { n: 4, tag: "제안", title: "Korea Desk 기사를 섹션 밴드에서 빼기",
+    body: `<p>계획은 데스크를 '1면 게재분 제외'로만 정해, 같은 기사가 데스크와 섹션 밴드에 두 번 실릴 수 있습니다(이 호: NEURA·Geekble → Physical AI 밴드, Anthropic·guardrails → Industry &amp; Policy 밴드). 시안은 영어판에서 데스크 게재분도 밴드에서 뺐고, 밴드 머리를 <code>7 stories · 2 on the front page · 2 at the Korea Desk</code>로 셈을 맞췄습니다.</p><p>한국어판 밴드는 그대로입니다(데스크가 없으니). → <code>buildEdition</code> 결과에 영어판만 한 단계(데스크 선정 → 밴드 제외)를 더하는 구조.</p>` },
+  { n: 5, tag: "계획", title: "귀(ear) — 뉴스 건수 표기",
+    body: `<p>계획서 0-5 예시는 <code>This issue 31 stories · 18 outlets</code> / <code>4 repos · 2 models · 3 papers</code>로 <b>뉴스를 빼고</b> 셉니다. 그런데 지금 구현(Masthead IssueEar)은 형식 전부를 돌아 영어에서 <code>22 stories · 4 repos · 5 papers</code>가 됩니다 — 바로 윗줄 <code>31 stories</code>와 같은 낱말이 다른 수로 읽힙니다.</p><p class="ask">권장: 영어 귀 둘째 줄은 비뉴스만(시안 그대로). 뉴스까지 셀 거면 <code>22 news stories</code>.</p>` },
+  { n: 6, tag: "제안", title: "영어 제목 길이 — 1면에서 바꾼 것",
+    body: `<ul><li><b>리드</b> clamp(32px, 4.1cqi, 52px)/1.1 (한국어 60px/1.14) — 61자 제목이 1280에서 3줄, 360에서 4줄.</li><li><b>리드문</b> 읽기 폭 34em ≈ 68자(한국어 40em 은 영어 80자 이상).</li><li><b>오늘의 브리핑 md+</b> 한 줄 말줄임 → <b>최대 2줄</b>. 영어 제목(평균 75자)은 한 줄에 절반도 안 들어가 말줄임이 의미를 지웁니다. 키커 칸 7.5rem → 9rem("Industry &amp; Policy").</li><li><b>오늘의 브리핑 모바일</b> 메타 줄 nowrap + 매체명 말줄임 → <b>항목 단위 줄바꿈</b>. "Industry &amp; Policy"가 "산업·정책"의 두 배라 360에서 매체명이 "The D…"까지 지워졌습니다.</li><li><b>밴드 제목</b> nowrap 해제 — "Open source &amp; papers radar"가 360에서 16px 넘쳐 가로 스크롤이 생겼습니다.</li><li><b>레이더 제목</b> 3줄 → 4줄, 요약 2 → 3줄(논문 영어 제목이 90자 안팎).</li><li><b>색인 날짜 칸</b> <code>Nov 3</code> — 3.25rem → 3.75rem.</li><li>모바일 레이더 카드 폭 64% → 66%(제목 4줄이 덜 좁게).</li></ul>` },
+  { n: 7, tag: "계획", title: "언어 전환 — 헤더·모바일 상단 바",
+    body: `<p>바꿀 <b>대상 언어 이름만, 그 언어로</b> 씁니다: 영어 페이지 <code>한국어</code>(lang=ko), 한국어 페이지 <code>EN</code>. 데스크톱은 내비 뒤 헤어라인 하나로 나누고 흐린 글자(코발트 없음 — 활성 밑줄만 코발트). 모바일은 검색 아이콘 앞 글자 링크, 44px 터치 타깃. 같은 페이지의 다른 언어판으로 가고, 없으면 그 언어 홈.</p><p class="ask">한국어 페이지 라벨을 <code>EN</code> 대신 <code>English</code>로 할지 — 데스크톱은 자리가 남습니다. 모바일은 EN 유지 권장.</p>`,
+    specs: switchSpecs },
+  { n: 8, tag: "계획", title: "“Read AI Daybook in English →” 안내 줄 (한국어 페이지)",
+    body: `<p>브라우저 언어가 ko가 아닐 때만, 마운트 후 헤더 바로 아래 한 줄. 헤어라인 아래, 배경·박스 없음, 잉크 굵은 글자 + 코발트 화살표(강조 1곳), 오른쪽 닫기(44px, localStorage 기억). 정적 HTML에는 없어 크롤러·한국어 독자에게 보이지 않습니다. <code>lang="en"</code>.</p>`,
+    specs: rieSpecs },
+];
+
+function renderNotes() {
+  document.getElementById("notes").innerHTML = NOTES.map((x) => `<article class="note${x.wide ? " wide" : ""}" id="n${x.n}"><div><h3><span class="no">${x.n}</span><span>${x.title}<span class="tag${x.tag === "계획" ? " plan" : ""}">${x.tag}</span></span></h3>${x.body}</div><div class="specs">${x.specs ? x.specs() : ""}</div></article>`).join("");
+}
+
+/* =====================================================================
+   상태·툴바
+   ===================================================================== */
+const state = { theme: "light", view: "desktop", kr: "b" };
+try {
+  const q = new URLSearchParams(location.search);
+  for (const k of Object.keys(state)) if (q.get(k)) state[k] = q.get(k);
+  if (q.get("bare")) document.body.classList.add("bare");
+} catch (e) {}
+
+function apply() {
+  KR = state.kr;
+  document.body.dataset.view = state.view;
+  document.documentElement.dataset.proto = state.theme;
+  const targets = state.view === "desktop" ? ["ed-d"] : ["ed-m1", "ed-m2", "ed-m3"];
+  for (const id of targets) document.getElementById(id).innerHTML = renderEdition();
+  renderNotes();
+  document.querySelectorAll(".ed").forEach((el) => (el.dataset.theme = state.theme));
+  document.querySelectorAll(".seg").forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === state[seg.dataset.key]))));
+  if (state.view === "mobile") {
+    requestAnimationFrame(() => {
+      for (const [pid, sel, off] of [["ph2", ".secs", 60], ["ph3", ".desk", 56]]) {
+        const ph = document.getElementById(pid), t = ph.querySelector(sel);
+        if (t) ph.scrollTop += t.getBoundingClientRect().top - ph.getBoundingClientRect().top - off;
+      }
+    });
+  }
+  try { const q = new URLSearchParams(location.search); for (const [k, v] of Object.entries(state)) q.set(k, v); history.replaceState(null, "", "?" + q.toString()); } catch (e) {}
+}
+document.querySelectorAll(".seg").forEach((seg) => seg.addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (!b) return; state[seg.dataset.key] = b.dataset.v; apply(); }));
+apply();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(apply);
+</script>
+</body>
+</html>

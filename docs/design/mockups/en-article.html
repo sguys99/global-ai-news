@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>시안 · 영어판 기사 (en-article)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+@font-face { font-family: "Pretendard Variable"; src: url("../../../public/fonts/PretendardVariable.woff2") format("woff2"); font-weight: 45 920; font-display: swap; }
+
+/* ── 프로토타입 크롬 (en-front.html 과 같은 틀) ── */
+* { box-sizing: border-box; }
+html { background: #e4e4df; color-scheme: light; }
+html[data-proto="dark"] { background: #07080c; color-scheme: dark; }
+body { margin: 0; font: 400 14px/1.55 system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #1b1c20; word-break: keep-all; overflow-wrap: anywhere; }
+html[data-proto="dark"] body { color: #d9dae0; }
+.proto-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 16px; background: #111216; color: #a9abb3; font: 500 12px/1.2 system-ui, sans-serif; position: sticky; top: 0; z-index: 50; }
+.proto-bar .ttl { color: #fff; font-weight: 700; margin-right: 6px; }
+.proto-bar .ttl small { color: #8b8e99; font-weight: 500; margin-left: 6px; }
+.proto-bar .grp { display: inline-flex; align-items: center; gap: 6px; }
+.proto-bar .lbl { opacity: 0.7; }
+.seg { display: inline-flex; background: #24262d; border-radius: 99px; padding: 2px; }
+.seg button { border: 0; background: transparent; color: #a9abb3; font: inherit; padding: 6px 10px; border-radius: 99px; cursor: pointer; min-height: 28px; }
+.seg button:hover { color: #fff; }
+.seg button[aria-pressed="true"] { background: #fff; color: #111; }
+.proto-bar a { color: #a9abb3; text-decoration: none; }
+.proto-bar a:hover { color: #fff; }
+.proto-bar .links { margin-left: auto; display: inline-flex; gap: 14px; }
+.proto-stage { padding: 24px 16px 8px; }
+.proto-cap { max-width: 1280px; margin: 0 auto 10px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 12px; color: #6d6f78; }
+.proto-cap b { color: #1b1c20; font-size: 13px; }
+html[data-proto="dark"] .proto-cap b { color: #fff; }
+.frame-d { width: min(1280px, 100%); margin: 0 auto; outline: 1px solid rgb(0 0 0 / 0.12); }
+.phones { display: flex; flex-wrap: wrap; justify-content: center; gap: 28px; }
+.phone-w { display: flex; flex-direction: column; gap: 8px; max-width: 100%; }
+.phone-w .proto-cap { margin: 0; }
+.phone { width: 360px; max-width: 100%; height: 760px; overflow-y: auto; overflow-x: hidden; outline: 1px solid rgb(0 0 0 / 0.18); border-radius: 18px; scrollbar-width: none; position: relative; }
+.phone::-webkit-scrollbar { display: none; }
+body[data-view="desktop"] .v-mobile, body[data-view="mobile"] .v-desktop { display: none; }
+.notes { max-width: 1280px; margin: 48px auto 0; padding: 0 16px 96px; }
+.notes > header { border-top: 3px solid #1b1c20; padding-top: 14px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; }
+html[data-proto="dark"] .notes > header { border-color: #d9dae0; }
+.notes h2 { margin: 0; font-size: 22px; letter-spacing: -0.02em; }
+.notes > header p { margin: 0; color: #6d6f78; font-size: 13px; }
+.note { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 16px 28px; padding: 22px 0; border-bottom: 1px solid rgb(0 0 0 / 0.12); }
+html[data-proto="dark"] .note { border-color: rgb(255 255 255 / 0.12); }
+.note h3 { margin: 0 0 6px; font-size: 15.5px; letter-spacing: -0.015em; display: flex; gap: 8px; align-items: baseline; }
+.note h3 .no { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #d6246e; color: #fff; font-size: 12px; transform: translateY(-1px); }
+.note h3 .tag { margin-left: 6px; white-space: nowrap; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: #fde7f0; color: #a3164f; }
+.note h3 .tag.plan { background: #e7e9f0; color: #3d4252; }
+html[data-proto="dark"] .note h3 .tag { background: #3a1626; color: #ff9cc4; }
+html[data-proto="dark"] .note h3 .tag.plan { background: #23262f; color: #b5b9c6; }
+.note p, .note li { margin: 0; color: #43464f; font-size: 13.5px; }
+.note p + p { margin-top: 6px; }
+html[data-proto="dark"] .note p, html[data-proto="dark"] .note li { color: #b6b8c1; }
+.note ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 3px; }
+.note .ask { margin-top: 8px; font-weight: 600; color: #1b1c20; }
+html[data-proto="dark"] .note .ask { color: #fff; }
+.specs { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; min-width: 0; }
+.spec { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
+.spec figcaption { font-size: 12px; color: #6d6f78; display: flex; gap: 6px; align-items: baseline; }
+.spec figcaption b { color: #1b1c20; font-size: 12.5px; }
+html[data-proto="dark"] .spec figcaption b { color: #fff; }
+.spec figcaption .rec { color: #a3164f; font-weight: 700; }
+html[data-proto="dark"] .spec figcaption .rec { color: #ff9cc4; }
+.spec > .ed { outline: 1px solid rgb(0 0 0 / 0.1); padding: 14px 16px; }
+.w400 { width: 400px; max-width: 100%; }
+@media (max-width: 860px) { .note { grid-template-columns: 1fr; } }
+body.bare .proto-bar, body.bare .proto-cap, body.bare .notes, body.bare .v-mobile { display: none !important; }
+body.bare .proto-stage { padding: 0; }
+body.bare .frame-d { width: 100%; outline: 0; }
+
+/* =====================================================================
+   시안 — globals.css 토큰. 영어판 규칙은 en-front.html 과 같다([EN] 주석).
+   ===================================================================== */
+.ed {
+  --background: #f4f4f1; --foreground: #141519; --foreground-soft: #3a3c43; --card: #fbfbf9;
+  --muted: #eaeae5; --muted-foreground: #66686f; --brand: #2140e8;
+  --border: #d8d8d2; --input: #c9c9c2; --rule: #141519; --ring: #2140e8;
+  --serif: "Hahmlet", "Noto Serif KR", AppleMyungjo, Batang, serif;
+  --sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  container-type: inline-size;
+  background: var(--background); color: var(--foreground);
+  font: 400 16px/1.5 var(--sans); letter-spacing: -0.003em;
+  word-break: normal; overflow-wrap: break-word; -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+.ed[data-theme="dark"] {
+  --background: #0f1118; --foreground: #eceae4; --foreground-soft: #bcbbb5; --card: #151823;
+  --muted: #1c1f2b; --muted-foreground: #8d8f9a; --brand: #93a3ff;
+  --border: #2a2d39; --input: #3a3e4d; --rule: #eceae4; --ring: #93a3ff; color-scheme: dark;
+}
+.ed *, .ed *::before, .ed *::after { box-sizing: border-box; }
+.ed a { color: inherit; text-decoration: none; }
+.ed h1, .ed h2, .ed h3, .ed p, .ed ol, .ed ul, .ed dl, .ed dd { margin: 0; padding: 0; }
+.ed ol, .ed ul { list-style: none; }
+.ed h1, .ed h2, .ed h3 { text-wrap: balance; }
+.ed p { text-wrap: pretty; }
+.ed [lang="ko"] { word-break: keep-all; overflow-wrap: anywhere; }
+.ed button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.ed :focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+.ed .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ed .hl { transition: color 0.15s ease-out; }
+.ed a:hover .hl { color: var(--brand); }
+.ed .num { font-variant-numeric: tabular-nums; }
+.ed svg.ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ed .d-only { display: none; }
+
+/* 신호 */
+.ed .kk { font-size: 13px; line-height: 1.4; font-weight: 700; color: var(--brand); letter-spacing: 0.01em; white-space: nowrap; }
+.ed .byl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; line-height: 1.4; color: var(--muted-foreground); }
+.ed .byl .src { color: var(--foreground-soft); font-weight: 600; }
+.ed .byl .bsrc { display: inline-flex; align-items: center; gap: 7px; }
+.ed .dt { width: 2px; height: 2px; border-radius: 50%; background: currentColor; flex: none; }
+.ed .mt { display: inline-flex; align-items: center; gap: 3px; }
+.ed .mt i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--muted-foreground) 80%, transparent); }
+.ed .mt i.on { background: var(--foreground); border-color: var(--foreground); }
+.ed .mt.hi i.on { background: var(--brand); border-color: var(--brand); }
+.ed .fb { display: inline-flex; align-items: center; flex: none; height: 17px; padding: 1px 5px 0; border: 1px solid var(--foreground); color: var(--foreground); font: 700 10.5px/1 var(--sans); letter-spacing: 0.09em; }
+.ed .kb { position: relative; display: inline-flex; align-items: center; flex: none; height: 17px; font: 700 10.5px/1 var(--sans); letter-spacing: 0.09em; white-space: nowrap; color: var(--foreground); }
+.ed .kb-a { padding: 1px 5px 0; border: 1px solid var(--foreground); }
+.ed .kb-b { padding-top: 1px; }
+.ed .kb-c { padding: 1px 5px 0; background: var(--foreground); color: var(--background); }
+
+/* 셸 */
+.ed .hdr { display: none; position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 85%, transparent); backdrop-filter: blur(12px); }
+.ed .hdr .in { max-width: 1240px; margin: 0 auto; padding-inline: 32px; height: 52px; display: flex; align-items: center; gap: 24px; }
+.ed .wm { font: 800 22px/1 var(--serif); letter-spacing: -0.045em; white-space: nowrap; }
+.ed .wm em { font-style: normal; color: var(--brand); }
+.ed .hnav { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: 14px; font-weight: 600; }
+.ed .hnav a { color: var(--muted-foreground); padding: 4px 0; }
+.ed .lsw { display: inline-flex; align-items: center; height: 28px; padding-left: 18px; border-left: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
+.ed .ibtn { display: inline-grid; place-items: center; width: 40px; height: 40px; color: var(--foreground-soft); }
+.ed .mtop { position: sticky; top: 0; z-index: 20; height: 52px; display: flex; align-items: center; justify-content: space-between; padding-inline: 16px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 85%, transparent); backdrop-filter: blur(12px); }
+.ed .mtop .ibtns { display: flex; align-items: center; margin-right: -10px; }
+.ed .mtop .ibtn { width: 44px; height: 44px; }
+.ed .mtop .mlsw { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 10px; font-size: 13px; font-weight: 600; color: var(--foreground-soft); }
+
+/* 기사 */
+.ed .main { max-width: 720px; margin: 0 auto; padding: 8px 16px 128px; display: flex; flex-direction: column; }
+.ed .back { position: sticky; top: 52px; z-index: 10; margin-inline: -16px; padding: 12px 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: var(--muted-foreground); border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 90%, transparent); backdrop-filter: blur(12px); }
+.ed .back svg { width: 16px; height: 16px; }
+.ed .ah { display: flex; flex-direction: column; gap: 16px; padding-top: 24px; }
+.ed .ak { display: flex; align-items: center; gap: 8px; }
+/* [EN] 상세 h1: 한국어 display-lg(최대 44px/1.2, -0.04em) → 영어 최대 42px/1.14, -0.025em */
+.ed .ah h1 { font: 800 clamp(29px, 3.6cqi, 42px)/1.14 var(--serif); letter-spacing: -0.025em; }
+/* 원제 — 한국 매체는 한국어 원제를 라벨과 함께, lang="ko" 로 */
+.ed .orig { display: grid; gap: 4px; padding-left: 12px; border-left: 2px solid var(--border); }
+.ed .orig .ol { font-size: 12px; line-height: 1.3; font-weight: 600; color: var(--muted-foreground); }
+.ed .orig .ot { font: 500 15px/1.5 var(--serif); letter-spacing: -0.02em; color: var(--foreground-soft); }
+.ed .sigs { margin-top: 28px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 2px solid var(--rule); border-bottom: 1px solid var(--border); }
+.ed .sig { display: flex; flex-direction: column; gap: 4px; padding: 14px 12px 14px 0; min-width: 0; }
+.ed .sig:nth-child(even) { border-left: 1px solid var(--border); padding-left: 16px; }
+.ed .sig:nth-child(n+3) { border-top: 1px solid var(--border); }
+.ed .sig dt { font-size: 12px; line-height: 1.3; font-weight: 600; color: var(--muted-foreground); }
+.ed .sig dd { font-size: 14px; line-height: 1.55; font-weight: 600; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.ed .lbl { font-size: 12px; line-height: 1.3; font-weight: 700; letter-spacing: 0.04em; color: var(--brand); }
+.ed .sum { margin-top: 36px; display: flex; flex-direction: column; gap: 12px; }
+/* [EN] 요약 19px/1.65 — 720px 칼럼에서 한 줄 약 70자 */
+.ed .sum p { font-size: 19px; line-height: 1.65; }
+.ed .sect { margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--border); display: flex; flex-direction: column; }
+.ed .sh { font-size: 12px; line-height: 1.3; font-weight: 700; letter-spacing: 0.04em; color: var(--muted-foreground); margin-bottom: 4px; }
+/* 사건 타임라인 */
+.ed .fu { display: grid; grid-template-columns: 3.75rem minmax(0, 1fr); column-gap: 12px; min-height: 44px; padding-block: 12px; border-bottom: 1px solid var(--border); align-items: baseline; }
+.ed .fu:last-child { border-bottom: 0; }
+.ed .fu .d { font: 600 14px/1.5 var(--serif); color: var(--muted-foreground); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ed .fu .r { font-size: 12px; line-height: 1.4; color: var(--muted-foreground); }
+.ed .fu .r b { color: var(--foreground-soft); font-weight: 600; }
+.ed .fu .cur { font-size: 12px; font-weight: 700; color: var(--foreground); letter-spacing: 0.02em; }
+.ed .fu .t { display: block; margin-top: 2px; font: 700 16px/1.4 var(--serif); letter-spacing: -0.012em; }
+/* 다른 매체 보도 */
+.ed .cov { display: flex; align-items: baseline; gap: 12px; min-height: 44px; padding-block: 10px; border-bottom: 1px solid var(--border); }
+.ed .cov:last-child { border-bottom: 0; }
+.ed .cov .s { flex: none; width: 8.5rem; font-size: 13px; font-weight: 600; color: var(--foreground-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed .cov .ct { flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; font-weight: 600; }
+.ed .cov .ct.ko { font: 500 14px/1.5 var(--serif); letter-spacing: -0.02em; color: var(--foreground-soft); }
+.ed .cov .ct small { display: block; font: 400 12px/1.3 var(--sans); letter-spacing: 0; color: var(--muted-foreground); margin-top: 2px; }
+.ed .tags { margin-top: 32px; display: flex; flex-wrap: wrap; gap: 6px; }
+.ed .tags a { font-size: 13px; line-height: 1; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); color: var(--foreground-soft); }
+.ed .cta-w { margin-top: 40px; display: none; align-items: center; gap: 16px; }
+.ed .cta { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 14px; font-weight: 600; }
+.ed .cta svg { width: 16px; height: 16px; }
+.ed .cta-n { font-size: 13px; line-height: 1.4; color: var(--muted-foreground); }
+.ed .cta-n b { color: var(--foreground-soft); font-weight: 600; }
+.ed .mbar { position: sticky; bottom: 0; z-index: 30; display: flex; flex-direction: column; gap: 6px; padding: 10px 16px 12px; border-top: 1px solid var(--rule); background: color-mix(in srgb, var(--background) 90%, transparent); backdrop-filter: blur(12px); }
+.ed .mbar .cta { justify-content: center; min-height: 48px; padding-block: 0; }
+.ed .mbar .cta-n { text-align: center; font-size: 12px; }
+/* 같은 분야 기사 */
+.ed .rel { margin-top: 64px; }
+.ed .rh { display: flex; align-items: baseline; gap: 12px; padding-top: 12px; border-top: 2px solid var(--rule); }
+.ed .rh h2 { font: 800 24px/1.2 var(--serif); letter-spacing: -0.03em; }
+.ed .rh a { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--brand); white-space: nowrap; }
+.ed .en { display: grid; grid-template-columns: 3.75rem minmax(0, 1fr); grid-template-rows: 1fr auto; gap: 4px 12px; padding-block: 16px; border-bottom: 1px solid var(--border); }
+.ed .en-d { font: 600 14px/1.55 var(--serif); color: var(--muted-foreground); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ed .en-c { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ed .en-c .kk { font-size: 12px; line-height: 1.3; }
+.ed .en h3 { font-size: 16px; line-height: 1.45; font-weight: 600; letter-spacing: -0.008em; }
+.ed .en p { font-size: 14px; line-height: 1.55; color: var(--muted-foreground); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; }
+.ed .en .byl { grid-column: 2; margin-top: 4px; }
+
+@container (min-width: 768px) {
+  .ed .d-only { display: initial; }
+  .ed .m-only { display: none !important; }
+  .ed .hdr { display: block; }
+  .ed .mtop, .ed .mbar { display: none; }
+  .ed .main { padding: 40px 24px 80px; }
+  .ed .back { position: static; margin: 0; padding: 0; border: 0; background: none; backdrop-filter: none; width: fit-content; }
+  .ed .ah { padding-top: 32px; }
+  .ed .sigs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ed .sig { padding-left: 16px; border-left: 1px solid var(--border); }
+  .ed .sig:first-child { padding-left: 0; border-left: 0; }
+  .ed .sig:nth-child(n+3) { border-top: 0; }
+  .ed .sum p { font-size: 20px; line-height: 1.7; }
+  .ed .cta-w { display: flex; }
+}
+</style>
+</head>
+<body data-view="desktop">
+<div class="proto-bar" role="toolbar" aria-label="시안 보기 설정">
+  <span class="ttl">영어판 기사 · /en/article/1242/<small>Phase 5-1</small></span>
+  <span class="grp"><span class="lbl">테마</span><span class="seg" data-key="theme"><button data-v="light">라이트</button><button data-v="dark">다크</button></span></span>
+  <span class="grp"><span class="lbl">화면</span><span class="seg" data-key="view"><button data-v="desktop">데스크톱 1280</button><button data-v="mobile">모바일 360</button></span></span>
+  <span class="grp"><span class="lbl">KOREA 표시</span><span class="seg" data-key="kr"><button data-v="a">A 아웃라인</button><button data-v="b">B 글자</button><button data-v="c">C 반전</button></span></span>
+  <span class="links"><a href="en-front.html">← 1면 시안</a><a href="index.html">시안 목록 ↗</a></span>
+</div>
+
+<main class="proto-stage">
+  <section class="v-desktop" aria-label="데스크톱 시안">
+    <div class="proto-cap"><b>데스크톱</b><span>1280px · 한국 매체(AI타임스) 기사 · 후속 보도 1건(The Decoder) · 실제 DB 기사 1242·1286</span></div>
+    <div class="frame-d"><div class="ed" id="ed-d" lang="en"></div></div>
+  </section>
+  <section class="v-mobile" aria-label="모바일 시안">
+    <div class="phones">
+      <div class="phone-w"><div class="proto-cap"><b>모바일 360</b><span>첫 화면</span></div><div class="phone" id="ph1"><div class="ed" id="ed-m1" lang="en"></div></div></div>
+      <div class="phone-w"><div class="proto-cap"><b>모바일 360</b><span>스크롤 — 타임라인·CTA</span></div><div class="phone" id="ph2"><div class="ed" id="ed-m2" lang="en"></div></div></div>
+    </div>
+  </section>
+</main>
+
+<section class="notes" aria-labelledby="notes-h">
+  <header><h2 id="notes-h">결정 사항</h2><p>1면 시안(en-front.html)의 KOREA 표시 안·타이포 규칙을 그대로 씁니다. 여기서는 기사 페이지에만 있는 것만.</p></header>
+  <div id="notes"></div>
+</section>
+
+<script>
+const IC = {
+  search: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  moon: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+  left: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
+  out: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>',
+};
+let KR = "b";
+const DT = '<span class="dt" aria-hidden="true"></span>';
+const kmark = (s = KR) => `<span class="kb kb-${s}"><span aria-hidden="true">KOREA</span><span class="sr">Korean outlet</span></span>`;
+const meter = (v) => `<span class="mt${v >= 4 ? " hi" : ""}" role="img" aria-label="Importance ${v} of 5">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= v ? "on" : ""}"></i>`).join("")}</span>`;
+const srcGroup = (a, s = KR) => a.kr ? `<span class="bsrc">${kmark(s)}${s === "b" ? DT : ""}<span class="src">${a.src}</span></span>` : `<span class="src">${a.src}</span>`;
+
+/* data/app.db 1242(AI타임스) ← 1286(The Decoder, follow_up_of=1242) · 같은 분야 기사 1247·1249·1254·1258 */
+const ART = {
+  t: "OpenAI doubles usage allowances for ChatGPT Pro and Enterprise plans",
+  orig: "오픈AI, 프로·기업용 AI 사용량 최대 2배 확대…연속 업데이트 막바지",
+  s: "OpenAI increased the baseline usage allowance for ChatGPT Pro and Enterprise plans by up to 2x and reversed a planned reduction for the $200 monthly tier. The move is part of OpenAI's 28-day continuous service improvement campaign.",
+  src: "AI Times", host: "aitimes.com", pub: "Oct 30, 2026", imp: 2, tags: ["openai", "chatgpt"],
+};
+const THREAD = [
+  { d: "Oct 31", cur: true },
+  { d: "Nov 2", rel: "Follow-up", src: "The Decoder", gap: "2 days later", t: "OpenAI limits paid ChatGPT accounts per device and payment card" },
+];
+const RELATED = [
+  { d: "Nov 1", t: "OpenAI raises $11 billion of its $30 billion funding target", s: "OpenAI raised approximately $11 billion in its latest round, falling short of its $30 billion target. The valuation of $1.25 trillion falls below expectations as major investors pull back amid the tech sell-off.", src: "The Decoder", imp: 5 },
+  { d: "Nov 1", kr: 1, t: "Sam Altman tells Samsung executives AI adoption speed determines competitiveness", s: "OpenAI CEO Sam Altman met with roughly 50 presidents from Samsung Group affiliates to discuss AI strategy, stressing speed of adoption and execution.", src: "AI Times", imp: 4 },
+  { d: "Nov 1", kr: 1, t: "Security vendors pivot to automated response as AI-driven attacks accelerate", s: "The global security market is shifting from threat detection and analysis to real-time blocking and automated response due to AI-accelerated vulnerabilities and attacks.", src: "Electronic Times AI", imp: 3 },
+  { d: "Nov 1", kr: 1, t: "Seongnam launches Pangyo smart city zone with remote driving and AI care", s: "Seongnam will invest 15.027 billion won through 2028 to develop a Pangyo smart city specialized district supporting remote driving and AI care technologies.", src: "Electronic Times AI", imp: 3 },
+];
+
+function render() {
+  const a = ART;
+  const head = KR === "b" ? `${kmark()}${DT}<span class="kk">Industry &amp; Policy</span>` : `${kmark()}<span class="kk">Industry &amp; Policy</span>`;
+  return `
+  <header class="hdr"><div class="in"><span class="wm"><em>AI</em> Daybook</span><nav class="hnav"><a href="#">Today's issue</a><a href="#">Search</a><a class="lsw" href="#" lang="ko" hreflang="ko">한국어</a><button class="ibtn" aria-label="Toggle theme">${IC.moon}</button></nav></div></header>
+  <header class="mtop"><span class="wm" style="font-size:18px"><em>AI</em> Daybook</span><span class="ibtns"><a class="mlsw" href="#" lang="ko" hreflang="ko">한국어</a><a class="ibtn" href="#" aria-label="Search">${IC.search}</a><button class="ibtn" aria-label="Toggle theme">${IC.moon}</button></span></header>
+  <main class="main">
+    <a class="back" href="#">${IC.left}Today's issue</a>
+    <article>
+      <header class="ah">
+        <span class="ak">${head}</span>
+        <h1>${a.t}</h1>
+        <p class="orig"><span class="ol">Original article in Korean</span><span class="ot" lang="ko">${a.orig}</span></p>
+      </header>
+      <dl class="sigs">
+        <div class="sig"><dt>Outlet</dt><dd>${a.src}</dd></div>
+        <div class="sig"><dt>Published</dt><dd class="num">${a.pub}</dd></div>
+        <div class="sig"><dt>Importance</dt><dd>${meter(a.imp)}<span class="num">${a.imp}/5</span></dd></div>
+        <div class="sig"><dt>Trending</dt><dd>—</dd></div>
+      </dl>
+      <section class="sum" aria-labelledby="sum-h"><h2 class="lbl" id="sum-h">Summary</h2><p>${a.s}</p></section>
+      <section class="sect" aria-labelledby="fu-h">
+        <h2 class="sh" id="fu-h">Follow-up coverage</h2>
+        <ol>${THREAD.map((r) => r.cur
+          ? `<li class="fu" aria-current="page"><span class="d" title="Oct 31, 2026 issue">${r.d}</span><span class="cur">This story</span></li>`
+          : `<li><a class="fu" href="#"><span class="d" title="Nov 2, 2026 issue">${r.d}</span><span><span class="r">${r.rel} · <b>${r.src}</b> · ${r.gap}</span><span class="t hl">${r.t}</span></span></a></li>`).join("")}</ol>
+      </section>
+      <div class="tags">${a.tags.map((t) => `<a href="#">#${t}</a>`).join("")}</div>
+      <div class="cta-w"><a class="cta" href="#">Read the original${IC.out}</a><span class="cta-n"><b>${a.host}</b> · in Korean</span></div>
+    </article>
+    <section class="rel" aria-labelledby="rel-h">
+      <div class="rh"><h2 id="rel-h">More in Industry &amp; Policy</h2><a href="#">See all →</a></div>
+      ${RELATED.map((r) => `<a class="en" href="#"><span class="en-d">${r.d}</span><span class="en-c"><span class="kk">Industry &amp; Policy</span><h3 class="hl">${r.t}</h3><p>${r.s}</p></span><span class="byl">${srcGroup(r)}${DT}${meter(r.imp)}</span></a>`).join("")}
+    </section>
+  </main>
+  <div class="mbar"><a class="cta" href="#">Read the original${IC.out}</a><span class="cta-n"><b>${a.host}</b> · in Korean</span></div>`;
+}
+
+const S = (cap, body, { w = "w400", rec = false } = {}) => `<figure class="spec"><figcaption><b>${cap}</b>${rec ? '<span class="rec">권장</span>' : ""}</figcaption><div class="ed ${w}" lang="en" data-spec>${body}</div></figure>`;
+const REL_KO = { src: "Electronic Times AI", ko: "한국딥러닝, IBK기업은행과 VLM 기반 보이스피싱 피해구제 자동화" };
+const NOTES = [
+  { n: 1, tag: "계획", title: "원제 — “Original article in Korean”",
+    body: `<p>한국 매체 기사는 h1 아래 왼쪽 2px 헤어라인 들여 단락에 라벨 <b>Original article in Korean</b> + 한국어 원제(<code>lang="ko"</code>, keep-all, Hahmlet 500 15px 흐림)를 둡니다. 원제는 '읽으라는' 줄이 아니라 '원문이 한국어'라는 증거이자 검색 앵커라 작고 흐리게. 해외 매체는 지금처럼 원제가 영어 제목과 다를 때만 라벨 없이 한 줄(<code>lang="en"</code>).</p><p>정적 HTML 한글 검사(5-4)의 허용 목록은 이 <code>.orig [lang=ko]</code> 하나로 충분합니다.</p>` },
+  { n: 2, tag: "제안", title: "원문 발췌는 한국어면 싣지 않는다 · CTA 옆에 언어 안내",
+    body: `<p>한국 매체의 <code>content_raw</code>는 한국어라 영어판에서 '원문 발췌' 절 전체를 뺍니다(번역하지 않음). 대신 원문 버튼 옆(모바일은 아래)에 <b>aitimes.com · in Korean</b> — 누르기 전에 한국어 페이지로 간다는 걸 알립니다. 버튼 문구는 사전 그대로 <code>Read the original</code>.</p>` },
+  { n: 3, tag: "제안", title: "“Also reported by” — 한국어 제목만 있는 다른 매체 보도",
+    body: `<p><code>related_json</code>은 매체명·제목을 수집 원문 그대로 저장해 한국 매체 보도는 한국어 제목입니다(예: 기사 1235의 전자신문). 두 안:</p><ul><li><b>A 원제 그대로</b> — lang=ko, 흐린 세리프. 한글 허용 목록이 하나 더 늘어납니다.</li><li><b>B 제목 대신 안내</b> — 매체 영문명 + “Korean-language report”. 영어 페이지에 한글이 원제 한 곳만 남습니다.</li></ul><p class="ask">권장 B. 매체명은 related_json 의 이름 → sources.name_en 으로 바꿔 찾습니다(지금은 한국어 축약명).</p>`,
+    specs: () => S("A 원제 그대로", `<h2 class="sh">Also reported by 1 outlet</h2><a class="cov" href="#"><span class="s">${REL_KO.src}</span><span class="ct ko" lang="ko">${REL_KO.ko}</span></a>`) +
+      S("B 제목 대신 안내", `<h2 class="sh">Also reported by 1 outlet</h2><a class="cov" href="#"><span class="s">${REL_KO.src}</span><span class="ct">Korean-language report<small>etnews.com · in Korean</small></span></a>`, { rec: true }) },
+  { n: 4, tag: "계획", title: "날짜 칼럼·사건 타임라인",
+    body: `<p>날짜 칼럼은 <code>Nov 2</code>(세리프 600 14px, 3.75rem) — 한국어 MM.DD 대신 영어 관례. 툴팁은 <code>Nov 2, 2026 issue</code>. 관계 줄은 사전 그대로 <code>Follow-up · The Decoder · 2 days later</code>, 보고 있는 기사는 <code>This story</code>. 머리는 후속 1건이라 숫자 없이 <code>Follow-up coverage</code>.</p><p>영어 없는 연결 기사는 영어 타임라인에서 뺍니다(계획 5-2).</p>` },
+  { n: 5, tag: "제안", title: "매체 영문명 — “Electronic Times AI”",
+    body: `<p>sources.name_en 의 <code>Electronic Times AI</code>는 피드 이름(AI 섹션)이라 바이라인에서 길고 어색합니다(360에서 두 줄로 밀림). 매체 자체 영문 표기 <b>ETNews</b>(또는 Electronic Times)를 권장합니다. 축약명 맵에 영문 축약을 두는 방식(SOURCE_SHORT_LABELS 의 en)도 가능합니다.</p>` },
+];
+function renderNotes() { document.getElementById("notes").innerHTML = NOTES.map((x) => `<article class="note"><div><h3><span class="no">${x.n}</span><span>${x.title}<span class="tag${x.tag === "계획" ? " plan" : ""}">${x.tag}</span></span></h3>${x.body}</div><div class="specs">${x.specs ? x.specs() : ""}</div></article>`).join(""); }
+
+const state = { theme: "light", view: "desktop", kr: "b" };
+try { const q = new URLSearchParams(location.search); for (const k of Object.keys(state)) if (q.get(k)) state[k] = q.get(k); if (q.get("bare")) document.body.classList.add("bare"); } catch (e) {}
+function apply() {
+  KR = state.kr;
+  document.body.dataset.view = state.view;
+  document.documentElement.dataset.proto = state.theme;
+  for (const id of state.view === "desktop" ? ["ed-d"] : ["ed-m1", "ed-m2"]) document.getElementById(id).innerHTML = render();
+  renderNotes();
+  document.querySelectorAll(".ed").forEach((el) => (el.dataset.theme = state.theme));
+  document.querySelectorAll(".seg").forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === state[seg.dataset.key]))));
+  if (state.view === "mobile") requestAnimationFrame(() => { const ph = document.getElementById("ph2"), t = ph.querySelector(".sum"); if (t) ph.scrollTop += t.getBoundingClientRect().top - ph.getBoundingClientRect().top - 110; });
+  try { const q = new URLSearchParams(location.search); for (const [k, v] of Object.entries(state)) q.set(k, v); history.replaceState(null, "", "?" + q.toString()); } catch (e) {}
+}
+document.querySelectorAll(".seg").forEach((seg) => seg.addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (!b) return; state[seg.dataset.key] = b.dataset.v; apply(); }));
+apply();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(apply);
+</script>
+</body>
+</html>
