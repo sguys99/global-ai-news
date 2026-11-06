@@ -515,21 +515,24 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 6-1. 페이지 메타
 
-- [ ] 영어 제목: 홈은 0-5에서 확정한 문구, 호는 `AI News Briefing — Tuesday, November 3, 2026 (No. 140) — AI Daybook`, 기사는 `{title_en} — AI Daybook`, 검색은 `Search AI News — AI Daybook`.
-- [ ] 영어 설명: 기사는 `summary_en`, 홈·호는 세 줄 요약 영어판이나 서브 헤드라인.
-- [ ] 한국어 메타를 한국어로만 되돌린다: `SITE_TITLE`에서 `· Daily AI News Briefing`을, `SITE_DESCRIPTION`에서 영어 문장을 빼고 영어는 영어판으로 옮긴다. 한 페이지에 한 언어를 쓴다.
-- [ ] `shareMetadata`·`editionMetadata`에 `locale`을 받게 한다. `og:locale`은 `en_US`/`ko_KR`, `og:locale:alternate`는 상대 언어.
+- [x] 영어 제목: 홈은 0-5에서 확정한 문구, 호는 `AI News Briefing — Tuesday, November 3, 2026 (No. 140) — AI Daybook`, 기사는 `{title_en} — AI Daybook`, 검색은 `Search AI News — AI Daybook`. (2026-11-06 — 검색 제목만 `News`로 고쳤다. 나머지는 5-2에서 앞당겼다)
+- [x] 영어 설명: 기사는 `summary_en`, 홈·호는 세 줄 요약 영어판이나 서브 헤드라인. (2026-11-06 — 한국어 `editionShare`와 같은 규칙: og:description은 `AI Daybook · Fri, Nov 6, 2026 · No. 143 — ` + 리드 줄을 뺀 영어 요약 줄, 없으면 서브 헤드라인. 영어 호 meta description도 같은 문장이다. 영어 홈 meta description은 한국어 홈처럼 고정 사이트 설명이다)
+- [x] 한국어 메타를 한국어로만 되돌린다: `SITE_TITLE`에서 `· Daily AI News Briefing`을, `SITE_DESCRIPTION`에서 영어 문장을 빼고 영어는 영어판으로 옮긴다. 한 페이지에 한 언어를 쓴다. (2026-11-06 — `SITE_TITLE` = `AI Daybook — 오늘의 AI 뉴스 요약`. `SITE_DESCRIPTION`을 쓰는 RSS 채널 설명·WebSite JSON-LD·공유 설명도 함께 한국어만 남는다)
+- [x] `shareMetadata`·`editionMetadata`에 `locale`을 받게 한다. `og:locale`은 `en_US`/`ko_KR`, `og:locale:alternate`는 상대 언어. (2026-11-06 — `shareMetadata({…, locale})`는 언어 접두어 없는 경로를 받아 og:url·canonical에 `localePath`를 씌우고, 언어판 기본 썸네일·RSS(`feedPath(locale)`)를 고른다. `og:locale:alternate`는 hreflang과 같은 판정이라 `withLanguageAlternates` 한 곳에서 붙인다. 영어 페이지가 처음으로 공유 메타 전체(og·article:section 영어 분야명·라틴 태그·twitter)를 갖는다)
 
 ### 6-2. 언어 연결
 
-- [ ] canonical은 각 언어판이 **자기 자신**을 가리킨다.
-- [ ] hreflang(`alternates.languages`): `ko`·`en`·`x-default`(=en). 상대 언어판이 있을 때만 넣는다. 영어 본문이 없는 기사의 한국어판에는 넣지 않는다.
-- [ ] 사이트맵: 영어 URL을 추가하고 쌍마다 `xhtml:link` 언어 대체를 넣는다(`MetadataRoute.Sitemap`의 `alternates.languages`).
+- [x] canonical은 각 언어판이 **자기 자신**을 가리킨다. (2026-11-06 — 영어 보관 지면 포함)
+- [x] hreflang(`alternates.languages`): `ko`·`en`·`x-default`(=en). 상대 언어판이 있을 때만 넣는다. 영어 본문이 없는 기사의 한국어판에는 넣지 않는다. (2026-11-06 — 짝 판정은 `languageAlternates` 그대로, x-default는 `site.ts` `hreflangLanguages` 한 곳에서 붙인다. 언어 전환 링크와 사이트맵도 이 둘을 쓴다)
+- [x] 사이트맵: 영어 URL을 추가하고 쌍마다 `xhtml:link` 언어 대체를 넣는다(`MetadataRoute.Sitemap`의 `alternates.languages`).
   - 두 언어 URL이 2년 뒤 약 46,500개로 한 파일 한도 5만 개에 가까워진다(0-4). 처음부터 사이트맵 인덱스로 나눈다(`generateSitemaps` — 언어별 또는 연도별).
-- [ ] RSS: `/en/feed.xml`(영어 제목·요약, `language en`)을 만들고, 영어 페이지 머리에 RSS 링크를 단다.
-- [ ] 구조화 데이터: 영어 페이지는 `inLanguage: "en"`, WebSite(영어 설명), NewsArticle(영어 headline·description, `isBasedOn` 원문).
-- [ ] 공유 썸네일 영어판: `/og/en/edition/[date].png`·`/og/en/article/[id].png`·`/og/en/default.png`(`src/lib/ogImage.tsx` 영어 텍스트 폭 추정 확인).
+  - (2026-11-06) Next 15의 `generateSitemaps`는 인덱스 파일을 만들지 않는다. 그래서 라우트 핸들러로 만들었다: **제출한 주소 `/sitemap.xml`을 그대로 `<sitemapindex>`로** 바꾸고(Search Console·서치어드바이저·루트 robots.txt 재제출 불필요), 조각은 `/sitemaps/pages.xml`(두 언어 홈·검색 4건 — 매일 바뀌는 lastmod를 연도 조각 밖에 둔다)·`/sitemaps/ko-<YYYY>.xml`·`/sitemaps/en-<YYYY>.xml`(호 날짜 연도, 5만 건을 넘으면 `-2` 번호). 현재 ko-2026 1,334건·en-2026 1,318건(보관 지면 포함). `xhtml:link`는 페이지 hreflang과 같은 함수(`sitemapData.test.ts`가 대조). 네이버의 사이트맵 인덱스 지원은 공식 문서로 확인하지 못했다(호스팅 가이드들은 인덱스를 그대로 제출) — 출시 때 서치어드바이저 화면에서 확인한다(6-3 안내서).
+- [x] RSS: `/en/feed.xml`(영어 제목·요약, `language en`)을 만들고, 영어 페이지 머리에 RSS 링크를 단다. (2026-11-06 — `src/app/(en)/en/feed.xml/route.ts`, 한국어와 같은 3일 창에서 영어 본문이 있는 기사 60건, 매체는 영문명, 한글 0)
+- [x] 구조화 데이터: 영어 페이지는 `inLanguage: "en"`, WebSite(영어 설명), NewsArticle(영어 headline·description, `isBasedOn` 원문). (2026-11-06 — `websiteJsonLd(locale)`·`articleJsonLd(article, image, locale)`, 영어 보관 기사도 같은 빌더. 영어 WebSite에는 한글 `alternateName`을 넣지 않는다)
+- [x] 공유 썸네일 영어판: `/og/en/edition/[date].png`·`/og/en/article/[id].png`·`/og/en/default.png`(`src/lib/ogImage.tsx` 영어 텍스트 폭 추정 확인).
   - 한국어판과 같은 창을 쓴다(Phase 4-1): 호 PNG는 `hasEditionThumbnail`(최근 30일), 기사 PNG는 `hasArticleThumbnail`(7일). 창 밖은 영어 기본 썸네일이다. `size:report`는 `og/en/…`를 영어로 센다.
+  - (2026-11-06) 한국어 썸네일과 같은 판형(제호·이중 괘선·코발트 키커·서브 3단), 영어 데이트라인 `Friday, November 6, 2026 · No. 143`, 귀는 `21 stories` + 비뉴스 형식만, `KOREA`는 테두리 없는 잉크 대문자. 헤드라인은 Hahmlet 800 라틴 실측 폭으로 말줄임 없이 들어가는 가장 큰 크기를 고른다(호 리드 64→48px, 기사 84→52px). satori가 커닝 없는 폭으로 낱말 자리를 잡아 커닝이 많은 낱말 뒤가 벌어지는 문제 때문에 영어 헤드라인은 글자 단위로 그린다. 생성은 영어판 호·기사 ∩ 한국어와 같은 창(기준 = DB 최신 호·최신 게시 시각)이라 메타가 가리키는 PNG와 같다(`ogEnThumbnails.test.ts`). 현재 호 30장·기사 151장, +9.4MB. 한국어 PNG는 바이트 동일.
+- **6-1·6-2 확인 (2026-11-06, Docker 빌드 `out-p6-a` vs `out-p6-base`).** 테스트 1,480 → 1,524건. 한국어 회귀 12페이지의 차이는 계획한 메타뿐이다(제목·설명에서 영어 문장 제거, 짝이 있으면 x-default 1줄 + `og:locale:alternate` 1줄, `sitemap.xml` → 인덱스, `feed.xml` 채널 설명). `en:hangul-check` 1,365파일 위반 0. 크기: 영어 기사 평균 28.7 → 36.4KB(한국어 36.0KB와 같은 수준 — head 메타 +2.1KB·JSON-LD +1.2KB·이 둘이 RSC 인라인에 다시 실린 +3.8KB), 한국어 기사 35.5 → 36.0KB, 호 ko 121.0·en 126.6KB(예산 150), `out/` 93.2 → 112.9MB. 보관 기사 8KB 초과가 ko 7 → 18쪽·en 2쪽(최대 8.3KB, 경고만).
 
 ### 6-3. 검색엔진 등록·확인
 

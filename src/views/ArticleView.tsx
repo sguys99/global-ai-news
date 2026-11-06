@@ -85,8 +85,8 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
 
   return (
     <main className="ar-main">
-      {/* 구조화 데이터는 아직 한국어 하나라 한국어판에만 싣는다 — 영어 값(영어 페이지)은 Phase 6. */}
-      {locale === "ko" && <JsonLd data={articleJsonLd(article, thumbnail)} />}
+      {/* 구조화 데이터(NewsArticle) — 언어판마다 자기 제목·요약·주소·inLanguage. 영어판은 한글을 싣지 않는다(src/lib/seo.ts). */}
+      <JsonLd data={articleJsonLd(article, thumbnail, locale)} />
       <Link href={localePath(locale, "/")} className="ar-back">
         <Icon name="arrowLeft" className="size-4" />
         {common.nav.today}

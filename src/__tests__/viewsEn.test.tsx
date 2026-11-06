@@ -390,8 +390,14 @@ describe("ArticleView — 영어 상세의 한글 새기 막기", () => {
     expect(notes[0].textContent).toBe("x · in Korean");
     expect(container.querySelector(".ar-ctaw .ar-cta")).not.toBeNull();
     expect(container.querySelector(".ar-barn .ar-mcta")).not.toBeNull();
-    // 구조화 데이터는 한국어 값뿐이라 영어 페이지에 싣지 않는다(Phase 6)
-    expect(container.querySelector('script[type="application/ld+json"]')).toBeNull();
+    // 영어 구조화 데이터(6-2) — 영어 값만(한국어 원제·한글 없음), 영어 주소
+    const ld = container.querySelector('script[type="application/ld+json"]');
+    expect(ld).not.toBeNull();
+    expect(JSON.parse(ld!.innerHTML)).toMatchObject({
+      inLanguage: "en",
+      url: expect.stringMatching(/\/en\/article\//),
+    });
+    expect(ld!.innerHTML).not.toMatch(HANGUL);
     // 한글은 lang=ko 원제 한 곳뿐
     const ko = [...container.querySelectorAll("*")].filter(
       (el) => el.children.length === 0 && HANGUL.test(el.textContent ?? ""),
@@ -436,7 +442,7 @@ describe("HomeView·EditionView — 영어 섬 props(= 영어 RSC)에 한글·�
   const idsIn = (cards: unknown): number[] =>
     Array.isArray(cards) ? cards.map((c: { id: number }) => c.id) : [];
 
-  it("영어 홈: 이번 호·색인 머리에 영어 없는 기사(2·5)가 없고, props 에 한글이 없고, 구조화 데이터가 없다", () => {
+  it("영어 홈: 이번 호·색인 머리에 영어 없는 기사(2·5)가 없고, props 에 한글이 없고, 구조화 데이터는 영어 WebSite", () => {
     islands.feed = null;
     const { container } = render(<HomeView locale="en" />);
     const feed = islands.feed!;
@@ -444,7 +450,9 @@ describe("HomeView·EditionView — 영어 섬 props(= 영어 RSC)에 한글·�
     expect([...idsIn(feed.issueArticles), ...idsIn(feed.indexHead)]).not.toContain(2);
     expect([...idsIn(feed.issueArticles), ...idsIn(feed.indexHead)]).not.toContain(5);
     expect(HANGUL.test(JSON.stringify(feed))).toBe(false);
-    expect(container.querySelector('script[type="application/ld+json"]')).toBeNull();
+    const ld = container.querySelector('script[type="application/ld+json"]');
+    expect(JSON.parse(ld!.innerHTML)).toMatchObject({ "@type": "WebSite", inLanguage: "en" });
+    expect(ld!.innerHTML).not.toMatch(HANGUL);
   });
 
   it("한국어 홈은 그대로 — 영어 없는 기사도 싣고 WebSite 구조화 데이터가 있다", () => {

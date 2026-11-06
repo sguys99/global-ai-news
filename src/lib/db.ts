@@ -815,6 +815,26 @@ export function getArticlesCollectedSince(
   });
 }
 
+/**
+ * 영어판 RSS(/en/feed.xml)용 최근 수집분 — `getArticlesCollectedSince` 와 같은 창·순서에서 영어판에 실을 기사(`hasEnglish`)만,
+ * 영어 목록 카드(`toListCard(…, "en")` — 한국어 가공 텍스트·한글 태그·한글 매체명을 뗀다) + 수집 시각.
+ */
+export function getEnglishArticlesCollectedSince(
+  since: string,
+  conn: DatabaseType = getDb(),
+): (ListCard & { collectedAt: string })[] {
+  const rows = conn
+    .prepare(
+      `${articleSelect(conn)} WHERE ${PUBLISHED} AND julianday(a.created_at) >= julianday(?)
+        ORDER BY ${orderByFor("importance")}`,
+    )
+    .all(since) as ArticleRow[];
+  return rows.flatMap((row) => {
+    const card = toArticleCard(row);
+    return hasEnglish(card) ? [{ ...toListCard(card, "en"), collectedAt: row.collected_at }] : [];
+  });
+}
+
 /** 공개 기사 중 최신 게시 시각(기사 썸네일 생성 기간의 기준). 기사가 없으면 null. */
 export function getLatestPublishedAt(conn: DatabaseType = getDb()): string | null {
   const row = conn

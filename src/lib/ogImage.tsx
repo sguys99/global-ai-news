@@ -5,22 +5,34 @@
  * - satori 는 woff2·가변 폰트를 못 읽으므로 Google Fonts 의 정적 TTF 를 쓴다. 헤드라인은 사이트와
  *   같은 Hahmlet, 메타는 Pretendard 와 한글 자형이 같은 계열인 Noto Sans KR.
  * - satori 제약: 자식이 둘 이상인 요소는 display:flex 여야 한다.
+ * - 영어판(`locale="en"`, english-version-plan 6-2 — `/og/en/…`)은 같은 판형에 영어 문구·영어 제목(titleEn)·영문 매체명을
+ *   싣고, 한국 매체 기사에는 `KOREA` 글자 표시(DESIGN.md §9 영어판 — 테두리 없는 잉크 대문자)를 단다. 영어 헤드라인은
+ *   한국어보다 글자 수가 약 1.5배라 글자 수 구간 대신 **실측 폭 표(Hahmlet 800 라틴 advance)로 줄 수를 맞춰 크기를 고른다**.
+ *   한국어 썸네일은 기존 추정·크기 구간 그대로다(바이트 동일).
  */
 import { ImageResponse } from "next/og";
+import { headlineOf, sourceNameOf } from "@/lib/articleText";
 import type { EditionInfo } from "@/lib/db";
 import type { Edition } from "@/lib/edition";
+import { getMessages, type Locale } from "@/lib/i18n";
 import {
   CATEGORIES,
-  CATEGORY_LABELS,
+  CATEGORY_LABELS_BY_LOCALE,
   FORMATS,
   FORMAT_BADGES,
   FORMAT_DISPLAY_LABELS,
+  REGION_BADGES,
   categoryLabel,
+  formatCountLabel,
   formatLongDate,
   shortSourceName,
   toFormat,
 } from "@/lib/labels";
-import { OG_IMAGE_SIZE, SITE_TAGLINE } from "@/lib/site";
+import { articleMessages } from "@/lib/messages/article";
+import { commonMessages } from "@/lib/messages/common";
+import { frontPageMessages } from "@/lib/messages/frontPage";
+import { ogMessages } from "@/lib/messages/og";
+import { OG_IMAGE_SIZE, siteTagline } from "@/lib/site";
 import type { ArticleCard } from "@/lib/types";
 
 const PAPER = "#f4f4f1";
@@ -78,7 +90,17 @@ async function render(node: React.ReactElement): Promise<ImageResponse> {
   return new ImageResponse(node, { ...OG_IMAGE_SIZE, fonts: await loadFonts() });
 }
 
-const headline = (a: ArticleCard) => a.titleKo || a.titleOriginal;
+/**
+ * 영어 글의 낱말 안 곧은 아포스트로피를 굽은 것으로("SoftBank's" → "SoftBank’s") — 지면 조판(사이트 dek 의 ’ 와 같다).
+ * 따옴표 짝(‘…’ “…”)은 열고 닫는 판단이 필요해 건드리지 않는다.
+ */
+export function typographicApostrophes(text: string): string {
+  return text.replace(/(?<=[\p{L}\p{N}])'(?=\p{L})/gu, "’");
+}
+
+/** 썸네일 헤드라인 — ko `titleKo || titleOriginal`(기존 식), en `titleEn`(한국어로 폴백하지 않는다, articleText). */
+const headline = (a: ArticleCard, locale: Locale = "ko") =>
+  locale === "en" ? typographicApostrophes(headlineOf(a, "en")) : a.titleKo || a.titleOriginal;
 
 /** 제호 "AI Daybook" — AI 만 코발트(Masthead 와 동일). */
 function Nameplate({ size }: { size: number }) {
@@ -108,19 +130,115 @@ function charEm(ch: string): number {
   return 0.45;
 }
 
+/** 글자 하나의 폭(em) 추정 함수 — 한국어 `charEm`, 영어 `latinCharEm(tracking)`. */
+export type CharEm = (ch: string) => number;
+
+/**
+ * Hahmlet 800 라틴 글리프 advance 폭(em, 실측값을 0.01 올림) — 폭이 같은 글자끼리 묶었다. 영어 헤드라인은 글자 수가
+ * 한국어의 약 1.5배라 charEm 의 넉넉한 근사(소문자 0.66 — 실측 평균 0.59)로는 줄이 일찍 꺾이고 말줄임이 잦다.
+ */
+const LATIN_EM_GROUPS: readonly (readonly [number, string])[] = [
+  [0.32, "`"],
+  [0.33, "j’‘"],
+  [0.34, "l"],
+  [0.36, "'"],
+  [0.37, ",i"],
+  [0.38, "!.:;"],
+  [0.39, "·"],
+  [0.41, "f"],
+  [0.42, "t"],
+  [0.43, "-"],
+  [0.44, "()"],
+  [0.45, "IJ"],
+  [0.48, "/\\r"],
+  [0.49, "[]|"],
+  [0.52, "1"],
+  [0.53, "s"],
+  [0.54, "z{}"],
+  [0.55, "c"],
+  [0.56, "y"],
+  [0.57, "g"],
+  [0.58, '"?aeé'],
+  [0.59, "“”"],
+  [0.6, "vx"],
+  [0.62, "7"],
+  [0.63, "5"],
+  [0.64, "3k"],
+  [0.65, "2o"],
+  [0.66, "bq"],
+  [0.67, "+48<=>^_~–×"],
+  [0.68, "*p"],
+  [0.69, "$Sdhu"],
+  [0.7, "69£"],
+  [0.71, "PZn"],
+  [0.72, "#L"],
+  [0.73, "F→"],
+  [0.74, "T"],
+  [0.77, "0"],
+  [0.79, "BE"],
+  [0.82, "R"],
+  [0.83, "C"],
+  [0.85, "N"],
+  [0.86, "&AKVYw"],
+  [0.87, "G"],
+  [0.88, "DX"],
+  [0.91, "U"],
+  [0.94, "€"],
+  [0.95, "H"],
+  [0.96, "OQ"],
+  [1.02, "m"],
+  [1.03, "…"],
+  [1.13, "M"],
+  [1.2, "W"],
+  [1.21, "%"],
+  [1.26, "@"],
+  [1.31, "₩"],
+  [1.34, "—"],
+];
+
+/** Hahmlet 800 공백 advance(em) — LineHeadline 낱말 사이 빈 칸. 줄 나누기 추정은 넉넉한 WORD_GAP_EM(0.26)을 쓴다. */
+const LATIN_SPACE_EM = 0.262;
+
+const LATIN_EM = new Map(
+  LATIN_EM_GROUPS.flatMap(([em, chars]) => Array.from(chars, (ch) => [ch, em] as const)),
+);
+
+/** 표에 없는 글자(악센트 문자 등) — 대문자 평균(0.82)에 가깝게 넉넉히. 한글·한자는 영어 썸네일에 오지 않지만 0.93. */
+const LATIN_FALLBACK_EM = 0.8;
+/** 커닝·반올림 여유 — 추정 폭이 실제보다 좁아 마지막 어절이 상자 밖으로 밀리지 않게. */
+const LATIN_SAFETY = 1.02;
+
+/**
+ * 영어 헤드라인 글자 폭(em): 실측 advance + 자간(tracking, em — satori 는 글자마다 letterSpacing 을 더한다), 여유 2%.
+ * 같은 tracking 이면 같은 함수를 돌려준다.
+ */
+const latinCache = new Map<number, CharEm>();
+export function latinCharEm(tracking = 0): CharEm {
+  let fn = latinCache.get(tracking);
+  if (!fn) {
+    fn = (ch) => {
+      const base = LATIN_EM.get(ch) ?? (/[ㄱ-ㆎ가-힣一-鿿]/.test(ch) ? 0.93 : LATIN_FALLBACK_EM);
+      return (base + tracking) * LATIN_SAFETY;
+    };
+    latinCache.set(tracking, fn);
+  }
+  return fn;
+}
+
 const WORD_GAP_EM = 0.26;
 
-const wordEm = (w: string) => Array.from(w).reduce((sum, ch) => sum + charEm(ch), 0);
-const lineEmOf = (ws: string[]) =>
-  ws.reduce((sum, w) => sum + wordEm(w), 0) + WORD_GAP_EM * Math.max(0, ws.length - 1);
+const wordEm = (w: string, em: CharEm = charEm) =>
+  Array.from(w).reduce((sum, ch) => sum + em(ch), 0);
+const lineEmOf = (ws: string[], em: CharEm = charEm) =>
+  ws.reduce((sum, w) => sum + wordEm(w, em), 0) + WORD_GAP_EM * Math.max(0, ws.length - 1);
 const wordsOf = (text: string) => text.split(/\s+/).filter(Boolean);
 
 /** 앞에서부터 줄 폭(em)이 찰 때까지 어절을 담는 줄 나누기(줄 수 제한 없음). */
-function greedyLines(words: string[], lineEm: number): string[][] {
+function greedyLines(words: string[], lineEm: number, em: CharEm = charEm): string[][] {
   const lines: string[][] = [];
   for (const word of words) {
     const last = lines.at(-1);
-    if (last && lineEmOf([...last, word]) <= lineEm) last.push(word);
+    if (last && lineEmOf([...last, word], em) <= lineEm) last.push(word);
     else lines.push([word]);
   }
   return lines;
@@ -129,20 +247,53 @@ function greedyLines(words: string[], lineEm: number): string[][] {
 /**
  * 어절을 줄 폭(em)에 채워 maxLines 를 넘으면 마지막 줄을 "…" 로 맺는다. 높이로만 자르면
  * "일시 금지 추진"이 "일시 금지"로 보이듯 뜻이 바뀔 수 있어, 잘렸다는 표시를 반드시 남긴다.
+ * 영어 끝 어절의 쉼표·마침표 등은 떼고 "…" 를 붙인다("pricing,…" 가 아니라 "pricing…").
  */
-export function fitWords(text: string, lineEm: number, maxLines: number): string[] {
-  const lines = greedyLines(wordsOf(text), lineEm);
+export function fitWords(
+  text: string,
+  lineEm: number,
+  maxLines: number,
+  em: CharEm = charEm,
+): string[] {
+  const lines = greedyLines(wordsOf(text), lineEm, em);
   if (lines.length <= maxLines) return lines.flat();
   const kept = lines.slice(0, maxLines);
   const tail = kept[maxLines - 1];
-  while (tail.length > 1 && lineEmOf(tail) + wordEm("…") > lineEm) tail.pop();
-  tail[tail.length - 1] += "…";
+  while (tail.length > 1 && lineEmOf(tail, em) + wordEm("…", em) > lineEm) tail.pop();
+  const last = tail[tail.length - 1];
+  // 한국어(charEm)는 기존 그대로 — 한국어 썸네일 바이트 동일.
+  const bare = em === charEm ? last : last.replace(/[,.;:—–-]+$/, "") || last;
+  tail[tail.length - 1] = `${bare}…`;
   return kept.flat();
 }
 
 /** 제목을 줄 폭(em)으로 나눈 줄들(추정 폭 기준, 줄 수 제한 없음) — 균형 줄바꿈 검증용. */
-export function wrapWords(text: string, lineEm: number): string[][] {
-  return greedyLines(wordsOf(text), lineEm);
+export function wrapWords(text: string, lineEm: number, em: CharEm = charEm): string[][] {
+  return greedyLines(wordsOf(text), lineEm, em);
+}
+
+/** 헤드라인 크기 후보 — 글자 크기(px)와 그 크기에서 허용하는 줄 수. */
+export interface HeadlineFit {
+  size: number;
+  maxLines: number;
+}
+
+/**
+ * 후보(큰 것부터) 중 제목이 말줄임 없이 들어가는 첫 크기. 다 넘치면 마지막(가장 작은) 후보 — 그 크기에서 말줄임한다.
+ * 영어 썸네일이 글자 수 구간(leadFontSize·articleHeadline) 대신 쓴다: 글자 수가 같아도 m·W 와 i·l 의 폭 차가 커서
+ * 구간으로는 2줄에 들어갈 제목을 작게 쓰거나 3줄을 넘겨 자른다.
+ */
+export function fitHeadline(
+  text: string,
+  width: number,
+  candidates: readonly HeadlineFit[],
+  em: CharEm,
+): HeadlineFit {
+  const words = wordsOf(text);
+  return (
+    candidates.find((c) => greedyLines(words, width / c.size, em).length <= c.maxLines) ??
+    candidates[candidates.length - 1]
+  );
 }
 
 /** 균형 줄바꿈 폭의 여유(em) — 추정 폭의 반올림 오차로 줄이 하나 늘어 마지막 어절이 잘리지 않게. */
@@ -154,15 +305,20 @@ const BALANCE_SLACK_EM = 0.3;
  * 듣는데 헤드라인은 어절별 span(flex-wrap)이라 직접 계산한다. 한 줄이거나 maxLines 를 넘어 말줄임되는 제목은
  * 원래 폭 그대로. 실제 글자 폭 ≤ 추정 폭(charEm)이므로 이 폭에서도 실제 줄 수는 늘지 않는다.
  */
-export function balancedLineEm(text: string, lineEm: number, maxLines: number): number {
+export function balancedLineEm(
+  text: string,
+  lineEm: number,
+  maxLines: number,
+  em: CharEm = charEm,
+): number {
   const words = wordsOf(text);
-  const count = greedyLines(words, lineEm).length;
+  const count = greedyLines(words, lineEm, em).length;
   if (count <= 1 || count > maxLines) return lineEm;
-  let lo = Math.max(...words.map(wordEm));
+  let lo = Math.max(...words.map((w) => wordEm(w, em)));
   let hi = lineEm;
   while (hi - lo > 0.01) {
     const mid = (lo + hi) / 2;
-    if (greedyLines(words, mid).length > count) lo = mid;
+    if (greedyLines(words, mid, em).length > count) lo = mid;
     else hi = mid;
   }
   return Math.min(lineEm, hi + BALANCE_SLACK_EM);
@@ -217,6 +373,87 @@ function Headline({
   );
 }
 
+/**
+ * 줄 단위로 나눈 균형 줄바꿈 헤드라인 — 영어 썸네일용. satori 는 낱말 자리를 글자 하나씩 잰 폭의 합(커닝 없음)으로
+ * 잡고, 그릴 때는 낱말 하나를 커닝을 넣어 그린다. 그래서 커닝이 많은 라틴 낱말("Vectrobotics"·"Vect")마다 끝에 빈 자리가
+ * 남아 낱말 사이가 들쭉날쭉해진다(한 줄을 한 텍스트 노드로 넘겨도 낱말별로 그린다 — 2026-11 실측). → 글자를 하나씩
+ * span 으로 그려 재는 폭과 그리는 폭을 같게 하고(커닝 없는 균일한 조판), 낱말 사이는 공백 폭의 빈 칸으로 둔다.
+ * 줄 나누기는 실측 폭 표(latinCharEm) 추정으로 미리 하고, 넘치면 마지막 줄을 "…" 로 맺는다(fitWords). 줄 수를 직접 정하므로
+ * maxHeight 로 자르지 않는다 — 1.1 대 행간에서 마지막 줄 g·y 아래끝이 잘리지 않게.
+ */
+function LineHeadline({
+  text,
+  width,
+  size,
+  lineHeight,
+  maxLines,
+  tracking,
+}: {
+  text: string;
+  width: number;
+  size: number;
+  lineHeight: number;
+  maxLines: number;
+  tracking: number;
+}) {
+  const em = latinCharEm(tracking);
+  const fitted = fitWords(text, width / size, maxLines, em);
+  const lines = greedyLines(fitted, balancedLineEm(text, width / size, maxLines, em), em);
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width,
+        fontFamily: SERIF,
+        fontWeight: 800,
+        fontSize: size,
+        lineHeight,
+        letterSpacing: size * tracking,
+      }}
+    >
+      {lines.map((line, i) => (
+        <div key={i} style={{ display: "flex", columnGap: size * (LATIN_SPACE_EM + tracking) }}>
+          {line.map((word, j) => (
+            <div key={j} style={{ display: "flex" }}>
+              {Array.from(word, (ch, k) => (
+                <span key={k}>{ch}</span>
+              ))}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * 글자를 하나씩 그리는 산세리프 한 줄(영어 데이트라인·태그라인) — LineHeadline 과 같은 이유(satori 가 커닝 없이 재고
+ * 커닝을 넣어 그려 "Tuesday," 뒤가 벌어진다). 낱말 사이는 Noto Sans KR 공백 폭(0.225em). 줄바꿈하지 않는다.
+ */
+const SANS_SPACE_EM = 0.225;
+
+function Glyphs({ text, size }: { text: string; size: number }) {
+  return (
+    <div style={{ display: "flex", columnGap: size * SANS_SPACE_EM, fontSize: size }}>
+      {/* 빈 낱말(연속 공백 — 데이트라인 "  ·  ")은 빈 칸으로 남겨 간격을 넓힌다. */}
+      {text.split(" ").map((word, i) => (
+        <div key={i} style={{ display: "flex" }}>
+          {Array.from(word, (ch, k) => (
+            <span key={k}>{ch}</span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * satori 는 컴포넌트 자식(Glyphs)을 둔 상자에도 display:flex 를 요구한다. 한국어 썸네일의 같은 상자는 스타일을 바꾸지
+ * 않으려고(바이트 동일) 영어일 때만 붙인다.
+ */
+const flexIf = (on: boolean): { display?: "flex" } => (on ? { display: "flex" } : {});
+
 /** 마스트헤드 이중 잉크 괘선(굵은 선 + 가는 선). */
 function DoubleRule({ marginTop }: { marginTop: number }) {
   return (
@@ -264,6 +501,43 @@ function articleHeadline(title: string): { size: number; maxLines: number } {
   return { size: 54, maxLines: 3 };
 }
 
+/*
+ * 영어 헤드라인 판형(DESIGN.md §9 영어 타이포그래피 — 라틴 Hahmlet 은 한국어 자간이면 붙는다, 리드 행간 1.1 대).
+ * 크기는 fitHeadline 이 후보 중 말줄임 없이 들어가는 가장 큰 것을 고른다. 높이 예산은 한국어 판형과 같다:
+ * 호 리드는 서브 3단 위 약 230px(3줄 × 60px × 1.12 ≈ 202), 기사는 괘선~바이라인 사이 키커 아래 약 300px.
+ */
+const EN_DISPLAY_TRACKING = -0.028;
+const EN_TITLE_TRACKING = -0.012;
+const EN_HEADLINE_LINE_HEIGHT = 1.12;
+const EN_LEAD_FITS: readonly HeadlineFit[] = [
+  { size: 64, maxLines: 2 },
+  { size: 60, maxLines: 3 },
+  { size: 56, maxLines: 3 },
+  { size: 52, maxLines: 3 },
+  { size: 48, maxLines: 3 },
+];
+const EN_ARTICLE_FITS: readonly HeadlineFit[] = [
+  { size: 84, maxLines: 2 },
+  { size: 76, maxLines: 3 },
+  { size: 70, maxLines: 3 },
+  { size: 64, maxLines: 3 },
+  { size: 60, maxLines: 4 },
+  { size: 56, maxLines: 4 },
+  { size: 52, maxLines: 4 },
+];
+/** 영어 서브 헤드라인(3단) — 사이트 서브 20px/1.3 에 맞춰 한국어 22px 보다 작게, 영어 제목이 길어 3줄까지. */
+const EN_SUB = { size: 20, lineHeight: 1.3, maxLines: 3 } as const;
+
+/** 영어 리드 헤드라인 크기(호 썸네일) — 3줄 안에 말줄임 없이 들어가는 가장 큰 크기. */
+export function enLeadFit(title: string): HeadlineFit {
+  return fitHeadline(title, CONTENT_WIDTH, EN_LEAD_FITS, latinCharEm(EN_DISPLAY_TRACKING));
+}
+
+/** 영어 기사 썸네일 헤드라인 크기·줄 수 — 짧으면 크게 2~3줄, 길면 4줄까지. */
+export function enArticleFit(title: string): HeadlineFit {
+  return fitHeadline(title, CONTENT_WIDTH, EN_ARTICLE_FITS, latinCharEm(EN_DISPLAY_TRACKING));
+}
+
 /**
  * 형식 배지(REPO·MODEL·PAPER) — 사이트 FormatBadge 와 같은 잉크 아웃라인, 코발트 없음(강조색은
  * 하나). 썸네일은 작게 축소돼 보이므로 선은 2px. 뉴스는 배지가 없어 null.
@@ -290,24 +564,48 @@ function FormatBadge({ format, size }: { format: string; size: number }) {
 }
 
 /**
+ * 영어판 한국 매체 표시 `KOREA` — DESIGN.md §9: 배지 글꼴(700 대문자, 자간 0.09em)의 테두리 없는 잉크 글자.
+ * 상자는 형식 배지 몫이고 코발트는 키커 몫이라 쓰지 않는다.
+ */
+function KoreaMark({ size }: { size: number }) {
+  return (
+    <span style={{ color: INK, fontSize: size, fontWeight: 700, letterSpacing: size * 0.09 }}>
+      {REGION_BADGES.kr}
+    </span>
+  );
+}
+
+const isKoreanOutlet = (a: Pick<ArticleCard, "source">) => a.source.region === "kr";
+
+/**
  * 호 형식 구성 "뉴스 22 · 저장소 3 · 논문 3" — FORMATS 순, 화면 표시명(마스트헤드 귀와 같은 말), 0건 형식은 뺀다.
  * 전부 뉴스면 "이번 호 N건"과 같은 말이라 빈 문자열.
+ * en 은 영어 마스트헤드 귀 둘째 줄처럼 비뉴스만 센다("3 repos · 1 model · 3 papers") — 앞 칸 "22 stories" 와
+ * 낱말이 겹치지 않게(DESIGN.md §9 형식 귀). 비뉴스가 없으면 빈 문자열.
  */
-export function formatMix(articles: Pick<ArticleCard, "format">[]): string {
+export function formatMix(articles: Pick<ArticleCard, "format">[], locale: Locale = "ko"): string {
   const counts = new Map<string, number>();
   for (const a of articles)
     counts.set(toFormat(a.format), (counts.get(toFormat(a.format)) ?? 0) + 1);
+  if (locale === "en") {
+    return FORMATS.filter((f) => f !== "news" && counts.has(f))
+      .map((f) => formatCountLabel(f, counts.get(f) ?? 0, "en"))
+      .join(" · ");
+  }
   if (counts.size < 2) return "";
   return FORMATS.filter((f) => counts.has(f))
     .map((f) => `${FORMAT_DISPLAY_LABELS[f]} ${counts.get(f)}`)
     .join(" · ");
 }
 
-/** 기본 썸네일(상세·검색 등): 제호 + 소개 + 분야 목록. */
-export function defaultImage(): Promise<ImageResponse> {
-  const kicker = "매일 06:00 KST 발행";
+/** 기본 썸네일(상세·검색 등): 제호 + 소개 + 분야 목록. en 은 영어 태그라인·영어 분야명(`/og/en/default.png`). */
+export function defaultImage(locale: Locale = "ko"): Promise<ImageResponse> {
+  const en = locale === "en";
+  const kicker = getMessages(commonMessages, locale).publishedDaily;
   // 분야 표시명엔 가운뎃점이 들어 있어("오픈소스·도구") 구분자는 점 대신 헤어라인 세로선.
-  const categories = CATEGORIES.map((key) => CATEGORY_LABELS[key]);
+  const categories = CATEGORIES.map((key) => CATEGORY_LABELS_BY_LOCALE[locale][key]);
+  // 영어 분야명("Open Source & Tools")이 길어 한 줄(1072px)에 들어가게 글자·간격을 조금 줄인다.
+  const gap = en ? 16 : 20;
   return render(
     <Frame>
       <div style={{ flexGrow: 1 }} />
@@ -316,22 +614,26 @@ export function defaultImage(): Promise<ImageResponse> {
         <Nameplate size={116} />
       </div>
       <DoubleRule marginTop={26} />
-      <div style={{ marginTop: 30, fontSize: 34, fontWeight: 500, color: INK_SOFT }}>
-        {SITE_TAGLINE}
+      <div style={{ ...flexIf(en), marginTop: 30, fontSize: 34, fontWeight: 500, color: INK_SOFT }}>
+        {en ? (
+          <Glyphs text={typographicApostrophes(siteTagline(locale))} size={32} />
+        ) : (
+          siteTagline(locale)
+        )}
       </div>
       <div style={{ flexGrow: 1 }} />
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 20,
-          fontSize: 22,
+          gap,
+          fontSize: en ? 21 : 22,
           fontWeight: 700,
           color: MUTED,
         }}
       >
         {categories.map((label, i) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <div key={label} style={{ display: "flex", alignItems: "center", gap }}>
             {i > 0 && <div style={{ width: 2, height: 18, background: HAIRLINE }} />}
             <span>{label}</span>
           </div>
@@ -344,44 +646,64 @@ export function defaultImage(): Promise<ImageResponse> {
 /**
  * 호 썸네일 키커 — "1면" + 리드 분야. "오늘의 1면"은 지난 호 고정 링크를 공유하면 틀린 말이 되고,
  * 호 날짜·호수는 바로 위 데이트라인에 있다. 분야 표시명에 가운뎃점이 있어("산업·정책") 구분은 헤어라인으로 그린다.
+ * en "Front page" + 영어 분야명.
  */
-export function editionKicker(lead: Pick<ArticleCard, "category">): string[] {
-  return ["1면", categoryLabel(lead.category)].filter(Boolean);
+export function editionKicker(
+  lead: Pick<ArticleCard, "category">,
+  locale: Locale = "ko",
+): string[] {
+  return [
+    getMessages(frontPageMessages, locale).front,
+    categoryLabel(lead.category, locale),
+  ].filter(Boolean);
 }
 
-/** 호 기사 수 — 마스트헤드 귀와 같은 말("이번 호 N건"). 발행이 늦은 날·지난 호에서 "오늘"은 틀린 말이다. */
-export function issueCountLabel(count: number): string {
-  return `이번 호 ${count}건`;
+/**
+ * 호 기사 수 — 마스트헤드 귀와 같은 말("이번 호 N건", en "22 stories"). 발행이 늦은 날·지난 호에서 "오늘"은 틀린 말이다.
+ */
+export function issueCountLabel(count: number, locale: Locale = "ko"): string {
+  return getMessages(ogMessages, locale).issueCount(count);
+}
+
+/** 호 썸네일 데이트라인 — "2026년 11월 6일 금요일  ·  제 143호" / en "Friday, November 6, 2026  ·  No. 143". */
+export function editionDateline(info: EditionInfo, locale: Locale = "ko"): string {
+  return [
+    info.publishedAt ? formatLongDate(info.publishedAt, locale) : "",
+    info.issueNo > 0 ? getMessages(ogMessages, locale).issueNo(info.issueNo) : "",
+  ]
+    .filter(Boolean)
+    .join("  ·  ");
 }
 
 /**
  * 호 썸네일 = 그 호의 1면: 마스트헤드 + 리드 헤드라인 + 서브 헤드라인 3건.
  * 키커 줄 오른쪽에 "이번 호 N건"(마스트헤드 귀와 같은 호 기사 수)과 형식 구성을 둔다.
+ * en(`/og/en/edition/…`)은 영어판 기사만으로 편집한 1면(호출하는 라우트가 거른다)을 영어 제목으로 싣고, 한국 매체 리드·서브의
+ * 키커 끝에 `KOREA` 표시를 단다.
  */
 export function editionImage(
   edition: Pick<Edition, "lead" | "seconds" | "issue">,
   info: EditionInfo,
+  locale: Locale = "ko",
 ): Promise<ImageResponse> {
   const { lead } = edition;
-  if (!lead) return defaultImage();
+  if (!lead) return defaultImage(locale);
 
+  const en = locale === "en";
   const seconds = edition.seconds.slice(0, 3);
-  const dateline = [
-    info.publishedAt ? formatLongDate(info.publishedAt) : "",
-    info.issueNo > 0 ? `제 ${info.issueNo}호` : "",
-  ]
-    .filter(Boolean)
-    .join("  ·  ");
-  const kicker = editionKicker(lead);
-  const title = headline(lead);
-  const size = leadFontSize(title);
-  const mix = formatMix(edition.issue);
+  const dateline = editionDateline(info, locale);
+  const kicker = editionKicker(lead, locale);
+  const title = headline(lead, locale);
+  const leadFit = en ? enLeadFit(title) : { size: leadFontSize(title), maxLines: 3 };
+  const mix = formatMix(edition.issue, locale);
 
   return render(
     <Frame>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
         <Nameplate size={46} />
-        <div style={{ fontSize: 22, fontWeight: 500, color: MUTED }}>{dateline}</div>
+        <div style={{ ...flexIf(en), fontSize: 22, fontWeight: 500, color: MUTED }}>
+          {en ? <Glyphs text={dateline} size={22} /> : dateline}
+        </div>
       </div>
       <DoubleRule marginTop={18} />
 
@@ -403,23 +725,45 @@ export function editionImage(
               <span>{part}</span>
             </div>
           ))}
+          {en && isKoreanOutlet(lead) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 2, height: 20, background: HAIRLINE }} />
+              <KoreaMark size={19} />
+            </div>
+          )}
         </div>
         {edition.issue.length > 0 && (
           <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-            <span>{issueCountLabel(edition.issue.length)}</span>
-            {mix && <span style={{ fontSize: 21, fontWeight: 500, color: MUTED }}>{mix}</span>}
+            <span>{issueCountLabel(edition.issue.length, locale)}</span>
+            {/* 빈 mix 는 en 에서 null — 빈 텍스트 노드가 gap 만큼 오른쪽을 비운다(ko 는 기존 출력 그대로 둔다). */}
+            {mix ? (
+              <span style={{ fontSize: 21, fontWeight: 500, color: MUTED }}>{mix}</span>
+            ) : en ? null : (
+              mix
+            )}
           </div>
         )}
       </div>
-      <Headline
-        text={title}
-        width={CONTENT_WIDTH}
-        size={size}
-        lineHeight={1.22}
-        maxLines={3}
-        tracking={-0.02}
-        balance
-      />
+      {en ? (
+        <LineHeadline
+          text={title}
+          width={CONTENT_WIDTH}
+          size={leadFit.size}
+          lineHeight={EN_HEADLINE_LINE_HEIGHT}
+          maxLines={leadFit.maxLines}
+          tracking={EN_DISPLAY_TRACKING}
+        />
+      ) : (
+        <Headline
+          text={title}
+          width={CONTENT_WIDTH}
+          size={leadFit.size}
+          lineHeight={1.22}
+          maxLines={3}
+          tracking={-0.02}
+          balance
+        />
+      )}
 
       <div style={{ flexGrow: 1 }} />
       {seconds.length > 0 && (
@@ -436,16 +780,36 @@ export function editionImage(
               key={a.id}
               style={{ display: "flex", flexDirection: "column", width: COL_WIDTH, gap: 6 }}
             >
-              <div style={{ fontSize: 17, fontWeight: 700, color: BRAND }}>
-                {categoryLabel(a.category)}
-              </div>
-              <Headline
-                text={headline(a)}
-                width={COL_WIDTH}
-                size={22}
-                lineHeight={1.32}
-                maxLines={3}
-              />
+              {en ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 17, fontWeight: 700, color: BRAND }}>
+                    {categoryLabel(a.category, locale)}
+                  </span>
+                  {isKoreanOutlet(a) && <KoreaMark size={14} />}
+                </div>
+              ) : (
+                <div style={{ fontSize: 17, fontWeight: 700, color: BRAND }}>
+                  {categoryLabel(a.category)}
+                </div>
+              )}
+              {en ? (
+                <LineHeadline
+                  text={headline(a, locale)}
+                  width={COL_WIDTH}
+                  size={EN_SUB.size}
+                  lineHeight={EN_SUB.lineHeight}
+                  maxLines={EN_SUB.maxLines}
+                  tracking={EN_TITLE_TRACKING}
+                />
+              ) : (
+                <Headline
+                  text={headline(a)}
+                  width={COL_WIDTH}
+                  size={22}
+                  lineHeight={1.32}
+                  maxLines={3}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -455,11 +819,11 @@ export function editionImage(
 }
 
 /** 중요도 1–5 도트(4–5는 코발트) — ArticleMeta ImportanceMeter 와 같은 신호. */
-function ImportanceDots({ value }: { value: number }) {
+function ImportanceDots({ value, label }: { value: number; label: string }) {
   const fill = value >= 4 ? BRAND : INK;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, color: MUTED, fontWeight: 500 }}>
-      <span>중요도</span>
+      <span>{label}</span>
       <div style={{ display: "flex", gap: 6 }}>
         {[1, 2, 3, 4, 5].map((i) => (
           <div
@@ -478,17 +842,27 @@ function ImportanceDots({ value }: { value: number }) {
   );
 }
 
-/** 기사 썸네일: 제호·게시일 + 분야 키커(+ 비뉴스 형식 배지) + 헤드라인 + 매체·중요도 바이라인. */
-export function articleImage(article: ArticleCard): Promise<ImageResponse> {
-  const title = headline(article);
-  const { size, maxLines } = articleHeadline(title);
+/**
+ * 기사 썸네일: 제호·게시일 + 분야 키커(+ 비뉴스 형식 배지) + 헤드라인 + 매체·중요도 바이라인.
+ * en(`/og/en/article/…`)은 영어 제목·영문 매체명·영어 날짜, 한국 매체면 바이라인 `KOREA · AI Times`(사이트 바이라인과 같은 순서).
+ */
+export function articleImage(article: ArticleCard, locale: Locale = "ko"): Promise<ImageResponse> {
+  const en = locale === "en";
+  const title = headline(article, locale);
+  const { size, maxLines } = en ? enArticleFit(title) : articleHeadline(title);
+  const kicker =
+    categoryLabel(article.category, locale) || getMessages(ogMessages, locale).fallbackKicker;
 
   return render(
     <Frame>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
         <Nameplate size={46} />
-        <div style={{ fontSize: 22, fontWeight: 500, color: MUTED }}>
-          {formatLongDate(article.publishedAt)}
+        <div style={{ ...flexIf(en), fontSize: 22, fontWeight: 500, color: MUTED }}>
+          {en ? (
+            <Glyphs text={formatLongDate(article.publishedAt, locale)} size={22} />
+          ) : (
+            formatLongDate(article.publishedAt)
+          )}
         </div>
       </div>
       <DoubleRule marginTop={18} />
@@ -504,20 +878,29 @@ export function articleImage(article: ArticleCard): Promise<ImageResponse> {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 12 }}>
-          <span style={{ fontSize: 24, fontWeight: 700, color: BRAND }}>
-            {categoryLabel(article.category) || "AI 뉴스"}
-          </span>
+          <span style={{ fontSize: 24, fontWeight: 700, color: BRAND }}>{kicker}</span>
           <FormatBadge format={article.format} size={17} />
         </div>
-        <Headline
-          text={title}
-          width={CONTENT_WIDTH}
-          size={size}
-          lineHeight={1.22}
-          maxLines={maxLines}
-          tracking={-0.02}
-          balance
-        />
+        {en ? (
+          <LineHeadline
+            text={title}
+            width={CONTENT_WIDTH}
+            size={size}
+            lineHeight={EN_HEADLINE_LINE_HEIGHT}
+            maxLines={maxLines}
+            tracking={EN_DISPLAY_TRACKING}
+          />
+        ) : (
+          <Headline
+            text={title}
+            width={CONTENT_WIDTH}
+            size={size}
+            lineHeight={1.22}
+            maxLines={maxLines}
+            tracking={-0.02}
+            balance
+          />
+        )}
       </div>
 
       <div
@@ -531,8 +914,21 @@ export function articleImage(article: ArticleCard): Promise<ImageResponse> {
           fontWeight: 700,
         }}
       >
-        <span>{shortSourceName(article.source.name)}</span>
-        {article.importance > 0 && <ImportanceDots value={article.importance} />}
+        {en ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {isKoreanOutlet(article) && <KoreaMark size={18} />}
+            {isKoreanOutlet(article) && <span style={{ color: MUTED, fontWeight: 500 }}>·</span>}
+            <span>{sourceNameOf(article, "en")}</span>
+          </div>
+        ) : (
+          <span>{shortSourceName(article.source.name)}</span>
+        )}
+        {article.importance > 0 && (
+          <ImportanceDots
+            value={article.importance}
+            label={getMessages(articleMessages, locale).signals.importance}
+          />
+        )}
       </div>
     </Frame>,
   );

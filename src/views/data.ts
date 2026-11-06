@@ -6,8 +6,10 @@ import {
   getActiveTags,
   getArchivePlan,
   getArticle,
+  getArticlesCollectedSince,
   getEditionRefs,
   getEnglishArticleIds,
+  getEnglishArticlesCollectedSince,
   getFeed,
   getFollowUpThread,
   getIssueArticles,
@@ -15,6 +17,7 @@ import {
   getIssueDates,
   getLatestEditionRef,
   getLatestPublishedAt,
+  getSitemapArticles,
   getSourceNameEnMap,
   getSourcesWithCounts,
   getWeekRadarCandidates,
@@ -40,7 +43,7 @@ import {
   selectKoreaDesk,
 } from "@/lib/koreaDesk";
 import { PROMPTS_DIR } from "@/lib/paths";
-import { articlePath } from "@/lib/seo";
+import { type RssItem, type SitemapInput, articlePath, feedWindowStart } from "@/lib/seo";
 import { editionPath, hasArticleThumbnail, ogArticleImagePath } from "@/lib/site";
 import type { ArticleCard, FollowUpEntry, RelatedCoverage } from "@/lib/types";
 import { buildWeeklyRadar } from "@/lib/weeklyRadar";
@@ -186,6 +189,8 @@ function hasEnglishPage(page: AlternatePage): boolean {
  * 없으면 null(그 페이지에는 hreflang 을 싣지 않는다 — 영어 본문이 없는 기사의 한국어판, 영어 기사가 없는 호).
  * 라우트 metadata(`withLanguageAlternates`, src/lib/pageMetadata.ts)와 보관 지면(scripts/lib/archive.ts)이 같은 이 함수를 쓴다.
  * 셸의 언어 전환 링크(src/lib/localeSwitch.ts)는 그 결과인 `<link rel="alternate" hreflang>` 를 읽는다 — 없으면 상대 언어 홈.
+ * 페이지 `<head>` 의 hreflang 목록은 이 짝에 `x-default`(= 영어 주소)를 더한 것(src/lib/site.ts `hreflangLanguages`)이고,
+ * og:locale:alternate 도 같은 판정(짝이 있을 때만)이다.
  * 한국어판은 영어판의 상위 집합이라 언어 인자가 없다(영어 페이지라면 한국어 짝은 늘 있다).
  */
 export function languageAlternates(page: AlternatePage): Record<Locale, string> | null {
@@ -398,10 +403,17 @@ export function loadArticle(locale: Locale, id: number): ArticleCard | null {
   return article ? (localeArticles(locale, [article])[0] ?? null) : null;
 }
 
-/** 공유·구조화 데이터 이미지: 최근 기사만 전용 썸네일(og/article/[file]), 그 밖은 undefined(기본 썸네일). */
-export function articleThumbnail(article: ArticleCard): string | undefined {
+/**
+ * 공유·구조화 데이터 이미지: 최근 기사만 전용 썸네일(og/article/[file], en 은 og/en/article/[file]), 그 밖은
+ * undefined(언어판 기본 썸네일). en 은 영어판에 실린 기사(loadArticle("en"))에만 부른다 — 영어 썸네일 라우트도
+ * 같은 판정(영어 본문 + 같은 7일 창)으로 PNG 를 만든다.
+ */
+export function articleThumbnail(
+  article: ArticleCard,
+  locale: Locale = DEFAULT_LOCALE,
+): string | undefined {
   return hasArticleThumbnail(article.publishedAt, getLatestPublishedAt())
-    ? ogArticleImagePath(article.id)
+    ? ogArticleImagePath(article.id, locale)
     : undefined;
 }
 
@@ -420,7 +432,7 @@ export function loadArticlePage(locale: Locale, id: number) {
   const thread = localeThread(locale, getFollowUpThread(article.id));
   return {
     article: locale === DEFAULT_LOCALE ? article : englishArticleDetail(article),
-    thumbnail: articleThumbnail(article),
+    thumbnail: articleThumbnail(article, locale),
     related,
     thread,
   };
@@ -488,4 +500,42 @@ export function loadSearch(locale: Locale) {
     tags,
     indexVersion: indexBuildVersion(localeLatestEditionRef(locale)?.date, all.length),
   };
+}
+
+// ─── 사이트맵·RSS ─────────────────────────────────────────────────────────────
+
+/**
+ * 사이트맵 입력(src/lib/seo.ts `planSitemaps`) — 전체 호·공개 기사(+ 호 날짜)와 영어판에 있는 호·기사.
+ * 영어판 범위는 `localeArchivePlan("en")` 의 전체 페이지 + 보관 지면(같은 주소에 가벼운 지면이 있다) — 영어 라우트 경로 목록·
+ * 빌드 후처리·hreflang(`languageAlternates`)과 같은 기준이다.
+ */
+export function loadSitemapInput(): SitemapInput {
+  const issueDates = getIssueDates();
+  const en = localeArchivePlan("en");
+  return {
+    editions: getEditionRefs(),
+    articles: getSitemapArticles().flatMap((a) => {
+      const issueDate = issueDates.get(a.id);
+      return issueDate ? [{ ...a, issueDate }] : [];
+    }),
+    english: {
+      editionDates: new Set([...en.liveEditionDates, ...en.archivedEditionDates]),
+      articleIds: new Set([...en.liveArticleIds, ...en.archivedArticleIds]),
+    },
+  };
+}
+
+/**
+ * 언어판 RSS 항목과 lastBuildDate(최신 호 발행 시각). 창은 두 언어판 모두 DB 최신 호 기준 FEED_WINDOW_DAYS(seo.ts) —
+ * en 은 그 창에서 영어판에 실을 기사만(영어 목록 카드).
+ */
+export function loadFeedItems(locale: Locale): { items: RssItem[]; builtAt: string | null } {
+  const latest = getLatestEditionRef();
+  if (!latest) return { items: [], builtAt: null };
+  const since = feedWindowStart(latest.publishedAt);
+  const items: RssItem[] =
+    locale === DEFAULT_LOCALE
+      ? getArticlesCollectedSince(since)
+      : getEnglishArticlesCollectedSince(since);
+  return { items, builtAt: latest.publishedAt };
 }

@@ -308,8 +308,24 @@ describe("writeArchivePages — 영어판(Phase 5-2)", () => {
     const html = read("en/article/2/index.html");
     expect(html).toContain('<html lang="en"');
     expect(html).toContain("<title>Story two — AI Daybook</title>");
-    expect(html).not.toContain("application/ld+json"); // 구조화 데이터는 Phase 6
-    expect(html).not.toContain('rel="canonical"'); // 집계는 주소 그대로(Phase 6 전)
+    // 영어 구조화 데이터(6-2): 영어 제목·영어 주소·inLanguage en(보관 지면은 description 을 뺀다), 한국어 원제는 싣지 않는다
+    const ld = JSON.parse(/<script type="application\/ld\+json">(.*?)<\/script>/.exec(html)![1]);
+    expect(ld).toMatchObject({
+      "@type": "NewsArticle",
+      headline: "Story two",
+      url: "http://localhost:3000/en/article/2/",
+      inLanguage: "en",
+      image: ["http://localhost:3000/og/en/default.png"],
+    });
+    expect(ld).not.toHaveProperty("description");
+    expect(JSON.stringify(ld)).not.toMatch(/[\uac00-\ud7a3]/);
+    // 자기 canonical·영어 공유 메타(6-1·6-2) — 보관 기사는 늘 썸네일 창 밖이라 영어 기본 썸네일
+    expect(html).toContain('<link rel="canonical" href="http://localhost:3000/en/article/2/">');
+    expect(html).toContain('<meta property="og:locale" content="en_US">');
+    expect(html).toContain(
+      '<meta property="og:image" content="http://localhost:3000/og/en/default.png">',
+    );
+    expect(html).toContain('href="http://localhost:3000/en/feed.xml"');
     expect(html).toContain(
       '<p class="sg-by"><span class="sg-region"><span aria-hidden="true">KOREA</span><span class="sr-only">Korean outlet</span></span><i class="sg-dot"></i><span class="sg-em">AI Times</span>',
     );

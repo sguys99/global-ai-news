@@ -9,8 +9,9 @@
  * - `<head>` 메타는 전체 페이지와 같은 metadata 객체(pageMetadata.ts `articlePageMetadata`·`editionPageMetadata` + 레이아웃
  *   `KO_LAYOUT_METADATA`)를 Next 와 같은 규칙으로 태그로 옮긴다(`metadataTags`). 구조화 데이터는 seo.ts 빌더.
  * - 문구는 messages/<영역>.ts, 날짜·분야·형식은 labels.ts 라 `locale` 하나로 영어판을 그린다(scripts/lib/archive.ts
- *   `ARCHIVE_LOCALES`, Phase 5-2). 영어판만 다른 것: `<head>` 는 영어 레이아웃(`EN_LAYOUT_METADATA`) + 제목·설명만
- *   (공유 메타·canonical·hreflang·구조화 데이터는 Phase 6 — canonical 이 없으면 count.js 는 주소 그대로 센다), 한국 매체는
+ *   `ARCHIVE_LOCALES`, Phase 5-2). 영어판만 다른 것: `<head>` 는 영어 레이아웃(`EN_LAYOUT_METADATA`) + 영어 페이지 metadata
+ *   (`englishArticlePageMetadata`·`englishEditionPageMetadata` — 전체 영어 페이지와 같은 공유 메타·자기 canonical·hreflang,
+ *   english-version-plan 6-1·6-2), 한국 매체는
  *   바이라인 매체명 앞에 `KOREA ·`(sg-region), 한국어 원제는 "Original article in Korean" 들임 단락(lang="ko"),
  *   한국어 제목만 있는 다른 매체 보도는 "Korean-language report", 원문 버튼 옆 `aitimes.com · in Korean`.
  *
@@ -185,7 +186,9 @@ const metaProp = (property: string, content: string | number) =>
 
 /**
  * Next 가 metadata 객체로 그리는 `<head>` 태그와 같은 것(이 사이트가 쓰는 필드만): title·description·검색엔진 소유 확인·
- * canonical·hreflang·RSS·og:*·article:*·twitter:card. 레이아웃 → 페이지 순으로 최상위 키 단위 얕은 병합(Next 와 같다).
+ * canonical·hreflang(x-default 포함)·RSS·og:*(og:locale:alternate 포함)·article:*·twitter:card. 레이아웃 → 페이지 순으로
+ * 최상위 키 단위 얕은 병합(Next 와 같다). 태그 순서도 Next(15.5 generate/opengraph.js)와 같다 — og:image 다음 og:locale:alternate,
+ * 그다음 og:type·article:*.
  *
  * 뺀 것: Next 가 og 로 스스로 채워 넣는 twitter:title·twitter:description(site.ts shareMetadata 주석 — X 는 og 로 대체한다)
  * — 보관 지면 예산(8KB) 안에서 같은 문장을 세 번 싣지 않는다.
@@ -230,6 +233,8 @@ export function metadataTags(page: Meta, layout: Meta = KO_LAYOUT_METADATA): str
     if (img.alt) tags.push(metaProp("og:image:alt", img.alt));
     if (img.type) tags.push(metaProp("og:image:type", img.type));
   }
+  for (const loc of (og.alternateLocale as string[] | undefined) ?? [])
+    tags.push(metaProp("og:locale:alternate", loc));
   if (og.type) tags.push(metaProp("og:type", String(og.type)));
   if (og.publishedTime) tags.push(metaProp("article:published_time", String(og.publishedTime)));
   if (og.section) tags.push(metaProp("article:section", String(og.section)));
@@ -448,31 +453,44 @@ export function archiveArticleBody(
  * 몫, 필수 속성 아님).
  */
 function koreanArticleHead(article: ArticleCard, languages?: LanguageAlternates | null): string[] {
-  const { description: _description, ...jsonLd } = articleJsonLd(article);
-  void _description;
-  const ld = `<script type="application/ld+json">${jsonLdHtml(jsonLd)}</script>`;
   return [
     ...metadataTags(withLanguageAlternates(articlePageMetadata(article), languages ?? null)),
-    ld,
+    archiveJsonLdTag(article, "ko"),
   ];
 }
 
-/** 보관 기사 문서 전체. metadata·JSON-LD 는 전체 페이지와 같은 빌더(보관 기사는 늘 7일 썸네일 창 밖 → 기본 썸네일). */
+/**
+ * 보관 기사 구조화 데이터 `<script>` — 전체 페이지와 같은 빌더(seo.ts articleJsonLd, 언어판 기본 썸네일)에서 description 만
+ * 뺀다(위 설명, 두 언어판 같은 규칙). 영어판은 영어 제목·주소·분야·라틴 태그뿐이라 한글이 없다(en:hangul-check).
+ */
+function archiveJsonLdTag(article: ArticleCard, locale: Locale): string {
+  const { description: _description, ...jsonLd } = articleJsonLd(article, undefined, locale);
+  void _description;
+  return `<script type="application/ld+json">${jsonLdHtml(jsonLd)}</script>`;
+}
+
+/**
+ * 보관 기사 문서 전체. metadata·JSON-LD 는 전체 페이지와 같은 빌더(보관 기사는 늘 7일 썸네일 창 밖 → 그 언어판 기본 썸네일 —
+ * 그래서 thumbnail 인자를 넘기지 않는다).
+ */
 export function renderArchiveArticle(
   input: ArchiveArticleInput,
   assets: BuildAssets,
   locale: Locale = "ko",
 ): string {
-  // 영어판: 제목·설명만(영어 레이아웃 병합) — 구조화 데이터는 한국어 값뿐이라 싣지 않는다(영어 값은 Phase 6).
+  // 영어판: 영어 페이지 metadata(영어 레이아웃 병합, 공유 메타·canonical·hreflang 포함) + 영어 구조화 데이터.
   const head =
     locale === "en"
-      ? metadataTags(
-          withLanguageAlternates(
-            englishArticlePageMetadata(input.article),
-            input.languages ?? null,
+      ? [
+          ...metadataTags(
+            withLanguageAlternates(
+              englishArticlePageMetadata(input.article),
+              input.languages ?? null,
+            ),
+            EN_LAYOUT_METADATA,
           ),
-          EN_LAYOUT_METADATA,
-        )
+          archiveJsonLdTag(input.article, "en"),
+        ]
       : koreanArticleHead(input.article, input.languages);
   const render = (coverageMax: number) =>
     documentHtml({
@@ -628,7 +646,7 @@ export function archiveEditionBody(input: ArchiveEditionInput, locale: Locale = 
 
 /**
  * 보관 호 문서 전체 — metadata 는 전체 호 페이지와 같은 빌더(보관 호는 30일 썸네일 창 밖 → 기본 썸네일).
- * 영어판은 영어 레이아웃 + 제목만(공유 메타는 Phase 6).
+ * 영어판은 영어 레이아웃 + 영어 호 metadata(같은 DB 최신 호 기준 — 보관 호는 영어 기본 썸네일).
  */
 export function renderArchiveEdition(
   input: ArchiveEditionInput,
@@ -639,7 +657,12 @@ export function renderArchiveEdition(
     locale === "en"
       ? metadataTags(
           withLanguageAlternates(
-            englishEditionPageMetadata(input.ref, input.brief),
+            englishEditionPageMetadata(
+              input.ref,
+              input.edition,
+              input.latestEditionDate,
+              input.brief,
+            ),
             input.languages ?? null,
           ),
           EN_LAYOUT_METADATA,

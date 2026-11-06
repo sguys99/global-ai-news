@@ -22,8 +22,8 @@ export function HomeView({ locale }: { locale: Locale }) {
    */
   return (
     <>
-      {/* 구조화 데이터는 아직 한국어 하나라 한국어판에만 싣는다 — 영어 값(영어 페이지)은 Phase 6. */}
-      {locale === "ko" && <JsonLd data={websiteJsonLd()} />}
+      {/* 구조화 데이터(WebSite) — 언어판마다 자기 주소·설명·inLanguage(src/lib/seo.ts). */}
+      <JsonLd data={websiteJsonLd(locale)} />
       <Suspense
         fallback={
           <FeedFallback {...feed} indexHead={index.indexHead} indexTotal={index.indexTotal} />
