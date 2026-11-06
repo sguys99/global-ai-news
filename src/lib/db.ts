@@ -792,8 +792,9 @@ export function getArticlesUntil(cutoff: string, conn: DatabaseType = getDb()): 
 }
 
 /**
- * 최근 수집분(public/latest.json): since(UTC ISO) 이후 **수집된** 공개 기사, 중요도 순.
+ * 최근 수집분(public/latest.json·한국어 RSS): since(UTC ISO) 이후 **수집된** 공개 기사, 중요도 순.
  * 게시 시각이 아니라 수집 시각으로 자른다 — GitHub Trending 처럼 게시 시각이 오래된 항목도 그날 수집분이다.
+ * 영어 제목·요약은 영어판에 실린 기사(`hasEnglish`)에만 싣고, 없으면 키를 두지 않는다(`engagement` 와 같은 규칙).
  */
 export function getArticlesCollectedSince(
   since: string,
@@ -806,9 +807,11 @@ export function getArticlesCollectedSince(
     )
     .all(since) as ArticleRow[];
   return rows.map((row) => {
-    const entry = toListCard(toArticleCard(row));
+    const card = toArticleCard(row);
+    const entry = toListCard(card);
     return {
       ...entry,
+      ...(hasEnglish(card) ? { titleEn: card.titleEn, summaryEn: card.summaryEn } : {}),
       categoryLabel: categoryLabel(entry.category),
       collectedAt: row.collected_at,
     };

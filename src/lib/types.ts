@@ -207,8 +207,15 @@ export type RadarCard = StoryCard &
  * `category` 는 분야 키(예: "physical"), `categoryLabel` 은 그 표시명(예: "Physical AI") — 소비자가 표시명 맵을 따로 두지 않게 한다.
  * `format`(news|oss|model|paper)·`engagement`(수집 시점 메트릭, 없으면 키 생략)는 ArticleCard 에서 그대로 실린다
  * (선택 필드 추가뿐이라 version 1 유지).
+ * `titleEn`·`summaryEn`(영어판 Phase 7, docs/notices/latest-json-2026-11.md)은 영어판에 실린 기사(`hasEnglish`)에만 키가 있다
+ * — 영어 가공 전·영어 품질 검사 기각이면 키 생략(`engagement` 와 같은 규칙). 매체는 여전히 id·name 만 싣는다.
  */
-export type LatestFeedEntry = SearchIndexEntry & { categoryLabel: string; collectedAt: string };
+export type LatestFeedEntry = SearchIndexEntry & {
+  titleEn?: string;
+  summaryEn?: string;
+  categoryLabel: string;
+  collectedAt: string;
+};
 
 /**
  * latest.json 의 세 줄 요약 — 최신 호(그 호 1면 위계 순). lines[].id 는 늘 items[].id 중 하나다.

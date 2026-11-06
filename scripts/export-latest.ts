@@ -8,6 +8,9 @@
  * 창은 빌드 시각 기준이다 — 빌드는 수집 커밋 직후에 돈다(deploy.yml).
  * `brief` 는 최신 호 세 줄 요약(지면 마스트헤드 아래 띠와 같은 줄·같은 순서)이다. 줄이 가리키는 기사가 items 에
  * 없으면 그 줄을 빼고, 2줄 미만이면 null 이다(docs/notices/latest-json-2026-10.md 추가 공지).
+ * 항목의 `titleEn`·`summaryEn`(영어판 제목·요약)은 영어판에 실린 기사에만 있고 없으면 키를 두지 않는다
+ * (docs/notices/latest-json-2026-11.md — 필드 추가뿐이라 version 1). 영어 세 줄 요약은 따로 싣지 않는다 — 영어판 띠처럼
+ * `brief.lines[].id` 기사의 `titleEn` 을 쓰면 된다(src/views/data.ts localeBrief).
  */
 import { writeFileSync } from "node:fs";
 import type { Database as DatabaseType } from "better-sqlite3";

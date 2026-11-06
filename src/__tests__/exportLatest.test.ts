@@ -131,14 +131,33 @@ describe("buildLatestFeed", () => {
     expect(json).not.toContain("contentRaw");
   });
 
-  it("영어판 필드는 아직 싣지 않는다(titleEn 은 영어판 Phase 7 에 더한다)", () => {
+  it("영어가 있는 기사에만 titleEn·summaryEn 을 싣는다(매체 영문명·지역은 싣지 않는다)", () => {
     db.prepare(
-      "UPDATE articles SET title_en = 'English title', summary_en = 'English summary.'",
+      "UPDATE articles SET title_en = 'English title', summary_en = 'English summary.' WHERE id = 1",
     ).run();
     db.prepare("UPDATE sources SET region = 'kr', name_en = 'GH English'").run();
+    const feed = buildLatestFeed(NOW, db);
+    const byId = new Map(feed.items.map((e) => [e.id, e]));
+    expect(byId.get(1)).toMatchObject({
+      titleEn: "English title",
+      summaryEn: "English summary.",
+      titleKo: "에이",
+      summaryKo: "요약",
+    });
+    expect(byId.get(1)!.source).toEqual({ id: "github_trending", name: "GitHub Trending" });
+    // 영어가 없는 기사는 키 자체가 없다(engagement 와 같은 규칙)
+    expect(byId.get(2)).not.toHaveProperty("titleEn");
+    expect(byId.get(2)).not.toHaveProperty("summaryEn");
+    const json = JSON.stringify(feed);
+    for (const key of ["nameEn", "region", "GH English"]) expect(json).not.toContain(key);
+    expect(feed.version).toBe(1);
+  });
+
+  it("영어 품질 검사 기각(NULL)·한쪽만 있거나 빈 문자열이면 두 키 모두 없다", () => {
+    db.prepare("UPDATE articles SET title_en = 'Only title', summary_en = NULL WHERE id = 1").run();
+    db.prepare("UPDATE articles SET title_en = '  ', summary_en = 'Summary.' WHERE id = 2").run();
     const json = JSON.stringify(buildLatestFeed(NOW, db));
-    for (const key of ["titleEn", "summaryEn", "nameEn", "region", "English"]) {
-      expect(json).not.toContain(key);
-    }
+    expect(json).not.toContain("titleEn");
+    expect(json).not.toContain("summaryEn");
   });
 });
