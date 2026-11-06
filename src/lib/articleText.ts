@@ -60,3 +60,29 @@ export function sourceNameOf(
 export function hasEnglish(a: { titleEn?: string; summaryEn?: string }): boolean {
   return Boolean(a.titleEn?.trim() && a.summaryEn?.trim());
 }
+
+/**
+ * 원문 주소의 호스트(`www.` 뗌) — 영어판 원문 언어 안내 `aitimes.com · in Korean`(상세 원문 버튼·묶인 보도, 보관 지면).
+ * http·https 가 아니거나 읽을 수 없는 주소는 빈 문자열.
+ */
+export function urlHost(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:"
+      ? u.hostname.replace(/^www\./, "")
+      : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 영어판에서 원문이 한국어인 기사인지 — 한국 매체(region kr)이거나 원제에 한글이 있다. 원제 병기 표지·원문 버튼 옆
+ * `· in Korean` 안내가 이 판정을 쓴다.
+ */
+export function isKoreanOriginal(a: {
+  titleOriginal?: string;
+  source: Pick<ArticleSource, "region">;
+}): boolean {
+  return a.source.region === "kr" || hasHangul(a.titleOriginal ?? "");
+}

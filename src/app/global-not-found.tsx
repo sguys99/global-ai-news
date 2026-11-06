@@ -10,6 +10,7 @@ import { SiteShell, siteViewport } from "./SiteShell";
  * 정적 export 는 이것을 out/404.html 한 장으로 내고 GitHub Pages·nginx 가 모든 없는 경로(`/en/…` 포함)에 쓴다.
  * 그래서 두 언어를 함께 싣고, `/en` 아래면 `<head>` 스크립트가 lang 을 en 으로 바꿔 영어 단을 앞에 놓는다.
  * 정적 HTML 의 lang 은 ko 로 남지만 404 는 색인되지 않는다(Next 가 넣는 robots noindex).
+ * 셸(헤더·모바일 바·푸터·하단 탭)은 `localeFromDocument` — 하이드레이션 뒤 문서 lang 을 따라 `/en` 아래면 영어 문구·`/en` 링크.
  */
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -25,6 +26,7 @@ export default function GlobalNotFound() {
   return (
     <SiteShell
       locale="ko"
+      localeFromDocument
       head={<script dangerouslySetInnerHTML={{ __html: notFoundLangScript(BASE_PATH) }} />}
     >
       <NotFoundNotice />

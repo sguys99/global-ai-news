@@ -20,7 +20,7 @@ import {
   getWeekRadarCandidates,
   toListCards,
 } from "@/lib/db";
-import { isArchivedIssueDate } from "@/lib/archive";
+import { isArchivedIssueDate, type ArchivePlan } from "@/lib/archive";
 import {
   buildEdition,
   type Edition,
@@ -103,15 +103,31 @@ export function localeLatestEditionRef(locale: Locale): EditionRef | null {
 // ─── 경로 목록(generateStaticParams) ──────────────────────────────────────────
 
 /**
+ * 언어판 보관 계획 — 라우트 경로 목록(아래 두 함수)과 빌드 후처리의 보관 지면(scripts/lib/archive.ts)이 **같은 이 함수**를
+ * 써서 어긋나지 않는다. ko = `getArchivePlan()` 그대로. en = 같은 계획(같은 DB 최신 호 기준)을 영어판 범위로 줄인 것 —
+ * 영어 본문이 있는 기사(`hasEnglish`)와 그런 기사가 1건 이상 실린 호만(`localeEditionRefs` 와 같은 기준).
+ */
+export function localeArchivePlan(locale: Locale): ArchivePlan {
+  const plan = getArchivePlan();
+  if (locale === DEFAULT_LOCALE) return plan;
+  const ids = new Set(getEnglishArticleIds());
+  const dates = englishIssueDates();
+  return {
+    latestEditionDate: plan.latestEditionDate,
+    liveArticleIds: plan.liveArticleIds.filter((id) => ids.has(id)),
+    archivedArticleIds: plan.archivedArticleIds.filter((id) => ids.has(id)),
+    liveEditionDates: plan.liveEditionDates.filter((d) => dates.has(d)),
+    archivedEditionDates: plan.archivedEditionDates.filter((d) => dates.has(d)),
+  };
+}
+
+/**
  * 언어판 기사 상세로 사전 생성할 id(오름차순). 보관 대상(src/lib/archive.ts — 빌드 후처리가 보관 지면으로 쓴다)은 뺀다.
- * ko = `getArchivePlan().liveArticleIds` 그대로, en = 그중 영어판에 실을 기사(`hasEnglish`)만.
- * 영어 보관 지면은 아직 없다(postbuild 는 한국어만 쓴다) — 영어판 경로에서 보관 기사는 빠진다.
+ * ko = `getArchivePlan().liveArticleIds` 그대로, en = 그중 영어판에 실을 기사(`hasEnglish`)만. 보관 영어 기사는
+ * 빌드 후처리가 `/en/article/<id>/` 에 영어 보관 지면으로 쓴다(같은 `localeArchivePlan`).
  */
 export function localeArticleIds(locale: Locale): number[] {
-  const live = getArchivePlan().liveArticleIds;
-  if (locale === DEFAULT_LOCALE) return live;
-  const english = new Set(getEnglishArticleIds());
-  return live.filter((id) => english.has(id));
+  return localeArchivePlan(locale).liveArticleIds;
 }
 
 /**
@@ -119,10 +135,7 @@ export function localeArticleIds(locale: Locale): number[] {
  * en = 그중 영어 기사가 있는 호(`localeEditionRefs` 와 같은 기준).
  */
 export function localeEditionDates(locale: Locale): string[] {
-  const live = getArchivePlan().liveEditionDates;
-  if (locale === DEFAULT_LOCALE) return live;
-  const dates = englishIssueDates();
-  return live.filter((d) => dates.has(d));
+  return localeArchivePlan(locale).liveEditionDates;
 }
 
 // ─── 필터 칩(매체·태그) ───────────────────────────────────────────────────────
@@ -385,19 +398,21 @@ function englishArticleDetail(article: ArticleCard): ArticleCard {
   return { ...article, related: englishRelated(article.related, names) };
 }
 
-/** 묶인 보도 → 영어판 표시용(매체 영문명, 한글 제목은 빈 문자열, 둘 다 비면 뺀다). */
+/**
+ * 묶인 보도 → 영어판 표시용(매체 영문명, 한글 제목은 빈 문자열 + `koreanTitle` 표지, 둘 다 비면 뺀다).
+ * 표지가 있는 보도는 뷰가 제목 대신 "Korean-language report"와 `etnews.com · in Korean` 을 그린다(시안 en-article 주석 3 B안).
+ */
 export function englishRelated(
   related: readonly RelatedCoverage[],
   nameEn: ReadonlyMap<string, string>,
 ): RelatedCoverage[] {
   return related
-    .map((r) => {
+    .map((r): RelatedCoverage => {
       const name = nameEn.get(r.source) ?? r.source;
-      return {
-        source: hasHangul(name) ? "" : name,
-        url: r.url,
-        title: hasHangul(r.title) ? "" : r.title,
-      };
+      const source = hasHangul(name) ? "" : name;
+      return hasHangul(r.title)
+        ? { source, url: r.url, title: "", koreanTitle: true }
+        : { source, url: r.url, title: r.title };
     })
     .filter((r) => r.source || r.title);
 }

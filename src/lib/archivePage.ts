@@ -8,8 +8,11 @@
  *   있다). 예외는 다른 화면이 늘 쓰는 표지·유틸리티 `story-link`·`headline`·`text-brand`·`sr-only` 뿐이다.
  * - `<head>` 메타는 전체 페이지와 같은 metadata 객체(pageMetadata.ts `articlePageMetadata`·`editionPageMetadata` + 레이아웃
  *   `KO_LAYOUT_METADATA`)를 Next 와 같은 규칙으로 태그로 옮긴다(`metadataTags`). 구조화 데이터는 seo.ts 빌더.
- * - 문구는 messages/<영역>.ts, 날짜·분야·형식은 labels.ts 라 `locale` 하나로 영어판을 그릴 수 있다(영어 생성은 Phase 5 —
- *   scripts/lib/archive.ts `ARCHIVE_LOCALES`).
+ * - 문구는 messages/<영역>.ts, 날짜·분야·형식은 labels.ts 라 `locale` 하나로 영어판을 그린다(scripts/lib/archive.ts
+ *   `ARCHIVE_LOCALES`, Phase 5-2). 영어판만 다른 것: `<head>` 는 영어 레이아웃(`EN_LAYOUT_METADATA`) + 제목·설명만
+ *   (공유 메타·canonical·hreflang·구조화 데이터는 Phase 6 — canonical 이 없으면 count.js 는 주소 그대로 센다), 한국 매체는
+ *   바이라인 매체명 앞에 `KOREA ·`(sg-region), 한국어 원제는 "Original article in Korean" 들임 단락(lang="ko"),
+ *   한국어 제목만 있는 다른 매체 보도는 "Korean-language report", 원문 버튼 옆 `aitimes.com · in Korean`.
  *
  * 순수 함수만 둔다(DB·파일 없음) — 데이터는 빌드 후처리(scripts/lib/archive.ts)가 db.ts 조회로 넘긴다.
  */
@@ -19,7 +22,7 @@ import {
   ARCHIVE_GENERATOR_META,
   ARCHIVE_WINDOW_DAYS,
 } from "@/lib/archive";
-import { headlineOf, sourceNameOf, summaryOf } from "@/lib/articleText";
+import { headlineOf, isKoreanOriginal, sourceNameOf, summaryOf, urlHost } from "@/lib/articleText";
 import type { EditionRef } from "@/lib/db";
 import { ISSUE_BRIEF_LIMITS, frontArticles, issueStats, type Edition } from "@/lib/edition";
 import type { IssueBriefLine } from "@/lib/edition";
@@ -27,6 +30,7 @@ import { HTML_LANG, getMessages, localePath, plural, type Locale } from "@/lib/i
 import {
   CATEGORIES,
   FORMAT_BADGES,
+  REGION_BADGES,
   categoryLabel,
   categorySlug,
   formatCountNoun,
@@ -37,6 +41,7 @@ import {
   hasHangul,
   issueNoLabel,
   normalizeCategory,
+  regionLabel,
   shortSourceName,
   type Format,
 } from "@/lib/labels";
@@ -48,7 +53,14 @@ import { issueBriefMessages } from "@/lib/messages/issueBrief";
 import { mastheadMessages } from "@/lib/messages/masthead";
 import { metaMessages } from "@/lib/messages/meta";
 import { pagerMessages } from "@/lib/messages/pager";
-import { KO_LAYOUT_METADATA, articlePageMetadata, editionPageMetadata } from "@/lib/pageMetadata";
+import {
+  EN_LAYOUT_METADATA,
+  KO_LAYOUT_METADATA,
+  articlePageMetadata,
+  editionPageMetadata,
+  englishArticlePageMetadata,
+  englishEditionPageMetadata,
+} from "@/lib/pageMetadata";
 import { articleJsonLd, jsonLdHtml } from "@/lib/seo";
 import {
   BASE_PATH,
@@ -131,6 +143,15 @@ function meter(value: number, locale: Locale): string {
 }
 
 const DOT = '<i class="sg-dot"></i>';
+
+/**
+ * 영어판 한국 매체 표지 `KOREA ·` — 바이라인 매체명 앞(DESIGN.md 영어판 B안: 배지 글꼴 글자, 테두리 없음, 코발트 금지).
+ * 한국어판·해외 매체는 빈 문자열. 스크린리더엔 "Korean outlet".
+ */
+function koreaMark(source: { region?: string }, locale: Locale): string {
+  if (locale !== "en" || source.region !== "kr") return "";
+  return `<span class="sg-region"><span aria-hidden="true">${REGION_BADGES.kr}</span><span class="sr-only">${esc(regionLabel("kr", locale))}</span></span>${DOT}`;
+}
 
 const encoder = new TextEncoder();
 /** UTF-8 바이트 수 — 정적 호스팅이 세는 크기. */
@@ -328,12 +349,15 @@ export function archiveArticleBody(
       : kicker;
 
   const title = headlineOf(article, locale);
-  const original =
-    title && article.titleOriginal && title !== article.titleOriginal
-      ? `<p class="ar-ot"${langAttr(article.titleOriginal, locale)}>${esc(article.titleOriginal)}</p>`
-      : "";
+  const showOriginal = title && article.titleOriginal && title !== article.titleOriginal;
+  // 영어판의 한국어 원제는 전체 상세와 같은 들임 단락(라벨 + lang="ko" 원제) — 영어 페이지의 한글 허용은 이 줄뿐.
+  const original = !showOriginal
+    ? ""
+    : locale === "en" && hasHangul(article.titleOriginal)
+      ? `<p class="ar-orig"><span class="ar-orig-l">${esc(a.originalInKorean)}</span><span class="ar-orig-t" lang="ko">${esc(article.titleOriginal)}</span></p>`
+      : `<p class="ar-ot"${langAttr(article.titleOriginal, locale)}>${esc(article.titleOriginal)}</p>`;
   const byline =
-    `<p class="sg-by"><span class="sg-em">${esc(sourceNameOf(article, locale))}</span>${DOT}` +
+    `<p class="sg-by">${koreaMark(article.source, locale)}<span class="sg-em">${esc(sourceNameOf(article, locale))}</span>${DOT}` +
     `<time datetime="${esc(article.publishedAt)}">${esc(formatDate(article.publishedAt, locale))}</time>` +
     (article.importance > 0 ? `${DOT}${meter(article.importance, locale)}` : "") +
     (article.trendingScore > 0
@@ -345,17 +369,26 @@ export function archiveArticleBody(
   const summaryHtml = summary
     ? `<section class="ar-sm" aria-labelledby="sm"><h2 id="sm" class="ar-lbl">${esc(a.summary)}</h2><p class="ar-sum">${esc(summary)}</p></section>`
     : "";
+  // 영어판 한국어 원문은 버튼 아래 `aitimes.com · in Korean`(누르기 전에 한국어 페이지로 간다는 걸 알린다).
+  const koreanHost = locale === "en" && isKoreanOriginal(article) ? urlHost(article.url) : "";
   const cta = isWebUrl(article.url)
-    ? `<a class="ar-go" href="${esc(article.url)}" rel="noopener">${esc(a.readOriginal)}${ARROW_ICON}</a>`
+    ? `<a class="ar-go" href="${esc(article.url)}" rel="noopener">${esc(a.readOriginal)}${ARROW_ICON}</a>` +
+      (koreanHost
+        ? `<p class="ar-ctan ar-gon"><b>${esc(koreanHost)}</b> · ${esc(a.inKorean)}</p>`
+        : "")
     : "";
 
-  const related = (article.related ?? []).filter((r) => r && r.title);
+  // 영어판 묶인 보도는 로더가 매체를 영문명으로, 한국어 제목을 표지(koreanTitle)로 바꿔 넘긴다(views/data.ts englishRelated).
+  const related = (article.related ?? []).filter((r) => r && (r.title || r.koreanTitle));
   let coverage = "";
   if (related.length > 0) {
     const items = related.slice(0, coverageMax).map((r) => {
+      const host = r.koreanTitle ? urlHost(r.url) : "";
       const inner =
         `<span class="ar-cov-s">${esc(shortSourceName(r.source))}</span>` +
-        `<span class="headline ar-cov-h"${langAttr(r.title, locale)}>${esc(r.title)}</span>`;
+        (r.koreanTitle
+          ? `<span class="headline ar-cov-k">${esc(a.koreanReport)}${host ? `<small>${esc(host)} · ${esc(a.inKorean)}</small>` : ""}</span>`
+          : `<span class="headline ar-cov-h"${langAttr(r.title, locale)}>${esc(r.title)}</span>`);
       return isWebUrl(r.url)
         ? `<li class="ar-li"><a class="story-link ar-cov" href="${esc(r.url)}" rel="noopener">${inner}</a></li>`
         : `<li class="ar-li"><span class="ar-cov">${inner}</span></li>`;
@@ -384,18 +417,29 @@ export function archiveArticleBody(
   );
 }
 
+/**
+ * 한국어 보관 기사 `<head>` — 구조화 데이터는 전체 페이지와 같은 빌더(seo.ts articleJsonLd)에서 description 만 뺀다:
+ * 요약이 meta description·og:description·본문에 이미 있어 네 번째 사본이다(약 0.5KB — 보관 기사 8KB 예산의 최대치를 넘기던
+ * 몫, 필수 속성 아님).
+ */
+function koreanArticleHead(article: ArticleCard): string[] {
+  const { description: _description, ...jsonLd } = articleJsonLd(article);
+  void _description;
+  const ld = `<script type="application/ld+json">${jsonLdHtml(jsonLd)}</script>`;
+  return [...metadataTags(articlePageMetadata(article)), ld];
+}
+
 /** 보관 기사 문서 전체. metadata·JSON-LD 는 전체 페이지와 같은 빌더(보관 기사는 늘 7일 썸네일 창 밖 → 기본 썸네일). */
 export function renderArchiveArticle(
   input: ArchiveArticleInput,
   assets: BuildAssets,
   locale: Locale = "ko",
 ): string {
-  // 구조화 데이터는 전체 페이지와 같은 빌더(seo.ts articleJsonLd)에서 description 만 뺀다 — 요약이 meta description·
-  // og:description·본문에 이미 있어 네 번째 사본이다(약 0.5KB — 보관 기사 8KB 예산의 최대치를 넘기던 몫, 필수 속성 아님).
-  const { description: _description, ...jsonLd } = articleJsonLd(input.article);
-  void _description;
-  const ld = `<script type="application/ld+json">${jsonLdHtml(jsonLd)}</script>`;
-  const head = [...metadataTags(articlePageMetadata(input.article)), ld];
+  // 영어판: 제목·설명만(영어 레이아웃 병합) — 구조화 데이터는 한국어 값뿐이라 싣지 않는다(영어 값은 Phase 6).
+  const head =
+    locale === "en"
+      ? metadataTags(englishArticlePageMetadata(input.article), EN_LAYOUT_METADATA)
+      : koreanArticleHead(input.article);
   const render = (coverageMax: number) =>
     documentHtml({ locale, assets, head, body: archiveArticleBody(input, locale, coverageMax) });
   // 예산을 넘으면 다른 매체 링크를 한 곳씩 줄인다 — 줄인 곳은 "외 N곳"으로 센다. 0곳까지 줄면 제목의 매체 수만 남는다
@@ -438,7 +482,9 @@ function categoryGroups<C extends { category: string }>(issue: readonly C[]) {
 function ear(edition: Edition, locale: Locale): string {
   const t = getMessages(mastheadMessages, locale).ear;
   const stats = issueStats(edition.issue);
+  // 영어판 귀 둘째 줄은 비뉴스만 센다 — 첫 줄 `31 stories` 와 낱말이 겹치지 않게(DESIGN.md 영어판 "형식 귀").
   const comp = stats.formats
+    .filter(({ format }) => locale !== "en" || format !== "news")
     .map(({ format, count }) =>
       locale === "en"
         ? `<span><b class="sg-em">${count}</b> ${esc(formatCountNoun(format, count, locale))}</span>`
@@ -515,7 +561,7 @@ export function archiveEditionBody(input: ArchiveEditionInput, locale: Locale = 
             : "";
           return (
             `<li><a class="story-link ed-lr" href="${articleHrefOf(locale, a.id)}"><span class="headline ed-lr-h">${badge(a.format, locale)}${esc(headlineOf(a, locale))}</span>` +
-            `<span class="sg-by">${mark}<span class="sg-em">${source}</span>${imp}</span></a></li>`
+            `<span class="sg-by">${mark}${koreaMark(a.source, locale)}<span class="sg-em">${source}</span>${imp}</span></a></li>`
           );
         })
         .join("");
@@ -538,17 +584,25 @@ export function archiveEditionBody(input: ArchiveEditionInput, locale: Locale = 
   return `<main class="ed-lt">${masthead}${briefBand(brief, locale)}${index}${nav}</main>`;
 }
 
-/** 보관 호 문서 전체 — metadata 는 전체 호 페이지와 같은 빌더(보관 호는 30일 썸네일 창 밖 → 기본 썸네일). */
+/**
+ * 보관 호 문서 전체 — metadata 는 전체 호 페이지와 같은 빌더(보관 호는 30일 썸네일 창 밖 → 기본 썸네일).
+ * 영어판은 영어 레이아웃 + 제목만(공유 메타는 Phase 6).
+ */
 export function renderArchiveEdition(
   input: ArchiveEditionInput,
   assets: BuildAssets,
   locale: Locale = "ko",
 ): string {
-  const meta = editionPageMetadata(input.ref, input.edition, input.latestEditionDate, input.brief);
+  const head =
+    locale === "en"
+      ? metadataTags(englishEditionPageMetadata(input.ref, input.brief), EN_LAYOUT_METADATA)
+      : metadataTags(
+          editionPageMetadata(input.ref, input.edition, input.latestEditionDate, input.brief),
+        );
   return documentHtml({
     locale,
     assets,
-    head: metadataTags(meta),
+    head,
     body: archiveEditionBody(input, locale),
   });
 }

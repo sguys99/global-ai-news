@@ -65,7 +65,8 @@ export const searchMessages = defineMessages({
     kicker: "Search",
     title: "Find stories",
     input: {
-      placeholder: "Search by keyword — titles, summaries, source text, tags",
+      // 영어는 같은 뜻이 약 1.6배 길어 360px 검색창에서 잘린다 — 짧게(무엇을 찾는지는 aria-label·결과가 말한다).
+      placeholder: "Search by keyword",
       label: "Search stories",
     },
     suggested: "Popular topics",

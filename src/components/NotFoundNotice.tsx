@@ -6,10 +6,10 @@ import { notFoundMessages } from "@/lib/messages/notFound";
 type NotFoundCopy = MessagesOf<typeof notFoundMessages>;
 
 /**
- * 영어 단의 바로 가기 링크가 가리킬 언어판. 영어 페이지(`/en/…`)가 아직 없어(Phase 5 전) 한국어 지면을 가리킨다 —
- * `/en/` 으로 보내면 이 404 로 되돌아온다. **Phase 5 에서 영어 홈·검색이 생기면 "en" 으로 바꾼다**(이 한 줄).
+ * 영어 단의 바로 가기 링크가 가리킬 언어판 — 영어 홈·검색(`/en/`·`/en/search`, Phase 5-2)으로 보낸다.
+ * (Phase 5 전에는 영어 페이지가 없어 "ko" 였다.)
  */
-export const NOT_FOUND_EN_LINK_LOCALE: Locale = "ko";
+export const NOT_FOUND_EN_LINK_LOCALE: Locale = "en";
 
 /**
  * `/en` 아래에서 열린 404 면 문서 언어를 en 으로 바꾸는 `<head>` 인라인 스크립트(본문 파싱 전에 돌아 깜박임 없음).
@@ -64,11 +64,17 @@ export function NotFoundNotice() {
           data-testid="not-found-status"
           className="text-meta border-border flex flex-wrap gap-x-1.5 md:flex-col md:gap-0.5 md:border-l md:pb-1.5 md:pl-5"
         >
-          <span className="text-foreground font-bold">{ko.status}</span>
-          <span aria-hidden className="text-muted-foreground md:hidden">
+          {/* 두 단과 같이 `/en` 아래면 영어 상태 줄이 앞·진하게(순서·굵기 맞바꿈). */}
+          <span className="text-foreground lang-en:order-3 lang-en:text-muted-foreground lang-en:font-normal font-bold">
+            {ko.status}
+          </span>
+          <span aria-hidden className="text-muted-foreground order-2 md:hidden">
             ·
           </span>
-          <span lang={HTML_LANG.en} className="text-muted-foreground">
+          <span
+            lang={HTML_LANG.en}
+            className="text-muted-foreground lang-en:order-1 lang-en:text-foreground lang-en:font-bold order-3"
+          >
             {en.status}
           </span>
         </p>

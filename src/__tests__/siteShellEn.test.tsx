@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { LocaleProvider } from "@/components/LocaleProvider";
 import { BottomTabBar } from "@/components/mobile/BottomTabBar";
 import { MobileTopBar } from "@/components/mobile/MobileTopBar";
+import { ShellChrome } from "@/components/ShellChrome";
 import { hasHangul } from "@/lib/labels";
 import { SITE_TAGLINE, SITE_TAGLINE_EN, siteTagline } from "@/lib/site";
 
@@ -18,7 +19,11 @@ vi.mock("next/navigation", () => ({
   usePathname: () => usePathname(),
 }));
 
+// 방문 집계 스크립트(next/script)는 셸 문구와 무관하다.
+vi.mock("@/components/Analytics", () => ({ Analytics: () => null }));
+
 afterEach(() => {
+  document.documentElement.lang = "";
   cleanup();
   vi.clearAllMocks();
   vi.unstubAllGlobals();
@@ -134,5 +139,67 @@ describe("Footer — 영어판", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "오늘의 지면" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "검색" })).toHaveAttribute("href", "/search");
+  });
+});
+
+describe("ShellChrome — 404 의 셸 언어(localeFromDocument)", () => {
+  /** 방문 수 조회는 실패로, next-themes 가 읽는 matchMedia 는 라이트로. */
+  const offline = () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("offline"))),
+    );
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({
+        matches: false,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+      })),
+    );
+  };
+
+  it("/en 아래 404(head 스크립트가 lang=en)면 헤더·모바일 바·푸터·탭이 영어·/en 링크", () => {
+    offline();
+    usePathname.mockReturnValue("/en/missing");
+    document.documentElement.lang = "en";
+    const { container } = render(
+      <ShellChrome locale="ko" year={2026} localeFromDocument>
+        <p>body</p>
+      </ShellChrome>,
+    );
+    expect(screen.getByRole("navigation", { name: "Main menu" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Mobile navigation" })).toBeInTheDocument();
+    expect(screen.getByText(SITE_TAGLINE_EN)).toBeInTheDocument();
+    for (const a of screen.getAllByRole("link", { name: "Search" }))
+      expect(a).toHaveAttribute("href", "/en/search");
+    expect(hasHangul(uiText(container))).toBe(false);
+  });
+
+  it("한국어 경로의 404(lang=ko)는 한국어 셸 그대로", () => {
+    offline();
+    usePathname.mockReturnValue("/missing");
+    document.documentElement.lang = "ko";
+    render(
+      <ShellChrome locale="ko" year={2026} localeFromDocument>
+        <p>body</p>
+      </ShellChrome>,
+    );
+    expect(screen.getByRole("navigation", { name: "주 메뉴" })).toBeInTheDocument();
+    expect(screen.getByText(SITE_TAGLINE)).toBeInTheDocument();
+  });
+
+  it("다른 페이지(플래그 없음)는 문서 lang 과 상관없이 레이아웃 언어를 쓴다", () => {
+    offline();
+    usePathname.mockReturnValue("/search");
+    document.documentElement.lang = "en";
+    render(
+      <ShellChrome locale="ko" year={2026}>
+        <p>body</p>
+      </ShellChrome>,
+    );
+    expect(screen.getByRole("navigation", { name: "주 메뉴" })).toBeInTheDocument();
   });
 });

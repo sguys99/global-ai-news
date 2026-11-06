@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { editionPageMetadataEn } from "@/lib/pageMetadata";
+import { englishEditionPageMetadata } from "@/lib/pageMetadata";
 import { EditionView } from "@/views/EditionView";
 import { loadEdition, localeEditionDates } from "@/views/data";
 
@@ -19,7 +19,7 @@ type Props = { params: Promise<{ date: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = loadEdition("en", (await params).date);
   if (!data) return {};
-  return editionPageMetadataEn(data.ref, data.brief);
+  return englishEditionPageMetadata(data.ref, data.brief);
 }
 
 export default async function EnglishEditionPage({ params }: Props) {

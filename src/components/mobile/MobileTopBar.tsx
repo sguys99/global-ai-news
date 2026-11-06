@@ -24,6 +24,7 @@ export function MobileTopBar() {
         {/* py-2: 워드마크 링크 터치 타깃 44px(바 높이 52px 안). inline-flex 는 "AI Daybook" 의 공백을 지우므로 쓰지 않는다. */}
         <HeaderWordmark className="py-2 text-lg" />
         <nav className="-mr-2 flex items-center">
+          {/* 언어 전환 자리(5-3): 검색 아이콘 앞 글자 링크(44px) — `한국어` / `EN`. */}
           <Button variant="ghost" size="icon" asChild aria-label={t.nav.search}>
             <Link href={localePath(locale, "/search")}>
               <Icon name="search" />

@@ -133,7 +133,7 @@ const ref = (date: string, issueNo: number) => ({
 });
 
 const source: ArchiveSource = {
-  plan: PLAN,
+  plans: { ko: PLAN },
   article: (id) =>
     id === 99
       ? null
@@ -207,20 +207,24 @@ describe("writeArchivePages", () => {
     );
     fullPages();
     expect(() =>
-      writeArchivePages(out, { ...source, plan: { ...PLAN, archivedArticleIds: [1, 99] } }, ASSETS),
+      writeArchivePages(
+        out,
+        { ...source, plans: { ko: { ...PLAN, archivedArticleIds: [1, 99] } } },
+        ASSETS,
+      ),
     ).toThrow(/article 99: 보관 대상인데 기사 데이터가 없다/);
   });
 
   it("verifyArchiveOutput — 보관 지면 옆 RSC·전체 페이지 대상의 보관 지면도 잡는다", () => {
     fullPages();
     writeArchivePages(out, source, ASSETS);
-    expect(verifyArchiveOutput(out, PLAN)).toEqual([]);
+    expect(verifyArchiveOutput(out, { ko: PLAN })).toEqual([]);
     put("article/1/index.txt", "rsc");
     put(
       "article/10/index.html",
       `<!DOCTYPE html><html><head>${ARCHIVE_GENERATOR_META}</head></html>`,
     );
-    expect(verifyArchiveOutput(out, PLAN)).toEqual([
+    expect(verifyArchiveOutput(out, { ko: PLAN })).toEqual([
       "article/1/index.html: 보관 지면 옆에 RSC(index.txt)가 남아 있다",
       "article/10/index.html: 전체 페이지 대상인데 보관 지면이다",
     ]);
@@ -230,5 +234,118 @@ describe("writeArchivePages", () => {
     expect(articlePagePath("ko", 12)).toBe("article/12/index.html");
     expect(articlePagePath("en", 12)).toBe("en/article/12/index.html");
     expect(editionPagePath("en", "2026-06-07")).toBe("en/edition/2026-06-07/index.html");
+  });
+});
+
+describe("writeArchivePages — 영어판(Phase 5-2)", () => {
+  const HANGUL = /[가-힯]/;
+  /** 영어판 범위 — 기사 2만 영어(한국 매체·한국어 원제·한국어 제목만 있는 묶인 보도), 1 은 영어 없음. */
+  const enArticle = card(2, {
+    source: { id: "aitimes", name: "AI타임스", nameEn: "AI Times", region: "kr" },
+    url: "https://www.aitimes.com/news/2",
+    titleOriginal: "한국어 원제 2",
+    titleEn: "Story two",
+    summaryEn: "Summary two.",
+    tags: ["robotics", "로봇"],
+    related: [{ source: "ETNews", url: "https://www.etnews.com/1", title: "", koreanTitle: true }],
+  });
+  const EN_PLAN: ArchivePlan = {
+    latestEditionDate: PLAN.latestEditionDate,
+    liveArticleIds: [10],
+    archivedArticleIds: [2],
+    liveEditionDates: ["2026-11-05"],
+    archivedEditionDates: ["2026-06-07"],
+  };
+  const both: ArchiveSource = {
+    plans: { ko: PLAN, en: EN_PLAN },
+    article: (id, locale) =>
+      locale === "en"
+        ? {
+            article: enArticle,
+            issueDate: "2026-06-07",
+            issue: { ref: ref("2026-06-07", 1), count: 1 },
+          }
+        : source.article(id, locale),
+    edition: (date, locale) =>
+      locale === "en"
+        ? {
+            ref: ref(date, 1),
+            edition: buildEdition([enArticle]),
+            brief: [],
+            prev: null,
+            next: ref("2026-11-05", 2),
+            latestEditionDate: PLAN.latestEditionDate,
+          }
+        : source.edition(date, locale),
+  };
+  /** 한국어 전체 페이지 + 영어 전체 페이지(영어 라우트가 만든 것). */
+  function bothFullPages() {
+    fullPages();
+    put("en/article/10/index.html", "<!DOCTYPE html><html lang=en><head></head></html>");
+    put("en/edition/2026-11-05/index.html", "<!DOCTYPE html><html lang=en><head></head></html>");
+  }
+  /** lang="ko" 요소를 뺀 글자에 한글이 있는지(영어 페이지의 한글 허용은 원제 한 줄). */
+  const leaksHangul = (html: string) =>
+    HANGUL.test(html.replace(/<span class="ar-orig-t" lang="ko">[^<]*<\/span>/g, ""));
+
+  it("두 언어판을 같은 계획 규칙으로 쓴다 — 영어는 en/ 아래, 영어 범위의 보관 대상만", () => {
+    bothFullPages();
+    const r = writeArchivePages(out, both, ASSETS);
+    expect(r).toMatchObject({ articles: 3, editions: 2, files: 5 });
+    expect(isArchivePage(path.join(out, "en/article/2/index.html"))).toBe(true);
+    expect(isArchivePage(path.join(out, "en/edition/2026-06-07/index.html"))).toBe(true);
+    // 영어 없는 기사(1)는 영어 보관 지면이 없다
+    expect(existsSync(path.join(out, "en/article/1/index.html"))).toBe(false);
+  });
+
+  it("영어 보관 기사: lang=en·영어 머리·KOREA 바이라인·원제 들임 단락·한국어 보도 안내·원문 언어 안내, 한글은 원제뿐", () => {
+    bothFullPages();
+    writeArchivePages(out, both, ASSETS);
+    const html = read("en/article/2/index.html");
+    expect(html).toContain('<html lang="en"');
+    expect(html).toContain("<title>Story two — AI Daybook</title>");
+    expect(html).not.toContain("application/ld+json"); // 구조화 데이터는 Phase 6
+    expect(html).not.toContain('rel="canonical"'); // 집계는 주소 그대로(Phase 6 전)
+    expect(html).toContain(
+      '<p class="sg-by"><span class="sg-region"><span aria-hidden="true">KOREA</span><span class="sr-only">Korean outlet</span></span><i class="sg-dot"></i><span class="sg-em">AI Times</span>',
+    );
+    expect(html).toContain('<span class="ar-orig-t" lang="ko">한국어 원제 2</span>');
+    expect(html).toContain("Korean-language report<small>etnews.com · in Korean</small>");
+    expect(html).toContain('<p class="ar-ctan ar-gon"><b>aitimes.com</b> · in Korean</p>');
+    expect(html).toContain('href="/en/edition/2026-06-07/"');
+    expect(leaksHangul(html)).toBe(false);
+  });
+
+  it("영어 보관 호: 영어 제목·KOREA 표지·/en 링크, 한글 없음", () => {
+    bothFullPages();
+    writeArchivePages(out, both, ASSETS);
+    const html = read("en/edition/2026-06-07/index.html");
+    expect(html).toContain('<html lang="en"');
+    expect(html).toMatch(
+      /<title>AI News Briefing — Sunday, June 7, 2026 \(No\. 1\) — AI Daybook<\/title>/,
+    );
+    expect(html).toContain('href="/en/article/2/"');
+    expect(html).toContain('<span class="sg-region">');
+    expect(html).toContain('href="/en/edition/2026-11-05/"');
+    expect(leaksHangul(html)).toBe(false);
+  });
+
+  it("확인은 두 언어를 함께 본다 — 영어 전체 페이지 대상이 빠지면 실패", () => {
+    fullPages();
+    put("en/article/10/index.html", "<!DOCTYPE html><html><head></head></html>");
+    expect(() => writeArchivePages(out, both, ASSETS)).toThrow(
+      /en\/edition\/2026-11-05\/index\.html: 전체 페이지가 없다/,
+    );
+    bothFullPages();
+    writeArchivePages(out, both, ASSETS);
+    expect(verifyArchiveOutput(out, both.plans)).toEqual([]);
+    // 영어 보관 대상에 전체 페이지가 남아 있으면(영어 라우트와 판정 어긋남) 실패
+    put(
+      "en/article/2/index.html",
+      "<!DOCTYPE html><html lang=en><head></head><body>full</body></html>",
+    );
+    expect(verifyArchiveOutput(out, both.plans)).toEqual([
+      "en/article/2/index.html: 보관 대상인데 전체 페이지다(라우트 generateStaticParams 와 보관 판정이 어긋났다)",
+    ]);
   });
 });

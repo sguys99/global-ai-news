@@ -224,7 +224,7 @@
   .sg-badge {
     @apply border-foreground text-foreground text-badge relative inline-flex h-[17px] shrink-0 items-center border px-[5px] pt-px font-sans font-bold tracking-[0.09em] whitespace-nowrap;
   }
-  /* 영어판 KOREA 표시(RegionMark) — 배지 글꼴, 테두리 없는 잉크(코발트 금지). 상자는 형식 배지 몫 */
+  /* 영어판 KOREA 표시(RegionMark·영어 상세 머리 줄·영어 보관 지면) — 배지 글꼴, 테두리 없는 잉크(코발트 금지). 상자는 형식 배지 몫 */
   .sg-region {
     @apply text-foreground text-badge relative inline-flex h-[17px] shrink-0 items-center pt-px font-sans font-bold tracking-[0.09em] whitespace-nowrap;
   }
@@ -1031,5 +1031,74 @@
   }
   .ed-pg-d {
     @apply text-caption text-foreground-soft tabular-nums;
+  }
+  /* 영어 보관 지면의 KOREA 표지는 sg- 블록의 `.sg-region`(공용 바이라인과 같은 정의)을 쓴다. */
+}
+
+/*
+ * ───────────────────────────── 영어판 기사·검색·셸 (english-version-plan Phase 5-2) ─────────────────────────────
+ * 시안: docs/design/mockups/en-article.html, 규칙: DESIGN.md §9 "영어판". 한국어 마크업은 그대로 두고 영어판만 바꾼다:
+ *   ① 영어 전용 요소(원제 들임 단락 ar-orig·한국어 보도 안내 ar-cov-k·원문 언어 안내 ar-ctan)는 영어 분기에서만 그린다.
+ *   ② 같은 요소의 영어 크기·자간은 `:root[lang="en"]` 으로 덮는다(라틴 Hahmlet 은 한국어 자간이면 글자가 붙는다).
+ */
+@layer components {
+  /* 원제(한국 매체) — h1 아래 왼쪽 2px 헤어라인으로 들인 단락: 라벨 + 한국어 원제(Hahmlet 500 15px 흐림, lang="ko") */
+  .ar-orig {
+    @apply border-border grid gap-1 border-l-2 pl-3;
+  }
+  .ar-orig-l {
+    @apply text-label text-muted-foreground font-semibold;
+  }
+  .ar-orig-t {
+    @apply text-foreground-soft font-serif text-[0.9375rem] leading-[1.5] font-medium tracking-[-0.02em] break-keep;
+  }
+  /* 묶인 보도 중 한국어 제목만 있는 보도 — 제목 자리에 "Korean-language report" + 작은 `etnews.com · in Korean` */
+  .ar-cov-k {
+    @apply text-caption min-w-0 flex-1 font-semibold;
+  }
+  .ar-cov-k > small {
+    @apply text-label text-muted-foreground mt-0.5 block font-normal;
+  }
+  /* 원문 버튼 + 원문 언어 안내(데스크톱은 옆, 모바일 고정 바는 아래 가운데) */
+  .ar-ctaw {
+    @apply mt-10 hidden items-center gap-4 md:flex;
+  }
+  .ar-ctaw > .ar-cta {
+    @apply mt-0;
+  }
+  .ar-ctan {
+    @apply text-meta text-muted-foreground;
+  }
+  .ar-ctan > b {
+    @apply text-foreground-soft font-semibold;
+  }
+  .ar-barn {
+    @apply flex-col gap-1.5;
+  }
+  /* 영어 보관 지면 — 원문 버튼(ar-go, 모든 폭에서 본문 흐름 안) 바로 아래 한 줄 */
+  .ar-gon {
+    @apply mt-2.5;
+  }
+  .ar-barn > .ar-ctan {
+    @apply text-label text-center;
+  }
+
+  /* 영어 크기·자간 — h1 최대 42px/1.14(영어 제목이 약 1.5배 길다), 요약 19→20px/1.7, 묶인 보도 매체 칸 8.5rem */
+  :root[lang="en"] .ar-h1 {
+    font-size: clamp(1.8125rem, 3.6vw, 2.625rem);
+    line-height: 1.14;
+    letter-spacing: -0.025em;
+  }
+  :root[lang="en"] .ar-sum {
+    @apply text-[1.1875rem] leading-[1.65] tracking-[-0.003em] text-pretty md:text-[1.25rem] md:leading-[1.7];
+  }
+  :root[lang="en"] .ar-cov-s {
+    @apply w-[8.5rem];
+  }
+  :root[lang="en"] .ar-rh-h {
+    @apply tracking-[-0.03em];
+  }
+  :root[lang="en"] .ar-all {
+    @apply whitespace-nowrap;
   }
 }
