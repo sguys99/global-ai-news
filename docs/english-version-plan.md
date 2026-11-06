@@ -471,14 +471,15 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
   - 크기(Docker 빌드 `size:report`): 영어 홈 163.3KB(한국어 171.4), 영어 호 평균 119.0KB(예산 150), 한국어 호 +0.0%. **한국어 회귀 12페이지 동일.**
   - 시안과 다른 점: 일요일 내비는 지면 순(Front page → Weekly radar → Korea Desk), 브리핑 바이라인 칸은 `fit-content(16.5rem)`(절대 시각이 매체명을 자르던 문제).
 - [x] `/en/edition/[date]/`: 호 고정 링크와 지난 호 이동. (2026-11-06 `6323cbc` — `localeEditionDates("en")`·`dynamicParams=false`, 제목 `AI News Briefing — Tuesday, November 3, 2026 (No. 140) — AI Daybook`(`editionPageMetadataEn`), Korea Desk·일요일 주간 레이더 포함. hreflang·og·JSON-LD는 Phase 6)
-- [ ] `/en/article/[id]/`: 영어 제목·요약·원문 링크. 한국 매체는 `Original article in Korean` 표기, 원제 병기. 관련 기사·사건 타임라인도 영어로 표시한다.
-- [ ] `/en/search/`: `public/search-index/en/` 월별 조각(prebuild에서 생성, Phase 4-2 구조)과 영어 FlexSearch 설정.
-- [ ] 홈 색인 누적분 `public/feed-index/en/` 월별 조각(prebuild).
-- [ ] **(추가) 보관 지면 영어판:** 90일 지난 영어 기사·호(`/en/article/[id]/`·`/en/edition/[date]/`)도 postbuild가 같은 보관 계획으로 라이트 지면을 쓴다(`src/lib/archivePage.ts`는 이미 `locale` 인자를 받는다). 영어 라우트의 `generateStaticParams`도 보관 대상을 빼고, postbuild 확인이 두 언어를 함께 본다.
+- [x] `/en/article/[id]/`: 영어 제목·요약·원문 링크. 한국 매체는 `Original article in Korean` 표기, 원제 병기. 관련 기사·사건 타임라인도 영어로 표시한다. (2026-11-06 `5d0b745` — 머리 줄 `KOREA · 분야`, 원제는 h1 아래 2px 헤어라인 들임 단락(`Original article in Korean` + `lang="ko"` 원제), 한국어 원문 발췌 숨김, 원문 버튼 옆 `aitimes.com · in Korean`, Also reported by의 한국어 제목 보도는 `Korean-language report` + 매체 영문명, 후속 보도·"More in …" 영어. 한국어 JSON-LD는 영어 페이지에서 뺐다(영어 JSON-LD는 Phase 6). 한국어 상세 960건 렌더 바이트 동일)
+- [x] `/en/search/`: `public/search-index/en/` 월별 조각(prebuild에서 생성, Phase 4-2 구조)과 영어 FlexSearch 설정. (2026-11-06 — 데이터 틈 단계에서 조각·`forward`+`latin:simple`, 라우트는 `5d0b745`. 360px에서 잘리던 placeholder를 `Search by keyword`로 줄였다)
+- [x] 홈 색인 누적분 `public/feed-index/en/` 월별 조각(prebuild). (2026-11-06 `6c17366` — 영어 1,262건, 검색 조각 585.7KB·홈 조각 569.2KB)
+- [x] **(추가) 보관 지면 영어판:** 90일 지난 영어 기사·호(`/en/article/[id]/`·`/en/edition/[date]/`)도 postbuild가 같은 보관 계획으로 라이트 지면을 쓴다(`src/lib/archivePage.ts`는 이미 `locale` 인자를 받는다). 영어 라우트의 `generateStaticParams`도 보관 대상을 빼고, postbuild 확인이 두 언어를 함께 본다. (2026-11-06 `5d0b745` — `localeArchivePlan(locale)` 단일 출처를 영어 라우트 params와 postbuild가 함께 쓰고 `verifyArchiveOutput`이 두 언어를 확인한다. 영어 보관 기사 평균 4.2KB·호 49.7KB, canonical·JSON-LD 없음(Phase 6))
 - [x] 세 줄 요약 띠 영어판: 같은 줄 id의 `title_en`을 쓰고, 2줄 미만이면 숨긴다(한국어판과 같은 규칙). (2026-11-06 `localeBrief` — 띠 머리 `Three things to know`)
-- [ ] 공통 요소 영어판: 헤더·모바일 상단 바·하단 탭 바·필터 시트·푸터 태그라인·누적 방문(`1,234 visits`)·공유 버튼·발행 지연 줄·404.
+- [x] 공통 요소 영어판: 헤더·모바일 상단 바·하단 탭 바·필터 시트·푸터 태그라인·누적 방문(`1,234 visits`)·공유 버튼·발행 지연 줄·404. (2026-11-06 `5d0b745` — 셸 문구는 Phase 3 사전 그대로 확인, 영어 404는 `ShellChrome` `localeFromDocument`로 `/en/` 아래에서 헤더·모바일 바·푸터·탭을 영어로 바꾸고 `NOT_FOUND_EN_LINK_LOCALE`="en". 하이드레이션 전 잠깐 한국어 셸이 보인다)
 - [x] **Phase 3에서 넘어온 데이터 틈(3-4 코드 리뷰) — 영어 페이지를 열기 전에 먼저 막는다.** 빌드는 통과하고 화면만 비거나 한국어가 새는 함정이다. (**데이터 계층 2026-11-06 완료** `6c17366` — 테스트 1,364 → 1,389건, 한국어 색인 조각 `diff -r` 바이트 동일(1,277건), 영어 조각 1,262건·행에 한글 0. 아래 404·전환 링크 두 줄은 5-2 셸 작업·5-3에서 닫는다.)
   - 추가한 것: 영어 경로 목록 `localeArticleIds`·`localeEditionDates`(보관 계획 `getArchivePlan().live*` 기준 — 한국어 라우트도 같은 함수로 바꿔 단일 출처), 영어 최신 호 `localeLatestEditionRef`, 영어 세 줄 요약 `localeBrief`(줄 = 그 기사 `title_en`, 2줄 미만이면 숨김), 영어 매체·태그 `sourceOptionsOf`·`activeTagsOf`(영어 기사만 세고 라틴 태그만), `toListCard(article, "en")` → `ListCard`(영어 필드·`nameEn`·`region`, 한국어 가공 필드는 빈 문자열), 영어 FlexSearch(`forward` + `latin:simple` — `latin:balance`는 "agent"·"robot" 같은 짧은 질의를 놓친다).
+  - **B1·B2 병합 검증(2026-11-06, `b57dbb8` Docker 빌드):** 테스트 1,430건, **한국어 회귀 12페이지 중 같음 11 · 허용 1(404) · 차이 0**, 한국어 페이지 크기 변화는 빌드 해시뿐. 영어 기사 평균 27.8KB·호 118.5KB·홈 159.9KB(예산 안). 영어 HTML 본문(스크립트 밖) 한글 0건(허용 `lang="ko"` 원제 제외).
   - 남은 것: 영어 페이로드의 매체 `name`(한국 매체 4곳)은 한글로 남는다 — 화면은 모두 `nameEn`을 쓰지만 5-4 한글 grep이 인라인 RSC를 보면 걸린다(허용 목록 또는 영어 페이로드에서 name = nameEn). 영어 JSON-LD는 Phase 6.
   - `src/views/data.ts` `localeArticles`의 en 예외를 `hasEnglish` 거르기로 바꾼다.
   - 목록 카드(`toListCard`, `src/lib/db.ts`)는 영어 필드를 뗀다 → 영어 1면·색인·검색이 빈 제목이 된다. `toListCard(article, locale)`로 en에서는 `titleEn`·`summaryEn`을 남기고 한국어 필드를 뗀다. `IndexCard`(`feed-index`)·`SearchIndexEntry`의 영어판도 같은 규칙으로 만든다.
