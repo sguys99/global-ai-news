@@ -38,6 +38,7 @@ vi.mock("@/lib/db", async (importOriginal) => {
 import { renderArchiveArticle, renderArchiveEdition, type BuildAssets } from "@/lib/archivePage";
 import { buildEdition } from "@/lib/edition";
 import { withLanguageAlternates } from "@/lib/pageMetadata";
+import { shareMetadata } from "@/lib/site";
 import { languageAlternates, localeArchivePlan } from "@/views/data";
 
 function ref(date: string, issueNo: number): EditionRef {
@@ -156,16 +157,32 @@ describe("withLanguageAlternates", () => {
     expect(out.alternates).toEqual({
       canonical: "/article/3/",
       types: { "application/rss+xml": [{ url: "/feed.xml", title: "AI Daybook" }] },
-      languages: { ko: "/article/3/", en: "/en/article/3/" },
+      languages: { ko: "/article/3/", en: "/en/article/3/", "x-default": "/en/article/3/" },
     });
     expect(meta.alternates).not.toHaveProperty("languages");
   });
 
-  it("alternates 가 없던 영어 metadata 에는 languages 만", () => {
+  it("alternates 가 없던 metadata 에는 languages 만(x-default = 영어 주소)", () => {
     expect(withLanguageAlternates({ title: "y" }, PAIR("/search/"))).toEqual({
       title: "y",
-      alternates: { languages: { ko: "/search/", en: "/en/search/" } },
+      alternates: { languages: { ko: "/search/", en: "/en/search/", "x-default": "/en/search/" } },
     });
+  });
+
+  it("og:locale 이 있으면 상대 언어판 og:locale:alternate 를 같이 단다 — 짝이 없으면 달지 않는다", () => {
+    const ko = shareMetadata({ title: "t", description: "d", path: "/article/3/" });
+    expect(withLanguageAlternates(ko, PAIR("/article/3/")).openGraph).toMatchObject({
+      locale: "ko_KR",
+      alternateLocale: ["en_US"],
+    });
+    expect(withLanguageAlternates(ko, null).openGraph).not.toHaveProperty("alternateLocale");
+    const en = shareMetadata({ title: "t", description: "d", path: "/article/3/", locale: "en" });
+    expect(withLanguageAlternates(en, PAIR("/article/3/")).openGraph).toMatchObject({
+      locale: "en_US",
+      alternateLocale: ["ko_KR"],
+    });
+    // 입력 객체는 바꾸지 않는다
+    expect(en.openGraph).not.toHaveProperty("alternateLocale");
   });
 });
 
@@ -195,6 +212,13 @@ describe("보관 지면 — hreflang 짝과 머리 띠 언어 전환 링크", ()
     expect(html).toContain(
       '<link rel="alternate" hreflang="en" href="http://localhost:3000/en/article/1/">',
     );
+    expect(html).toContain(
+      '<link rel="alternate" hreflang="x-default" href="http://localhost:3000/en/article/1/">',
+    );
+    // 상대 언어판이 있으니 og:locale:alternate — Next 와 같은 자리(og:image 다음, og:type 앞)
+    expect(html).toMatch(
+      /<meta property="og:image:type" content="image\/png"><meta property="og:locale:alternate" content="en_US"><meta property="og:type" content="article">/,
+    );
     expect(html).toMatch(
       /<a class="sh-ln" href="\/en\/article\/1\/" lang="en" hreflang="en"[^>]*>EN<\/a>/,
     );
@@ -212,6 +236,8 @@ describe("보관 지면 — hreflang 짝과 머리 띠 언어 전환 링크", ()
     );
     expect(html).not.toContain('hreflang="en" href="http');
     expect(html).not.toMatch(/<link rel="alternate" hreflang/);
+    expect(html).not.toContain("og:locale:alternate");
+    expect(html).toContain('<meta property="og:locale" content="ko_KR">');
     expect(html).toMatch(/<a class="sh-ln" href="\/en\/" lang="en" hreflang="en"[^>]*>EN<\/a>/);
   });
 
@@ -233,6 +259,22 @@ describe("보관 지면 — hreflang 짝과 머리 띠 언어 전환 링크", ()
     expect(html).toContain(
       '<link rel="alternate" hreflang="ko" href="http://localhost:3000/edition/2026-06-01/">',
     );
+    // 영어 보관 호: 자기 canonical·x-default(영어)·영어 공유 메타, 보관 호는 썸네일 창 밖 → 영어 기본 썸네일
+    expect(html).toContain(
+      '<link rel="canonical" href="http://localhost:3000/en/edition/2026-06-01/">',
+    );
+    expect(html).toContain(
+      '<link rel="alternate" hreflang="x-default" href="http://localhost:3000/en/edition/2026-06-01/">',
+    );
+    expect(html).toContain(
+      '<meta property="og:url" content="http://localhost:3000/en/edition/2026-06-01/">',
+    );
+    expect(html).toContain('<meta property="og:locale" content="en_US">');
+    expect(html).toContain('<meta property="og:locale:alternate" content="ko_KR">');
+    expect(html).toContain(
+      '<meta property="og:image" content="http://localhost:3000/og/en/default.png">',
+    );
+    expect(html).toContain('<meta property="og:title" content="Story 1">');
     expect(html).toMatch(
       /<a class="sh-ln" href="\/edition\/2026-06-01\/" lang="ko" hreflang="ko" aria-label="한국어로 읽기" title="한국어로 읽기">한국어<\/a>/,
     );

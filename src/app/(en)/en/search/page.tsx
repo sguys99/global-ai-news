@@ -3,7 +3,7 @@ import { ENGLISH_SEARCH_METADATA, withLanguageAlternates } from "@/lib/pageMetad
 import { SearchView } from "@/views/SearchView";
 import { languageAlternates } from "@/views/data";
 
-/** 제목·설명 + 한국어판 짝(hreflang, 5-3) — 공유 메타·canonical·x-default 는 Phase 6. */
+/** 제목·설명·공유 메타·canonical(`/en/search/`) + 한국어판 짝(hreflang ko·en·x-default). */
 export const metadata: Metadata = withLanguageAlternates(
   ENGLISH_SEARCH_METADATA,
   languageAlternates({ kind: "search" }),
