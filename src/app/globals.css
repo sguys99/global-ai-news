@@ -755,8 +755,9 @@
   .ed-dk-m {
     @apply text-label text-muted-foreground [&>b]:text-foreground-soft mt-1 leading-[1.5] md:basis-full lg:mt-auto lg:pt-4 [&>b]:font-semibold;
   }
+  /* content-start: 기사가 1~2건이면 행이 머리 칸 높이로 늘어 바이라인(mt-auto)이 요약에서 멀리 떨어지지 않게(5-4) */
   .ed-dk-g {
-    @apply lg:border-border grid min-w-0 grid-cols-1 md:grid-cols-2 lg:border-l lg:pl-8;
+    @apply lg:border-border grid min-w-0 grid-cols-1 content-start md:grid-cols-2 lg:border-l lg:pl-8;
   }
   .ed-dk-c {
     @apply border-border min-w-0 border-t py-[18px] md:pt-5 md:pr-6 md:pb-[22px] md:even:border-l md:even:pr-0 md:even:pl-6 lg:[&:nth-child(-n+2)]:border-t-0;
@@ -815,21 +816,25 @@
 :root[lang="en"] .st-date {
   white-space: nowrap;
 }
-/* 오늘의 브리핑 모바일: 메타 줄을 항목 단위로 꺾는다(영어 키커가 매체명을 말줄임으로 지우지 않게) */
-@media (max-width: 767.98px) {
-  :root[lang="en"] .st-brief .sg-by {
-    flex-wrap: wrap;
-    row-gap: 2px;
-    white-space: normal;
-  }
-  :root[lang="en"] .st-brief .sg-by > * {
-    white-space: nowrap;
-  }
+/*
+ * 오늘의 브리핑 메타 줄: 항목 단위로 꺾는다 — 모바일은 영어 키커가, md+ 는 `KOREA ·`·`+2 more`·절대 날짜(지난 호
+ * `Oct 30, 2026`)가 16.5rem 칸을 넘겨 매체명을 말줄임(`iRobot…`·`ETNe…`)으로 지우지 않게(5-4 육안 확인).
+ */
+:root[lang="en"] .st-brief .sg-by {
+  flex-wrap: wrap;
+  row-gap: 2px;
+  white-space: normal;
 }
-/* 오늘의 브리핑 md+: 한 줄 말줄임 대신 2줄, 키커 칸 9rem("Industry & Policy"), 바이라인 칸은 내용 폭이되 16.5rem 까지(넘치면 매체명이 줄어든다) */
+:root[lang="en"] .st-brief .sg-by > * {
+  white-space: nowrap;
+}
+/* 오늘의 브리핑 md+: 한 줄 말줄임 대신 2줄, 키커 칸 9rem("Industry & Policy"), 바이라인 칸은 내용 폭이되 16.5rem 까지(넘치면 위 규칙으로 꺾여 오른쪽 정렬 두 줄) */
 @media (min-width: 768px) {
   :root[lang="en"] .st-brief {
     grid-template-columns: 9rem minmax(0, 1fr) fit-content(16.5rem);
+  }
+  :root[lang="en"] .st-brief .sg-by {
+    justify-content: flex-end;
   }
   :root[lang="en"] .st-brief-h {
     -webkit-line-clamp: 2;
@@ -1130,5 +1135,10 @@
   }
   :root[lang="en"] .ar-all {
     @apply whitespace-nowrap;
+  }
+  /* 영어 머리 띠: 360 에서 Today's issue·Search·한국어가 워드마크 옆 한 줄에 들도록 모바일 좌우 여백만 줄인다
+     (5-4 육안 확인 — 6px 모자라 두 줄로 꺾이며 위 줄이 화면 위로 잘렸다). 터치 높이 44px 는 그대로. */
+  :root[lang="en"] .sh-ln {
+    @apply max-md:px-1.5 max-md:last:pr-0;
   }
 }
