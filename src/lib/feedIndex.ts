@@ -9,7 +9,7 @@
  */
 import { filterAndSortFeed } from "@/lib/feedFilter";
 import type { Locale } from "@/lib/i18n";
-import { hasHangul, localeTags } from "@/lib/labels";
+import { englishSource, hasHangul, localeTags } from "@/lib/labels";
 import type { ArticleCard, IndexCard } from "@/lib/types";
 
 /**
@@ -73,8 +73,8 @@ export function toIndexCard(
 
 /** 영어 색인 카드(toIndexCard en). 값이 없는 선택 필드는 키를 두지 않는다(RSC 가 `"$undefined"` 를 적지 않게). */
 function toEnglishIndexCard(a: LocaleIndexCard & Partial<ArticleCard>): LocaleIndexCard {
-  const source: IndexCard["source"] = { id: a.source.id, name: a.source.name };
-  if (a.source.nameEn) source.nameEn = a.source.nameEn;
+  // 한글 매체명 대신 영문명을 name 에(englishSource — 영어 RSC·색인에 한글이 실리지 않게).
+  const source: IndexCard["source"] = { id: a.source.id, name: englishSource(a.source).name };
   if (a.source.region) source.region = a.source.region;
   const card: LocaleIndexCard = {
     id: a.id,

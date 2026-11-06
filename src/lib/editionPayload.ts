@@ -17,6 +17,7 @@
 import type { Edition } from "@/lib/edition";
 import type { Locale } from "@/lib/i18n";
 import { decodeRow, encodeRow, type IndexRow, type ManifestSource } from "@/lib/indexShards";
+import { englishSource } from "@/lib/labels";
 import type { ArticleCard, Engagement, StoryCard } from "@/lib/types";
 import type { WeeklyRadar } from "@/lib/weeklyRadar";
 
@@ -54,8 +55,11 @@ export function packEdition(
   for (const a of edition.issue) {
     if (sources[a.source.id]) continue;
     // 형식은 소스 속성(sources.format)이라 같은 매체의 기사는 형식이 같다(색인 조각 매체 표와 같은 전제).
-    const s: ManifestSource = { name: a.source.name, format: a.format };
-    if (locale === "en" && a.source.nameEn) s.nameEn = a.source.nameEn;
+    // 영어판은 한글 매체명 대신 영문명을 name 에 싣는다(englishSource — 영어 RSC 에 한글이 실리지 않게).
+    const s: ManifestSource = {
+      name: locale === "en" ? englishSource(a.source).name : a.source.name,
+      format: a.format,
+    };
     // 지역(KOREA 표시·Korea Desk)도 영어판에만.
     if (locale === "en" && a.source.region) s.region = a.source.region;
     sources[a.source.id] = s;
@@ -115,7 +119,14 @@ export function unpackEdition(payload: EditionPayload, locale: Locale): Edition<
 export function packWeekly(weekly: WeeklyRadar | null, locale: Locale): WeeklyRadar | null {
   if (!weekly) return weekly;
   if (locale === "en") {
-    return { ...weekly, items: weekly.items.map((item) => ({ ...item, title: "" })) };
+    return {
+      ...weekly,
+      items: weekly.items.map((item) => ({
+        ...item,
+        title: "",
+        source: englishSource(item.source),
+      })),
+    };
   }
   return {
     ...weekly,

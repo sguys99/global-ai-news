@@ -32,7 +32,7 @@ import type { SourceOption } from "@/lib/feedFilter";
 import { INDEX_PAGE_SIZE, buildFeedIndex } from "@/lib/feedIndex";
 import { DEFAULT_LOCALE, localePath, type Locale } from "@/lib/i18n";
 import { indexBuildVersion } from "@/lib/indexShards";
-import { hasHangul, issueDelayDays, localeTags } from "@/lib/labels";
+import { englishSource, hasHangul, issueDelayDays, localeTags } from "@/lib/labels";
 import {
   isKoreaSubject,
   koreaSubjectNames,
@@ -223,8 +223,8 @@ export function sourceOptionsOf(articles: readonly ArticleCard[]): SourceOption[
       s.count = (s.count ?? 0) + 1;
       continue;
     }
-    const opt: SourceOption = { id: a.source.id, name: a.source.name, count: 1 };
-    if (a.source.nameEn) opt.nameEn = a.source.nameEn;
+    // 영어판 전용 — 한글 매체명 대신 영문명을 name 에(englishSource, 칩 묶음·표시는 같다).
+    const opt: SourceOption = { id: a.source.id, name: englishSource(a.source).name, count: 1 };
     if (a.source.region) opt.region = a.source.region;
     byId.set(a.source.id, opt);
   }

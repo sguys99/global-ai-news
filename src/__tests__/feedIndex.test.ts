@@ -161,8 +161,9 @@ describe("toEntryCard — 상세 같은 분야 기사 섬 props", () => {
       summaryKo: "",
       titleEn: "English title",
       summaryEn: "English summary",
-      source: { id: "kr", name: "한국 매체", nameEn: "Korean Outlet" },
+      source: { id: "kr", name: "Korean Outlet" },
     });
+    expect(en.source).not.toHaveProperty("nameEn");
     expect(en).not.toHaveProperty("titleOriginal");
     const bare = toEntryCard({ ...card(3), titleEn: undefined, summaryEn: undefined }, "en");
     expect(bare).not.toHaveProperty("titleEn");
@@ -189,7 +190,7 @@ describe("toIndexCard·buildFeedIndex en — 영어 색인 카드(영어판 Phas
       summaryKo: "",
       summaryEn: "English summary",
       tags: ["llm"],
-      source: { id: "aitimes", name: "AI타임스", nameEn: "AI Times", region: "kr" },
+      source: { id: "aitimes", name: "AI Times", region: "kr" },
     });
     expect(c).not.toHaveProperty("titleOriginal");
     expect(c).not.toHaveProperty("titleEn");

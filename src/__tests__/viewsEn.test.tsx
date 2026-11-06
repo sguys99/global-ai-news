@@ -59,7 +59,29 @@ vi.mock("@/components/SearchClient", () => ({
   },
 }));
 
+// 홈·호 지면의 클라이언트 섬도 props(= 영어 페이지 RSC 에 실리는 값)만 본다(english-version-plan 5-4).
+const islands = vi.hoisted(() => ({
+  feed: null as null | Record<string, unknown>,
+  edition: null as null | { edition: EditionPayload; weekly: unknown },
+}));
+vi.mock("@/components/FeedClient", () => ({
+  FeedClient: (p: Record<string, unknown>) => {
+    islands.feed = p;
+    return null;
+  },
+  FeedFallback: () => null,
+}));
+vi.mock("@/components/EditionBody", () => ({
+  EditionBody: (p: { edition: EditionPayload; weekly: unknown }) => {
+    islands.edition = p;
+    return null;
+  },
+}));
+
+import { unpackEdition, type EditionPayload } from "@/lib/editionPayload";
 import { ArticleView } from "@/views/ArticleView";
+import { EditionView } from "@/views/EditionView";
+import { HomeView } from "@/views/HomeView";
 import { SearchView } from "@/views/SearchView";
 import {
   activeTagsOf,
@@ -81,6 +103,8 @@ function ref(date: string, issueNo: number): EditionRef {
 }
 
 const AITIMES = { id: "aitimes", name: "AI타임스", nameEn: "AI Times", region: "kr" as const };
+/** 영어 페이로드의 같은 매체 — name 이 영문명, nameEn 키 없음(englishSource, english-version-plan 5-4). */
+const AITIMES_EN = { id: "aitimes", name: "AI Times", region: "kr" as const };
 const HN = { id: "hn", name: "Hacker News" };
 
 function card(id: number, p: Partial<ArticleCard> = {}): ArticleCard {
@@ -208,17 +232,16 @@ describe("홈·검색 로더 — 영어판", () => {
       summaryKo: "",
       titleEn: "Story 4",
       summaryEn: "Summary 4.",
-      source: AITIMES,
+      source: AITIMES_EN,
       tags: ["robotics"],
     });
     expect(feed.issueArticles.find((a) => a.id === 3)!.tags).toEqual(["llm"]);
     // 색인 첫 페이지도 영어 카드, 누적 건수는 영어 기사 수
     expect(index.indexTotal).toBe(3);
     expect(index.indexHead.every((c) => c.titleKo === "" && c.titleEn)).toBe(true);
-    expect(index.indexHead.find((c) => c.id === 1)!.source).toEqual(AITIMES);
-    expect(HANGUL.test(JSON.stringify(index.indexHead.map((c) => ({ ...c, source: 0 }))))).toBe(
-      false,
-    );
+    expect(index.indexHead.find((c) => c.id === 1)!.source).toEqual(AITIMES_EN);
+    expect(HANGUL.test(JSON.stringify(index.indexHead))).toBe(false);
+    expect(HANGUL.test(JSON.stringify(feed.issueArticles))).toBe(false);
   });
 
   it("세 줄 요약은 같은 줄 id 의 영어 제목, 영어 없는 줄은 뺀다", () => {
@@ -234,7 +257,7 @@ describe("홈·검색 로더 — 영어판", () => {
   it("필터 칩: 매체는 영어 기사로 센 수 + 영문명·지역, 태그는 라틴 문자만", () => {
     const { feed } = loadHome("en");
     expect(feed.sources).toEqual([
-      { id: "aitimes", name: "AI타임스", nameEn: "AI Times", region: "kr", count: 2 },
+      { id: "aitimes", name: "AI Times", region: "kr", count: 2 },
       { id: "hn", name: "Hacker News", count: 1 },
     ]);
     expect(feed.tags).toEqual(["llm", "robotics"]);
@@ -402,8 +425,64 @@ describe("SearchView — 영어 검색 정적 셸(/en/search/)", () => {
     expect(HANGUL.test(container.textContent ?? "")).toBe(false);
     expect(search.props!.tags).toEqual(["llm", "robotics"]);
     expect(search.props!.sources).toEqual([
-      { id: "aitimes", name: "AI타임스", nameEn: "AI Times", region: "kr", count: 2 },
+      { id: "aitimes", name: "AI Times", region: "kr", count: 2 },
       { id: "hn", name: "Hacker News", count: 1 },
     ]);
+  });
+});
+
+describe("HomeView·EditionView — 영어 섬 props(= 영어 RSC)에 한글·영어 없는 기사가 없다(5-4)", () => {
+  /** 섬 props 에 실린 기사 id 전부(카드 배열·색인 머리). */
+  const idsIn = (cards: unknown): number[] =>
+    Array.isArray(cards) ? cards.map((c: { id: number }) => c.id) : [];
+
+  it("영어 홈: 이번 호·색인 머리에 영어 없는 기사(2·5)가 없고, props 에 한글이 없고, 구조화 데이터가 없다", () => {
+    islands.feed = null;
+    const { container } = render(<HomeView locale="en" />);
+    const feed = islands.feed!;
+    expect(idsIn(feed.issueArticles).sort()).toEqual([3, 4]);
+    expect([...idsIn(feed.issueArticles), ...idsIn(feed.indexHead)]).not.toContain(2);
+    expect([...idsIn(feed.issueArticles), ...idsIn(feed.indexHead)]).not.toContain(5);
+    expect(HANGUL.test(JSON.stringify(feed))).toBe(false);
+    expect(container.querySelector('script[type="application/ld+json"]')).toBeNull();
+  });
+
+  it("한국어 홈은 그대로 — 영어 없는 기사도 싣고 WebSite 구조화 데이터가 있다", () => {
+    islands.feed = null;
+    const { container } = render(<HomeView locale="ko" />);
+    expect(idsIn(islands.feed!.issueArticles).sort()).toEqual([3, 4, 5]);
+    expect(container.querySelector('script[type="application/ld+json"]')).not.toBeNull();
+  });
+
+  it("영어 호: 지면 페이로드는 영어 기사만, 한글 없음(매체 표 포함), 머리에도 한글·구조화 데이터 없음", () => {
+    islands.edition = null;
+    // 클라이언트 조각(공유 버튼)은 영어 레이아웃의 LocaleProvider 로 문구를 고른다.
+    const { container } = render(<EditionView locale="en" date="2026-11-04" />, {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <LocaleProvider locale="en">{children}</LocaleProvider>
+      ),
+    });
+    const payload = islands.edition!.edition;
+    expect(
+      unpackEdition(payload, "en")
+        .issue.map((a) => a.id)
+        .sort(),
+    ).toEqual([3, 4]);
+    expect(payload.sources.aitimes).toEqual({ name: "AI Times", format: "news", region: "kr" });
+    expect(JSON.stringify(islands.edition)).not.toMatch(HANGUL);
+    expect(container.textContent ?? "").not.toMatch(HANGUL);
+    expect(container.querySelector('script[type="application/ld+json"]')).toBeNull();
+  });
+
+  it("한국어 호 페이로드는 한국어 매체명 그대로(바이트 보존)", () => {
+    islands.edition = null;
+    render(<EditionView locale="ko" date="2026-11-04" />);
+    const payload = islands.edition!.edition;
+    expect(
+      unpackEdition(payload, "ko")
+        .issue.map((a) => a.id)
+        .sort(),
+    ).toEqual([3, 4, 5]);
+    expect(payload.sources.aitimes).toEqual({ name: "AI타임스", format: "news" });
   });
 });

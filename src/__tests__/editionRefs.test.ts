@@ -242,18 +242,18 @@ describe("toListCards", () => {
       summaryEn: "Summary.",
       titleOriginal: "",
       tags: ["llm"],
-      source: { id: "hn", name: "AI타임스", nameEn: "AI Times", region: "kr" },
+      source: { id: "hn", name: "AI Times", region: "kr" },
       related: [
         { source: "", url: "https://e", title: "" },
         { source: "Reuters", url: "https://r", title: "R" },
       ],
     });
     expect("contentRaw" in card).toBe(false);
-    // 매체 한국어 이름(name) 말고는 한글이 없다 — 화면은 영문명을 쓴다.
-    const { source, ...rest } = card;
-    expect(/[\uac00-\ud7af]/.test(JSON.stringify(rest))).toBe(false);
-    expect(source.name).toBe("AI타임스");
+    // 카드 어디에도 한글이 없다 — 매체 name 도 영문명이다(englishSource, english-version-plan 5-4).
+    expect(/[\uac00-\ud7af]/.test(JSON.stringify(card))).toBe(false);
+    expect(card.source).not.toHaveProperty("nameEn");
     // 원본 카드는 건드리지 않는다
+    expect(full.source.name).toBe("AI타임스");
     expect(full.titleKo).toBe("기사1");
     expect(full.tags).toEqual(["llm", "에이전트"]);
   });

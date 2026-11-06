@@ -63,6 +63,13 @@ jobs:
       - name: Check output size
         run: npm run --silent size:report -- out --ci
 
+      # 영어판 한글 누출 검사(english-version-plan Phase 5-4, scripts/en-hangul-check.ts).
+      #   out/en/** 의 HTML·RSC(.txt)와 out/{search,feed}-index/en/** 색인에서 한글을 찾는다. 허용은 lang="ko" 요소 안뿐
+      #   (한국 매체 원제 줄·`한국어` 전환 링크 — RSC 는 lang="ko" 호스트 요소의 props). 위반이 있거나 영어 파일이
+      #   0개면 ::error:: 와 함께 실패해 업로드 전에 멈춘다. 검사 수·위반 수를 잡 요약에 붙인다.
+      - name: Check English pages for Hangul
+        run: npm run --silent en:hangul-check -- out --ci
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

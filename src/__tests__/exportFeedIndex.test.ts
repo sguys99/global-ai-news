@@ -149,3 +149,26 @@ describe("export-feed-index", () => {
     expect(manifest).toMatchObject({ schema: 1, kind: "feed-index", locale: "ko", head: [] });
   });
 });
+
+describe("export-feed-index en — 영어 홈 색인(영어판 Phase 5-2·5-4)", () => {
+  it("영어 본문이 있는 기사만 싣고, 목록(매체 표)·조각 어디에도 한글이 없다", () => {
+    db.prepare(
+      "UPDATE sources SET name = 'AI타임스', name_en = 'AI Times', region = 'kr' WHERE id = 'hackernews'",
+    ).run();
+    // 1(화제 50)만 영어가 있다 — 2는 영어 없음, 3은 가공 전.
+    db.prepare(
+      "UPDATE articles SET title_en = 'English B', summary_en = 'English summary B.' WHERE id = 1",
+    ).run();
+    expect(writeFeedIndex(dir, db)).toEqual({ ko: 2, en: 1 });
+    const files = readdirSync(path.join(dir, "en")).sort();
+    expect(files).toEqual(["2026-01.json", "manifest.json"]);
+    const raw = files.map((f) => readFileSync(path.join(dir, "en", f), "utf-8")).join("\n");
+    expect(raw).not.toMatch(/[가-힯]/);
+    const manifest = JSON.parse(readFileSync(path.join(dir, "en", "manifest.json"), "utf-8"));
+    expect(manifest).toMatchObject({ locale: "en", total: 1 });
+    expect(manifest.sources.hackernews).toEqual({ name: "AI Times", format: "news", region: "kr" });
+    // 한국어 색인은 그대로 한국어 매체명
+    const ko = JSON.parse(readFileSync(path.join(dir, "ko", "manifest.json"), "utf-8"));
+    expect(ko.sources.hackernews).toEqual({ name: "AI타임스", format: "news" });
+  });
+});

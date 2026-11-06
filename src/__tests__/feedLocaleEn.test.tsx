@@ -12,6 +12,7 @@ import { IndexLoadStatus, StoryIndex } from "@/components/StoryIndex";
 import { FilterSheet } from "@/components/mobile/FilterSheet";
 import { buildFeedIndex } from "@/lib/feedIndex";
 import { groupSources } from "@/lib/feedFilter";
+import { englishSource } from "@/lib/labels";
 import { resetIndexCache } from "@/lib/indexShards";
 import type { ArticleCard } from "@/lib/types";
 import { indexServer } from "./helpers/indexServer";
@@ -85,6 +86,26 @@ describe("groupSources — 언어별 칩 표시명", () => {
     const enGroups = groupSources(sources, "en");
     expect(enGroups.map((g) => g.label)).toEqual(["TechCrunch", "Hugging Face", "AI Times"]);
     expect(enGroups.map((g) => g.ids)).toEqual(groupSources(sources).map((g) => g.ids));
+  });
+
+  it("영어 페이로드 매체(englishSource — name = 영문명)도 묶음·대표 id·칩 표시명이 같다", () => {
+    // 실제 설정처럼 한글 이름 매체에는 영문명이 있다(sourcesConfig 테스트가 검사).
+    const withDaily = [
+      ...sources.map((s) =>
+        s.id === "hf_models" ? { ...s, nameEn: "HuggingFace Trending Models" } : s,
+      ),
+      { id: "hf_papers", name: "HuggingFace Daily Papers", count: 9 },
+    ];
+    const english = withDaily.map((s) => englishSource(s));
+    expect(JSON.stringify(english)).not.toMatch(/[가-힯]/);
+    const before = groupSources(withDaily, "en");
+    const after = groupSources(english, "en");
+    expect(after).toEqual(before);
+    // HuggingFace 두 피드는 영문명으로도 한 칩(Hugging Face)이다.
+    expect(after.find((g) => g.label === "Hugging Face")!.ids.sort()).toEqual([
+      "hf_models",
+      "hf_papers",
+    ]);
   });
 });
 

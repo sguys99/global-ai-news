@@ -151,7 +151,7 @@ describe("buildSearchIndex en — 영어 색인(영어판 Phase 5-2)", () => {
     expect(cardsOf(built)).toEqual([
       {
         id: 1,
-        source: { id: "hackernews", name: "AI타임스", nameEn: "AI Times", region: "kr" },
+        source: { id: "hackernews", name: "AI Times", region: "kr" },
         titleKo: "",
         summaryKo: "",
         titleEn: "English A",
@@ -166,8 +166,9 @@ describe("buildSearchIndex en — 영어 색인(영어판 Phase 5-2)", () => {
         relatedCount: 1,
       },
     ]);
-    // 조각 행에는 한글이 없다(매체 한국어 이름은 목록의 매체 표에만 — 화면은 영문명을 쓴다).
+    // 조각 행에도 목록(매체 표)에도 한글이 없다 — 매체 name 이 영문명이다(english-version-plan 5-4).
     expect(HANGUL.test(JSON.stringify(built.shards))).toBe(false);
+    expect(HANGUL.test(JSON.stringify(built.manifest))).toBe(false);
   });
 
   it("writeSearchIndex 는 <dir>/en/ 에 영어 색인을, <dir>/ko/ 에는 영어 없는 한국어 색인을 쓴다", () => {
@@ -176,12 +177,7 @@ describe("buildSearchIndex en — 영어 색인(영어판 Phase 5-2)", () => {
     const en = JSON.parse(
       readFileSync(path.join(dir, "en", "manifest.json"), "utf-8"),
     ) as IndexManifest;
-    expect(en.sources.hackernews).toEqual({
-      name: "AI타임스",
-      format: "news",
-      nameEn: "AI Times",
-      region: "kr",
-    });
+    expect(en.sources.hackernews).toEqual({ name: "AI Times", format: "news", region: "kr" });
     expect(readdirSync(path.join(dir, "en")).sort()).toEqual(["2026-01.json", "manifest.json"]);
     const ko = readdirSync(path.join(dir, "ko"))
       .map((f) => readFileSync(path.join(dir, "ko", f), "utf-8"))

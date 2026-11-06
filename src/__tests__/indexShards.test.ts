@@ -201,7 +201,8 @@ describe("buildIndexShards — 목록·조각", () => {
     expect(Object.keys(built.manifest.sources).sort()).toEqual(["gh", "hn", "hn_front", "zdnet"]);
     expect(built.manifest.sources.zdnet).toEqual({ name: "지디넷코리아", format: "news" });
     const en = buildIndexShards({ kind: "search-index", locale: "en", cards, issueDates, sources });
-    expect(en.manifest.sources.zdnet.nameEn).toBe("ZDNet Korea");
+    // 영어 목록은 한글 매체명 대신 영문명을 name 에 싣는다(englishSource — nameEn 키 없음).
+    expect(en.manifest.sources.zdnet).toEqual({ name: "ZDNet Korea", format: "news" });
   });
 
   it("호 날짜가 없는 기사는 빌드를 멈춘다", () => {

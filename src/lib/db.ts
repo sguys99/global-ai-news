@@ -4,6 +4,7 @@ import type { Locale } from "@/lib/i18n";
 import {
   categoryAliases,
   categoryLabel,
+  englishSource,
   hasHangul,
   isRegion,
   kstDateKey,
@@ -275,11 +276,11 @@ export function toListCard(article: ArticleCard, locale: Locale = "ko"): ListCar
   return card;
 }
 
-/** 영어 목록 카드(toListCard en). 매체는 카드 그대로(id·name + 있으면 nameEn·region). */
+/** 영어 목록 카드(toListCard en). 매체는 id·region 그대로, 한글 매체명은 영문명으로(englishSource). */
 function toEnglishListCard(article: ArticleCard): ListCard {
   const card: ListCard & { contentRaw?: string } = {
     ...article,
-    source: { ...article.source },
+    source: englishSource({ ...article.source }),
     titleKo: "",
     summaryKo: "",
     titleOriginal: hasHangul(article.titleOriginal) ? "" : article.titleOriginal,

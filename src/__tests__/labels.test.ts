@@ -25,6 +25,7 @@ import {
   FORMATS,
   CATEGORY_LABELS,
   CATEGORY_LABELS_EN,
+  englishSource,
   FORMAT_DISPLAY_LABELS_EN,
   formatCountLabel,
   formatCountNoun,
@@ -399,6 +400,31 @@ describe("labels — 영어판 매체명 (sourceDisplayName)", () => {
       expect(hasHangul(sourceDisplayName(s, "en")), s.id).toBe(false);
       expect(hasHangul(sourceDisplayName(s, "en", true)), s.id).toBe(false);
     }
+  });
+
+  it("englishSource: 영어 페이로드 매체는 name = 영문명(nameEn 키 없음), 표시명·축약 묶음은 그대로, 멱등", () => {
+    expect(
+      englishSource({ id: "aitimes", name: "AI타임스", nameEn: "AI Times", region: "kr" }),
+    ).toEqual({ id: "aitimes", name: "AI Times", region: "kr" });
+    const hn = { id: "hn", name: "Hacker News" };
+    expect(englishSource(hn)).toBe(hn);
+    for (const s of SOURCES_JSON) {
+      const en = englishSource(s);
+      expect(hasHangul(en.name), s.id).toBe(false);
+      expect(englishSource(en)).toEqual(en);
+      expect(sourceDisplayName(en, "en"), s.id).toBe(sourceDisplayName(s, "en"));
+      expect(sourceDisplayName(en, "en", true), s.id).toBe(sourceDisplayName(s, "en", true));
+    }
+    // 축약명이 같은 소스(한 매체의 여러 피드)는 영문명으로 바꿔도 같은 묶음이고, 다른 매체와 섞이지 않는다.
+    const groupOf = (list: SourceConfig[], name: (s: SourceConfig) => string) => {
+      const m = new Map<string, string[]>();
+      for (const s of list)
+        m.set(shortSourceName(name(s)), [...(m.get(shortSourceName(name(s))) ?? []), s.id]);
+      return [...m.values()].map((ids) => ids.sort().join(",")).sort();
+    };
+    expect(groupOf(SOURCES_JSON, (s) => englishSource(s).name)).toEqual(
+      groupOf(SOURCES_JSON, (s) => s.name),
+    );
   });
 });
 

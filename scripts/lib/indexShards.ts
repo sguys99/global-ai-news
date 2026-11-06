@@ -19,6 +19,7 @@ import {
   type IndexRow,
   type ManifestSource,
 } from "../../src/lib/indexShards";
+import { englishSource } from "../../src/lib/labels";
 import type { ArticleCard } from "../../src/lib/types";
 
 /**
@@ -81,7 +82,9 @@ export function buildIndexShards({
   for (const id of [...usedSources].sort()) {
     const s = sources.get(id);
     if (!s) throw new Error(`색인: 매체 ${id} 가 매체 표에 없다`);
-    sourceTable[id] = locale === "en" ? { ...s } : { name: s.name, format: s.format };
+    // 영어 목록은 한글 매체명 대신 영문명을 name 에(englishSource — 영어 색인에 한글이 실리지 않게).
+    sourceTable[id] =
+      locale === "en" ? englishSource({ ...s }) : { name: s.name, format: s.format };
   }
 
   const manifest: IndexManifest = {
