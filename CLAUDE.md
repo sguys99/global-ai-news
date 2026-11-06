@@ -11,9 +11,9 @@
 - 영어판: [docs/english-version-plan.md](docs/english-version-plan.md) (같은 호 영어 발행 `/en/`·Korea Desk·백필·다국어 구조·용량 대책·영어 SEO 단계 계획)
 - 디자인 토큰/원칙: [DESIGN.md](DESIGN.md) (v2.1)
 
-> **현재 구현 단계:** WORK-PLAN Phase 0~6, GitHub Pages 전환(클린 컷오버), 콘텐츠·1면 개편 Phase 1~6 완료, Phase 7 통합 검증 후 2026-10-31 배포(배포 후 3일 KPI 관찰은 11-03 예약 루틴이 기록), Phase 8 추가 아이디어(세 줄 요약·후속 보도·소스 헬스·주간 레이더·같은 사건 합치기·홈 페이로드·정리) 2026-11-01 배포. 영어판([english-version-plan.md](docs/english-version-plan.md)) Phase 0 기준선·검증, Phase 1 영어 가공 데이터(수집에서 `title_en`·`summary_en` 생성·검사, 화면 노출 없음) 2026-11-04 배포(3일 관찰은 11-07 예약 루틴이 기록). Phase 2 지난 기사 영어 백필(`db:backfill-en`·`backfill-en.yml`, 1,241/1,255건, $0.733 — 한국어 숫자·사실 오류 26건 수정 포함) 2026-11-04 완료. Phase 3 다국어 기반 구조(`(ko)`·`(en)/en` 레이아웃, `src/views`, 문구 사전 `src/lib/messages`, 이중 언어 404 — 한국어 화면 무변화, 영어 페이지는 아직 없음) 2026-11-04 배포. Phase 4 사이트 용량 대책(컴포넌트 클래스·`ArticleLink`+기사 `.txt` 삭제·호/홈/셸 클라이언트 섬·색인 월별 분할·og 호 30일 창·90일 지난 기사·호 보관 지면·`size:report` 배포 검사 — `out/` 155→57MB, 한국어 화면 무변화) 2026-11-05 배포. **영어판 Phase 5 영어 화면 — 기능 브랜치 `feat/en-pages`, Phase 7 출시 때 병합**(`/en/` 홈·호·기사·검색·보관 지면, Korea Desk·`KOREA` 표시, 언어 전환 + hreflang ko/en 쌍, 한글 누출 검사 `en:hangul-check` — 한국어 화면 무변화), **Phase 6 영어 SEO 같은 브랜치**(영어 공유 메타·자기 canonical·hreflang ko/en/x-default, 한국어 메타는 한국어만, `/sitemap.xml` 사이트맵 인덱스·`/en/feed.xml`·영어 JSON-LD·`/og/en/` 썸네일, SEO 배포 검사 `seo:check`, IndexNow는 `vars.INDEXNOW_ENABLED`로 꺼 둠 — Search Console·Bing 등록은 Phase 7 출시 때 [6-3 안내서](docs/english-version/phase6/6-3-search-engines.md)). 상세 체크리스트는 각 계획 문서가 단일 출처입니다.
+> **현재 구현 단계:** WORK-PLAN Phase 0~6, GitHub Pages 전환(클린 컷오버), 콘텐츠·1면 개편 Phase 1~6 완료, Phase 7 통합 검증 후 2026-10-31 배포(배포 후 3일 KPI 관찰은 11-03 예약 루틴이 기록), Phase 8 추가 아이디어(세 줄 요약·후속 보도·소스 헬스·주간 레이더·같은 사건 합치기·홈 페이로드·정리) 2026-11-01 배포. 영어판([english-version-plan.md](docs/english-version-plan.md)) Phase 0 기준선·검증, Phase 1 영어 가공 데이터(수집에서 `title_en`·`summary_en` 생성·검사, 화면 노출 없음) 2026-11-04 배포(3일 관찰은 11-07 예약 루틴이 기록). Phase 2 지난 기사 영어 백필(`db:backfill-en`·`backfill-en.yml`, 1,241/1,255건, $0.733 — 한국어 숫자·사실 오류 26건 수정 포함) 2026-11-04 완료. Phase 3 다국어 기반 구조(`(ko)`·`(en)/en` 레이아웃, `src/views`, 문구 사전 `src/lib/messages`, 이중 언어 404 — 한국어 화면 무변화, 영어 페이지는 아직 없음) 2026-11-04 배포. Phase 4 사이트 용량 대책(컴포넌트 클래스·`ArticleLink`+기사 `.txt` 삭제·호/홈/셸 클라이언트 섬·색인 월별 분할·og 호 30일 창·90일 지난 기사·호 보관 지면·`size:report` 배포 검사 — `out/` 155→57MB, 한국어 화면 무변화) 2026-11-05 배포. Phase 5 영어 화면(`/en/` 홈·호·기사·검색·보관 지면, Korea Desk·`KOREA` 표시, 언어 전환 + hreflang ko/en 쌍, 한글 누출 검사 `en:hangul-check` — 한국어 화면 무변화)과 Phase 6 영어 SEO(영어 공유 메타·자기 canonical·hreflang ko/en/x-default, 한국어 메타는 한국어만, `/sitemap.xml` 사이트맵 인덱스·`/en/feed.xml`·영어 JSON-LD·`/og/en/` 썸네일, SEO 배포 검사 `seo:check`, IndexNow)는 기능 브랜치 `feat/en-pages`에서 만들어 **2026-11-06 영어판 출시**(PR #9 → `deploy/github-pages`, c024ced). Phase 7 통합 검증·출시 마무리(테스트·Docker 빌드·크기(`out/` 112.9MB)·링크(깨짐·언어 누수 0)·한국어 회귀·Lighthouse SEO 100, 최근 두 호 영어 정독 + 백필 영어 재검토 → 규칙·용어집 보강과 텍스트 수정 67항목을 `db:backfill-en --fixes-only`로 반영, `latest.json` `titleEn`·`summaryEn`([공지](docs/notices/latest-json-2026-11.md)), 저장소 변수 `INDEXNOW_ENABLED=1`로 IndexNow 켬 — 첫 전송 202) 2026-11-06. Search Console·Bing 등록은 [6-3 안내서](docs/english-version/phase6/6-3-search-engines.md). 상세 체크리스트는 각 계획 문서가 단일 출처입니다.
 
-> **배포 구조 (`deploy/github-pages`):** Vercel/`standalone`은 폐기됐습니다. `npm run build`(= `PHASE_PRODUCTION_BUILD`)가 곧 `output:'export'` 정적 export(`out/`, `basePath:'/global-ai-news'`)이고 `deploy.yml`이 GitHub Pages로 배포합니다. admin/api/middleware는 `*.local.ts(x)` 파일로 두고 `pageExtensions` 게이팅으로 **로컬 `next dev`에서만** 라우트가 됩니다(프로덕션 빌드에서 제외). 개편 브랜치 `feat/contents-upgrade`는 `deploy/github-pages`에 병합됐고, 일일 수집 커밋(`data/app.db`)은 `deploy/github-pages`에 쌓입니다.
+> **배포 구조 (`deploy/github-pages`):** Vercel/`standalone`은 폐기됐습니다. `npm run build`(= `PHASE_PRODUCTION_BUILD`)가 곧 `output:'export'` 정적 export(`out/`, `basePath:'/global-ai-news'`)이고 `deploy.yml`이 GitHub Pages로 배포합니다. admin/api/middleware는 `*.local.ts(x)` 파일로 두고 `pageExtensions` 게이팅으로 **로컬 `next dev`에서만** 라우트가 됩니다(프로덕션 빌드에서 제외). 개편 브랜치 `feat/contents-upgrade`와 영어판 브랜치 `feat/en-pages`(PR #9, 2026-11-06)는 `deploy/github-pages`에 병합됐고, 일일 수집 커밋(`data/app.db`)은 `deploy/github-pages`에 쌓입니다.
 
 ## 기술 스택
 
@@ -136,13 +136,13 @@
 ├── scripts/                      # 배치 파이프라인 (tsx 실행)
 │   ├── collect.ts                # 수집→전처리→선별→가공→재보도 검사→같은 사건 합치기→SQLite 오케스트레이터 (--dry-run / --no-save / --db)
 │   ├── reclassify.ts             # 구 분야값 → 6개 키 LLM 재분류 (npm run db:reclassify, 기본 dry-run)
-│   ├── backfill-en.ts            # 지난 기사 영어 백필 + 한국어 숫자 수정(configs/backfill/) (npm run db:backfill-en, 기본 dry-run)
+│   ├── backfill-en.ts            # 지난 기사 영어 백필 + 검토된 텍스트 수정 목록 적용(--fixes, 옛 이름 --ko-fixes — ko·en 제목·요약, 영어 수정은 --fixes-only: LLM 없이 수정만·checkEnglish 통과해야 적용) (npm run db:backfill-en, 기본 dry-run)
 │   ├── fix-published-at.ts       # 일회성: 시간대 없는 KST pubDate(AI타임스·로봇신문)를 UTC 로 읽어 +9h 저장된 published_at 보정 — 회차 표본 기사 페이지로 확인 (npm run db:fix-published-at, 기본 dry-run)
 │   ├── triage-compare.ts         # no-save 스냅숏으로 개편 전후 선별 비교 (npm run triage:compare)
 │   ├── html-regress.ts           # 한국어 HTML 회귀 비교(build·select·snapshot·compare, 대상 configs/html-regress-pages.json, 기준선 data/regress/ git 제외)
 │   ├── export-search-index.ts    # public/search-index/<언어>/ — 검색 색인 호 월별 조각 + manifest.json (prebuild)
 │   ├── export-feed-index.ts      # public/feed-index/<언어>/ — 홈 전체 기사 색인 월별 조각 + manifest.json(색인 머리 포함, prebuild)
-│   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터, prebuild)
+│   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터, prebuild, 영어가 있는 항목만 titleEn·summaryEn — docs/notices/)
 │   ├── kpi.ts                    # KPI CLI (npm run kpi) + baseline 하위 명령(콘텐츠 개편 지표) + health(소스 헬스, --ci 는 collect.yml 요약)
 │   ├── postbuild.ts              # npm postbuild 훅(next build 직후): out/ 후처리 단계 목록(lib/postbuild.ts) — ① 기사 RSC index.txt 삭제 ② 보관 지면 쓰기(lib/archive.ts, 같은 빌드의 out/index.html 에서 CSS·폰트·사이트 주소를 읽는다 — lib/archiveAssets.ts), 멱등·out/ 없거나 보관 판정이 어긋나면 실패
 │   ├── en-hangul-check.ts        # 영어판 한글 누출 검사(out/en/** HTML·RSC + {search,feed}-index/en/**, 허용은 lang="ko" 요소 안뿐 — 판정 lib/enHangulCheck.ts, --ci 는 deploy.yml)
@@ -184,6 +184,7 @@
 │   ├── sources.json              # 소스 정의 — format·topic·keywordFilter·maxItems (Admin이 GitHub API로 커밋)
 │   ├── keyword-filters.json      # 키워드 사전 필터 목록(예: github_trending 의 "ai")
 │   ├── paper-filter.json         # arXiv 인용·기관 게이트, HF Papers upvote 임계값
+│   ├── backfill/                 # 검토된 텍스트 수정 목록 `{id, field, from, to}`(db:backfill-en --fixes): ko-number-fixes(Phase 2 한국어 숫자)·en-fixes-p7-editions·en-fixes-backfill·ko-fixes-p7(Phase 7 검토)
 │   └── prompts/
 │       ├── triage.system.md      # 선별 시스템 프롬프트 (형식별 선정 기준·묶기·중요도·할당·이미 보도함)
 │       ├── enrich.system.md      # 가공 시스템 프롬프트 ({{CATEGORIES}} 자리에 categories.md, {{ENGLISH}} 자리에 english.md 삽입)
@@ -191,11 +192,12 @@
 │       ├── glossary.en.md        # 한→영 용어집(묶음마다 걸러 유저 메시지에, 성씨·계급표만 시스템 프롬프트에 고정)
 │       ├── categories.md         # 분야 6개 정의·경계 규칙 단일 출처 (가공·재분류 공용)
 │       ├── repeat.system.md      # 재보도 검사 시스템 프롬프트
+│       ├── backfill-en.system.md # 영어 백필 시스템 프롬프트(db:backfill-en)
 │       └── enrich.fewshot.json   # 가공 few-shot 6건 (뉴스·Physical AI·리포·모델·논문)
 ├── .github/workflows/
 │   ├── collect.yml               # 외부 크론 dispatch + schedule 백업 → 수집 → app.db 커밋 → deploy dispatch → 소스 헬스 요약
-│   ├── backfill-en.yml           # 수동: 영어 백필 dry-run/apply(collect 와 같은 concurrency, 03:50~07:30 KST apply 거부) → app.db 커밋 → deploy dispatch
-│   └── deploy.yml                # 정적 빌드 → 산출물 크기 검사(size:report --ci) → 영어 한글 검사(en:hangul-check --ci) → SEO 검사(seo:check --ci) → GitHub Pages 배포 → (INDEXNOW_ENABLED=1 이면) IndexNow 알림
+│   ├── backfill-en.yml           # 수동: 영어 백필 dry-run/apply(collect 와 같은 concurrency, 03:50~07:30 KST apply 거부, 입력 fixes·fixes_only 로 수정 목록만 적용) → app.db 커밋 → deploy dispatch
+│   └── deploy.yml                # 정적 빌드 → 산출물 크기 검사(size:report --ci) → 영어 한글 검사(en:hangul-check --ci) → SEO 검사(seo:check --ci) → GitHub Pages 배포 → IndexNow 알림(저장소 변수 INDEXNOW_ENABLED=1 일 때만 — 2026-11-06 켬)
 ├── data/
 │   ├── app.db                    # SQLite DB (db:init/collect로 생성)
 │   └── eval/                     # collect --no-save 스냅숏 (git 제외)
@@ -233,11 +235,11 @@
 | `/article/[id]`                                                     | 상세                            | SSG(generateStaticParams) · 공개 — 90일 지난 기사는 postbuild 보관 지면 | ✅           |
 | `/search`                                                           | 검색                            | 정적 셸 + 클라이언트 검색 · 공개                                        | ✅           |
 | `/edition/[date]`                                                   | 호 고정 링크(지난 호)           | SSG(generateStaticParams) · 공개 — 90일 지난 호는 postbuild 보관 지면   | ✅           |
-| `/en/`, `/en/search`                                                | 영어 홈 / 영어 검색             | SSG + 클라 필터·검색 · 공개(영어판 Phase 5, `feat/en-pages`)            | ✅ (Phase 7) |
-| `/en/article/[id]`, `/en/edition/[date]`                            | 영어 상세 / 영어 호             | SSG — 영어 본문이 있는 기사·호만, 90일 지난 것은 영어 보관 지면         | ✅ (Phase 7) |
+| `/en/`, `/en/search`                                                | 영어 홈 / 영어 검색             | SSG + 클라 필터·검색 · 공개(영어판 Phase 5, 2026-11-06 출시)            | ✅           |
+| `/en/article/[id]`, `/en/edition/[date]`                            | 영어 상세 / 영어 호             | SSG — 영어 본문이 있는 기사·호만, 90일 지난 것은 영어 보관 지면         | ✅           |
 | `/og/edition/[date].png`, `/og/article/[id].png`, `/og/default.png` | 공유 썸네일(og:image)           | 빌드타임 정적 PNG · 공개                                                | ✅           |
 | `/sitemap.xml`, `/feed.xml`                                         | 사이트맵 / RSS                  | 빌드타임 정적 XML · 공개                                                | ✅           |
-| `/sitemaps/*.xml`, `/en/feed.xml`, `/og/en/**.png`                  | 사이트맵 조각 / 영어 RSS·썸네일 | 빌드타임 정적 · 공개(영어판 Phase 6)                                    | ✅ (Phase 7) |
+| `/sitemaps/*.xml`, `/en/feed.xml`, `/og/en/**.png`                  | 사이트맵 조각 / 영어 RSS·썸네일 | 빌드타임 정적 · 공개(영어판 Phase 6)                                    | ✅           |
 | `/admin`                                                            | 운영 콘솔                       | 로컬 전용(`next dev`) · 인증                                            | ❌ 배포 제외 |
 | `/api/admin/sources`, `/api/admin/collect`                          | 소스 커밋 / 재수집 트리거       | 로컬 전용                                                               | ❌ 배포 제외 |
 | `/api/health`                                                       | 헬스체크                        | 로컬 전용                                                               | ❌ 배포 제외 |
@@ -265,7 +267,8 @@ npm run collect -- --no-save        # LLM 단계까지 실제로 돌리되 DB �
 npm run collect -- --dry-run --db <path>  # --db 는 dry-run·no-save 전용(예: 배포 브랜치 DB 사본)
 npm run triage:compare -- <스냅숏>  # 같은 풀로 개편 전후 선별 비교
 npm run db:reclassify               # 구 분야값 재분류(기본 dry-run, --apply 로 백업 후 적용, --only-legacy)
-npm run db:backfill-en              # 지난 기사 영어 백필(기본 dry-run — LLM 없음, --apply 로 백업 후 적용, --ids 재시도, --ko-fixes)
+npm run db:backfill-en              # 지난 기사 영어 백필(기본 dry-run — LLM 없음, --apply 로 백업 후 적용, --ids 재시도, --fixes <목록>)
+npm run db:backfill-en -- --fixes-only --fixes configs/backfill/<목록>.json  # 텍스트 수정 목록만 미리보기(LLM 없음, --apply 로 백업 후 적용 — 영어 수정은 이 경로만, Actions 는 backfill-en.yml 입력 fixes·fixes_only)
 npm run db:fix-published-at         # 한국 매체 published_at +9h 오차 보정(기본 dry-run — 기사 페이지 표본 확인, --apply 로 백업 후 적용, 멱등)
 npm run db:reindex                  # FTS5 재색인
 npm run kpi                         # 최근 N일 KPI (기본 30) / npm run kpi -- baseline: 콘텐츠 개편 지표 / -- health: 소스 헬스
@@ -334,6 +337,7 @@ docker compose up --build   # http://localhost:8080/global-ai-news/ (/ 는 여�
 | `ADMIN_PASSWORD`                               | 운영자 인증 — **로컬 admin 전용**                                                                                                                 | 필수 (로컬 Admin 사용) |
 | `RECLASSIFY_MAX_COST_USD`                      | `db:reclassify` 예상 비용 상한 (기본 0.5)                                                                                                         | 선택                   |
 | `BACKFILL_MAX_COST_USD`                        | `db:backfill-en` 예상 비용 상한 (기본 1). Actions `backfill-en.yml` 은 같은 이름 `vars`, 배치 대기는 `vars.BACKFILL_BATCH_TIMEOUT_MIN`(기본 60분) | 선택                   |
+| `INDEXNOW_ENABLED`                             | Actions 저장소 변수(`vars`) 전용 — `1` 이면 `deploy.yml` 이 배포 뒤 IndexNow 알림(2026-11-06부터 `1`, 비우면 건너뜀). `.env` 에는 두지 않는다     | 선택                   |
 
 ## 데이터 모델
 
@@ -446,7 +450,7 @@ npx shadcn@latest add card dialog input
 - 화면 문구는 `src/lib/messages/<영역>.ts`(`defineMessages({ ko, en })`)에만 둔다 — 컴포넌트·뷰에 한글을 직접 쓰면 `noHardcodedHangul.test.ts`가 실패한다. 서버 컴포넌트는 `locale` prop, 클라이언트 컴포넌트는 `useLocale()`·`useMessages()`, 내부 링크는 `localePath(locale, …)`
 - 공개 페이지 무게(Phase 4-1): 모든 페이지에 반복되는 클라이언트 조각은 섬 하나로 묶는다(셸 = `ShellChrome`) — 클라이언트 컴포넌트마다 RSC 에 모듈 참조 행(약 270B)이 붙고, 서버 컴포넌트의 렌더 트리는 RSC 에 통째로 실린다. 반복 목록을 서버에서 그릴지 섬에 값으로 넘길지는 RSC 크기로 고른다(`RelatedStories`)
 - 기사 페이지 링크는 `ArticleLink`(일반 `<a>`, prefetch 없음 — `next/link`·`router` 로 기사에 가지 않는다) — 기사 `.txt` 는 빌드 후 지운다(`scripts/postbuild.ts`). `ArticleLink.test.tsx`가 `/article/` 내부 경로를 직접 만드는 코드를 막는다. 호 링크를 새로 그릴 때는 보관 호(`isArchivedIssueDate`)면 일반 `<a>`(`BASE_PATH` + 경로)로 — 보관 지면에는 `.txt` 가 없다
-- 영어판 페이로드(RSC·색인)에는 한글을 싣지 않는다 — 매체는 `englishSource`(labels.ts: name = 영문명, nameEn 키 없음, 칩 묶음·표시 그대로), 한국어 가공 텍스트·한글 태그·묶인 보도 한글 제목은 뗀다. 영어 페이지의 한국어는 `lang="ko"` 요소(원제 줄·`한국어` 전환 링크)뿐이고 `en:hangul-check`(deploy.yml)가 검사한다. 영어 JSON-LD 는 Phase 6 이라 영어 페이지에는 아직 없다
+- 영어판 페이로드(RSC·색인)에는 한글을 싣지 않는다 — 매체는 `englishSource`(labels.ts: name = 영문명, nameEn 키 없음, 칩 묶음·표시 그대로), 한국어 가공 텍스트·한글 태그·묶인 보도 한글 제목은 뗀다. 영어 페이지의 한국어는 `lang="ko"` 요소(원제 줄·`한국어` 전환 링크)뿐이고 `en:hangul-check`(deploy.yml)가 검사한다. 영어 JSON-LD(Phase 6)도 같은 규칙이고 `seo:check`가 필수 필드를 검사한다
 - 보관 지면(`src/lib/archivePage.ts`)은 Tailwind 유틸리티를 쓰지 않고 `@layer components` 클래스만 쓴다(globals.css 끝 "보관 지면" 블록) — `archivePage.test.ts`가 검사
 - 런타임 경로 상수는 `src/lib/paths.ts`, 설정 파일은 `configs/`에서 관리
 - DB 조회는 `src/lib/db.ts`를 통해 readonly로 접근

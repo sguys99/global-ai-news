@@ -2,12 +2,13 @@
 
 > 2026-11 이름 변경: Daily AI Brief → **AI Daybook**(한국어 표기 "AI 데이북").
 
-글로벌·한국의 AI/IT 뉴스·오픈소스·모델·논문을 **매일 1회 자동 수집**해 LLM으로 한국어 요약·분류·중요도 평가를 거쳐, 매일 발행되는 한 호(號)의 편집 지면으로 보여주는 토큰 비용을 최소화한 큐레이션 웹서비스입니다.
+글로벌·한국의 AI/IT 뉴스·오픈소스·모델·논문을 **매일 1회 자동 수집**해 LLM으로 한국어 요약·분류·중요도 평가를 거쳐, 매일 발행되는 한 호(號)의 편집 지면으로 보여주는 토큰 비용을 최소화한 큐레이션 웹서비스입니다. 같은 호를 영어로도 발행합니다(`/en/`, 2026-11-06 출시).
 
 운영비 ≈ 0을 목표로 **SQLite 파일 DB + GitHub Actions + GitHub Pages 정적 배포** 위에서 동작합니다. LLM이 하루치 후보에서 35건 이하만 골라 묶음으로 가공하고 Message Batches API(50% 할인)로 보내, 1회 수집 비용을 $0.1 상한 아래로 묶습니다.
 
 - 요구사항: [docs/PRD.md](docs/PRD.md) · 배포 전환 [docs/PRD-github-pages.md](docs/PRD-github-pages.md)
 - 개발 계획·진행 현황: [docs/WORK-PLAN.md](docs/WORK-PLAN.md) · 콘텐츠·1면 개편 [docs/contents-upgrade-plan.md](docs/contents-upgrade-plan.md)
+- 영어판: [docs/english-version-plan.md](docs/english-version-plan.md)
 - 디자인 토큰/원칙: [DESIGN.md](DESIGN.md)
 - 스택/컨벤션: [CLAUDE.md](CLAUDE.md)
 
@@ -18,7 +19,7 @@
         │  scripts/collect.ts
         ▼
   ① 수집(RSS/HN/GitHub/HF 논문·모델/arXiv) → ② dedup·trending·선별 풀(코드)
-  → ③ LLM 선별(≤35건) → 묶음 가공 → 재보도 검사 (Haiku, Batches API)
+  → ③ LLM 선별(≤35건) → 묶음 가공(한국어 + 영어) → 재보도 검사 (Haiku, Batches API)
   → ④ SQLite 저장 + collection_runs 기록
         │
         ▼
@@ -29,7 +30,9 @@
         ├─ /                 최신 호 지면 + 전체 기사 색인
         ├─ /edition/[date]   지난 호 고정 링크
         ├─ /article/[id]     상세
-        └─ /search           검색(빌드 시 만든 인덱스 + 브라우저 FlexSearch)
+        ├─ /search           검색(빌드 시 만든 인덱스 + 브라우저 FlexSearch)
+        ├─ /en/…             영어판(홈·호·기사·검색 — 영어 본문이 있는 기사만)
+        └─ /sitemap.xml · /feed.xml · /en/feed.xml   사이트맵 인덱스 · RSS
 ```
 
 핵심 설계: 수집·가공은 **GitHub Actions 에서만** 돌면서 `data/app.db` 를 커밋하고, 공개 사이트는 그 DB를 빌드타임에 **읽기 전용**으로 조회해 정적 파일로 굽습니다. `/admin`·`/api` 는 로컬 `npm run dev` 전용 운영 도구로, 배포 산출물(`out/`)에는 포함되지 않습니다.
@@ -40,6 +43,15 @@
 - **1면 약 11건:** 리드 1 · 서브 3 · 오늘의 브리핑 3(뉴스) + 오픈소스·논문 레이더 4(저장소·모델·논문), 사이드바에 지금 화제 5 · 이 호의 지면. 그 아래 분야별 섹션 밴드와 누적 전체 기사 색인이 이어집니다.
 - **분야 6개(LLM 분류):** LLM · 에이전트 · Physical AI · 오픈소스·도구 · 연구·논문 · 산업·정책. URL 키는 `llm|agent|physical|oss|research|industry`(`?category=physical`).
 - **형식 4개(소스 속성):** 뉴스 · 오픈소스(`REPO`) · 모델(`MODEL`) · 논문(`PAPER`). 뉴스가 아닌 기사에 형식 배지를 답니다.
+
+## 영어판
+
+2026-11-06 출시. 같은 호를 `https://sguys99.github.io/global-ai-news/en/` 아래에 영어로 냅니다(홈·호·기사·검색·90일 지난 보관 지면). 한국 매체 기사는 1면 밖에서 **Korea Desk** 밴드로 모으고 바이라인에 `KOREA` 를 붙입니다. 상단의 `EN` / `한국어` 링크로 같은 페이지의 상대 언어판으로 오갑니다.
+
+- **영어 생성** — 수집의 묶음 가공이 같은 호출에서 원문을 보고 영어 제목·요약을 함께 씁니다(한국어 번역이 아님, 규칙 [configs/prompts/english.md](configs/prompts/english.md)·용어집 [glossary.en.md](configs/prompts/glossary.en.md)). 코드 검사(한글·길이·원문에 없는 숫자/금액)에 걸린 기사는 영어만 비우고 한국어는 그대로 게재하며, 영어가 없는 기사는 영어판에 싣지 않습니다.
+- **SEO** — 페이지마다 자기 canonical + hreflang ko/en/x-default, `/sitemap.xml` 은 언어·연도별 조각을 묶은 사이트맵 인덱스, 영어 RSS `/en/feed.xml`, 영어 JSON-LD·공유 썸네일(`/og/en/`). 배포 때 `deploy.yml` 이 크기(`size:report`)·영어 페이지 한글 누출(`en:hangul-check`)·SEO 정합성(`seo:check`)을 검사해 실패하면 배포하지 않고, 저장소 변수 `INDEXNOW_ENABLED=1` 이면 배포 뒤 최신 호 URL 을 IndexNow 로 알립니다(2026-11-06부터 켬).
+- **`latest.json`** — 항목에 영어가 있으면 `titleEn`·`summaryEn` 이 함께 실립니다(없으면 키 없음, `version` 1 그대로 — [공지](docs/notices/latest-json-2026-11.md)).
+- **지난 기사·텍스트 수정** — 영어가 없는 지난 기사는 `npm run db:backfill-en`(기본 dry-run, `--apply` 로 백업 후 적용)으로 채웁니다. 검토해 고친 제목·요약은 [configs/backfill/](configs/backfill/) 의 수정 목록(`{id, field, from, to}`)으로 두고 `--fixes-only --fixes <목록>` 로 LLM 없이 반영합니다(영어 수정은 영어 검사를 통과해야 적용). Actions 에서는 [backfill-en.yml](.github/workflows/backfill-en.yml) 수동 실행(`mode`·`fixes`·`fixes_only` 입력)이 `app.db` 를 커밋하고 배포를 dispatch 합니다 — 아침 수집과 겹치지 않게 03:50~07:30 KST 의 apply 는 거부합니다.
 
 ## 수집 소스
 
@@ -143,7 +155,7 @@ GitHub `schedule` 은 정시 실행을 보장하지 않습니다. 이 저장소�
 **Repository → Settings → Secrets and variables → Actions** 에서 등록합니다.
 
 - Secrets: `ANTHROPIC_API_KEY`, `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, (선택) `GH_SEARCH_PAT`
-- Variables(모두 선택 — 비우면 코드 기본값): `LLM_MODEL`, `MAX_PICKS_PER_RUN`, `TRIAGE_POOL_SIZE`, `MAX_COST_USD_PER_RUN`, `LLM_USE_BATCH`, `BATCH_TIMEOUT_MIN`
+- Variables(모두 선택 — 비우면 코드 기본값): `LLM_MODEL`, `MAX_PICKS_PER_RUN`, `TRIAGE_POOL_SIZE`, `MAX_COST_USD_PER_RUN`, `LLM_USE_BATCH`, `BATCH_TIMEOUT_MIN`, (영어 백필) `BACKFILL_MAX_COST_USD`(기본 1)·`BACKFILL_BATCH_TIMEOUT_MIN`(기본 60), (배포) `INDEXNOW_ENABLED`(`1` 이면 배포 뒤 IndexNow 알림, 현재 `1`)
 
 > GitHub은 `GITHUB_` 으로 시작하는 Secret 이름을 금지합니다. Search용 PAT은 **`GH_SEARCH_PAT`** 시크릿으로 만들면 워크플로가 이를 `GITHUB_PAT` 환경변수로 매핑합니다.
 >
@@ -155,7 +167,8 @@ GitHub `schedule` 은 정시 실행을 보장하지 않습니다. 이 저장소�
 
 1. 저장소 **Settings → Pages → Source = "GitHub Actions"** 로 설정합니다.
 2. 트리거: `deploy/github-pages` 브랜치에 `data/app.db`·`configs/**`·`src/**`·`next.config.ts`·`package.json` 변경이 push 되거나, `collect.yml` 이 수집 후 직접 dispatch 할 때(빌트인 `GITHUB_TOKEN` 의 push 는 다른 워크플로를 트리거하지 못하기 때문), 또는 수동 `workflow_dispatch`.
-3. 빌드: Node 22 → `npm ci` → `npm run build`. `prebuild` 가 `initDb --existing`(스키마·sources 동기화, DB 가 없으면 실패) → `public/search-index/<언어>/`·`public/feed-index/<언어>/`(호 월별 조각 + `manifest.json`) → `public/latest.json` 을 만든 뒤 `next build` 가 정적 export(`out/`, `basePath` `/global-ai-news`)를 산출하고 Pages 에 올립니다.
+3. 빌드: Node 22 → `npm ci` → `npm run build`. `prebuild` 가 `initDb --existing`(스키마·sources 동기화, DB 가 없으면 실패) → `public/search-index/<언어>/`·`public/feed-index/<언어>/`(호 월별 조각 + `manifest.json`) → `public/latest.json` 을 만든 뒤 `next build` 가 정적 export(`out/`, `basePath` `/global-ai-news`)를 산출하고, `postbuild` 가 기사 RSC `.txt` 삭제·90일 지난 기사/호 보관 지면을 씁니다.
+4. 검사: `size:report --ci`(700MB 경고·950MB 실패) → `en:hangul-check --ci` → `seo:check --ci` 를 통과해야 Pages 에 올리고, `INDEXNOW_ENABLED=1` 이면 배포 뒤 IndexNow 알림을 보냅니다.
 
 `npm run start`(`next start`)는 정적 export 와 함께 쓸 수 없습니다. 로컬에서 산출물을 확인하려면 `out/` 을 `/global-ai-news` 서브경로로 서빙하세요.
 
@@ -190,23 +203,26 @@ PRD §9 목표:
 
 ## 스크립트
 
-| 명령                                    | 설명                                                                   |
-| --------------------------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`                           | 개발 서버(admin/api 포함)                                              |
-| `npm run build`                         | 정적 export(`out/`) — prebuild 로 검색 인덱스·latest.json 생성         |
-| `npm run db:init`                       | `data/app.db` 7개 테이블 생성 + sources.json 동기화                    |
-| `npm run db:reindex`                    | FTS5 인덱스 재색인                                                     |
-| `npm run db:reclassify`                 | 구 분야값 → 6개 키 LLM 재분류(기본 dry-run, `--apply` 로 백업 후 적용) |
-| `npm run collect`                       | 수집→선별·가공→재보도 검사→저장 배치 1회                               |
-| `npm run collect -- --dry-run`          | 수집→선별 풀까지만(비용·DB 변경 없음)                                  |
-| `npm run collect -- --no-save`          | LLM 단계까지 실행, DB 쓰기 없이 `data/eval/` 스냅숏                    |
-| `npm run triage:compare -- <스냅숏>`    | 같은 풀로 개편 전후 선별 비교                                          |
-| `npm run export-search-index`           | `public/search-index/<언어>/` 생성(prebuild 가 자동 실행)              |
-| `npm run export-feed-index`             | `public/feed-index/<언어>/`(홈 색인) 생성(prebuild 가 자동 실행)       |
-| `npm run export-latest`                 | `public/latest.json`(최근 3일 수집분, 외부 소비용) 생성                |
-| `npm run kpi`                           | 최근 N일 KPI 집계(기본 30), `-- baseline` 콘텐츠 개편 지표             |
-| `npm run lint` / `format` / `typecheck` | ESLint / Prettier / 타입체크                                           |
-| `npm test` / `test:watch`               | Vitest                                                                 |
+| 명령                                                    | 설명                                                                                      |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `npm run dev`                                           | 개발 서버(admin/api 포함)                                                                 |
+| `npm run build`                                         | 정적 export(`out/`) — prebuild 로 검색 인덱스·latest.json 생성, postbuild 로 보관 지면    |
+| `npm run db:init`                                       | `data/app.db` 7개 테이블 생성 + sources.json 동기화                                       |
+| `npm run db:reindex`                                    | FTS5 인덱스 재색인                                                                        |
+| `npm run db:reclassify`                                 | 구 분야값 → 6개 키 LLM 재분류(기본 dry-run, `--apply` 로 백업 후 적용)                    |
+| `npm run db:backfill-en`                                | 지난 기사 영어 백필(기본 dry-run, `--apply`), `--fixes-only --fixes <목록>` 텍스트 수정만 |
+| `npm run collect`                                       | 수집→선별·가공→재보도 검사→저장 배치 1회                                                  |
+| `npm run collect -- --dry-run`                          | 수집→선별 풀까지만(비용·DB 변경 없음)                                                     |
+| `npm run collect -- --no-save`                          | LLM 단계까지 실행, DB 쓰기 없이 `data/eval/` 스냅숏                                       |
+| `npm run triage:compare -- <스냅숏>`                    | 같은 풀로 개편 전후 선별 비교                                                             |
+| `npm run export-search-index`                           | `public/search-index/<언어>/` 생성(prebuild 가 자동 실행)                                 |
+| `npm run export-feed-index`                             | `public/feed-index/<언어>/`(홈 색인) 생성(prebuild 가 자동 실행)                          |
+| `npm run export-latest`                                 | `public/latest.json`(최근 3일 수집분, 외부 소비용, 영어 `titleEn`·`summaryEn` 선택) 생성  |
+| `npm run size:report` / `en:hangul-check` / `seo:check` | 산출물 크기 / 영어 한글 누출 / SEO 정합성 검사(`--ci` 는 deploy.yml)                      |
+| `npm run indexnow -- --dry-run`                         | IndexNow 로 보낼 URL·본문 확인(`--dry-run` 없이 돌리면 실제 전송)                         |
+| `npm run kpi`                                           | 최근 N일 KPI 집계(기본 30), `-- baseline` 콘텐츠 개편 지표                                |
+| `npm run lint` / `format` / `typecheck`                 | ESLint / Prettier / 타입체크                                                              |
+| `npm test` / `test:watch`                               | Vitest                                                                                    |
 
 ## 트러블슈팅
 
