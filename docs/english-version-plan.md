@@ -473,7 +473,9 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - [ ] **(추가) 보관 지면 영어판:** 90일 지난 영어 기사·호(`/en/article/[id]/`·`/en/edition/[date]/`)도 postbuild가 같은 보관 계획으로 라이트 지면을 쓴다(`src/lib/archivePage.ts`는 이미 `locale` 인자를 받는다). 영어 라우트의 `generateStaticParams`도 보관 대상을 빼고, postbuild 확인이 두 언어를 함께 본다.
 - [ ] 세 줄 요약 띠 영어판: 같은 줄 id의 `title_en`을 쓰고, 2줄 미만이면 숨긴다(한국어판과 같은 규칙).
 - [ ] 공통 요소 영어판: 헤더·모바일 상단 바·하단 탭 바·필터 시트·푸터 태그라인·누적 방문(`1,234 visits`)·공유 버튼·발행 지연 줄·404.
-- [ ] **Phase 3에서 넘어온 데이터 틈(3-4 코드 리뷰) — 영어 페이지를 열기 전에 먼저 막는다.** 빌드는 통과하고 화면만 비거나 한국어가 새는 함정이다.
+- [x] **Phase 3에서 넘어온 데이터 틈(3-4 코드 리뷰) — 영어 페이지를 열기 전에 먼저 막는다.** 빌드는 통과하고 화면만 비거나 한국어가 새는 함정이다. (**데이터 계층 2026-11-06 완료** `6c17366` — 테스트 1,364 → 1,389건, 한국어 색인 조각 `diff -r` 바이트 동일(1,277건), 영어 조각 1,262건·행에 한글 0. 아래 404·전환 링크 두 줄은 5-2 셸 작업·5-3에서 닫는다.)
+  - 추가한 것: 영어 경로 목록 `localeArticleIds`·`localeEditionDates`(보관 계획 `getArchivePlan().live*` 기준 — 한국어 라우트도 같은 함수로 바꿔 단일 출처), 영어 최신 호 `localeLatestEditionRef`, 영어 세 줄 요약 `localeBrief`(줄 = 그 기사 `title_en`, 2줄 미만이면 숨김), 영어 매체·태그 `sourceOptionsOf`·`activeTagsOf`(영어 기사만 세고 라틴 태그만), `toListCard(article, "en")` → `ListCard`(영어 필드·`nameEn`·`region`, 한국어 가공 필드는 빈 문자열), 영어 FlexSearch(`forward` + `latin:simple` — `latin:balance`는 "agent"·"robot" 같은 짧은 질의를 놓친다).
+  - 남은 것: 영어 페이로드의 매체 `name`(한국 매체 4곳)은 한글로 남는다 — 화면은 모두 `nameEn`을 쓰지만 5-4 한글 grep이 인라인 RSC를 보면 걸린다(허용 목록 또는 영어 페이로드에서 name = nameEn). 영어 JSON-LD는 Phase 6.
   - `src/views/data.ts` `localeArticles`의 en 예외를 `hasEnglish` 거르기로 바꾼다.
   - 목록 카드(`toListCard`, `src/lib/db.ts`)는 영어 필드를 뗀다 → 영어 1면·색인·검색이 빈 제목이 된다. `toListCard(article, locale)`로 en에서는 `titleEn`·`summaryEn`을 남기고 한국어 필드를 뗀다. `IndexCard`(`feed-index`)·`SearchIndexEntry`의 영어판도 같은 규칙으로 만든다.
   - 영어 상세에서 한국 매체의 원제(`titleOriginal`)·원문 발췌(`contentRaw`)·관련 보도 제목(`related_json`)이 한국어로 샌다(지금은 `<p lang="en">` 아래). 한글이 있으면 숨기거나 `Original article in Korean`으로 바꾸고, `lang`을 실제 언어로 맞춘다.
