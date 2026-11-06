@@ -1,6 +1,7 @@
 /**
  * 지난 기사 영어 백필(docs/english-version-plan.md Phase 2-1).
  * 실행: npm run db:backfill-en -- [--dry-run | --apply] [옵션]
+ *       npm run db:backfill-en -- [--dry-run | --apply] --fixes-only --fixes A.json [--fixes B.json …]  (수정 목록만)
  *
  * 영어판 이전에 게재된 기사(summary_ko 있음, title_en·summary_en 없음)에 영어 제목·요약을 만든다.
  *
@@ -12,10 +13,17 @@
  *    다시 보내지 않는다(LlmRunner directFallback=false) — 받은 것만 쓰고 나머지는 missing 으로 남긴다(`--ids` 로 재시도).
  * 4. 검사: 결과는 전부 가공과 같은 resolveEnglish(영어 품질 검사의 단일 자리)를 거친다. 기각되면 영어는 NULL 로 남고,
  *    한국어 숫자 경고는 집계만 한다.
- * 5. 한국어 숫자 수정(`--ko-fixes`): 검토된 수정 목록을 정확한 부분 문자열 치환으로 적용한다. 영어 입력을 만들기 전에
- *    메모리에서 먼저 고쳐 모델이 고친 한국어를 보고, --apply 면 영어와 같은 트랜잭션으로 쓴다.
- * 6. --apply 는 DB 를 data/app.db.bak-YYYYMMDD(KST)로 백업하고 스키마를 맞춘 뒤(ensureSchema — 영어 컬럼) 한 트랜잭션으로
- *    UPDATE 한다(title_en·summary_en, 수정 목록의 title_ko·summary_ko 만). FTS 는 articles_au 트리거가 행마다 맞춘다.
+ * 5. 텍스트 수정(`--fixes`, 옛 이름 `--ko-fixes`): 검토된 수정 목록(configs/backfill/*.json, `{id, field, from, to}`)을
+ *    정확한 부분 문자열 치환으로 적용한다. `from` 이 지금 값에 정확히 한 번 나와야 적용하고, `from` 이 없고 `to` 가
+ *    있으면 "이미 적용"(재실행 안전). 한국어 수정(title_ko·summary_ko)은 영어 입력을 만들기 전에 메모리에서 먼저 고쳐
+ *    모델이 고친 한국어를 보고, --apply 면 영어와 같은 트랜잭션으로 쓴다. 영어 수정(title_en·summary_en)은
+ *    `--fixes-only` 로만 받는다.
+ * 6. `--fixes-only`: 영어를 만들지 않고(대상 선택·LLM 호출·API 키 없음) 수정 목록만 적용한다. 영어가 바뀌는 기사는
+ *    수정 뒤 영어 제목·요약 전체를 checkEnglish(한글·길이·숫자 — 근거는 원문 제목 + 발췌)로 검사한다. 적용되지 않을
+ *    수정(원문 없음·여러 번 나옴·기사 없음/미게재)이나 검사 실패가 하나라도 있으면 dry-run·apply 모두 거부(exit 1,
+ *    아무것도 쓰지 않음) — 일부만 고친 DB 를 배포하지 않는다.
+ * 7. --apply 는 DB 를 data/app.db.bak-YYYYMMDD(KST)로 백업하고 스키마를 맞춘 뒤(ensureSchema — 영어 컬럼) 한 트랜잭션으로
+ *    UPDATE 한다(title_en·summary_en, 수정 목록이 바꾸는 필드 쌍만). FTS 는 articles_au 트리거가 행마다 맞춘다.
  *
  * 옵션
  *   --dry-run          (기본) LLM 호출 없이(API 키 불필요) 대상 수(형식·지역별)·예상 토큰·비용·용어집 통계·한국어 수정 미리보기.
@@ -29,15 +37,18 @@
  *   --max-cost USD     예상 비용 상한(기본 1, 환경변수 BACKFILL_MAX_COST_USD). 넘으면 시작하지 않는다.
  *   --report PATH      JSON 보고서(기본 data/eval/backfill-en-<시각>.json, git 제외).
  *   --summary-md PATH  GitHub Markdown 요약(Actions `$GITHUB_STEP_SUMMARY` 용).
- *   --ko-fixes PATH    한국어 숫자 수정 목록(configs/backfill/ko-number-fixes.json 형식).
+ *   --fixes PATH       텍스트 수정 목록(configs/backfill/ko-number-fixes.json 형식, 여러 번 줄 수 있다 — 준 순서대로).
+ *                      field 는 title_ko·summary_ko·title_en·summary_en. `--ko-fixes PATH` 는 옛 이름(같은 동작).
+ *   --fixes-only       영어 생성 없이 --fixes 만 적용(위 6). --ids·--limit·--since·--overwrite·--count-tokens 와 함께 못 쓴다.
  *   --count-tokens     (dry-run) ANTHROPIC_API_KEY 가 있으면 무료 count_tokens 로 요청마다 입력 토큰을 잰다.
  * 환경변수 LLM_MODEL·LLM_USE_BATCH·BATCH_TIMEOUT_MIN 은 수집과 같은 뜻이다(BATCH_TIMEOUT_MIN 기본만 60분 — 요청이 많다).
  *
  * 종료 코드(.github/workflows/backfill-en.yml 이 잡 상태로 쓴다)
  *   0  정상. dry-run 은 확인할 것(attentionOf)이 있어도 0 — 미리보기다. 영어 기각은 예상된 결과라 0.
- *   1  오류·거부 — 옵션 오류, 비용 상한 초과, API 키 없음 등. 호출 전 거부는 DB 를 쓰지 않고 보고서·요약만 남긴다.
+ *   1  오류·거부 — 옵션 오류, 비용 상한 초과, API 키 없음, --fixes-only 거부(dry-run 도) 등. 쓰기 전 거부는 DB 를
+ *      쓰지 않고 보고서·요약만 남긴다.
  *   2  (--apply) DB 는 썼지만 확인할 것이 있다 — 누락(배치 실패·시간 초과, `--ids` 로 재시도)이나
- *      적용되지 않은 한국어 수정(목록이 지금 DB 와 맞지 않음).
+ *      적용되지 않은 텍스트 수정(목록이 지금 DB 와 맞지 않음).
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -60,7 +71,7 @@ import {
 import { DB_PATH, EVAL_DIR, PROMPTS_DIR } from "../src/lib/paths";
 import type { RawItem } from "../src/lib/types";
 import { approxTokens, estimateCost, outputFormatTokens } from "./lib/cost";
-import type { EnglishRejectReason } from "./lib/englishCheck";
+import { checkEnglish, type EnglishRejectReason } from "./lib/englishCheck";
 import {
   articleFields,
   enrichEvidence,
@@ -276,27 +287,36 @@ export function loadRegionMap(): Map<string, Region | null> {
   }
 }
 
-// ── 한국어 숫자 수정 ────────────────────────────────────────────────────
+// ── 텍스트 수정 목록(--fixes) ─────────────────────────────────────────────
 
 export const KO_FIX_FIELDS = ["title_ko", "summary_ko"] as const;
-export type KoFixField = (typeof KO_FIX_FIELDS)[number];
+export const EN_FIX_FIELDS = ["title_en", "summary_en"] as const;
+export const FIX_FIELDS = [...KO_FIX_FIELDS, ...EN_FIX_FIELDS] as const;
+export type FixField = (typeof FIX_FIELDS)[number];
 
-/** 검토된 한국어 수정 1건 — configs/backfill/ko-number-fixes.json `fixes[]`. */
-export interface KoFix {
+const isEnglishField = (f: FixField) => (EN_FIX_FIELDS as readonly string[]).includes(f);
+
+/**
+ * 검토된 텍스트 수정 1건 — configs/backfill/*.json `fixes[]`(ko-number-fixes.json 형식). 한국어(title_ko·summary_ko)와
+ * 영어(title_en·summary_en) 모두 같은 모양이다.
+ */
+export interface TextFix {
   id: number;
-  field: KoFixField;
+  field: FixField;
   /** 지금 값에 정확히 한 번 나와야 하는 부분 문자열. */
   from: string;
   to: string;
   reason?: string;
+  /** 이 수정을 읽은 파일 이름(보고용, loadFixes 가 붙인다). */
+  file?: string;
 }
 
-const koFixFileSchema = z.object({
+const fixFileSchema = z.object({
   version: z.literal(1),
   fixes: z.array(
     z.object({
       id: z.number().int().positive(),
-      field: z.enum(KO_FIX_FIELDS),
+      field: z.enum(FIX_FIELDS),
       from: z.string().min(1),
       to: z.string(),
       reason: z.string().optional(),
@@ -305,33 +325,56 @@ const koFixFileSchema = z.object({
 });
 
 /** 수정 목록 JSON → 항목. 형식이 틀리면 throw(일부만 적용하지 않는다 — 사람이 고칠 파일이다). */
-export function parseKoFixes(json: unknown): KoFix[] {
-  const parsed = koFixFileSchema.safeParse(json);
+export function parseFixes(json: unknown): TextFix[] {
+  const parsed = fixFileSchema.safeParse(json);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     throw new Error(
-      `한국어 수정 목록 형식 오류: ${issue?.path.join(".") || "(최상위)"} — ${issue?.message ?? "알 수 없음"}`,
+      `수정 목록 형식 오류: ${issue?.path.join(".") || "(최상위)"} — ${issue?.message ?? "알 수 없음"}`,
     );
   }
   return parsed.data.fixes;
 }
 
-export function loadKoFixes(file: string): KoFix[] {
-  return parseKoFixes(JSON.parse(readFileSync(file, "utf-8")));
+/** 파일들을 차례로 읽어 한 목록으로(파일 순서·파일 안 순서 유지). 형식 오류는 파일 이름을 붙여 throw. */
+export function loadFixes(files: readonly string[]): TextFix[] {
+  return files.flatMap((file) => {
+    const name = path.basename(file);
+    try {
+      return parseFixes(JSON.parse(readFileSync(file, "utf-8"))).map((f) => ({ ...f, file: name }));
+    } catch (err) {
+      throw new Error(`${name}: ${(err as Error).message}`);
+    }
+  });
+}
+
+/**
+ * 영어 수정(title_en·summary_en)은 --fixes-only 로만 받는다. 영어 생성과 섞으면 같은 기사의 영어를 두 길로 쓰게 되고,
+ * 수정 대상은 영어가 이미 있는 기사라 생성 대상(영어 없음)과 겹칠 일도 없다.
+ */
+export function assertFixesMode(fixes: readonly TextFix[], fixesOnly: boolean): void {
+  if (fixesOnly) return;
+  const en = fixes.filter((f) => isEnglishField(f.field));
+  if (en.length) {
+    throw new Error(
+      `영어 수정 ${en.length}건(${[...new Set(en.map((f) => f.file ?? `#${f.id}`))].join(", ")})은 --fixes-only 로만 적용합니다`,
+    );
+  }
 }
 
 /**
  * 수정 1건의 결과.
  * - applied: `from` 이 정확히 한 번 나와 치환한다.
- * - already: `from` 은 없고 `to` 가 있다(이미 적용됨 — 재실행). 경고 아님.
+ * - already: 이미 적용됨(재실행) — `from` 은 없고 `to` 가 있다. `to` 가 `from` 을 품은 덧붙이기 수정
+ *   (`weights.` → `weights. The system…`)은 `to` 밖에 `from` 이 더 없으면 already. 경고 아님.
  * - stale: `from` 이 없다(기사가 바뀌었거나 목록이 틀림). 건너뛴다.
  * - ambiguous: `from` 이 두 번 이상 나온다. 건너뛴다.
  * - missing-article: 기사가 없거나 게재되지 않았다.
  */
-export type KoFixStatus = "applied" | "already" | "stale" | "ambiguous" | "missing-article";
+export type FixStatus = "applied" | "already" | "stale" | "ambiguous" | "missing-article";
 
-export interface KoFixResult extends KoFix {
-  status: KoFixStatus;
+export interface FixResult extends TextFix {
+  status: FixStatus;
   /** 지금 값에서 `from` 이 나온 횟수. */
   occurrences: number;
   /** applied 일 때 치환 앞뒤 필드 값. */
@@ -339,11 +382,26 @@ export interface KoFixResult extends KoFix {
   after?: string;
 }
 
-export interface KoFixPlan {
-  results: KoFixResult[];
-  /** 기사 id → 고친 한국어(바뀐 기사만). 두 필드 모두 담는다. */
-  updated: Map<number, { titleKo: string; summaryKo: string }>;
+/** 기사 1건의 수정 뒤 텍스트(네 필드 모두). 영어가 없는 기사는 null. */
+export interface FixedTexts {
+  titleKo: string;
+  summaryKo: string;
+  titleEn: string | null;
+  summaryEn: string | null;
 }
+
+export interface FixPlan {
+  results: FixResult[];
+  /** 기사 id → 수정 뒤 텍스트와 바뀐 필드(적용되는 수정이 있는 기사만). */
+  updated: Map<number, { texts: FixedTexts; changed: Set<FixField> }>;
+}
+
+const FIELD_KEY: Record<FixField, keyof FixedTexts> = {
+  title_ko: "titleKo",
+  summary_ko: "summaryKo",
+  title_en: "titleEn",
+  summary_en: "summaryEn",
+};
 
 function countOccurrences(text: string, sub: string): number {
   let n = 0;
@@ -352,44 +410,123 @@ function countOccurrences(text: string, sub: string): number {
 }
 
 /** 수정 목록을 지금 DB 값에 차례로 대어 본다(같은 필드의 여러 수정은 앞 수정이 반영된 값에). DB 는 쓰지 않는다. */
-export function planKoFixes(db: DatabaseType, fixes: readonly KoFix[]): KoFixPlan {
+export function planFixes(db: DatabaseType, fixes: readonly TextFix[]): FixPlan {
   const ids = [...new Set(fixes.map((f) => f.id))];
-  const current = new Map<number, { titleKo: string; summaryKo: string }>();
+  const current = new Map<number, FixedTexts>();
   if (ids.length) {
+    const art = columns(db, "articles");
     const rows = db
       .prepare(
-        `SELECT id, title_ko, summary_ko FROM articles
+        `SELECT id, title_ko, summary_ko,
+                ${art.has("title_en") ? "title_en" : "NULL"} AS title_en,
+                ${art.has("summary_en") ? "summary_en" : "NULL"} AS summary_en
+           FROM articles
           WHERE summary_ko IS NOT NULL AND id IN (${ids.map(() => "?").join(", ")})`,
       )
-      .all(...ids) as { id: number; title_ko: string | null; summary_ko: string }[];
-    for (const r of rows) current.set(r.id, { titleKo: r.title_ko ?? "", summaryKo: r.summary_ko });
+      .all(...ids) as {
+      id: number;
+      title_ko: string | null;
+      summary_ko: string;
+      title_en: string | null;
+      summary_en: string | null;
+    }[];
+    for (const r of rows) {
+      current.set(r.id, {
+        titleKo: r.title_ko ?? "",
+        summaryKo: r.summary_ko,
+        titleEn: r.title_en,
+        summaryEn: r.summary_en,
+      });
+    }
   }
-  const updated = new Map<number, { titleKo: string; summaryKo: string }>();
-  const results = fixes.map((fix): KoFixResult => {
-    const base = updated.get(fix.id) ?? current.get(fix.id);
+  const updated: FixPlan["updated"] = new Map();
+  const results = fixes.map((fix): FixResult => {
+    const base = updated.get(fix.id)?.texts ?? current.get(fix.id);
     if (!base) return { ...fix, status: "missing-article", occurrences: 0 };
-    const key = fix.field === "title_ko" ? "titleKo" : "summaryKo";
-    const value = base[key];
+    const key = FIELD_KEY[fix.field];
+    const value = base[key] ?? "";
     const occurrences = countOccurrences(value, fix.from);
+    // 이미 적용됨: `to` 가 있고, `to` 안에 든 것을 빼면 `from` 이 남지 않는다(덧붙이기 수정의 재실행 포함).
+    if (fix.to !== "" && value.includes(fix.to)) {
+      const inside = countOccurrences(value, fix.to) * countOccurrences(fix.to, fix.from);
+      if (occurrences - inside <= 0) return { ...fix, status: "already", occurrences };
+    }
     if (occurrences === 1) {
       const after = value.replace(fix.from, () => fix.to);
-      updated.set(fix.id, { ...base, [key]: after });
+      const changed = new Set(updated.get(fix.id)?.changed ?? []);
+      changed.add(fix.field);
+      updated.set(fix.id, { texts: { ...base, [key]: after }, changed });
       return { ...fix, status: "applied", occurrences, before: value, after };
     }
     if (occurrences > 1) return { ...fix, status: "ambiguous", occurrences };
-    const already = fix.to !== "" && value.includes(fix.to);
-    return { ...fix, status: already ? "already" : "stale", occurrences };
+    return { ...fix, status: "stale", occurrences };
   });
   return { results, updated };
 }
 
-/** 대상 행에 고친 한국어를 덧씌운다(모델 입력·한국어 숫자 경고가 고친 값을 보게). */
-export function overlayKoFixes(rows: BackfillRow[], plan: KoFixPlan): BackfillRow[] {
+/** 대상 행에 고친 한국어를 덧씌운다(모델 입력·한국어 숫자 경고가 고친 값을 보게). 영어는 덧씌우지 않는다. */
+export function overlayKoFixes(rows: BackfillRow[], plan: FixPlan): BackfillRow[] {
   return rows.map((r) => {
     const fixed = plan.updated.get(r.id);
-    return fixed ? { ...r, ...fixed } : r;
+    return fixed ? { ...r, titleKo: fixed.texts.titleKo, summaryKo: fixed.texts.summaryKo } : r;
   });
 }
+
+/** 영어 수정 뒤 영어 품질 검사 결과 1건(--fixes-only). */
+export interface EnglishFixCheck {
+  id: number;
+  ok: boolean;
+  reason?: EnglishRejectReason;
+  detail?: string[];
+  titleEn: string;
+  summaryEn: string;
+}
+
+/**
+ * 영어 필드가 바뀌는 기사마다 수정 뒤 영어 제목·요약 전체를 checkEnglish(수집·백필과 같은 검사 — 한글·길이·숫자)로
+ * 확인한다. 숫자 근거는 수집과 같은 원문 제목 + 발췌(evidenceOf)다. id 순.
+ */
+export function checkFixedEnglish(db: DatabaseType, plan: FixPlan): EnglishFixCheck[] {
+  const ids = [...plan.updated]
+    .filter(([, u]) => [...u.changed].some(isEnglishField))
+    .map(([id]) => id)
+    .sort((a, b) => a - b);
+  if (ids.length === 0) return [];
+  const rows = new Map(
+    readRows(db, [`a.id IN (${ids.map(() => "?").join(", ")})`], ids).map((r) => [r.id, r]),
+  );
+  return ids.map((id) => {
+    const { titleEn, summaryEn } = plan.updated.get(id)!.texts;
+    const row = rows.get(id)!;
+    const result = checkEnglish({ titleEn, summaryEn }, evidenceOf(row));
+    return {
+      id,
+      ok: result.ok,
+      ...(result.ok ? {} : { reason: result.reason, detail: result.detail }),
+      titleEn: titleEn ?? "",
+      summaryEn: summaryEn ?? "",
+    };
+  });
+}
+
+/** 한국어가 바뀌는 기사의 고친 한국어 숫자 경고(--fixes-only, 검토용 — 쓰기를 막지 않는다). */
+export function fixedKoreanWarnings(
+  db: DatabaseType,
+  plan: FixPlan,
+): { id: number; numbers: string[] }[] {
+  const ids = [...plan.updated]
+    .filter(([, u]) => [...u.changed].some((f) => !isEnglishField(f)))
+    .map(([id]) => id);
+  if (ids.length === 0) return [];
+  const rows = readRows(db, [`a.id IN (${ids.map(() => "?").join(", ")})`], ids).map(
+    stripPublished,
+  );
+  return koreanWarningsOf(overlayKoFixes(rows, plan));
+}
+
+/** 수정 중 적용되지 않은 것(이미 적용된 것은 제외 — 재실행). */
+export const skippedFixes = (fixes: readonly FixResult[]) =>
+  fixes.filter((f) => f.status !== "applied" && f.status !== "already");
 
 // ── 요청 ────────────────────────────────────────────────────────────────
 
@@ -747,30 +884,38 @@ export function checkOutputs(
 export interface ApplyInput {
   /** 기사 id → 쓸 영어(검사 통과분). */
   english: ReadonlyMap<number, EnglishFields>;
-  /** 기사 id → 고친 한국어(planKoFixes.updated). */
-  koFixes?: ReadonlyMap<number, { titleKo: string; summaryKo: string }>;
+  /** 텍스트 수정(planFixes.updated) — 바뀐 필드 쌍(한국어 title_ko·summary_ko / 영어 title_en·summary_en)만 쓴다. */
+  fixes?: FixPlan["updated"];
 }
 
 /**
- * 한 트랜잭션으로 영어(title_en·summary_en)와 한국어 수정(title_ko·summary_ko)만 UPDATE 한다. 다른 컬럼은 건드리지 않는다.
- * 쓴 행 수(영어·한국어)를 돌려준다. 영어 컬럼이 없는 DB 는 먼저 ensureSchema 해야 한다.
+ * 한 트랜잭션으로 영어(title_en·summary_en)와 텍스트 수정만 UPDATE 한다. 다른 컬럼은 건드리지 않는다.
+ * 쓴 행 수(생성 영어·한국어 수정·영어 수정)를 돌려준다. 영어 컬럼이 없는 DB 는 먼저 ensureSchema 해야 한다.
+ * FTS 는 articles_au 트리거가 행마다 맞춘다(색인은 한국어·원문뿐이라 영어 UPDATE 는 같은 값으로 다시 넣는다).
  */
 export function applyBackfill(
   db: DatabaseType,
-  { english, koFixes = new Map() }: ApplyInput,
-): { english: number; korean: number } {
+  { english, fixes = new Map() }: ApplyInput,
+): { english: number; korean: number; englishFixed: number } {
   const setEn = db.prepare("UPDATE articles SET title_en = ?, summary_en = ? WHERE id = ?");
   const setKo = db.prepare("UPDATE articles SET title_ko = ?, summary_ko = ? WHERE id = ?");
   let en = 0;
   let ko = 0;
+  let enFixed = 0;
   db.transaction(() => {
-    for (const [id, f] of koFixes) ko += setKo.run(f.titleKo, f.summaryKo, id).changes;
+    for (const [id, { texts, changed }] of fixes) {
+      const fields = [...changed];
+      if (fields.some((f) => !isEnglishField(f)))
+        ko += setKo.run(texts.titleKo, texts.summaryKo, id).changes;
+      if (fields.some(isEnglishField))
+        enFixed += setEn.run(texts.titleEn, texts.summaryEn, id).changes;
+    }
     for (const [id, f] of english) {
       if (!f.titleEn || !f.summaryEn) continue;
       en += setEn.run(f.titleEn, f.summaryEn, id).changes;
     }
   })();
-  return { english: en, korean: ko };
+  return { english: en, korean: ko, englishFixed: enFixed };
 }
 
 /** 게재 기사 영어 보유율(한국 매체 / 해외). 영어 컬럼이 없으면 0. */
@@ -810,7 +955,10 @@ export interface BackfillReport {
     overwrite: boolean;
     chunk: number;
     maxCostUsd: number;
-    koFixes?: string;
+    /** --fixes·--ko-fixes 파일(순서대로). */
+    fixes?: string[];
+    /** --fixes-only: 영어 생성 없이 수정 목록만. */
+    fixesOnly?: boolean;
   };
   targets: {
     total: number;
@@ -830,11 +978,16 @@ export interface BackfillReport {
   };
   articles: ArticleOutcome[];
   koreanWarnings: { id: number; numbers: string[] }[];
-  koFixes: KoFixResult[];
+  fixes: FixResult[];
+  /** --fixes-only: 영어가 바뀌는 기사의 수정 뒤 영어 검사. */
+  englishChecks?: EnglishFixCheck[];
   coverage: { kr: Coverage; other: Coverage };
   usage?: LlmUsage;
   notes: string[];
-  /** --apply 가 호출 전에 멈춘 사유(비용 상한·API 키 없음). 이때 DB 는 쓰지 않았다. */
+  /**
+   * 쓰기 전에 멈춘 사유 — --apply 의 비용 상한·API 키 없음, --fixes-only 의 거부(건너뛸 수정·영어 검사 실패,
+   * dry-run 도). 이때 DB 는 쓰지 않았다.
+   */
   aborted?: string;
 }
 
@@ -897,7 +1050,7 @@ const REJECT_LABELS: Record<RejectReason, string> = {
   "check-failed": "검사 실패",
 };
 
-const KO_FIX_LABELS: Record<KoFixStatus, string> = {
+const FIX_LABELS: Record<FixStatus, string> = {
   applied: "적용",
   already: "이미 적용",
   stale: "건너뜀(원문 없음)",
@@ -909,9 +1062,35 @@ const pct = (n: number, d: number) => (d ? `${((n / d) * 100).toFixed(1)}%` : "-
 const usd = (n: number) => `$${n.toFixed(4)}`;
 const short = (s: string, n = 70) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
-/** 한국어 수정 중 적용되지 않은 것(이미 적용된 것은 제외 — 재실행). */
-const skippedKoFixes = (r: BackfillReport) =>
-  r.koFixes.filter((f) => f.status !== "applied" && f.status !== "already");
+/** dry-run·거부된 실행은 쓰지 않았다 — "적용"이 아니라 "적용 예정". */
+const fixLabel = (r: BackfillReport, status: FixStatus) =>
+  status === "applied" && (r.mode !== "apply" || r.aborted) ? "적용 예정" : FIX_LABELS[status];
+
+/** 상태별 건수 `적용 예정 3 · 이미 적용 1`. */
+const fixCounts = (r: BackfillReport) =>
+  (Object.keys(FIX_LABELS) as FixStatus[])
+    .map((status) => [status, r.fixes.filter((f) => f.status === status).length] as const)
+    .filter(([, n]) => n > 0)
+    .map(([status, n]) => `${fixLabel(r, status)} ${n}`)
+    .join(" · ");
+
+const failedEnglishChecks = (r: BackfillReport) => (r.englishChecks ?? []).filter((c) => !c.ok);
+
+const checkLine = (c: EnglishFixCheck) =>
+  `#${c.id} ${REJECT_LABELS[c.reason as RejectReason] ?? c.reason}: ${(c.detail ?? []).join(", ")}`;
+
+/**
+ * --fixes-only 의 거부 사유: 적용되지 않을 수정(원문 없음·여러 번·기사 없음/미게재)과 영어 검사 실패. 하나라도 있으면
+ * 아무것도 쓰지 않는다(dry-run 도 exit 1).
+ */
+export function fixesOnlyBlockers(r: Pick<BackfillReport, "fixes" | "englishChecks">): string[] {
+  const out: string[] = [];
+  const skipped = skippedFixes(r.fixes);
+  if (skipped.length) out.push(`적용되지 않을 수정 ${skipped.length}건`);
+  const failed = (r.englishChecks ?? []).filter((c) => !c.ok);
+  if (failed.length) out.push(`영어 검사 실패 ${failed.length}건`);
+  return out;
+}
 
 /**
  * 사람이 확인할 것 — Markdown 요약 머리에 띄우고, --apply 면 종료 코드 2(exitCodeOf).
@@ -926,11 +1105,14 @@ export function attentionOf(r: BackfillReport): string[] {
     );
   if (r.totals?.missing)
     out.push(`영어 누락 ${r.totals.missing}건(결과 없음) — 아래 재시도 명령으로 다시 돌리세요`);
-  const skipped = skippedKoFixes(r);
+  const skipped = skippedFixes(r.fixes);
   if (skipped.length)
     out.push(
-      `한국어 수정 ${skipped.length}건 건너뜀(${skipped.map((f) => `#${f.id} ${KO_FIX_LABELS[f.status]}`).join(", ")}) — 수정 목록이 지금 DB 와 맞지 않습니다`,
+      `텍스트 수정 ${skipped.length}건 건너뜀(${skipped.map((f) => `#${f.id} ${f.field} ${FIX_LABELS[f.status]}`).join(", ")}) — 수정 목록이 지금 DB 와 맞지 않습니다`,
     );
+  const failed = failedEnglishChecks(r);
+  if (failed.length)
+    out.push(`수정 뒤 영어 검사 실패 ${failed.length}건(${failed.map(checkLine).join(" / ")})`);
   const notFound = r.targets.skippedIds.filter((s) => s.reason !== "has-english");
   if (notFound.length)
     out.push(`--ids 중 게재 기사가 아닌 것 ${notFound.map((s) => `#${s.id}`).join(" ")}`);
@@ -950,35 +1132,55 @@ export function formatConsoleReport(r: BackfillReport): string {
   const t = r.targets;
   const row = (label: string, value: string) => lines.push(`  ${padDisplay(label, 18)} ${value}`);
 
-  lines.push("대상");
-  row("게재 기사 대상", `${t.total}건 (영어 있음 건너뜀 ${t.alreadyEnglish}건)`);
-  row("형식", FORMATS.map((f) => `${FORMAT_LABELS[f]} ${t.byFormat[f] ?? 0}`).join(" · "));
-  row("지역", `${REGION_BADGES.kr} ${t.byRegion.kr} · 해외 ${t.byRegion.other}`);
-  if (t.skippedIds.length) {
-    row("--ids 건너뜀", t.skippedIds.map((s) => `#${s.id}(${s.reason})`).join(" "));
+  if (r.options.fixesOnly) {
+    lines.push("수정 목록만 (--fixes-only — 영어 생성·LLM 호출 없음)");
+    row("파일", (r.options.fixes ?? []).map((f) => path.basename(f)).join(", "));
+  } else {
+    lines.push("대상");
+    row("게재 기사 대상", `${t.total}건 (영어 있음 건너뜀 ${t.alreadyEnglish}건)`);
+    row("형식", FORMATS.map((f) => `${FORMAT_LABELS[f]} ${t.byFormat[f] ?? 0}`).join(" · "));
+    row("지역", `${REGION_BADGES.kr} ${t.byRegion.kr} · 해외 ${t.byRegion.other}`);
+    if (t.skippedIds.length) {
+      row("--ids 건너뜀", t.skippedIds.map((s) => `#${s.id}(${s.reason})`).join(" "));
+    }
+
+    lines.push("", "요청·비용");
+    const e = r.estimate;
+    row(
+      "요청",
+      `${e.requests}건 (묶음 ${r.options.chunk}건, ${r.batch ? "배치 50%" : "일반 호출"})`,
+    );
+    row(
+      "예상 토큰",
+      `입력 ${e.inputTokens.toLocaleString()}${e.measured ? "(count_tokens)" : "(근사)"} · 출력 ${e.outputTokens.toLocaleString()}`,
+    );
+    row("예상 비용", `${usd(e.usd)} (상한 $${r.options.maxCostUsd})`);
+    const g = r.glossary;
+    row(
+      "용어집",
+      `블록 ${g.withBlock}/${g.requests}요청 · 항목 ${g.entries}개(요청당 최대 ${g.maxEntries})`,
+    );
   }
 
-  lines.push("", "요청·비용");
-  const e = r.estimate;
-  row("요청", `${e.requests}건 (묶음 ${r.options.chunk}건, ${r.batch ? "배치 50%" : "일반 호출"})`);
-  row(
-    "예상 토큰",
-    `입력 ${e.inputTokens.toLocaleString()}${e.measured ? "(count_tokens)" : "(근사)"} · 출력 ${e.outputTokens.toLocaleString()}`,
-  );
-  row("예상 비용", `${usd(e.usd)} (상한 $${r.options.maxCostUsd})`);
-  const g = r.glossary;
-  row(
-    "용어집",
-    `블록 ${g.withBlock}/${g.requests}요청 · 항목 ${g.entries}개(요청당 최대 ${g.maxEntries})`,
-  );
-
-  if (r.koFixes.length) {
-    lines.push("", `한국어 수정 (${r.koFixes.length}건)`);
-    for (const f of r.koFixes) {
+  if (r.fixes.length) {
+    lines.push("", `텍스트 수정 (${r.fixes.length}건 — ${fixCounts(r)})`);
+    for (const f of r.fixes) {
       lines.push(
-        `  #${f.id} ${f.field} ${KO_FIX_LABELS[f.status]}: «${f.from}» → «${f.to}»` +
+        `  #${f.id} ${f.field} ${fixLabel(r, f.status)}${f.file ? ` [${f.file}]` : ""}: «${f.from}» → «${f.to}»` +
           (f.reason ? ` — ${f.reason}` : ""),
       );
+    }
+  }
+
+  if (r.englishChecks?.length) {
+    const failed = failedEnglishChecks(r).length;
+    lines.push(
+      "",
+      `수정 뒤 영어 검사 (${r.englishChecks.length}건 — 통과 ${r.englishChecks.length - failed} · 실패 ${failed})`,
+    );
+    for (const c of r.englishChecks) {
+      lines.push(`  ${c.ok ? "✓" : "✗"} ${c.ok ? `#${c.id}` : checkLine(c)}`);
+      lines.push(`      title_en   ${c.titleEn}`, `      summary_en ${c.summaryEn}`);
     }
   }
 
@@ -1062,17 +1264,24 @@ const mdCell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
 export function formatMarkdownSummary(r: BackfillReport): string {
   const t = r.targets;
   const lines: string[] = [];
+  const fixesOnly = Boolean(r.options.fixesOnly);
+  const what = fixesOnly ? "텍스트 수정" : "영어 백필";
   const title = r.aborted
-    ? "영어 백필 — 시작하지 않음"
+    ? `${what} — ${fixesOnly ? "거부(쓰지 않음)" : "시작하지 않음"}`
     : r.mode === "apply"
-      ? "영어 백필 결과"
-      : "영어 백필 미리보기 (dry-run)";
+      ? `${what} 결과`
+      : `${what} 미리보기 (dry-run)`;
   lines.push(`## ${title}`, "");
 
   const cost = r.usage
     ? `실제 **${usd(r.usage.costUsd)}** · 예상 ${usd(r.estimate.usd)}`
     : `예상 **${usd(r.estimate.usd)}**`;
-  if (r.totals) {
+  if (fixesOnly) {
+    const checks = r.englishChecks ?? [];
+    lines.push(
+      `> 수정 **${r.fixes.length}**건 (${fixCounts(r) || "없음"}) · 기사 ${new Set(r.fixes.map((f) => f.id)).size}건 · 영어 검사 통과 ${checks.length - failedEnglishChecks(r).length}/${checks.length} · LLM 호출 없음`,
+    );
+  } else if (r.totals) {
     const x = r.totals;
     const k = Object.values(x.rejected).reduce((a, b) => a + b, 0);
     lines.push(
@@ -1089,6 +1298,8 @@ export function formatMarkdownSummary(r: BackfillReport): string {
   if (attention.length) {
     lines.push("**확인 필요**", "", ...attention.map((a) => `- ${mdCell(a)}`), "");
   }
+
+  if (fixesOnly) return `${[...lines, ...fixesMarkdown(r)].join("\n").trimEnd()}\n`;
 
   lines.push("| | 대상 | 영어 저장 | 보유율(게재 기사 전체) |", "|---|---:|---:|---:|");
   const byRegion = (kr: boolean) =>
@@ -1145,23 +1356,37 @@ export function formatMarkdownSummary(r: BackfillReport): string {
       "",
     );
   }
-  if (r.koFixes.length) {
-    // dry-run·거부된 실행은 쓰지 않았다 — "적용"이 아니라 "적용 예정".
-    const label = (s: KoFixStatus) =>
-      s === "applied" && (r.mode !== "apply" || r.aborted) ? "적용 예정" : KO_FIX_LABELS[s];
-    const counts = (Object.keys(KO_FIX_LABELS) as KoFixStatus[])
-      .map((s) => [s, r.koFixes.filter((f) => f.status === s).length] as const)
-      .filter(([, n]) => n > 0)
-      .map(([s, n]) => `${label(s)} ${n}`)
-      .join(" · ");
+  lines.push(...fixesMarkdown(r));
+  return `${lines.join("\n").trimEnd()}\n`;
+}
+
+/** 텍스트 수정·수정 뒤 영어 검사·한국어 숫자 경고(Markdown, 두 모드 공용). */
+function fixesMarkdown(r: BackfillReport): string[] {
+  const lines: string[] = [];
+  if (r.fixes.length) {
     lines.push(
       ...idList(
-        `한국어 수정 ${r.koFixes.length}건 — ${counts}`,
-        r.koFixes.map(
+        `텍스트 수정 ${r.fixes.length}건 — ${fixCounts(r)}`,
+        r.fixes.map(
           (f) =>
-            `#${f.id} \`${f.field}\` ${label(f.status)}: «${mdCell(f.from)}» → «${mdCell(f.to)}»`,
+            `#${f.id} \`${f.field}\` ${fixLabel(r, f.status)}: «${mdCell(f.from)}» → «${mdCell(f.to)}»`,
         ),
         10,
+        false,
+      ),
+    );
+  }
+  const checks = r.englishChecks ?? [];
+  if (checks.length) {
+    const failed = failedEnglishChecks(r);
+    lines.push(
+      ...idList(
+        `수정 뒤 영어 검사 ${checks.length}건 — 통과 ${checks.length - failed.length} · 실패 ${failed.length}`,
+        checks.map(
+          (c) =>
+            `${c.ok ? "✓" : "✗"} ${mdCell(c.ok ? `#${c.id}` : checkLine(c))} — ${mdCell(c.titleEn)}`,
+        ),
+        failed.length ? checks.length : 0,
         false,
       ),
     );
@@ -1176,7 +1401,7 @@ export function formatMarkdownSummary(r: BackfillReport): string {
       ),
     );
   }
-  return `${lines.join("\n").trimEnd()}\n`;
+  return lines;
 }
 
 /** data/eval/backfill-en-<시각>.json. */
@@ -1202,7 +1427,9 @@ export interface CliArgs {
   maxCost: number;
   report?: string;
   summaryMd?: string;
-  koFixes?: string;
+  /** --fixes·--ko-fixes 파일(준 순서대로, 절대 경로). */
+  fixes: string[];
+  fixesOnly: boolean;
   countTokens: boolean;
 }
 
@@ -1213,6 +1440,8 @@ export function parseArgs(argv: string[]): CliArgs {
     db: DB_PATH,
     chunk: DEFAULT_CHUNK_SIZE,
     maxCost: envNonNegativeNumber("BACKFILL_MAX_COST_USD", DEFAULT_MAX_COST_USD),
+    fixes: [],
+    fixesOnly: false,
     countTokens: false,
   };
   let dryRun = false;
@@ -1273,8 +1502,12 @@ export function parseArgs(argv: string[]): CliArgs {
       case "--summary-md":
         args.summaryMd = path.resolve(value());
         break;
-      case "--ko-fixes":
-        args.koFixes = path.resolve(value());
+      case "--fixes":
+      case "--ko-fixes": // 옛 이름 — 같은 동작(한국어·영어 필드 모두 받는다)
+        args.fixes.push(path.resolve(value()));
+        break;
+      case "--fixes-only":
+        args.fixesOnly = true;
         break;
       case "--max-cost": {
         const v = value();
@@ -1290,6 +1523,18 @@ export function parseArgs(argv: string[]): CliArgs {
   }
   if (args.apply && dryRun) throw new Error("--apply 와 --dry-run 은 함께 쓸 수 없습니다");
   if (args.overwrite && !args.ids) throw new Error("--overwrite 는 --ids 와 함께만 씁니다");
+  if (args.fixesOnly) {
+    if (args.fixes.length === 0) throw new Error("--fixes-only 는 --fixes PATH 가 필요합니다");
+    const selection = [
+      args.ids && "--ids",
+      args.limit && "--limit",
+      args.since && "--since",
+      args.overwrite && "--overwrite",
+      args.countTokens && "--count-tokens",
+    ].filter(Boolean);
+    if (selection.length)
+      throw new Error(`--fixes-only 는 영어를 만들지 않아 ${selection.join(" ")} 를 받지 않습니다`);
+  }
   return args;
 }
 
@@ -1326,20 +1571,25 @@ async function main(): Promise<number> {
       (args.limit ? ` --limit ${args.limit}` : "") +
       (args.ids ? ` --ids ${args.ids.join(",")}` : "") +
       (args.overwrite ? " --overwrite" : "") +
-      (args.koFixes ? ` --ko-fixes ${args.koFixes}` : ""),
+      args.fixes.map((f) => ` --fixes ${f}`).join("") +
+      (args.fixesOnly ? " --fixes-only" : ""),
   );
 
   const db = new Database(args.db, { fileMustExist: true, readonly: !args.apply });
   try {
-    const fixes = args.koFixes ? loadKoFixes(args.koFixes) : [];
-    const fixPlan = planKoFixes(db, fixes);
-    const selection = selectTargets(db, {
-      since: args.since,
-      limit: args.limit,
-      ids: args.ids,
-      overwrite: args.overwrite,
-      regionOf,
-    });
+    const fixes = loadFixes(args.fixes);
+    assertFixesMode(fixes, args.fixesOnly);
+    const fixPlan = planFixes(db, fixes);
+    // --fixes-only 는 영어를 만들지 않는다 — 대상 0건(요청·비용 0).
+    const selection: TargetSelection = args.fixesOnly
+      ? { rows: [], skippedIds: [], alreadyEnglish: 0 }
+      : selectTargets(db, {
+          since: args.since,
+          limit: args.limit,
+          ids: args.ids,
+          overwrite: args.overwrite,
+          regionOf,
+        });
     // 고친 한국어를 모델이 보게(입력·한국어 숫자 경고 모두) 요청을 만들기 전에 덧씌운다.
     const rows = overlayKoFixes(selection.rows, fixPlan);
     const chunks = buildRequests(rows, args.chunk, { model });
@@ -1367,14 +1617,15 @@ async function main(): Promise<number> {
         overwrite: args.overwrite,
         chunk: args.chunk,
         maxCostUsd: args.maxCost,
-        koFixes: args.koFixes,
+        ...(args.fixes.length ? { fixes: args.fixes } : {}),
+        ...(args.fixesOnly ? { fixesOnly: true } : {}),
       },
       targets: targetStats(selection),
       glossary: glossaryStats(chunks),
       estimate,
       articles: [],
       koreanWarnings: [],
-      koFixes: fixPlan.results,
+      fixes: fixPlan.results,
       coverage: englishCoverage(db, regionOf),
       notes: [],
     };
@@ -1389,6 +1640,9 @@ async function main(): Promise<number> {
         log(`Markdown 요약 ${args.summaryMd}`);
       }
     };
+
+    // await: finally 의 db.close() 가 먼저 돌지 않게.
+    if (args.fixesOnly) return await runFixesOnly(db, args, report, fixPlan, finish, log, regionOf);
 
     if (!args.apply) {
       // dry-run 의 한국어 숫자 경고: 고친 한국어 기준(영어 없이 같은 대조만).
@@ -1451,7 +1705,7 @@ async function main(): Promise<number> {
     await db.backup(backup);
     log(`백업 ${backup}`);
     ensureSchema(db);
-    const written = applyBackfill(db, { english: checked.english, koFixes: fixPlan.updated });
+    const written = applyBackfill(db, { english: checked.english, fixes: fixPlan.updated });
     log(`영어 ${written.english}건 · 한국어 수정 ${written.korean}건 UPDATE`);
     report.coverage = englishCoverage(db, regionOf);
     finish();
@@ -1461,6 +1715,49 @@ async function main(): Promise<number> {
   } finally {
     db.close();
   }
+}
+
+/**
+ * --fixes-only: 수정 목록만 적용한다(영어 생성·LLM 호출·API 키 없음). 적용되지 않을 수정이나 수정 뒤 영어 검사 실패가
+ * 하나라도 있으면 dry-run·apply 모두 아무것도 쓰지 않고 exit 1. 통과하면 apply 는 백업 → 한 트랜잭션.
+ */
+async function runFixesOnly(
+  db: DatabaseType,
+  args: CliArgs,
+  report: BackfillReport,
+  plan: FixPlan,
+  finish: () => void,
+  log: (msg: string) => void,
+  regionOf: ReadonlyMap<string, Region | null>,
+): Promise<number> {
+  report.englishChecks = checkFixedEnglish(db, plan);
+  report.koreanWarnings = fixedKoreanWarnings(db, plan);
+  const blockers = fixesOnlyBlockers(report);
+  if (blockers.length) {
+    report.aborted = `텍스트 수정 거부 — ${blockers.join(" · ")}: 아무것도 쓰지 않습니다(수정 목록을 고치세요)`;
+    finish();
+    log(report.aborted);
+    return exitCodeOf(report);
+  }
+  if (!args.apply) {
+    finish();
+    log(`dry-run — DB 쓰기 없음. 적용 예정 기사 ${plan.updated.size}건. 반영하려면 --apply`);
+    return exitCodeOf(report);
+  }
+  if (plan.updated.size === 0) {
+    finish();
+    log("쓸 것이 없습니다(수정이 모두 이미 적용됨).");
+    return exitCodeOf(report);
+  }
+  const backup = backupPath(args.db);
+  await db.backup(backup);
+  log(`백업 ${backup}`);
+  ensureSchema(db);
+  const written = applyBackfill(db, { english: new Map(), fixes: plan.updated });
+  log(`한국어 수정 ${written.korean}건 · 영어 수정 ${written.englishFixed}건 UPDATE`);
+  report.coverage = englishCoverage(db, regionOf);
+  finish();
+  return exitCodeOf(report);
 }
 
 /** 대상 행의 한국어 숫자 경고(영어 없이 — dry-run 용). resolveEnglish 와 같은 근거·같은 대조. */

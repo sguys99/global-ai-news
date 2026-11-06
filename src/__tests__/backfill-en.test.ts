@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type Anthropic from "@anthropic-ai/sdk";
 import Database, { type Database as DatabaseType } from "better-sqlite3";
@@ -20,17 +20,22 @@ import {
   kstDayStart,
   koreanWarningsOf,
   mergeOutputs,
+  assertFixesMode,
+  checkFixedEnglish,
+  fixedKoreanWarnings,
+  fixesOnlyBlockers,
+  loadFixes,
   overlayKoFixes,
   parseArgs,
-  parseKoFixes,
-  planKoFixes,
+  parseFixes,
+  planFixes,
   selectTargets,
   tallyOutcomes,
   targetStats,
   type BackfillChunk,
   type BackfillReport,
   type BackfillRow,
-  type KoFix,
+  type TextFix,
 } from "../../scripts/backfill-en";
 import { MAX_INPUT_CHARS } from "../../scripts/lib/enrich";
 import { parseGlossary } from "../../scripts/lib/glossary";
@@ -369,7 +374,7 @@ describe("mergeOutputs → checkOutputs", () => {
     expect(before).toEqual([1, 2]);
     expect(koreanWarningsOf(rows).map((w) => w.id)).toEqual([1, 2]);
 
-    const plan = planKoFixes(db, [
+    const plan = planFixes(db, [
       { id: 2, field: "title_ko", from: "200억 원", to: "20억 원" },
       { id: 2, field: "summary_ko", from: "200억 원", to: "20억 원" },
     ]);
@@ -402,15 +407,15 @@ describe("mergeOutputs → checkOutputs", () => {
 
 describe("applyBackfill", () => {
   it("영어·한국어 수정만 한 트랜잭션으로 쓰고 다른 컬럼과 FTS 는 맞게 둔다", () => {
-    const plan = planKoFixes(db, [{ id: 2, field: "summary_ko", from: "200억 원", to: "20억 원" }]);
+    const plan = planFixes(db, [{ id: 2, field: "summary_ko", from: "200억 원", to: "20억 원" }]);
     const written = applyBackfill(db, {
       english: new Map([
         [1, { titleEn: GOOD_1.title_en, summaryEn: GOOD_1.summary_en }],
         [5, { titleEn: null, summaryEn: null }], // 기각분은 쓰지 않는다
       ]),
-      koFixes: plan.updated,
+      fixes: plan.updated,
     });
-    expect(written).toEqual({ english: 1, korean: 1 });
+    expect(written).toEqual({ english: 1, korean: 1, englishFixed: 0 });
     const rows = db
       .prepare(
         "SELECT id, title_ko, summary_ko, title_en, category, importance FROM articles ORDER BY id",
@@ -439,22 +444,44 @@ describe("applyBackfill", () => {
   });
 });
 
-describe("한국어 숫자 수정(--ko-fixes)", () => {
-  it("파일 형식을 검사한다", () => {
+describe("텍스트 수정(--fixes)", () => {
+  it("파일 형식을 검사한다(한국어·영어 필드)", () => {
     const fix = { id: 1, field: "summary_ko", from: "900억 달러", to: "9,000억 달러", reason: "x" };
-    expect(parseKoFixes({ version: 1, fixes: [fix] })).toEqual([fix]);
-    expect(() => parseKoFixes({ version: 2, fixes: [] })).toThrow(/형식 오류/);
-    expect(() => parseKoFixes({ version: 1, fixes: [{ ...fix, field: "title_en" }] })).toThrow(
+    expect(parseFixes({ version: 1, fixes: [fix] })).toEqual([fix]);
+    expect(parseFixes({ version: 1, fixes: [{ ...fix, field: "title_en" }] })[0].field).toBe(
+      "title_en",
+    );
+    expect(() => parseFixes({ version: 2, fixes: [] })).toThrow(/형식 오류/);
+    expect(() => parseFixes({ version: 1, fixes: [{ ...fix, field: "category" }] })).toThrow(
       /fixes\.0\.field/,
     );
-    expect(() => parseKoFixes({ version: 1, fixes: [{ ...fix, from: "" }] })).toThrow();
+    expect(() => parseFixes({ version: 1, fixes: [{ ...fix, from: "" }] })).toThrow();
+  });
+
+  it("저장소의 수정 목록 파일은 모두 형식이 맞다", () => {
+    const dir = path.join(process.cwd(), "configs/backfill");
+    const files = readdirSync(dir)
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => path.join(dir, f));
+    expect(files.length).toBeGreaterThan(0);
+    const fixes = loadFixes(files);
+    expect(fixes.length).toBeGreaterThan(0);
+    expect(fixes.every((f) => f.file?.endsWith(".json"))).toBe(true);
+  });
+
+  it("영어 수정은 --fixes-only 로만 받는다", () => {
+    const en: TextFix[] = [{ id: 1, field: "title_en", from: "a", to: "b", file: "en.json" }];
+    const ko: TextFix[] = [{ id: 1, field: "title_ko", from: "a", to: "b" }];
+    expect(() => assertFixesMode(en, false)).toThrow(/영어 수정 1건\(en\.json\).*--fixes-only/);
+    expect(() => assertFixesMode(en, true)).not.toThrow();
+    expect(() => assertFixesMode(ko, false)).not.toThrow();
   });
 
   it("정확히 한 번 나오면 적용, 없으면 stale, 여러 번이면 ambiguous, 이미 적용·기사 없음을 가린다", () => {
     db.prepare("UPDATE articles SET summary_ko = ? WHERE id = 1").run(
       "900억 달러를 쓰고, 다시 900억 달러를 쓴다.",
     );
-    const fixes: KoFix[] = [
+    const fixes: TextFix[] = [
       { id: 2, field: "title_ko", from: "200억 원", to: "20억 원" },
       { id: 1, field: "summary_ko", from: "900억 달러", to: "9,000억 달러" },
       { id: 1, field: "title_ko", from: "1조 달러", to: "x" },
@@ -464,7 +491,7 @@ describe("한국어 숫자 수정(--ko-fixes)", () => {
       { id: 4, field: "summary_ko", from: "x", to: "y" }, // 미게재
       { id: 99, field: "summary_ko", from: "x", to: "y" },
     ];
-    const plan = planKoFixes(db, fixes);
+    const plan = planFixes(db, fixes);
     expect(plan.results.map((r) => [r.id, r.status, r.occurrences])).toEqual([
       [2, "applied", 1],
       [1, "ambiguous", 2],
@@ -479,10 +506,13 @@ describe("한국어 숫자 수정(--ko-fixes)", () => {
       before: SEED[1].titleKo,
       after: "포스코DX, AI 스타트업 인핸스에 20억 원 투자",
     });
-    expect(plan.updated.get(5)).toEqual({
+    expect(plan.updated.get(5)?.texts).toEqual({
       titleKo: SEED[4].titleKo,
       summaryKo: "Git worktree 관리용 CLI 도구다.",
+      titleEn: null,
+      summaryEn: null,
     });
+    expect([...plan.updated.get(5)!.changed]).toEqual(["summary_ko"]);
     expect([...plan.updated.keys()]).toEqual([2, 5]);
     // DB 는 쓰지 않는다.
     expect(
@@ -492,10 +522,113 @@ describe("한국어 숫자 수정(--ko-fixes)", () => {
   });
 
   it("치환은 함수형이라 `$` 가 패턴으로 해석되지 않는다", () => {
-    const plan = planKoFixes(db, [
-      { id: 1, field: "title_ko", from: "900억 달러", to: "$900B($&)" },
+    const plan = planFixes(db, [{ id: 1, field: "title_ko", from: "900억 달러", to: "$900B($&)" }]);
+    expect(plan.updated.get(1)?.texts.titleKo).toBe("Anthropic, IPO 앞두고 AI 투자 $900B($&) 공약");
+  });
+
+  it("`to` 가 `from` 을 품은 덧붙이기 수정도 재실행하면 이미 적용", () => {
+    const fix: TextFix = {
+      id: 3,
+      field: "summary_en",
+      from: "enrich step.",
+      to: "enrich step. It has limits.",
+    };
+    const first = planFixes(db, [fix]);
+    expect(first.results[0].status).toBe("applied");
+    const after = first.updated.get(3)!.texts.summaryEn!;
+    expect(after).toBe(
+      "It already has an English summary written by the enrich step. It has limits.",
+    );
+    db.prepare("UPDATE articles SET summary_en = ? WHERE id = 3").run(after);
+    expect(planFixes(db, [fix]).results[0]).toMatchObject({ status: "already", occurrences: 1 });
+    // `to` 밖에 `from` 이 또 있으면 이미 적용으로 보지 않는다(여러 번 → 건너뜀).
+    db.prepare("UPDATE articles SET summary_en = ? WHERE id = 3").run(`${after} enrich step.`);
+    expect(planFixes(db, [fix]).results[0].status).toBe("ambiguous");
+  });
+});
+
+describe("--fixes-only", () => {
+  const EN_FIXES: TextFix[] = [
+    { id: 3, field: "title_en", from: "already has English", to: "already carries English" },
+    { id: 2, field: "title_ko", from: "200억 원", to: "20억 원" },
+  ];
+
+  it("영어가 바뀌는 기사만 수정 뒤 영어 전체를 checkEnglish 로 검사한다", () => {
+    const plan = planFixes(db, EN_FIXES);
+    expect(checkFixedEnglish(db, plan)).toEqual([
+      {
+        id: 3,
+        ok: true,
+        titleEn: "An article that already carries English",
+        summaryEn: SEED[2].summaryEn,
+      },
     ]);
-    expect(plan.updated.get(1)?.titleKo).toBe("Anthropic, IPO 앞두고 AI 투자 $900B($&) 공약");
+    // 근거(원문 제목 + 발췌)에 없는 숫자·길이 위반은 실패.
+    const bad = planFixes(db, [
+      { id: 3, field: "title_en", from: "An article", to: "An article with 42 extra words" },
+      { id: 3, field: "summary_en", from: "It already has", to: "It has" },
+    ]);
+    const [check] = checkFixedEnglish(db, bad);
+    expect(check).toMatchObject({ id: 3, ok: false, reason: "number", detail: ["42"] });
+    const short = planFixes(db, [{ id: 3, field: "title_en", from: "An article that ", to: "" }]);
+    expect(checkFixedEnglish(db, short)[0]).toMatchObject({ ok: false, reason: "length" });
+  });
+
+  it("고친 한국어의 숫자 경고(검토용) — 고친 값 기준", () => {
+    // 제목만 고치면 요약의 200억이 남는다.
+    expect(fixedKoreanWarnings(db, planFixes(db, EN_FIXES))).toEqual([
+      { id: 2, numbers: ["200억"] },
+    ]);
+    const both = planFixes(db, [
+      ...EN_FIXES,
+      { id: 2, field: "summary_ko", from: "200억 원", to: "20억 원" },
+    ]);
+    expect(fixedKoreanWarnings(db, both)).toEqual([]);
+  });
+
+  it("건너뛸 수정·영어 검사 실패가 하나라도 있으면 거부 사유를 낸다", () => {
+    const plan = planFixes(db, EN_FIXES);
+    expect(
+      fixesOnlyBlockers({ fixes: plan.results, englishChecks: checkFixedEnglish(db, plan) }),
+    ).toEqual([]);
+    const stale = planFixes(db, [
+      ...EN_FIXES,
+      { id: 4, field: "title_en", from: "x", to: "y" }, // 미게재
+      { id: 3, field: "summary_en", from: "없는 문구", to: "zzz" },
+    ]);
+    expect(fixesOnlyBlockers({ fixes: stale.results })).toEqual(["적용되지 않을 수정 2건"]);
+    expect(
+      fixesOnlyBlockers({
+        fixes: plan.results,
+        englishChecks: [{ id: 3, ok: false, reason: "hangul", titleEn: "", summaryEn: "" }],
+      }),
+    ).toEqual(["영어 검사 실패 1건"]);
+  });
+
+  it("applyBackfill 은 바뀐 필드 쌍만 한 트랜잭션으로 쓰고 FTS 를 맞게 둔다", () => {
+    const plan = planFixes(db, EN_FIXES);
+    expect(applyBackfill(db, { english: new Map(), fixes: plan.updated })).toEqual({
+      english: 0,
+      korean: 1,
+      englishFixed: 1,
+    });
+    const rows = db
+      .prepare(
+        "SELECT id, title_ko, summary_ko, title_en, summary_en FROM articles WHERE id IN (2, 3)",
+      )
+      .all() as Record<string, string | null>[];
+    expect(rows[0]).toMatchObject({
+      title_ko: "포스코DX, AI 스타트업 인핸스에 20억 원 투자",
+      title_en: null,
+    });
+    expect(rows[1]).toMatchObject({
+      title_ko: SEED[2].titleKo,
+      title_en: "An article that already carries English",
+      summary_en: SEED[2].summaryEn,
+    });
+    db.exec("INSERT INTO articles_fts(articles_fts) VALUES ('integrity-check')");
+    // 다시 대면 모두 이미 적용.
+    expect(planFixes(db, EN_FIXES).results.map((r) => r.status)).toEqual(["already", "already"]);
   });
 });
 
@@ -521,7 +654,29 @@ describe("parseArgs", () => {
       chunk: 15,
       maxCost: 0.4,
     });
-    expect(parseArgs([])).toMatchObject({ apply: false, chunk: 20, maxCost: 1 });
+    expect(parseArgs([])).toMatchObject({ apply: false, chunk: 20, maxCost: 1, fixes: [] });
+  });
+
+  it("--fixes 는 여러 번, --ko-fixes 는 같은 목록에, --fixes-only 는 선택 옵션과 함께 못 쓴다", () => {
+    const a = parseArgs([
+      "--fixes-only",
+      "--fixes",
+      "a.json",
+      "--ko-fixes",
+      "b.json",
+      "--fixes",
+      "c.json",
+    ]);
+    expect(a.fixesOnly).toBe(true);
+    expect(a.fixes.map((f) => path.basename(f))).toEqual(["a.json", "b.json", "c.json"]);
+    expect(path.isAbsolute(a.fixes[0])).toBe(true);
+    expect(() => parseArgs(["--fixes-only"])).toThrow(/--fixes PATH/);
+    expect(() => parseArgs(["--fixes-only", "--fixes", "a.json", "--ids", "1"])).toThrow(
+      /--fixes-only.*--ids/,
+    );
+    expect(() => parseArgs(["--fixes-only", "--fixes", "a.json", "--count-tokens"])).toThrow(
+      /--count-tokens/,
+    );
   });
 
   it("잘못된 조합·값은 거부한다", () => {
@@ -557,8 +712,7 @@ describe("보고", () => {
       totals: { ...tallyOutcomes(checked.outcomes), invalidItems: 0, failedRequests: 0 },
       articles: checked.outcomes,
       koreanWarnings: checked.koreanWarnings,
-      koFixes: planKoFixes(db, [{ id: 2, field: "title_ko", from: "200억 원", to: "20억 원" }])
-        .results,
+      fixes: planFixes(db, [{ id: 2, field: "title_ko", from: "200억 원", to: "20억 원" }]).results,
       coverage: englishCoverage(db),
       usage: { calls: 1, inputTokens: 100, outputTokens: 10, costUsd: 0.0012 },
       notes: checked.notes,
@@ -613,9 +767,11 @@ describe("보고", () => {
 
     const stale = {
       ...onlyRejected,
-      koFixes: planKoFixes(db, [{ id: 1, field: "title_ko", from: "없는 문구", to: "x" }]).results,
+      fixes: planFixes(db, [{ id: 1, field: "title_ko", from: "없는 문구", to: "x" }]).results,
     };
-    expect(attentionOf(stale)[0]).toContain("한국어 수정 1건 건너뜀(#1 건너뜀(원문 없음))");
+    expect(attentionOf(stale)[0]).toContain(
+      "텍스트 수정 1건 건너뜀(#1 title_ko 건너뜀(원문 없음))",
+    );
     expect(exitCodeOf(stale)).toBe(2);
   });
 
@@ -632,7 +788,7 @@ describe("보고", () => {
     expect(exitCodeOf(r)).toBe(0);
     const md = formatMarkdownSummary(r);
     expect(md).toMatch(/^## 영어 백필 미리보기 \(dry-run\)/);
-    expect(md).toContain("**한국어 수정 1건 — 적용 예정 1**");
+    expect(md).toContain("**텍스트 수정 1건 — 적용 예정 1**");
     expect(md).toContain("#2 `title_ko` 적용 예정: «200억 원» → «20억 원»");
     const many = { ...r, koreanWarnings: [{ id: 9, numbers: ["3"] }] };
     expect(formatMarkdownSummary(many)).toContain(
@@ -653,5 +809,75 @@ describe("보고", () => {
     expect(md).toMatch(/^## 영어 백필 — 시작하지 않음/);
     expect(md).toContain("**확인 필요**\n\n- 예상 비용 $2 이 상한 $1 을 넘습니다");
     expect(md).toContain("적용 예정: «200억 원»");
+  });
+});
+
+describe("보고 — --fixes-only", () => {
+  function fixesReport(fixes: TextFix[], mode: "dry-run" | "apply" = "dry-run"): BackfillReport {
+    const plan = planFixes(db, fixes);
+    const r: BackfillReport = {
+      version: 1,
+      mode,
+      createdAt: "2026-11-06T00:00:00.000Z",
+      db: "x",
+      model: "claude-haiku-4-5",
+      batch: true,
+      options: {
+        overwrite: false,
+        chunk: 20,
+        maxCostUsd: 1,
+        fixes: ["/repo/configs/backfill/a.json"],
+        fixesOnly: true,
+      },
+      targets: targetStats({ rows: [], skippedIds: [], alreadyEnglish: 0 }),
+      glossary: glossaryStats([]),
+      estimate: estimateRequestsCost([], "claude-haiku-4-5", true),
+      articles: [],
+      koreanWarnings: [],
+      fixes: plan.results,
+      englishChecks: checkFixedEnglish(db, plan),
+      coverage: englishCoverage(db),
+      notes: [],
+    };
+    const blockers = fixesOnlyBlockers(r);
+    if (blockers.length) r.aborted = `텍스트 수정 거부 — ${blockers.join(" · ")}`;
+    return r;
+  }
+  const GOOD: TextFix[] = [
+    { id: 3, field: "title_en", from: "already has English", to: "already carries English" },
+  ];
+
+  it("통과하면 dry-run·apply 모두 exit 0, 대상·비용 대신 수정·영어 검사를 보인다", () => {
+    const r = fixesReport(GOOD);
+    expect(exitCodeOf(r)).toBe(0);
+    const md = formatMarkdownSummary(r);
+    expect(md).toMatch(
+      /^## 텍스트 수정 미리보기 \(dry-run\)\n\n> 수정 \*\*1\*\*건 \(적용 예정 1\)/,
+    );
+    expect(md).toContain("영어 검사 통과 1/1");
+    expect(md).not.toContain("| 대상 |");
+    const text = formatConsoleReport(r);
+    expect(text).toContain("수정 목록만 (--fixes-only");
+    expect(text).toContain("a.json");
+    expect(text).not.toContain("게재 기사 대상");
+    expect(text).toContain("✓ #3");
+    expect(text).toContain("title_en   An article that already carries English");
+    expect(formatMarkdownSummary(fixesReport(GOOD, "apply"))).toMatch(/^## 텍스트 수정 결과/);
+  });
+
+  it("건너뛸 수정이나 영어 검사 실패가 있으면 dry-run 도 exit 1(거부)", () => {
+    const stale = fixesReport([...GOOD, { id: 3, field: "summary_en", from: "없음", to: "zzz" }]);
+    expect(stale.aborted).toContain("적용되지 않을 수정 1건");
+    expect(exitCodeOf(stale)).toBe(1);
+    expect(formatMarkdownSummary(stale)).toMatch(/^## 텍스트 수정 — 거부\(쓰지 않음\)/);
+    expect(attentionOf(stale).join("\n")).toContain("#3 summary_en 건너뜀(원문 없음)");
+
+    const failed = fixesReport([
+      { id: 3, field: "title_en", from: "An article", to: "An article 42" },
+    ]);
+    expect(failed.aborted).toContain("영어 검사 실패 1건");
+    expect(exitCodeOf(failed)).toBe(1);
+    expect(attentionOf(failed).join("\n")).toContain("수정 뒤 영어 검사 실패 1건(#3 숫자: 42)");
+    expect(formatConsoleReport(failed)).toContain("✗ #3 숫자: 42");
   });
 });

@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "fixes": [
+    {
+      "id": 1368,
+      "field": "title_ko",
+      "from": "278조 파라미터",
+      "to": "2.78조 파라미터",
+      "reason": "원문 2.78-trillion-parameter → 2.78조(100배 오류, 7-6)"
+    },
+    {
+      "id": 1368,
+      "field": "summary_ko",
+      "from": "278조 파라미터",
+      "to": "2.78조 파라미터",
+      "reason": "원문 2.78-trillion-parameter → 2.78조(100배 오류, 7-6)"
+    },
+    {
+      "id": 1383,
+      "field": "title_ko",
+      "from": "52억 달러",
+      "to": "54억 달러",
+      "reason": "원제 $5.4B → 54억 달러(7-6)"
+    },
+    {
+      "id": 1398,
+      "field": "summary_ko",
+      "from": "65억 파라미터",
+      "to": "650억 파라미터",
+      "reason": "원문 65B dense → 650억(10배 오류, 7-6)"
+    }
+  ]
+}

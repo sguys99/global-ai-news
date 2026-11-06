@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "fixes": [
+    {
+      "id": 994,
+      "field": "title_en",
+      "from": "22 times faster than Sora 2.5",
+      "to": "22 times faster than Seedance 2.5",
+      "reason": "원문 '시댄스 2.5'(ByteDance Seedance 2.5)를 Sora 로 바꿔 씀 — 고유명사 오류(7-7)"
+    },
+    {
+      "id": 951,
+      "field": "summary_en",
+      "from": "Daewon C&T, and Orcest Roccloud",
+      "to": "Daewon CTS, and OKESTRO Cloud",
+      "reason": "대원씨티에스 = Daewon CTS, 오케스트로 클라우드 = OKESTRO Cloud(공식 표기 OKESTRO — okestro.com, 원문 한 곳의 띄어쓰기 오타 '오케스트 로클라우드'를 따라 지어낸 이름) — 고유명사 오류(7-7)"
+    },
+    {
+      "id": 1165,
+      "field": "title_en",
+      "from": "Xenon launches",
+      "to": "GenON launches",
+      "reason": "제논의 영문 사명은 GenON(genon.ai) — 용어집 '제논 → Xenon' 오류를 따라감(7-7)"
+    },
+    {
+      "id": 1165,
+      "field": "summary_en",
+      "from": "Xenon released",
+      "to": "GenON released",
+      "reason": "제논 = GenON(7-7)"
+    },
+    {
+      "id": 1165,
+      "field": "summary_en",
+      "from": "Xenon's GenOS",
+      "to": "GenON's GenOS",
+      "reason": "제논 = GenON(7-7)"
+    },
+    {
+      "id": 696,
+      "field": "summary_en",
+      "from": "Patch Regeneration Inverse (PRI)",
+      "to": "Patch Rebirth Inversion (PRI)",
+      "reason": "기사 사진 설명·논문명(Patch Rebirth: Fast and Transferable Model Inversion of Vision Transformers)의 영문명 — 발췌에 영문이 없어 모델이 지어냄(7-7)"
+    },
+    {
+      "id": 1142,
+      "field": "title_en",
+      "from": "Meta expands Muse with real-time voice chat and avatar sharing",
+      "to": "Meta adds real-time voice chat to Muse, prepares avatar sharing",
+      "reason": "아바타 공유는 '준비'(원제 '준비도') — 제목이 출시로 읽힘(7-7 사소)"
+    },
+    {
+      "id": 1276,
+      "field": "summary_en",
+      "from": "Google Deepmind released",
+      "to": "Google DeepMind released",
+      "reason": "공식 표기 DeepMind(7-7 사소)"
+    },
+    {
+      "id": 1263,
+      "field": "title_en",
+      "from": "Google Deepmind creates",
+      "to": "Google DeepMind creates",
+      "reason": "공식 표기 DeepMind — 원문(The Decoder) 표기를 따라감(7-7 패턴 스캔)"
+    },
+    {
+      "id": 1263,
+      "field": "summary_en",
+      "from": "Google Deepmind and",
+      "to": "Google DeepMind and",
+      "reason": "공식 표기 DeepMind(7-7 패턴 스캔)"
+    },
+    {
+      "id": 990,
+      "field": "title_en",
+      "from": "Deepmind founder",
+      "to": "DeepMind founder",
+      "reason": "공식 표기 DeepMind — 원문(The Decoder) 표기를 따라감(7-7 패턴 스캔)"
+    },
+    {
+      "id": 990,
+      "field": "summary_en",
+      "from": "Google Deepmind,",
+      "to": "Google DeepMind,",
+      "reason": "공식 표기 DeepMind(7-7 패턴 스캔)"
+    },
+    {
+      "id": 749,
+      "field": "summary_en",
+      "from": "Built on Zhipu AI's GLM-5.2 in Nvidia 4-bit floating-point format, it speeds up responses to Korean queries.",
+      "to": "It is used alongside Zhipu AI's GLM-5.2 running in Nvidia's 4-bit floating-point format to speed up responses to Korean queries.",
+      "reason": "드래프트 모델은 GLM-5.2 를 NVFP4 로 돌릴 때 '함께 활용'한다 — 'Built on'(기반 모델)은 관계를 바꿈(7-7 사소)"
+    },
+    {
+      "id": 809,
+      "field": "title_en",
+      "from": "reasoning infrastructure",
+      "to": "inference infrastructure",
+      "reason": "추론 인프라 = inference infrastructure(요약은 inference) — 제목만 reasoning 으로 오역(7-7 사소)"
+    },
+    {
+      "id": 809,
+      "field": "summary_en",
+      "from": "Experts emphasize that the robot's AI brain alone is insufficient; inference infrastructure is equally vital to enable agent-level capabilities.",
+      "to": "FriendliAI's CEO said that in the agent era, inference infrastructure matters as much as the frontier models that serve as robot brains.",
+      "reason": "발언자는 프렌들리AI 대표 1명('experts' 일반화), 'to enable agent-level capabilities'는 원문에 없는 인과(7-7 사소)"
+    },
+    {
+      "id": 1094,
+      "field": "title_en",
+      "from": "AI safety emerges as key determinant of industry competitiveness",
+      "to": "Roundtable panelists call AI safety a key determinant of industry competitiveness",
+      "reason": "좌담회 참석자의 주장을 사실로 단정 — 귀속 추가(7-7 사소)"
+    },
+    {
+      "id": 1094,
+      "field": "summary_en",
+      "from": "South Korea must strategize AI safety as innovation accelerator rather than development constraint.",
+      "to": "Panelists argued that South Korea should treat AI safety as a driver of innovation rather than a brake on development.",
+      "reason": "의견을 귀속 없이 당위로 씀(7-7 사소)"
+    },
+    {
+      "id": 146,
+      "field": "summary_en",
+      "from": "at Microsoft Build, showcasing new performance and architectural improvements.",
+      "to": "at Microsoft Build.",
+      "reason": "발췌는 'Build recap, and new MAI model technical details'뿐 — 한국어 요약이 덧붙인 '성능과 아키텍처 개선'을 따라감(7-7 사소, 한국어 참고 경로)"
+    },
+    {
+      "id": 823,
+      "field": "summary_en",
+      "from": "All three balance intelligence and speed for local agentic workloads.",
+      "to": "The Bolt 74B-A9B model is optimized to balance intelligence and speed per GB for local agentic workloads.",
+      "reason": "'balance intelligence and speed … local agentic workloads'는 Bolt 74B-A9B 설명 — 세 모델 전부로 넓힘(7-7 사소)"
+    },
+    {
+      "id": 932,
+      "field": "summary_en",
+      "from": "using autonomous AI agents. Victims included",
+      "to": "using AI agents that mostly operated on their own. Reuters reports the victims included",
+      "reason": "원문 'mostly operated on their own' 단서 탈락, 피해 기업은 Norforge 가 아니라 Reuters 보도(7-7 사소)"
+    },
+    {
+      "id": 1025,
+      "field": "summary_en",
+      "from": "The model offers improved performance, greater customization options, and lower costs than existing alternatives.",
+      "to": "The company promises better, more customizable performance at lower costs.",
+      "reason": "원문은 'promising'(회사 주장), 'than existing alternatives' 비교는 원문에 없음(7-7 사소)"
+    },
+    {
+      "id": 871,
+      "field": "title_en",
+      "from": "IntelliVIX lists on Kosdaq, targets defense and autonomous driving with safety AI",
+      "to": "IntelliVIX to list on Kosdaq on the 30th, aiming safety AI at defense and autonomous driving",
+      "reason": "16일 간담회 기사의 '30일 코스닥 상장'은 예정 — 2-3 표본에서 남긴 사소(7-7에서 정리)"
+    },
+    {
+      "id": 871,
+      "field": "summary_en",
+      "from": "IntelliVIX listed on Kosdaq to expand",
+      "to": "IntelliVIX will list on Kosdaq on the 30th to expand",
+      "reason": "상장 예정을 완료로 씀 — 2-3 남은 사소(7-7에서 정리)"
+    },
+    {
+      "id": 609,
+      "field": "summary_en",
+      "from": "an upgrade to Copilot that grants it access",
+      "to": "an upgrade to Copilot that will give it access",
+      "reason": "원문 'will give it access' — 시연된 예정 기능을 완료로 씀, 2-3 남은 사소(7-7에서 정리)"
+    }
+  ]
+}

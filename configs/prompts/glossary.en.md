@@ -20,7 +20,7 @@ A bullet that starts with an English label and a colon (Military ranks, Family n
 - 국회 → National Assembly · 국정감사 · 국감 → the National Assembly's annual audit
 - 국무총리 → Prime Minister · 국가정책조정회의 → National Policy Coordination Meeting
 - 육군 → South Korean Army · 육군 군수사령부 → Army Logistics Command · 해군 → South Korean Navy
-- 서울시 → Seoul Metropolitan Government · 경기도 → Gyeonggi Province · 성남시 → Seongnam · 화성시 → Hwaseong · 판교 → Pangyo
+- 서울시 → Seoul Metropolitan Government · 경기도 → Gyeonggi Province · 성남시 → Seongnam · 화성시 → Hwaseong · 판교 → Pangyo · 대구 → Daegu
 - AI기본법 · 인공지능기본법 → AI Basic Act
 - 소버린 AI → sovereign AI · 독자 AI 파운데이션 모델 → Korea's sovereign AI foundation model project
 
@@ -40,7 +40,7 @@ A bullet that starts with an English label and a colon (Military ranks, Family n
 ### Large companies
 
 - 삼성 → Samsung · 삼성전자 → Samsung Electronics · 삼성그룹 → Samsung Group · DS 부문 → Device Solutions (DS) division · DX 부문 → Device eXperience (DX) division
-- SK → SK Group · SK텔레콤 · SKT → SK Telecom · SK하이닉스 → SK hynix · SK스퀘어 → SK Square
+- SK → SK Group · SK텔레콤 · SKT → SK Telecom · SK하이닉스 → SK hynix · SK스퀘어 → SK Square · SK증권 → SK Securities
 - KT → KT
 - LG전자 · 엘지전자 → LG Electronics · LG CNS → LG CNS · LG AI연구원 → LG AI Research · 엑사원 → EXAONE
 - 현대차 · 현대자동차 → Hyundai Motor · 현대차그룹 → Hyundai Motor Group · 현대모비스 → Hyundai Mobis
@@ -54,13 +54,14 @@ A bullet that starts with an English label and a colon (Military ranks, Family n
 
 - 업스테이지 → Upstage · 솔라 → Solar (Upstage model)
 - 퓨리오사AI → FuriosaAI · 리벨리온 → Rebellions · 딥엑스 → DEEPX
-- 래블업 → Lablup · 베슬AI → VESSL AI · 마키나락스 → MakinaRocks
+- 래블업 → Lablup · 베슬AI → VESSL AI · 마키나락스 → MakinaRocks · 프렌들리AI → FriendliAI
 - 트웰브랩스 → TwelveLabs · 마음AI → maum.ai · 로보티즈 → ROBOTIS
 - 인텔리빅스 → IntelliVIX · 비드래프트 → VIDraft · 인터엑스 → INTERX
-- 제논 → Xenon · 젠가드 → GenGuard · 제노스 → GenOS
+- 제논 → GenON · 젠가드 → GenGuard · 제노스 → GenOS
 - 티오리 → Theori · 진트 → Xint · 파이오링크 → PIOLINK
 - 인핸스 → Enhans · 포지큐브 → Posicube · 크리니티 → Crinity · 이노티움 → Innotium · 비즈크러시 → Bizcrush
 - 해시드 → Hashed
+- 오케스트로 → OKESTRO · 오케스트로 클라우드 → OKESTRO Cloud · 대원씨티에스 → Daewon CTS
 - 긱블 → Geekble · 루드다이나믹스 → Luddynamics
 - 스윙 → Swing (shared e-scooter operator) · 토르드라이브 → ThorDrive
 
@@ -72,6 +73,7 @@ A bullet that starts with an English label and a colon (Military ranks, Family n
 ### Events and venues
 
 - 코엑스 → COEX · 스마트라이프위크 → Smart Life Week (SLW) · 세계스마트시티기구 → World Smart Sustainable Cities Organization (WeGO)
+- 엑스코 → EXCO (Daegu convention center) · 국제농기계자재박람회 → KIEMSTA (agricultural machinery expo)
 
 ### Foreign names as written in Korean press
 
@@ -80,15 +82,16 @@ Write the original spelling. Watch the pairs that look alike.
 - 그록 → Grok (xAI/SpaceX chatbot) · 그로크 → Groq (AI chip company)
 - 앤트로픽 → Anthropic · 클로드 → Claude · 클로드 코드 → Claude Code · 오퍼스 → Opus · 페이블 → Fable · 미소스 → Mythos
 - 오픈AI → OpenAI · 챗GPT → ChatGPT · 코덱스 → Codex · 아스트라 → Astra · 솔 → Sol (GPT model)
-- 구글 → Google · 제미나이 → Gemini · 아르곤 → Argon · 카본 → Carbon
+- 구글 → Google · 구글 딥마인드 → Google DeepMind · 딥마인드 → DeepMind · 제미나이 → Gemini · 아르곤 → Argon · 카본 → Carbon
 - 메타 → Meta · 뮤즈 → Muse · 마이크로소프트 · MS → Microsoft
 - 엔비디아 → Nvidia · 네모트론 → Nemotron · 허깅 페이스 → Hugging Face
-- 딥시크 → DeepSeek · 알리바바 → Alibaba · 큐원 → Qwen · 텐센트 → Tencent · 문샷 AI → Moonshot AI · 키미 → Kimi · 미니맥스 → MiniMax · 즈푸 · 지푸 → Zhipu AI (Z.ai)
+- 딥시크 → DeepSeek · 알리바바 → Alibaba · 큐원 → Qwen · 텐센트 → Tencent · 문샷 AI → Moonshot AI · 키미 → Kimi · 미니맥스 → MiniMax · 즈푸 · 지푸 → Zhipu AI (Z.ai) · 바이트댄스 → ByteDance · 시댄스 → Seedance (ByteDance video model)
 - 미스트랄 → Mistral AI · 르총크 → Le Chonk · 복스트랄 → Voxtral · 코히어 → Cohere · 알레프 알파 → Aleph Alpha
 - 타입세이프 AI → TypeSafe AI · 제브 → Jev · 리퀴드 AI → Liquid AI · 리플렉션 AI → Reflection AI · 사카나 → Sakana AI · 누스 리서치 → Nous Research
 - 스페이스X → SpaceX · 애플 → Apple · 아마존 → Amazon · 인텔 → Intel · 퀄컴 → Qualcomm · 화웨이 → Huawei · 브로드컴 → Broadcom · 폭스콘 → Foxconn
 - 시스코 → Cisco · 오라클 → Oracle · 팔로알토 → Palo Alto Networks · 데이터독 → Datadog · 넷앱 → NetApp · 뉴타닉스 → Nutanix · 워크데이 → Workday · 지멘스 → Siemens · 슈나이더 일렉트릭 → Schneider Electric
 - 보스턴 다이나믹스 → Boston Dynamics · 아틀라스 → Atlas · 애질리티 로보틱스 → Agility Robotics · 푸리에 → Fourier · 뉴라 로보틱스 → NEURA Robotics · 뮌헨공대 → Technical University of Munich (TUM)
 - 샘 알트먼 → Sam Altman · 다리오 아모데이 → Dario Amodei · 저커버그 → Mark Zuckerberg · 피차이 → Sundar Pichai · 사티아 나델라 → Satya Nadella · 얀 르쿤 → Yann LeCun · 마크 레이버트 → Marc Raibert
-- 로이터 → Reuters · 블룸버그 → Bloomberg · 디 인포메이션 → The Information · 파이낸셜 타임스 → Financial Times · 월스트리트 저널 → The Wall Street Journal · 뉴욕 타임스 → The New York Times · 포춘 → Fortune
+- 로이터 → Reuters · 블룸버그 → Bloomberg · 테크크런치 → TechCrunch · 더 버지 → The Verge · 디 인포메이션 → The Information · 파이낸셜 타임스 → Financial Times · 월스트리트 저널 → The Wall Street Journal · 뉴욕 타임스 → The New York Times · 포춘 → Fortune
+- 증권거래위원회 → U.S. Securities and Exchange Commission (SEC) · 증권신고서 → registration statement (IPO filing) · 기업공개 → initial public offering (IPO)
 - 백악관 → White House · 미 의회 → U.S. Congress · 미 연방거래위원회 → Federal Trade Commission (FTC) · 유럽연합 → European Union (EU)

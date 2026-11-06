@@ -1,0 +1,278 @@
+{
+  "version": 1,
+  "fixes": [
+    {
+      "id": 1356,
+      "field": "title_en",
+      "from": "OpenAI acquires Pierre Computer Company",
+      "to": "OpenAI to acquire Pierre Computer Company to expand Codex's coding tools",
+      "reason": "원문 'to acquire'(예정)를 완료형 acquires 로 씀 — 요약(is acquiring)과도 어긋남"
+    },
+    {
+      "id": 1358,
+      "field": "summary_en",
+      "from": "without exposing the model's weights.",
+      "to": "without exposing the model's weights. The system still has significant limitations.",
+      "reason": "원문 단서 'significant limitations' 누락(한국어 요약은 유지)"
+    },
+    {
+      "id": 1359,
+      "field": "summary_en",
+      "from": "with deployment to the UK and other Waymo-serviced markets following.",
+      "to": "with deployment to the UK and other Waymo-serviced markets planned for the following years.",
+      "reason": "문장 끝 'following' 이 매달린 어색한 구문 — 원문 'planned for the following years'"
+    },
+    {
+      "id": 1361,
+      "field": "summary_en",
+      "from": "Across 25 benchmarks spanning language, vision, and robotics, oracle routing outperforms the best fixed candidate by 5.4 points, and learned routers by 0.3 points while using 24% less policy time.",
+      "to": "Across 25 benchmarks spanning language, image, video and speech generation, coding agents and robot manipulation, per-input oracle routing beats the best fixed candidate by 5.4 points. Learned routers beat it by 0.3 points across 16 benchmarks while using 24% less policy time.",
+      "reason": "'oracle 이 learned router 를 0.3점 앞선다'로 읽히는 구문 오류, 0.3점은 16개 벤치마크 결과인데 25개로 씀"
+    },
+    {
+      "id": 1362,
+      "field": "summary_en",
+      "from": "enabling zero-shot action transfer across embodiments and environments and state-of-the-art performance on LARY-Bench.",
+      "to": "supporting zero-shot action transfer across embodiments and environments. It achieves state-of-the-art performance among latent action models on LARY-Bench.",
+      "reason": "SOTA 범위 'among latent action models' 누락, 인과(enabling … performance) 추가"
+    },
+    {
+      "id": 1365,
+      "field": "title_en",
+      "from": "Anthropic warns safety measures may lag behind recursive self-improvement acceleration",
+      "to": "Anthropic warns AI safety measures may fall behind as recursive self-improvement speeds up",
+      "reason": "명사 나열(recursive self-improvement acceleration) 번역투"
+    },
+    {
+      "id": 1365,
+      "field": "summary_en",
+      "from": "In its SEC filing amendment, the company acknowledged past instances of being late to detect development speed changes and called for stronger human oversight and control systems.",
+      "to": "In an amended IPO filing (S-1/A) with the SEC, the company acknowledged it had been slow in the past to notice sharp jumps in development speed, and called for stronger human oversight and control.",
+      "reason": "'past instances of being late to detect development speed changes' 번역투, 신고서 종류 불명확"
+    },
+    {
+      "id": 1366,
+      "field": "title_en",
+      "from": "Zyphra's hierarchical attention technique speeds up long-context processing by up to 35x",
+      "to": "Zyphra says its hierarchical attention could speed long-context processing up to 35x",
+      "reason": "원문은 '예측 결과'(projected) — 달성한 결과로 단정"
+    },
+    {
+      "id": 1366,
+      "field": "summary_en",
+      "from": "By organizing information hierarchically and searching only needed sections instead of the entire document, the method achieves up to 35x faster processing on 10-million-token contexts compared to standard attention.",
+      "to": "The method organizes information hierarchically and retrieves only the parts it needs instead of searching the whole document; the company projects up to 35x faster processing than standard attention on 10-million-token contexts.",
+      "reason": "예측치를 achieves 로 단정, 'searching only needed sections' 어색"
+    },
+    {
+      "id": 1367,
+      "field": "title_en",
+      "from": "Behind Video Generation: observations on multimodal understanding from Kling",
+      "to": "Kling report argues video generation quality reflects multimodal understanding",
+      "reason": "논문 제목을 대소문자 섞어 옮김(sentence case 위반·헤드라인 아님) — 초록의 주장을 제목으로"
+    },
+    {
+      "id": 1367,
+      "field": "summary_en",
+      "from": "The report analyzes observations on multimodal understanding from successive generations of Kling video generation.",
+      "to": "The report summarizes lessons on multimodal understanding from successive generations of the Kling video model.",
+      "reason": "'generations of Kling video generation' 중복·어색"
+    },
+    {
+      "id": 1369,
+      "field": "title_en",
+      "from": "agenterm, AI agent remote control via MCP and terminal",
+      "to": "agenterm, a self-hosted tool that lets AI agents control remote computers via MCP",
+      "reason": "명사 나열 제목 — 저장소 형식 '<project>, <what it does>'"
+    },
+    {
+      "id": 1369,
+      "field": "summary_en",
+      "from": "agenterm is a self-hosted AI agent remote assistance platform that lets agents control any remote computer anytime, anywhere through MCP and terminal.",
+      "to": "agenterm is a self-hosted remote assistance tool that lets AI agents control remote computers through MCP and a terminal.",
+      "reason": "명사 다섯 개 나열, 저장소 홍보 문구(anytime, anywhere) 그대로"
+    },
+    {
+      "id": 1370,
+      "field": "title_en",
+      "from": "Speedy runs Qwen3.8-Flash-Next up to 1M context on one or two RTX cards",
+      "to": "Speedy runs Qwen3.8-Flash-Next with up to 1M-token context on one or two RTX cards",
+      "reason": "'runs X up to 1M context' 비문"
+    },
+    {
+      "id": 1372,
+      "field": "title_en",
+      "from": "Open source AI is booming: how companies capture value",
+      "to": "Hugging Face explains who profits as open source AI goes mainstream",
+      "reason": "원제 주어 Hugging Face 누락, 콜론 티저형 제목"
+    },
+    {
+      "id": 1372,
+      "field": "summary_en",
+      "from": "As open source models become more mainstream among enterprises, governments, and startups promising lower costs and greater control, the report examines how companies capture value from open source. It also considers whether American players can compete as Chinese open models gain ground.",
+      "to": "In a podcast episode, Hugging Face discusses how companies capture value as enterprises, governments and startups turn to open source models for lower costs, more control and more flexibility. It also weighs whether American players can keep up as Chinese open models gain ground.",
+      "reason": "팟캐스트를 'the report'로 씀, 주어 Hugging Face 누락, 'startups promising lower costs' 수식 오류"
+    },
+    {
+      "id": 1374,
+      "field": "title_en",
+      "from": "Beyond Robotics unveils strawberry-harvesting humanoid robot PICKY",
+      "to": "Beyond Robotics unveils a humanoid robot alongside its PICKY strawberry-harvesting robot",
+      "reason": "PICKY(딸기 수확 로봇)와 휴머노이드는 별개 — 제목이 하나로 합침(한국어 제목도 같은 오류)"
+    },
+    {
+      "id": 1374,
+      "field": "summary_en",
+      "from": "at KIEMSTA 2026 in Daegu.",
+      "to": "at the KIEMSTA 2026 agricultural machinery expo in Daegu.",
+      "reason": "한국 행사명 설명 없음(규칙: 한국 고유 명칭은 짧은 영어 설명)"
+    },
+    {
+      "id": 1375,
+      "field": "summary_en",
+      "from": "The authors propose FactEmbed, which decouples compositional query comprehension from building discriminative embeddings for composed image retrieval. The method uses factorized latents that simulate intended visual modifications through an intermediate target imagination objective, then optimizes factor-level contrastive loss. Extensive evaluations show FactEmbed outperforms prior works across CIR benchmarks.",
+      "to": "The authors propose FactEmbed for composed image retrieval, which finds a target image from a reference image and a modification text. Instead of mapping the query straight to one embedding, it uses factorized latents that simulate the intended visual changes before building the retrieval embedding. The authors report that it outperforms prior work across CIR benchmarks.",
+      "reason": "초록 전문용어(target imagination objective·factor-level contrastive loss) 나열 — 과제부터 평이하게"
+    },
+    {
+      "id": 1376,
+      "field": "title_en",
+      "from": "Google's search ad growth slows amid $200 billion AI infrastructure spending",
+      "to": "Google search revenue growth slows as Alphabet plans about $200 billion for infrastructure",
+      "reason": "제목에서 'about'·'계획' 단서 누락(지출이 진행 중인 것처럼), 원문 지표는 검색 매출 성장률"
+    },
+    {
+      "id": 1376,
+      "field": "summary_en",
+      "from": "Paid clicks growth slowed from 13 percent to 8 percent, as the company plans to spend about $200 billion this year on infrastructure largely to support AI.",
+      "to": "Growth in paid clicks slowed from 13 percent to 8 percent, while the company plans to spend about $200 billion this year on infrastructure, largely to support AI.",
+      "reason": "'Paid clicks growth' 어색, 'as'가 인과처럼 읽힘"
+    },
+    {
+      "id": 1377,
+      "field": "title_en",
+      "from": "Roundtables: Inside the quest for cognitive immortality",
+      "to": "MIT Technology Review Roundtables session to explore the quest for cognitive immortality",
+      "reason": "행사 이름 티저형 제목(주체·성격 불명) — 예정 행사"
+    },
+    {
+      "id": 1377,
+      "field": "summary_en",
+      "from": "Science editor Mary Beth Griggs and senior editor for biomedicine Antonio Regalado discuss paths",
+      "to": "In a session on November 17, science editor Mary Beth Griggs and senior editor for biomedicine Antonio Regalado will discuss paths",
+      "reason": "11월 17일 예정 행사를 현재형(discuss)으로 씀"
+    },
+    {
+      "id": 1382,
+      "field": "summary_en",
+      "from": "and Anthropic bought Stainless in May, signaling a shift in where value accrues as AI models become more interchangeable.",
+      "to": "and Anthropic bought Stainless in May. The Decoder sees a pattern: as AI models become interchangeable, value is shifting to the tools built around them.",
+      "reason": "매체 해석을 귀속 없이 'signaling …'(금지 문형)으로 씀"
+    },
+    {
+      "id": 1383,
+      "field": "summary_en",
+      "from": "Chinese authorities blocked the deal over concerns",
+      "to": "Chinese authorities blocked SoftBank's $5.4 billion acquisition of ABB Robotics over concerns",
+      "reason": "한 문장 요약에 주어·거래 대상이 없음('the deal')"
+    },
+    {
+      "id": 1384,
+      "field": "summary_en",
+      "from": "The tools select the right model and display pricing before committing, while expert teams in Blender, Maya, ZBrush, Unreal, and Unity ensure character and brand consistency through the Scenario Model Context Protocol.",
+      "to": "Its skills pick the right model, show the price before spending and keep characters and brands consistent through the Scenario MCP, and it adds expert teams that drive Blender, Maya, ZBrush, Unreal and Unity.",
+      "reason": "일관성 유지 주체를 'expert teams'로 바꿈(원문은 skills), 'Scenario MCP'를 Scenario 의 프로토콜로 잘못 풀어 씀"
+    },
+    {
+      "id": 1386,
+      "field": "title_en",
+      "from": "Anthropic enables Claude to connect directly to your bank account",
+      "to": "Anthropic lets Claude connect to users' bank accounts with new Personal Finance feature",
+      "reason": "제목 2인칭(your)·'enables X to' 번역투"
+    },
+    {
+      "id": 1386,
+      "field": "summary_en",
+      "from": "connects Claude to your bank and card accounts",
+      "to": "connects Claude to users' bank and card accounts",
+      "reason": "요약 2인칭(your)"
+    },
+    {
+      "id": 1387,
+      "field": "title_en",
+      "from": "Axiom Math bets on formal verification to control AI proofs in mathematics",
+      "to": "Axiom Math bets on formal verification to keep unchecked AI proofs out of mathematics",
+      "reason": "'control AI proofs' 뜻이 흐림 — 원문 'keep AI slop out of mathematics'"
+    },
+    {
+      "id": 1388,
+      "field": "title_en",
+      "from": "Together AI releases Together Compiler with agent-driven optimization up to 2.6x faster",
+      "to": "Together AI's Together Compiler uses agents to make inference up to 2.6x faster",
+      "reason": "'optimization up to 2.6x faster' 비문"
+    },
+    {
+      "id": 1389,
+      "field": "title_en",
+      "from": "NVIDIA Vera delivers highest throughput and fastest agent execution",
+      "to": "Nvidia says its Vera CPU delivers top throughput and faster AI agents",
+      "reason": "회사 블로그의 최상급 주장을 사실로 단정 — 귀속"
+    },
+    {
+      "id": 1391,
+      "field": "summary_en",
+      "from": "without jailbreak or extra hardware",
+      "to": "without a jailbreak or extra hardware",
+      "reason": "관사 누락"
+    },
+    {
+      "id": 1393,
+      "field": "title_en",
+      "from": "Meta enables US users to video chat with customizable Muse AI avatars",
+      "to": "Meta lets US users video chat with their customizable Muse AI avatar",
+      "reason": "'enables X to' 번역투"
+    },
+    {
+      "id": 1394,
+      "field": "title_en",
+      "from": "OpenAI sets standards for responsible AI infrastructure development",
+      "to": "OpenAI proposes a community compact and policy blueprint for AI infrastructure",
+      "reason": "회사 주장('setting a new standard')을 사실로 단정, 내용(Compact·Blueprint)이 제목에 없음"
+    },
+    {
+      "id": 1395,
+      "field": "title_en",
+      "from": "VibeVoice, an open-source frontier voice AI project",
+      "to": "VibeVoice, Microsoft's open-source voice AI project",
+      "reason": "저장소 자기 수식어(frontier) 그대로 — 소유자(Microsoft)가 더 유용"
+    },
+    {
+      "id": 1397,
+      "field": "summary_en",
+      "from": "No model achieved above 12 percent performance, with Claude Opus 5.5 narrowly leading Gemini 4 Carbon.",
+      "to": "No model scored above 12 percent; Claude Opus 5.5 narrowly led Gemini 4 Carbon. Critics point to the small number of tasks per domain and uneven testing conditions.",
+      "reason": "'achieved above 12 percent performance' 어색, 원문의 비판(과제 수·조건) 누락"
+    },
+    {
+      "id": 1398,
+      "field": "title_en",
+      "from": "Ripple-65B scores 80.5 on Terminal-Bench 2.1 benchmark",
+      "to": "Ricursive AI's open-weight Ripple-65B Preview scores 80.5 on Terminal-Bench 2.1",
+      "reason": "원제 주어(Ricursive AI) 누락, 'Terminal-Bench 2.1 benchmark' 중복"
+    },
+    {
+      "id": 1398,
+      "field": "summary_en",
+      "from": "ahead of open models up to 15 times its size",
+      "to": "ahead of US open models up to 15 times its size",
+      "reason": "원문 'US open models'의 US 를 빼 비교 범위를 넓힘"
+    },
+    {
+      "id": 1399,
+      "field": "summary_en",
+      "from": "Dropbox acquired Tigris Data for $350 million to support development of DBX Agent Cloud",
+      "to": "Dropbox acquired Tigris Data for $350 million in a deal expected to support development of DBX Agent Cloud",
+      "reason": "원문 단서 'is expected to' 누락"
+    }
+  ]
+}
