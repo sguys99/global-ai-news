@@ -465,13 +465,17 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 5-2. 페이지
 
-- [ ] `/en/` 홈: 같은 `buildEdition`에 영어 본문이 있는 기사만 넣는다. 1면 → **Korea Desk**(그 호의 `region=kr` 기사 ≤4건, 1면 게재분 제외) → 섹션 밴드 → 색인. 주간 레이더(일요일)도 넣는다.
-- [ ] `/en/edition/[date]/`: 호 고정 링크와 지난 호 이동.
+- [x] `/en/` 홈: 같은 `buildEdition`에 영어 본문이 있는 기사만 넣는다. 1면 → **Korea Desk**(그 호의 `region=kr` 기사 ≤4건, 1면 게재분 제외) → 섹션 밴드 → 색인. 주간 레이더(일요일)도 넣는다. (2026-11-06 `6323cbc`)
+  - Korea Desk = `src/lib/koreaDesk.ts`(순수 함수): `selectKoreaDesk`가 한국 주제(Korea·Korean·Seoul·KRW + 빌드 때 `glossary.en.md`의 정부·기업·스타트업·대학·행사 절에서 뽑은 영문명) 우선 → 편집 순 ≤ 4건. 서버 로더 `localeKoreaDesk`가 고른 id만 클라이언트 섬에 넘기고(`FeedClient` `desk`·`EditionPayload.desk`, 한국어 페이지에는 키 없음), `applyKoreaDesk`가 섹션 밴드에서 빼고 다시 4건으로 채운 뒤 `· N at the Korea Desk`와 "Elsewhere in this issue"(실린 자리 표시, 최대 4)를 만든다. 실데이터 제140호 데스크: Geekble·AI 가드레일·Swing·Naver Cloud(NEURA는 1면 브리핑).
+  - `KOREA` 표시 = `ArticleMeta` 공용 `Byline`의 `RegionMark`(`sg-region`, en일 때만, 데스크 안은 `hideRegion`). 영어 타이포그래피는 `globals.css` "영어판 지면" 블록(`:root[lang="en"]` 기본층 + 덮어쓰기). 귀 둘째 줄은 비뉴스만 센다. `etnews_ai` `nameEn` → `ETNews`.
+  - 크기(Docker 빌드 `size:report`): 영어 홈 163.3KB(한국어 171.4), 영어 호 평균 119.0KB(예산 150), 한국어 호 +0.0%. **한국어 회귀 12페이지 동일.**
+  - 시안과 다른 점: 일요일 내비는 지면 순(Front page → Weekly radar → Korea Desk), 브리핑 바이라인 칸은 `fit-content(16.5rem)`(절대 시각이 매체명을 자르던 문제).
+- [x] `/en/edition/[date]/`: 호 고정 링크와 지난 호 이동. (2026-11-06 `6323cbc` — `localeEditionDates("en")`·`dynamicParams=false`, 제목 `AI News Briefing — Tuesday, November 3, 2026 (No. 140) — AI Daybook`(`editionPageMetadataEn`), Korea Desk·일요일 주간 레이더 포함. hreflang·og·JSON-LD는 Phase 6)
 - [ ] `/en/article/[id]/`: 영어 제목·요약·원문 링크. 한국 매체는 `Original article in Korean` 표기, 원제 병기. 관련 기사·사건 타임라인도 영어로 표시한다.
 - [ ] `/en/search/`: `public/search-index/en/` 월별 조각(prebuild에서 생성, Phase 4-2 구조)과 영어 FlexSearch 설정.
 - [ ] 홈 색인 누적분 `public/feed-index/en/` 월별 조각(prebuild).
 - [ ] **(추가) 보관 지면 영어판:** 90일 지난 영어 기사·호(`/en/article/[id]/`·`/en/edition/[date]/`)도 postbuild가 같은 보관 계획으로 라이트 지면을 쓴다(`src/lib/archivePage.ts`는 이미 `locale` 인자를 받는다). 영어 라우트의 `generateStaticParams`도 보관 대상을 빼고, postbuild 확인이 두 언어를 함께 본다.
-- [ ] 세 줄 요약 띠 영어판: 같은 줄 id의 `title_en`을 쓰고, 2줄 미만이면 숨긴다(한국어판과 같은 규칙).
+- [x] 세 줄 요약 띠 영어판: 같은 줄 id의 `title_en`을 쓰고, 2줄 미만이면 숨긴다(한국어판과 같은 규칙). (2026-11-06 `localeBrief` — 띠 머리 `Three things to know`)
 - [ ] 공통 요소 영어판: 헤더·모바일 상단 바·하단 탭 바·필터 시트·푸터 태그라인·누적 방문(`1,234 visits`)·공유 버튼·발행 지연 줄·404.
 - [x] **Phase 3에서 넘어온 데이터 틈(3-4 코드 리뷰) — 영어 페이지를 열기 전에 먼저 막는다.** 빌드는 통과하고 화면만 비거나 한국어가 새는 함정이다. (**데이터 계층 2026-11-06 완료** `6c17366` — 테스트 1,364 → 1,389건, 한국어 색인 조각 `diff -r` 바이트 동일(1,277건), 영어 조각 1,262건·행에 한글 0. 아래 404·전환 링크 두 줄은 5-2 셸 작업·5-3에서 닫는다.)
   - 추가한 것: 영어 경로 목록 `localeArticleIds`·`localeEditionDates`(보관 계획 `getArchivePlan().live*` 기준 — 한국어 라우트도 같은 함수로 바꿔 단일 출처), 영어 최신 호 `localeLatestEditionRef`, 영어 세 줄 요약 `localeBrief`(줄 = 그 기사 `title_en`, 2줄 미만이면 숨김), 영어 매체·태그 `sourceOptionsOf`·`activeTagsOf`(영어 기사만 세고 라틴 태그만), `toListCard(article, "en")` → `ListCard`(영어 필드·`nameEn`·`region`, 한국어 가공 필드는 빈 문자열), 영어 FlexSearch(`forward` + `latin:simple` — `latin:balance`는 "agent"·"robot" 같은 짧은 질의를 놓친다).
