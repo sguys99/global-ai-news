@@ -127,6 +127,7 @@
 │   ├── collect.ts                # 수집→전처리→선별→가공→재보도 검사→같은 사건 합치기→SQLite 오케스트레이터 (--dry-run / --no-save / --db)
 │   ├── reclassify.ts             # 구 분야값 → 6개 키 LLM 재분류 (npm run db:reclassify, 기본 dry-run)
 │   ├── backfill-en.ts            # 지난 기사 영어 백필 + 한국어 숫자 수정(configs/backfill/) (npm run db:backfill-en, 기본 dry-run)
+│   ├── fix-published-at.ts       # 일회성: 시간대 없는 KST pubDate(AI타임스·로봇신문)를 UTC 로 읽어 +9h 저장된 published_at 보정 — 회차 표본 기사 페이지로 확인 (npm run db:fix-published-at, 기본 dry-run)
 │   ├── triage-compare.ts         # no-save 스냅숏으로 개편 전후 선별 비교 (npm run triage:compare)
 │   ├── html-regress.ts           # 한국어 HTML 회귀 비교(build·select·snapshot·compare, 대상 configs/html-regress-pages.json, 기준선 data/regress/ git 제외)
 │   ├── export-search-index.ts    # public/search-index/<언어>/ — 검색 색인 호 월별 조각 + manifest.json (prebuild)
@@ -161,7 +162,7 @@
 │       ├── healthReport.ts       # 소스 헬스 Markdown·::warning:: 출력(판정은 src/lib/sourceHealth.ts)
 │       ├── indexShards.ts        # 색인 조각 만들기·쓰기(buildIndexShards·writeIndexShards, 내용 해시) — 형식·읽기는 src/lib/indexShards.ts
 │       └── collect/
-│           ├── rss.ts            # RSS/Atom 어댑터 + SourceConfig 타입
+│           ├── rss.ts            # RSS/Atom 어댑터 + SourceConfig 타입 — 날짜는 parseFeedDate(시간대 없는 값은 region kr → KST, 그 밖 UTC; 수집 시각보다 1시간 넘게 미래면 수집 시각으로)
 │           ├── api.ts            # HN Algolia / GitHub Search·Trending / HF Daily Papers / HF 트렌딩 모델
 │           ├── arxiv.ts          # arXiv 어댑터("유명 논문" 게이트) — scholar.ts(인용·소속)·paperFilter.ts 사용
 │           ├── keywordFilter.ts  # 소스별 키워드 사전 필터(configs/keyword-filters.json)
@@ -249,6 +250,7 @@ npm run collect -- --dry-run --db <path>  # --db 는 dry-run·no-save 전용(예
 npm run triage:compare -- <스냅숏>  # 같은 풀로 개편 전후 선별 비교
 npm run db:reclassify               # 구 분야값 재분류(기본 dry-run, --apply 로 백업 후 적용, --only-legacy)
 npm run db:backfill-en              # 지난 기사 영어 백필(기본 dry-run — LLM 없음, --apply 로 백업 후 적용, --ids 재시도, --ko-fixes)
+npm run db:fix-published-at         # 한국 매체 published_at +9h 오차 보정(기본 dry-run — 기사 페이지 표본 확인, --apply 로 백업 후 적용, 멱등)
 npm run db:reindex                  # FTS5 재색인
 npm run kpi                         # 최근 N일 KPI (기본 30) / npm run kpi -- baseline: 콘텐츠 개편 지표 / -- health: 소스 헬스
 npm run regress:html -- build <ref|WORKTREE> <dest>  # 같은 app.db 로 Docker 정적 빌드 → out/ 추출 (회귀 비교용)
