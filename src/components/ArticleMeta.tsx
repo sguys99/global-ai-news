@@ -18,7 +18,7 @@ import {
   categoryLabel,
   formatDate,
   formatLabel,
-  hasHangul,
+  localeTags,
   regionLabel,
   type Format,
   type Region,
@@ -293,5 +293,5 @@ export function TagChips({
 
 /** 언어판에 보일 태그 — en 은 한글이 섞인 태그를 뺀다, ko 는 그대로. 칩을 감싸는 쪽이 빈 칸을 가릴 때 쓴다. */
 export function visibleTags(tags: string[], locale: Locale = "ko"): string[] {
-  return locale === "en" ? tags.filter((tag) => !hasHangul(tag)) : tags;
+  return localeTags(tags, locale);
 }

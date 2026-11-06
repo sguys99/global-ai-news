@@ -256,9 +256,17 @@ describe("SearchInput·SearchClient — en(컨텍스트)", () => {
   });
 
   it("검색어가 없으면 추천 주제(영어 머리·/en 링크), 있으면 결과 머리·빈 결과 문구가 영어다", async () => {
-    // 영어판도 Phase 5 전까지는 한국어 색인(search-index/ko/)을 읽는다 — 한 달 조각뿐이라 범위 문구·지난 기사 버튼이 없다.
+    // 영어판은 영어 색인(search-index/en/ — Phase 5-2)을 읽는다. 한 달 조각뿐이라 범위 문구·지난 기사 버튼이 없다.
     resetIndexCache();
-    vi.stubGlobal("fetch", indexServer([card(1), card(2)], () => "2026-10-25").fetchMock);
+    const english = (id: number): ArticleCard => ({
+      ...card(id),
+      titleKo: `기사 ${id}`,
+      summaryKo: "요약",
+      titleEn: `Story ${id}`,
+      summaryEn: "Summary",
+    });
+    const server = indexServer([english(1), english(2)], () => "2026-10-25", "en");
+    vi.stubGlobal("fetch", server.fetchMock);
     const { container, unmount } = render(<SearchClient sources={sources} tags={["agents"]} />, {
       wrapper: en,
     });
@@ -284,5 +292,7 @@ describe("SearchInput·SearchClient — en(컨텍스트)", () => {
     render(<SearchClient sources={sources} tags={[]} />, { wrapper: en });
     const results = await screen.findByRole("region", { name: "Search results" });
     expect(results.querySelector("p")?.textContent).toBe("“Story” · 2 results");
+    expect(HANGUL.test(document.body.textContent ?? "")).toBe(false);
+    expect(server.requested.every((p) => p.startsWith("/search-index/en/"))).toBe(true);
   });
 });

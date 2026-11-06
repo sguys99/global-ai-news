@@ -1,9 +1,13 @@
 import Database, { type Database as DatabaseType } from "better-sqlite3";
+import { hasEnglish } from "@/lib/articleText";
+import type { Locale } from "@/lib/i18n";
 import {
   categoryAliases,
   categoryLabel,
+  hasHangul,
   isRegion,
   kstDateKey,
+  localeTags,
   normalizeCategory,
   toFormat,
 } from "@/lib/labels";
@@ -27,6 +31,7 @@ import type {
   Engagement,
   FollowUpEntry,
   LatestFeedEntry,
+  ListCard,
   RelatedCoverage,
   RunRow,
   SearchIndexEntry,
@@ -253,8 +258,16 @@ export function getFeed(opts: FeedOptions = {}, conn: DatabaseType = getDb()): A
  * (titleEn·summaryEn, 매체 nameEn·region)를 뺀다. 한국어 지면은 영어를 그리지 않는데, 홈·호 페이지는 카드 배열을
  * 클라이언트 컴포넌트에 넘겨 페이지 HTML·RSC 에 그대로 실린다 — 영어 요약까지 실으면 호 페이지가 카드 35건 × 2벌
  * (인라인 + .txt)로 수십 KB 커진다(영어판 Phase 4 용량 리스크). 키 순서는 원래 카드 그대로 둔다(산출물 비교가 쉽게).
+ *
+ * `locale = "en"`(영어판 Phase 5-2)은 거꾸로 영어 제목·요약과 매체 영문명·지역(KOREA 표시·Korea Desk)을 남기고
+ * 한국어 가공 텍스트(titleKo·summaryKo)를 빈 문자열로 둔다. 영어 페이지 RSC 에 한국어가 실리지 않도록 한글이 든
+ * 원제·태그·묶인 보도 제목/매체명도 비우거나 뺀다(목록은 원제를 그리지 않고, 묶인 보도는 개수만 쓴다).
+ * 영어판에 실을 기사(`hasEnglish`)로 거르는 일은 부르는 쪽(views/data.ts `localeArticles`)이 먼저 한다.
  */
-export function toListCard(article: ArticleCard): SearchIndexEntry {
+export function toListCard(article: ArticleCard, locale?: "ko"): SearchIndexEntry;
+export function toListCard(article: ArticleCard, locale: Locale): ListCard;
+export function toListCard(article: ArticleCard, locale: Locale = "ko"): ListCard {
+  if (locale === "en") return toEnglishListCard(article);
   const card = { ...article, source: { id: article.source.id, name: article.source.name } };
   delete card.contentRaw;
   delete card.titleEn;
@@ -262,9 +275,33 @@ export function toListCard(article: ArticleCard): SearchIndexEntry {
   return card;
 }
 
+/** 영어 목록 카드(toListCard en). 매체는 카드 그대로(id·name + 있으면 nameEn·region). */
+function toEnglishListCard(article: ArticleCard): ListCard {
+  const card: ListCard & { contentRaw?: string } = {
+    ...article,
+    source: { ...article.source },
+    titleKo: "",
+    summaryKo: "",
+    titleOriginal: hasHangul(article.titleOriginal) ? "" : article.titleOriginal,
+    tags: localeTags(article.tags, "en"),
+  };
+  delete card.contentRaw;
+  if (article.related) card.related = article.related.map(latinRelated);
+  return card;
+}
+
+/** 묶인 보도 한 건에서 한글이 든 매체명·제목을 비운다(영어 목록 카드 — 개수만 쓴다). */
+function latinRelated(r: RelatedCoverage): RelatedCoverage {
+  return {
+    source: hasHangul(r.source) ? "" : r.source,
+    url: r.url,
+    title: hasHangul(r.title) ? "" : r.title,
+  };
+}
+
 /** 목록·지면용 카드 배열(toListCard). 홈·호 페이지가 클라이언트 컴포넌트에 넘기기 전에 쓴다. */
-export function toListCards(articles: ArticleCard[]): ArticleCard[] {
-  return articles.map(toListCard);
+export function toListCards(articles: ArticleCard[], locale: Locale = "ko"): ListCard[] {
+  return articles.map((a) => toListCard(a, locale));
 }
 
 /**
@@ -850,9 +887,14 @@ export function getFollowUpThread(
   if (seen.size < 2) return [];
 
   const ids = [...seen];
+  // 영어판 필드(영어 제목·요약, 매체 영문명)는 나중에 추가된 컬럼 — 옛 DB 에서는 NULL 로 읽는다(articleSelect 와 같은 이유).
+  const articleCols = tableColumns(conn, "articles");
+  const a = (col: string) => (articleCols.has(col) ? `a.${col}` : "NULL");
+  const nameEn = tableColumns(conn, "sources").has("name_en") ? "s.name_en" : "NULL";
   const rows = conn
     .prepare(
       `SELECT a.id, a.title_ko, a.title_original, s.name AS source_name,
+              ${a("title_en")} AS title_en, ${a("summary_en")} AS summary_en, ${nameEn} AS source_name_en,
               strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at) AS issued_at
          FROM articles a JOIN sources s ON s.id = a.source_id
         WHERE a.id IN (${ids.map(() => "?").join(", ")})
@@ -863,17 +905,39 @@ export function getFollowUpThread(
     title_ko: string | null;
     title_original: string;
     source_name: string;
+    title_en: string | null;
+    summary_en: string | null;
+    source_name_en: string | null;
     issued_at: string;
   }[];
   const at = rows.findIndex((r) => r.id === id);
-  return rows.map((r, i) => ({
-    id: r.id,
-    titleKo: r.title_ko ?? "",
-    titleOriginal: r.title_original,
-    sourceName: r.source_name,
-    issuedAt: r.issued_at,
-    relation: i < at ? "earlier" : i > at ? "later" : "current",
-  }));
+  return rows.map((r, i) => {
+    const entry: FollowUpEntry = {
+      id: r.id,
+      titleKo: r.title_ko ?? "",
+      titleOriginal: r.title_original,
+      sourceName: r.source_name,
+      issuedAt: r.issued_at,
+      relation: i < at ? "earlier" : i > at ? "later" : "current",
+    };
+    // 영어 제목은 그 기사가 영어판에 실릴 때(hasEnglish — 영어 제목·요약 둘 다)만 — 영어 타임라인이 이 키로 거른다.
+    const en = { titleEn: r.title_en ?? "", summaryEn: r.summary_en ?? "" };
+    if (hasEnglish(en)) entry.titleEn = en.titleEn;
+    if (r.source_name_en) entry.sourceNameEn = r.source_name_en;
+    return entry;
+  });
+}
+
+/**
+ * 매체 표시명 → 영문 매체명(sources.name → name_en, 영문명이 있는 매체만). 묶인 보도(related_json)는 매체를 저장 당시
+ * 표시명 문자열로만 갖고 있어서, 영어판 상세가 이름으로 영문명을 찾는다(views/data.ts `loadArticlePage`).
+ */
+export function getSourceNameEnMap(conn: DatabaseType = getDb()): Map<string, string> {
+  if (!tableColumns(conn, "sources").has("name_en")) return new Map();
+  const rows = conn
+    .prepare(`SELECT name, name_en FROM sources WHERE name_en IS NOT NULL AND name_en != ''`)
+    .all() as { name: string; name_en: string }[];
+  return new Map(rows.map((r) => [r.name, r.name_en]));
 }
 
 /** 사이트맵 항목: 공개 기사 id + 수집 시각(ISO8601 UTC — 우리 페이지가 생긴 시각, 사이트맵 lastmod). */
@@ -897,6 +961,22 @@ export function getAllArticleIds(conn: DatabaseType = getDb()): number[] {
     id: number;
   }[];
   return rows.map((r) => r.id);
+}
+
+/**
+ * 영어판에 실을 공개 기사 id(오름차순) — 판정은 `hasEnglish`(영어 제목·요약 둘 다, src/lib/articleText.ts) 하나다.
+ * 영어판 경로 목록·호 목록(views/data.ts)이 기사 카드 전체를 읽지 않고 쓴다. 영어 컬럼이 없는 옛 DB 는 빈 배열.
+ */
+export function getEnglishArticleIds(conn: DatabaseType = getDb()): number[] {
+  const cols = tableColumns(conn, "articles");
+  if (!cols.has("title_en") || !cols.has("summary_en")) return [];
+  const rows = conn
+    .prepare(
+      `SELECT a.id, a.title_en AS titleEn, a.summary_en AS summaryEn FROM articles a
+        WHERE ${PUBLISHED} AND a.title_en IS NOT NULL AND a.summary_en IS NOT NULL ORDER BY a.id`,
+    )
+    .all() as { id: number; titleEn: string; summaryEn: string }[];
+  return rows.filter(hasEnglish).map((r) => r.id);
 }
 
 /**

@@ -22,10 +22,10 @@ import {
 import type { ArticleCard } from "../../src/lib/types";
 
 /**
- * 색인 공개 기본값 — 빌드 시 언어별로 만드는 언어. 영어판 Phase 5 에서 "en" 을 더한다(그 언어에 실을 기사는
- * 호출하는 export 가 거른다 — 영어 본문이 있는 기사만).
+ * 색인 공개 기본값 — 빌드 시 언어별로 만드는 언어(영어판 Phase 5-2 에서 "en" 추가). 그 언어에 실을 기사는
+ * 호출하는 export 가 거른다(`indexArticlesFor` — 영어 본문이 있는 기사만).
  */
-export const INDEX_BUILD_LOCALES: readonly Locale[] = ["ko"];
+export const INDEX_BUILD_LOCALES: readonly Locale[] = ["ko", "en"];
 
 export interface BuiltIndex {
   manifest: IndexManifest;
@@ -41,7 +41,7 @@ export function contentHash(text: string): string {
 /**
  * 카드(기본 정렬 순) → 목록 + 월별 조각.
  * - 월: 기사 id 의 호 날짜(`issueDates`, created_at KST)의 'YYYY-MM'. 호 날짜가 없는 카드는 빌드를 멈춘다(색인에서 새면 안 된다).
- * - 매체 표: `sources`(매체 id → 이름·형식·영문명) — 영문명은 en 목록에만 싣는다.
+ * - 매체 표: `sources`(매체 id → 이름·형식·영문명·지역) — 영문명·지역은 en 목록에만 싣는다.
  * - head: 홈 색인 머리로 실을 카드(기본 정렬 순, 이미 행 대상 카드와 같은 모양).
  */
 export function buildIndexShards({
@@ -81,7 +81,7 @@ export function buildIndexShards({
   for (const id of [...usedSources].sort()) {
     const s = sources.get(id);
     if (!s) throw new Error(`색인: 매체 ${id} 가 매체 표에 없다`);
-    sourceTable[id] = locale === "en" && s.nameEn ? s : { name: s.name, format: s.format };
+    sourceTable[id] = locale === "en" ? { ...s } : { name: s.name, format: s.format };
   }
 
   const manifest: IndexManifest = {
@@ -103,19 +103,20 @@ export function buildIndexShards({
 
 /**
  * 언어판 색인에 실을 기사 — ko 는 전부, en 은 영어 제목·요약이 있는 기사만(src/views/data.ts `localeArticles` 와 같은
- * 기준. 영어판 Phase 5 에서 en 을 INDEX_BUILD_LOCALES 에 더하면 쓰인다).
+ * 기준 `hasEnglish`).
  */
 export function indexArticlesFor(locale: Locale, articles: readonly ArticleCard[]): ArticleCard[] {
   return locale === "en" ? articles.filter(hasEnglish) : [...articles];
 }
 
-/** 누적 카드의 매체 표(매체 id → 이름·형식·영문명). */
+/** 누적 카드의 매체 표(매체 id → 이름·형식·영문명·지역). */
 export function sourceTableOf(articles: readonly ArticleCard[]): Map<string, ManifestSource> {
   const table = new Map<string, ManifestSource>();
   for (const a of articles) {
     if (table.has(a.source.id)) continue;
     const s: ManifestSource = { name: a.source.name, format: a.format };
     if (a.source.nameEn) s.nameEn = a.source.nameEn;
+    if (a.source.region) s.region = a.source.region;
     table.set(a.source.id, s);
   }
   return table;

@@ -101,7 +101,7 @@ describe("buildFeedIndex — 첫 페이지와 JSON 이 같은 순서", () => {
 describe("mergeIndex — 첫 페이지 + 받은 전체 + 이번 호", () => {
   const all = buildFeedIndex(cards);
   const head = all.slice(0, INDEX_PAGE_SIZE);
-  const issue = cards.slice(80).map(toIndexCard);
+  const issue = cards.slice(80).map((c) => toIndexCard(c));
 
   it("데이터가 일관되면 결과는 받은 전체와 같다(순서·중복 없음)", () => {
     const merged = mergeIndex(head, all, issue);
@@ -169,5 +169,43 @@ describe("toEntryCard — 상세 같은 분야 기사 섬 props", () => {
     expect(bare).not.toHaveProperty("summaryEn");
     expect(bare.titleOriginal).toBe("T3");
     expect(Object.values(bare as Record<string, unknown>)).not.toContain(undefined);
+  });
+});
+
+describe("toIndexCard·buildFeedIndex en — 영어 색인 카드(영어판 Phase 5-2)", () => {
+  const korean: ArticleCard = {
+    ...card(5),
+    titleOriginal: "한국어 원제",
+    titleEn: "",
+    summaryEn: "English summary",
+    tags: ["llm", "에이전트"],
+    source: { id: "aitimes", name: "AI타임스", nameEn: "AI Times", region: "kr" },
+  };
+
+  it("영문명·지역·라틴 태그만, 한국어 원제는 영어 제목이 없어도 싣지 않는다", () => {
+    const c = toIndexCard(korean, "en");
+    expect(c).toMatchObject({
+      titleKo: "",
+      summaryKo: "",
+      summaryEn: "English summary",
+      tags: ["llm"],
+      source: { id: "aitimes", name: "AI타임스", nameEn: "AI Times", region: "kr" },
+    });
+    expect(c).not.toHaveProperty("titleOriginal");
+    expect(c).not.toHaveProperty("titleEn");
+  });
+
+  it("buildFeedIndex(…, en) 는 영어 카드로 같은 기본 정렬 순서, ko 는 예전과 같다", () => {
+    const english = cards.map((c) => ({ ...c, titleEn: `Story ${c.id}`, summaryEn: "S" }));
+    const en = buildFeedIndex(english, "en");
+    expect(en.map((c) => c.id)).toEqual(buildFeedIndex(cards).map((c) => c.id));
+    expect(en.every((c) => c.titleKo === "" && c.titleEn)).toBe(true);
+    expect(buildFeedIndex(cards, "ko")).toEqual(buildFeedIndex(cards));
+    expect(buildFeedIndex(cards)[0]).not.toHaveProperty("titleEn");
+  });
+
+  it("영어 색인 카드를 다시 넣어도 같은 카드(멱등 — 클라이언트 mergeIndex 의 이번 호 카드)", () => {
+    const once = toIndexCard({ ...korean, titleEn: "Title" }, "en");
+    expect(toIndexCard(once, "en")).toEqual(once);
   });
 });

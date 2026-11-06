@@ -18,7 +18,7 @@
  */
 import { compareDefaultOrder } from "@/lib/feedFilter";
 import type { Locale } from "@/lib/i18n";
-import { toFormat, type Format } from "@/lib/labels";
+import { hasHangul, localeTags, toFormat, type Format, type Region } from "@/lib/labels";
 import type { ArticleCard, IndexCard } from "@/lib/types";
 
 /** 정적 export 서브경로(`/global-ai-news`)에서 수동 fetch는 basePath를 명시해야 한다(dev는 ""). */
@@ -34,10 +34,10 @@ export const INDEX_SCHEMA = 1;
 export const MANIFEST_FILE = "manifest.json";
 
 /**
- * 언어판이 읽는 색인의 언어 — 색인 파일을 고르는 단일 자리.
- * 영어 색인(영어 제목·요약)은 영어판 Phase 5 에서 export 가 `en` 조각을 만들 때 여기서 en 만 "en" 으로 바꾼다.
+ * 언어판이 읽는 색인의 언어 — 색인 파일을 고르는 단일 자리. 영어판은 영어 색인(`<kind>/en/` — 영어 제목·요약·
+ * 영문 매체명·라틴 문자 태그, 영어 본문이 있는 기사만)을 읽는다(영어판 Phase 5-2).
  */
-export const INDEX_LOCALE: Record<Locale, Locale> = { ko: "ko", en: "ko" };
+export const INDEX_LOCALE: Record<Locale, Locale> = { ko: "ko", en: "en" };
 
 /** 홈 색인 행 필드(순서 = 배열 위치). title·summary 는 목록 언어의 제목·요약이다(ko 는 한국어, en 은 영어). */
 export const FEED_ROW_FIELDS = [
@@ -76,11 +76,12 @@ export type IndexRow = [
   titleOriginal?: string,
 ];
 
-/** 매체 표 한 칸(목록). 영문명은 영어 목록에만 싣는다. */
+/** 매체 표 한 칸(목록). 영문명·지역은 영어 목록에만 싣는다(지역 = KOREA 표시·Korea Desk). */
 export interface ManifestSource {
   name: string;
   format: Format;
   nameEn?: string;
+  region?: Region;
 }
 
 /** 월별 조각 한 칸. */
@@ -175,6 +176,7 @@ export type EncodableCard = Pick<
 /**
  * 카드 → 행. 제목·요약은 목록 언어의 것(ko: 한국어 — 제목이 비면 원제로 폴백, en: 영어).
  * 원제는 검색 색인(`withOriginal`)에만 싣는다. 묶인 보도는 개수만.
+ * en 은 한글을 싣지 않는다: 태그는 라틴 문자만(영어판 기본값), 한국 매체의 한국어 원제는 빈 문자열(영어 검색 대상이 아니다).
  */
 export function encodeRow(card: EncodableCard, locale: Locale, withOriginal: boolean): IndexRow {
   const en = locale === "en";
@@ -184,13 +186,16 @@ export function encodeRow(card: EncodableCard, locale: Locale, withOriginal: boo
     en ? (card.titleEn ?? "") : card.titleKo || card.titleOriginal || "",
     en ? (card.summaryEn ?? "") : card.summaryKo,
     card.category,
-    card.tags,
+    en ? localeTags(card.tags, "en") : card.tags,
     card.trendingScore,
     card.importance,
     card.publishedAt,
     card.related?.length ?? card.relatedCount ?? 0,
   ];
-  if (withOriginal) row.push(card.titleOriginal ?? "");
+  if (withOriginal) {
+    const original = card.titleOriginal ?? "";
+    row.push(en && hasHangul(original) ? "" : original);
+  }
   return row;
 }
 
@@ -215,6 +220,7 @@ export function decodeRow(
   const src = manifest.sources[sourceId];
   const source: IndexCard["source"] = { id: sourceId, name: src?.name ?? sourceId };
   if (src?.nameEn) source.nameEn = src.nameEn;
+  if (src?.region) source.region = src.region;
   const en = manifest.locale === "en";
   const card: DecodedCard = {
     id,

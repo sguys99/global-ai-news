@@ -2,20 +2,23 @@ import { vi } from "vitest";
 import { feedIndexFromArticles } from "../../../scripts/export-feed-index";
 import { searchIndexFromArticles } from "../../../scripts/export-search-index";
 import type { BuiltIndex } from "../../../scripts/lib/indexShards";
+import type { Locale } from "@/lib/i18n";
 import type { ArticleCard } from "@/lib/types";
 
 /**
  * 색인 조각 가짜 서버(테스트 전용) — export 스크립트와 같은 순수 함수로 목록·조각을 만들고, `fetch` 를
  * `/<kind>/<locale>/<file>?v=…` 경로로 받아 돌려준다. 받은 경로는 `requested` 에 남는다(쿼리 제외).
+ * `locale` = 만들 색인 언어(en 은 영어 본문 있는 기사만 — export 와 같은 거르기).
  */
 export function indexServer(
   articles: readonly ArticleCard[],
   issueDateOf: (a: ArticleCard) => string,
+  locale: Locale = "ko",
 ) {
   const dates = new Map(articles.map((a) => [a.id, issueDateOf(a)]));
   const built: Record<string, BuiltIndex> = {
-    "feed-index": feedIndexFromArticles(articles, dates),
-    "search-index": searchIndexFromArticles(articles, dates),
+    "feed-index": feedIndexFromArticles(articles, dates, locale),
+    "search-index": searchIndexFromArticles(articles, dates, locale),
   };
   const requested: string[] = [];
   const fetchMock = vi.fn(async (input: string | URL | Request) => {

@@ -8,7 +8,7 @@
  */
 import type { FeedOptions, SearchOptions } from "@/lib/db";
 import type { Locale } from "@/lib/i18n";
-import { normalizeCategory, shortSourceName, sourceDisplayName } from "@/lib/labels";
+import { normalizeCategory, shortSourceName, sourceDisplayName, type Region } from "@/lib/labels";
 import type { IndexCard } from "@/lib/types";
 
 /** ISO8601 문자열 내림차순 비교(사전식 비교 = 시간 내림차순과 호환). */
@@ -47,6 +47,8 @@ export interface SourceOption {
   name: string;
   /** 영문 매체명(sources.name_en, 한글 이름 매체만) — 영어판 칩 표시명(`sourceDisplayName`). 한국어판은 싣지 않는다. */
   nameEn?: string;
+  /** 지역(sources.region — "kr" = 한국 매체). 영어판만 싣는다(views/data.ts). */
+  region?: Region;
   count?: number;
 }
 

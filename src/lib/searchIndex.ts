@@ -1,8 +1,8 @@
 /**
  * 클라이언트 검색 질의 헬퍼(순수 함수). SearchClient(UI)와 단위 테스트가 공유한다.
  *
- * 서버 FTS5 검색을 대체한다. FlexSearch `Document`(`tokenize:"full"`)는 한글 부분일치를
- * 지원해 기존 FTS5(prefix) + LIKE 폴백 동작을 근사한다. 색인 대상은 목록 언어의 제목·요약(ko 한국어, en 영어)·원문
+ * 서버 FTS5 검색을 대체한다. FlexSearch `Document`(ko `tokenize:"full"`)는 한글 부분일치를
+ * 지원해 기존 FTS5(prefix) + LIKE 폴백 동작을 근사한다(en 은 `forward` — 아래 TOKENIZE). 색인 대상은 목록 언어의 제목·요약(ko 한국어, en 영어)·원문
  * 제목·태그(공백 조인 tagsText)이며, 원문 본문(content_raw)은 색인 조각에 없다(§10 수용).
  * 색인은 월별 조각을 받는 대로 `addToSearchDocument`로 더해 간다(src/lib/indexShards.ts).
  */
@@ -16,6 +16,18 @@ const INDEX_FIELDS: Record<Locale, readonly string[]> = {
   en: ["titleEn", "summaryEn", "titleOriginal", "tagsText"],
 };
 
+/**
+ * 언어별 토큰화(영어판 Phase 5-2).
+ * - ko `full`: 한글은 띄어쓰기 단위가 조사와 붙어 있어("에이전트를") 낱말 안 부분일치가 필요하다(기존 FTS5 prefix + LIKE 근사).
+ * - en `forward` + `latin:simple`: 영어는 낱말 앞부분 일치("agent" → agents·agentic, "open" → OpenAI)면 충분하고,
+ *   `full` 보다 색인이 훨씬 작다(낱말마다 접두만). `latin:simple` 은 소문자화에 더해 악센트를 접는다(café → cafe).
+ *   어간 처리(`balance` 이상)는 "agent"·"robot" 같은 짧은 질의를 놓쳐서 쓰지 않는다.
+ */
+const TOKENIZE: Record<Locale, { tokenize: "full" | "forward"; charset?: string }> = {
+  ko: { tokenize: "full" },
+  en: { tokenize: "forward", charset: "latin:simple" },
+};
+
 type SearchDoc = SearchCard & { tagsText: string };
 
 export type SearchDocument = FlexSearch.Document<SearchDoc, false>;
@@ -26,7 +38,7 @@ export function buildSearchDocument(
   locale: Locale = "ko",
 ): SearchDocument {
   const index = new FlexSearch.Document<SearchDoc, false>({
-    tokenize: "full",
+    ...TOKENIZE[locale],
     document: { id: "id", index: [...INDEX_FIELDS[locale]] },
   });
   addToSearchDocument(index, entries);

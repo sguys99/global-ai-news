@@ -134,7 +134,7 @@ describe("export-feed-index", () => {
   });
 
   it("파일로 쓰면 <dir>/ko/ 목록·조각이고 본문·URL 이 새지 않는다", () => {
-    expect(writeFeedIndex(dir, db)).toEqual({ ko: 2 });
+    expect(writeFeedIndex(dir, db)).toEqual({ ko: 2, en: 0 });
     expect(readdirSync(path.join(dir, "ko")).sort()).toEqual([
       "2026-01.json",
       "2026-02.json",
