@@ -46,6 +46,8 @@ export interface FeedClientProps {
   initialDelayGap?: number;
   weekly?: WeeklyRadar | null;
   brief?: IssueBriefLine[];
+  /** Korea Desk 선정 기사 id(영어판만 — 한국어판은 키가 없다). */
+  desk?: number[];
 }
 
 /** 기본 옵션(필터·정렬 없음) — 정적 HTML 의 지면. */
@@ -85,6 +87,7 @@ export function FeedClient({
   initialDelayGap,
   weekly,
   brief,
+  desk,
 }: FeedClientProps) {
   const locale = useLocale();
   const searchParams = useSearchParams();
@@ -163,6 +166,7 @@ export function FeedClient({
       initialDelayGap={initialDelayGap}
       weekly={weekly}
       brief={brief}
+      desk={desk}
       locale={locale}
     />
   );

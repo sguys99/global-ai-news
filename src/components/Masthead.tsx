@@ -32,6 +32,7 @@ export function Masthead({
   categories,
   indexLabel,
   weekly = false,
+  desk = false,
   delayNoticeIssueDate,
   delayNoticeInitialGap,
   locale = "ko",
@@ -46,6 +47,11 @@ export function Masthead({
   indexLabel?: string;
   /** 주간 레이더(일요일 특집)가 실린 호 — 내비 "1면" 다음에 "주간 레이더"(#weekly)를 넣는다(지면 순서와 같다). */
   weekly?: boolean;
+  /**
+   * Korea Desk 밴드가 실린 호(영어판만) — 내비에 "Korea Desk"(#korea-desk)를 넣는다. 자리는 지면 순서와 같게
+   * 1면(·주간 레이더) 다음, 분야 밴드 앞.
+   */
+  desk?: boolean;
   /** 지정하면 그 호 날짜(KST)가 오늘보다 낡았을 때 발행 지연 안내 줄을 띄운다(홈 전용). */
   delayNoticeIssueDate?: string;
   /** 빌드 시점에 계산한 지연 일수 — 정적 HTML 에 안내를 미리 담아 레이아웃 밀림을 막는다. */
@@ -104,6 +110,7 @@ export function Masthead({
         {[
           { href: "#front", label: t.nav.front },
           ...(weekly ? [{ href: "#weekly", label: t.nav.weekly }] : []),
+          ...(desk ? [{ href: "#korea-desk", label: t.nav.desk }] : []),
           ...categories.map((c) => ({
             href: `#section-${categorySlug(c)}`,
             label: categoryLabel(c, locale),
@@ -131,6 +138,10 @@ export function Masthead({
  */
 function IssueEar({ stats, locale }: { stats: IssueStats; locale: Locale }) {
   const t = getMessages(mastheadMessages, locale).ear;
+  // 영어 둘째 줄은 비뉴스만 센다("4 repos · 2 models · 3 papers") — 첫 줄 "31 stories"와 같은 낱말이 다른 수로 읽히지 않게
+  // (DESIGN.md §9 영어판 "형식 귀"). 한국어는 뉴스 포함 그대로.
+  const formats =
+    locale === "en" ? stats.formats.filter((f) => f.format !== "news") : stats.formats;
   return (
     <div data-testid="issue-ear" className="ed-ear">
       <span className="text-label hidden font-semibold md:block">{t.heading}</span>
@@ -140,9 +151,9 @@ function IssueEar({ stats, locale }: { stats: IssueStats; locale: Locale }) {
         <span className="ed-ear-u">{plural(stats.count, t.unit.one, t.unit.other)}</span>{" "}
         <span className="tabular-nums">{t.outlets(stats.sources)}</span>
       </span>
-      {stats.formats.length > 0 && (
+      {formats.length > 0 && (
         <span className="flex flex-wrap gap-x-1 md:mt-0.5">
-          {stats.formats.map(({ format, count }, i) => (
+          {formats.map(({ format, count }, i) => (
             <span key={format} className="contents">
               {i > 0 && (
                 <span aria-hidden className="opacity-60">

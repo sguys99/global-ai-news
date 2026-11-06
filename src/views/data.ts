@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { hasEnglish } from "@/lib/articleText";
 import {
   type EditionRef,
@@ -21,6 +23,7 @@ import {
 import { isArchivedIssueDate } from "@/lib/archive";
 import {
   buildEdition,
+  type Edition,
   ISSUE_BRIEF_LIMITS,
   selectIssueBrief,
   type IssueBriefLine,
@@ -30,6 +33,13 @@ import { INDEX_PAGE_SIZE, buildFeedIndex } from "@/lib/feedIndex";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 import { indexBuildVersion } from "@/lib/indexShards";
 import { hasHangul, issueDelayDays, localeTags } from "@/lib/labels";
+import {
+  isKoreaSubject,
+  koreaSubjectNames,
+  koreaSubjectPattern,
+  selectKoreaDesk,
+} from "@/lib/koreaDesk";
+import { PROMPTS_DIR } from "@/lib/paths";
 import { hasArticleThumbnail, ogArticleImagePath } from "@/lib/site";
 import type { ArticleCard, FollowUpEntry, RelatedCoverage } from "@/lib/types";
 import { buildWeeklyRadar } from "@/lib/weeklyRadar";
@@ -208,21 +218,29 @@ export function loadHome(locale: Locale) {
   const issueArticles = ref
     ? toListCards(localeArticles(locale, getIssueArticles(ref.date)), locale)
     : [];
+  const edition = buildEdition(issueArticles);
   // 세 줄 요약(마스트헤드 아래 띠): 줄 id·문장만 넘긴다. 없으면 빈 배열 → 띠를 숨긴다.
   const brief = ref
-    ? localeBrief(
-        locale,
-        selectIssueBrief(buildEdition(issueArticles), getIssueBriefs(ref.date)),
-        issueArticles,
-      )
+    ? localeBrief(locale, selectIssueBrief(edition, getIssueBriefs(ref.date)), issueArticles)
     : [];
+  // Korea Desk(영어판만): 선정 id 만 넘기고 섬(FeedView)이 applyKoreaDesk 로 밴드를 짠다. 한국어판은 키 자체가 없다(RSC 무변화).
+  const desk = localeKoreaDesk(locale, edition);
   // 발행 지연 안내의 초기 상태 = 빌드 시점 판단. 빌드 자체가 낡았으면 정적 HTML 에 안내가 이미 들어간다.
   const initialDelayGap = ref ? issueDelayDays(ref.date, Date.now()) : 0;
   // 주간 레이더: 최신 호가 일요일일 때만(아니면 null). 호 고정 링크 지면과 같은 함수 — 그날 홈과 /edition/<일요일> 이 같다.
   const weekly = ref ? loadWeeklyRadar(locale, ref.date) : null;
   return {
     /** FeedView(서버 fallback)·FeedClient 공용 props. */
-    feed: { issueArticles, sources, tags, editionInfo, initialDelayGap, weekly, brief },
+    feed: {
+      issueArticles,
+      sources,
+      tags,
+      editionInfo,
+      initialDelayGap,
+      weekly,
+      brief,
+      ...(desk ? { desk } : {}),
+    },
     /** 전체 기사 색인 첫 페이지 + 누적 건수 + 색인 목록(feed-index/<언어>/manifest.json) 캐시 키. */
     index: { indexHead, indexTotal, indexVersion: indexBuildVersion(ref?.date, indexTotal) },
   };
@@ -250,7 +268,41 @@ export function loadEdition(locale: Locale, date: string) {
     next: pagerRef(refs[i + 1]),
     edition,
     brief: localeBrief(locale, selectIssueBrief(edition, getIssueBriefs(ref.date)), edition.issue),
+    /** Korea Desk 선정 id(영어판만, 없으면 undefined) — 홈과 같은 함수(`localeKoreaDesk`). */
+    desk: localeKoreaDesk(locale, edition),
   };
+}
+
+// ─── Korea Desk ───────────────────────────────────────────────────────────────
+
+let koreaPattern: RegExp | null = null;
+
+/** 한국 주제 대조식 — 용어집(configs/prompts/glossary.en.md)의 한국 기관·기업 영문명 + Korea·Seoul·KRW. 빌드당 1회 읽는다. */
+function koreaSubjectRe(): RegExp {
+  if (!koreaPattern) {
+    let names: string[] = [];
+    try {
+      names = koreaSubjectNames(readFileSync(path.join(PROMPTS_DIR, "glossary.en.md"), "utf8"));
+    } catch {
+      // 용어집이 없으면 기본 낱말(Korea·Korean·Seoul·KRW)만으로 고른다.
+    }
+    koreaPattern = koreaSubjectPattern(names);
+  }
+  return koreaPattern;
+}
+
+/**
+ * 언어판 Korea Desk 선정 id(src/lib/koreaDesk.ts `selectKoreaDesk`). ko 는 늘 undefined(데스크 없음), en 은 그 호 한국 매체
+ * 기사가 1면 밖에 없으면 undefined. 한국 주제 판정은 여기(서버)서 해 섬에는 id 만 간다 — 용어집을 클라이언트에 싣지 않는다.
+ */
+export function localeKoreaDesk(
+  locale: Locale,
+  edition: Pick<Edition, "lead" | "seconds" | "briefs" | "radar" | "issue">,
+): number[] | undefined {
+  if (locale === DEFAULT_LOCALE) return undefined;
+  const re = koreaSubjectRe();
+  const ids = selectKoreaDesk(edition, (a) => isKoreaSubject(a, re));
+  return ids.length > 0 ? ids : undefined;
 }
 
 /** 주간 레이더: 일요일 호만(아니면 null) — 홈과 호 고정 링크가 같은 함수·같은 입력이라 같은 밴드가 실린다. */

@@ -2,7 +2,8 @@
  * 기사 신호 프레젠테이션 컴포넌트 (DESIGN.md §4). 피드·검색·상세가 공유한다.
  * - CategoryKicker: 코발트 키커(한글 표시명)
  * - FormatBadge: 형식 배지(REPO·MODEL·PAPER) — 잉크 1px 아웃라인, 코발트 없음. 뉴스는 렌더하지 않는다
- * - RegionBadge: 지역 배지(KOREA) — 형식 배지와 같은 문법. 해외 매체는 렌더하지 않는다
+ * - RegionBadge: 지역 배지(KOREA) — 형식 배지와 같은 문법(운영 콘솔). 해외 매체는 렌더하지 않는다
+ * - RegionMark: 영어판 바이라인의 KOREA 글자 표시(테두리 없음 — DESIGN.md §9 영어판, 5-1 결정 B)
  * - ImportanceMeter: 5칸 원형 도트 미터(4–5는 코발트)
  * - Byline: (형식 배지) 소스 · 날짜 · 중요도 (+ 선택 화제 지수)
  * - TrendBar: 0–100 고정 스케일 수평 바
@@ -99,6 +100,25 @@ export function RegionBadge({
 }
 
 /**
+ * 영어판 바이라인의 한국 매체 표시 `KOREA ·` (DESIGN.md §9 "영어판" — 5-1 결정 B 글자만). 배지 글꼴(10.5px 700 대문자,
+ * 자간 0.09em)을 테두리 없이 잉크로, 매체명 바로 앞에 점으로 나눠 둔다(`KOREA · AI Times`). 상자는 형식 배지 몫이고
+ * 코발트는 쓰지 않는다. 대문자는 aria-hidden, 스크린리더는 "Korean outlet". relative 는 sr-only(absolute)의 기준 상자.
+ * 한국어판은 그리지 않는다(지역 표시는 영어 독자용 신호다).
+ */
+export function RegionMark({ region, locale = "ko" }: { region?: Region; locale?: Locale }) {
+  if (!region || locale !== "en") return null;
+  return (
+    <>
+      <span className="sg-region">
+        <span aria-hidden>{REGION_BADGES[region]}</span>
+        <span className="sr-only">{regionLabel(region, locale)}</span>
+      </span>
+      <Dot />
+    </>
+  );
+}
+
+/**
  * 중요도 1–5 도트 미터. 0(미가공)이면 렌더하지 않는다. 색만이 아니라 칸 수·라벨로도 전달.
  * 칸은 클래스 없는 `<i>` 5개 — 채움·색은 globals.css `.sg-imp[data-v]` 가 칸 순서(nth-child)로 정한다
  * (앞 N칸 채움, 4–5는 코발트). 미터가 호 한 장에 50개 가까이 실려 칸마다 클래스를 달면 페이지가 수십 KB 무거워진다.
@@ -148,6 +168,7 @@ export function Byline({
   showFormat = false,
   showDate = true,
   truncateSource = false,
+  hideRegion = false,
   timeBase,
   prefix,
   className,
@@ -169,6 +190,8 @@ export function Byline({
    * 앞의 키커(prefix)와 뒤의 시각·중요도는 온전히 남는다(모바일 브리핑, 시안 결정 ⑤).
    */
   truncateSource?: boolean;
+  /** 영어판 KOREA 표시를 끈다 — Korea Desk 안(밴드 머리가 이미 말한다). */
+  hideRegion?: boolean;
   /**
    * 지정하면 날짜를 상대 시각(RelativeTime)으로 그린다 — 값은 정적 렌더 기준 시각(호 발행 ISO).
    * 홈 1면·섹션 전용. 상세·지난 호·검색은 생략해 절대 날짜를 유지한다(지난 호에서 "3시간 전"→"10.24"로 깜빡이지 않도록).
@@ -179,17 +202,21 @@ export function Byline({
   locale?: Locale;
 }) {
   const t = getMessages(metaMessages, locale);
+  // 영어판 한국 매체: 매체명 앞 `KOREA ·` (한국어판·데스크 안은 없음).
+  const region = locale === "en" && !hideRegion ? article.source.region : undefined;
   const source = (
     <span
       className={cn(
         "sg-em",
         compact && "sg-src-c",
         truncateSource && "sg-tr",
-        showFormat && "sg-src-f",
+        (showFormat || region) && "sg-src-f",
       )}
     >
       {showFormat && <FormatBadge format={article.format} locale={locale} />}
-      <span className={cn(compact && "sg-tr")}>
+      <RegionMark region={region} locale={locale} />
+      {/* KOREA 표시가 앞에 서면(영어판) 바깥 칸이 flex 라 매체명 칸이 직접 말줄임한다. */}
+      <span className={cn((compact || (truncateSource && region)) && "sg-tr")}>
         {sourceNameOf(article, locale, { full: fullSource })}
         <OtherSources count={relatedCountOf(article)} locale={locale} />
       </span>

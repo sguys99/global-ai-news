@@ -38,12 +38,18 @@ export interface EditionPayload {
   radar: EditionRadarSlot[];
   trending: number[];
   sections: EditionSectionSlot[];
+  /** Korea Desk 선정 기사 id(영어판만 — 섬이 src/lib/koreaDesk.ts `applyKoreaDesk` 로 밴드를 짠다). 한국어판은 키가 없다. */
+  desk?: number[];
 }
 
 const ids = (cards: readonly { id: number }[]) => cards.map((a) => a.id);
 
 /** 서버: 편집 결과 → 섬 페이로드. 행의 제목·요약은 그 언어판의 것(encodeRow — ko 는 원제 폴백 포함). */
-export function packEdition(edition: Edition<ArticleCard>, locale: Locale): EditionPayload {
+export function packEdition(
+  edition: Edition<ArticleCard>,
+  locale: Locale,
+  desk?: readonly number[],
+): EditionPayload {
   const sources: Record<string, ManifestSource> = {};
   for (const a of edition.issue) {
     if (sources[a.source.id]) continue;
@@ -67,6 +73,7 @@ export function packEdition(edition: Edition<ArticleCard>, locale: Locale): Edit
     sections: edition.sections.map(
       (s): EditionSectionSlot => [s.category, s.count, s.onFront, ids(s.items)],
     ),
+    ...(desk?.length ? { desk: [...desk] } : {}),
   };
 }
 

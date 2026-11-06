@@ -18,6 +18,8 @@ export const mastheadMessages = defineMessages({
     nav: {
       front: "1면",
       weekly: "주간 레이더",
+      /** Korea Desk 밴드(영어판 전용 — 한국어판에는 데스크가 없어 쓰이지 않는다). */
+      desk: "코리아 데스크",
       /** 마지막 항목(#all) 기본값 — 호 고정 링크 지면은 edition 의 `index`("이 호의 기사")를 넘긴다. */
       all: "전체 기사",
     },
@@ -40,6 +42,7 @@ export const mastheadMessages = defineMessages({
     nav: {
       front: "Front page",
       weekly: "Weekly radar",
+      desk: "Korea Desk",
       all: "All stories",
     },
     ear: {

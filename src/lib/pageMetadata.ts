@@ -9,9 +9,10 @@
 import type { Metadata } from "next";
 import type { EditionInfo } from "@/lib/db";
 import type { Edition, IssueBriefLine } from "@/lib/edition";
-import { categoryLabel, formatLongDate } from "@/lib/labels";
+import { categoryLabel, formatLongDate, issueNoLabel } from "@/lib/labels";
 import {
   SITE_DESCRIPTION,
+  SITE_DESCRIPTION_EN,
   SITE_NAME,
   SITE_TITLE,
   SITE_URL,
@@ -74,5 +75,21 @@ export function editionPageMetadata(
   return {
     title: `${formatLongDate(ref.publishedAt)} AI 뉴스 브리핑 제${ref.issueNo}호 — ${SITE_NAME}`,
     ...editionMetadata(edition, ref, editionPath(ref.date), latestEditionDate, brief),
+  };
+}
+
+/**
+ * 영어 호 고정 링크(`/en/edition/[date]/`) metadata — 제목·설명만(공유 메타·canonical·hreflang 은 영어판 Phase 6).
+ * 제목 `AI News Briefing — Tuesday, November 3, 2026 (No. 140) — AI Daybook`, 설명은 그 호의 영어 세 줄 요약
+ * (없으면 영어 사이트 설명). 한국어 출력(`editionPageMetadata`)은 건드리지 않는다.
+ */
+export function editionPageMetadataEn(
+  ref: EditionInfo & { publishedAt: string },
+  brief: readonly IssueBriefLine[] = [],
+): Metadata {
+  const no = ref.issueNo > 0 ? ` (${issueNoLabel(ref.issueNo, "en")})` : "";
+  return {
+    title: `AI News Briefing — ${formatLongDate(ref.publishedAt, "en")}${no} — ${SITE_NAME}`,
+    description: brief.length > 0 ? brief.map((l) => l.text).join(" · ") : SITE_DESCRIPTION_EN,
   };
 }

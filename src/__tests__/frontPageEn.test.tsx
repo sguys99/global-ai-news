@@ -159,7 +159,8 @@ describe("영어판 마스트헤드·세 줄 요약", () => {
     expect(container.textContent).toContain("Published daily at 06:00 KST");
     const ear = screen.getByTestId("issue-ear");
     expect(ear.textContent).toContain("13 stories · 4 outlets");
-    expect(ear.textContent).toContain("10 stories·1 repo·1 model·1 paper");
+    // 영어 둘째 줄은 비뉴스만(DESIGN.md §9 영어판 "형식 귀") — 첫 줄 "13 stories" 와 낱말이 겹치지 않게.
+    expect(ear.lastElementChild!.textContent).toBe("1 repo·1 model·1 paper");
     const nav = screen.getByRole("navigation", { name: "Sections" });
     const labels = within(nav)
       .getAllByRole("link")

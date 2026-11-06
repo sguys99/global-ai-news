@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { FrontPage, SectionBands, WeeklyRadarBand } from "@/components/Edition";
+import { FrontPage, KoreaDeskBand, SectionBands, WeeklyRadarBand } from "@/components/Edition";
 import { useLocale, useMessages } from "@/components/LocaleProvider";
 import { StoryIndex } from "@/components/StoryIndex";
 import { unpackEdition, type EditionPayload } from "@/lib/editionPayload";
+import { applyKoreaDesk } from "@/lib/koreaDesk";
 import { editionMessages } from "@/lib/messages/edition";
 import type { WeeklyRadar } from "@/lib/weeklyRadar";
 
@@ -26,13 +27,18 @@ export function EditionBody({
 }) {
   const locale = useLocale();
   const t = useMessages(editionMessages);
-  const edition = useMemo(() => unpackEdition(payload, locale), [payload, locale]);
+  // Korea Desk(영어판, payload.desk): 데스크 게재분을 섹션 밴드에서 뺀다 — 홈(FeedView)과 같은 함수.
+  const { edition, sections, desk } = useMemo(
+    () => applyKoreaDesk(unpackEdition(payload, locale), payload.desk),
+    [payload, locale],
+  );
 
   return (
     <>
       <FrontPage edition={edition} locale={locale} />
       {weekly && <WeeklyRadarBand weekly={weekly} locale={locale} />}
-      <SectionBands sections={edition.sections} locale={locale} />
+      {desk && <KoreaDeskBand desk={desk} locale={locale} indexLabel={t.index} />}
+      <SectionBands sections={sections} locale={locale} />
       <section id="all" aria-label={t.index} className="scroll-mt-20">
         <div className="border-rule mb-5 flex items-baseline gap-3 border-t-2 pt-3">
           <h2 className="text-display-md font-serif font-extrabold">{t.index}</h2>

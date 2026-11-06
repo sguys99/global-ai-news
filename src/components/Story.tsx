@@ -129,6 +129,28 @@ export function StorySectionItem({
 }
 
 /**
+ * Korea Desk 칸(영어판, DESIGN.md §9) — 키커 · 세리프 제목(19–20px) · 요약 3줄(좁은 칸이라 자동 하이픈) · 바이라인.
+ * 데스크 안이라 바이라인의 KOREA 표시는 생략한다(밴드 머리 "From Seoul · Korea Desk"가 이미 말한다).
+ */
+export function StoryDesk({ article, timeBase, locale = "ko" }: StoryProps) {
+  const summary = summaryOf(article, locale);
+  return (
+    <ArticleLink articleId={article.id} locale={locale} className="story-link st-desk">
+      <CategoryKicker category={article.category} locale={locale} />
+      <h3 className="headline st-desk-h">{headlineOf(article, locale)}</h3>
+      {summary && <p className="st-sum3">{summary}</p>}
+      <Byline
+        article={article}
+        hideRegion
+        timeBase={timeBase}
+        className="mt-auto pt-0.5"
+        locale={locale}
+      />
+    </ArticleLink>
+  );
+}
+
+/**
  * 오늘의 브리핑 한 행 (시안 결정 ④·⑤).
  * - md 이상: [키커 7.5rem | 한 줄 세리프 제목(말줄임) | 매체 · 시각 · 중요도] 3칸, 행 약 50px.
  * - 모바일: 제목(15px, 2줄) → 메타 한 줄. 키커는 바이라인 맨 앞으로 들어가고, 넘치면 키커가 아니라 매체 칸("외 N곳"부터)이
