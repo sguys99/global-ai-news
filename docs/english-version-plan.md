@@ -454,9 +454,14 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 5-1. 시안
 
-- [ ] `docs/design/mockups/en-front.html`: 영어 마스트헤드(폴리오 `Tuesday, November 3, 2026 · No. 140 · Published daily at 06:00 KST`), 귀(`This issue 31 stories · 18 outlets`), Korea Desk 밴드, `KOREA` 표시, 언어 전환, 영어 제목 길이(한국어보다 약 1.5배 길다)가 1면·모바일에서 어떻게 줄바꿈되는지.
-- [ ] `KOREA` 표시 스타일을 정한다. 형식 배지와 같은 잉크 1px 아웃라인을 쓸지(DESIGN.md: 배지에 코발트 금지) 결정한다.
-- [ ] 사용자 확인 후 DESIGN.md에 영어 타이포그래피 절을 추가한다(sentence case, 영문 줄 길이, Hahmlet·Pretendard 라틴 글리프).
+- [x] `docs/design/mockups/en-front.html`: 영어 마스트헤드(폴리오 `Tuesday, November 3, 2026 · No. 140 · Published daily at 06:00 KST`), 귀(`This issue 31 stories · 18 outlets`), Korea Desk 밴드, `KOREA` 표시, 언어 전환, 영어 제목 길이(한국어보다 약 1.5배 길다)가 1면·모바일에서 어떻게 줄바꿈되는지.
+- [x] `KOREA` 표시 스타일을 정한다. 형식 배지와 같은 잉크 1px 아웃라인을 쓸지(DESIGN.md: 배지에 코발트 금지) 결정한다. (**2026-11-06 사용자 결정: B 글자만** — 배지 글꼴 대문자, 테두리 없는 잉크, 바이라인 매체명 앞 + 점 `KOREA · AI Times`. 상자는 형식 배지 몫으로 남긴다.)
+- [x] 사용자 확인 후 DESIGN.md에 영어 타이포그래피 절을 추가한다(sentence case, 영문 줄 길이, Hahmlet·Pretendard 라틴 글리프). (2026-11-06 DESIGN.md §9 "영어판" — 신호 추가·Korea Desk·언어 전환·영어 타이포그래피)
+- **5-1 완료 (2026-11-06).** 시안 [en-front.html](design/mockups/en-front.html)·[en-article.html](design/mockups/en-article.html)(실데이터 11-03 제140호, 1280/360·라이트/다크 확인), 결정 기록 [phase5/5-1-mockup.md](english-version/phase5/5-1-mockup.md). 사용자 결정(2026-11-06):
+  - **Korea Desk 선정 = 한국 주제 우선**(계획 보정). 그 호 한국 매체 기사 중 1면 게재분을 빼고, 영어 본문에 Korea·Korean·Seoul·KRW나 용어집의 한국 기관·기업명이 있는 기사를 먼저, 남으면 편집 순으로 ≤ 4건(코드만). 매체 기준 그대로면 제140호 데스크 4건 중 2건이 해외 기업 소식이었다.
+  - **전자신문 영문 매체명 `Electronic Times AI` → `ETNews`**(바이라인에서 360px 줄을 밀어냈다) — 5-2에서 `sources.json` `nameEn`을 바꾼다.
+  - 기본값으로 정한 것(시안 권장안): 데스크 게재분은 영어 섹션 밴드에서 빼고 밴드 머리에 건수를 적는다 · 영어 귀 둘째 줄은 비뉴스 형식만 센다 · `related_json`의 한국어 제목은 `Korean-language report` + 매체 영문명 · 전환 라벨은 영어 페이지 `한국어`, 한국어 페이지 `EN`.
+  - **(계획 밖 발견) AI타임스·로봇신문 `published_at`이 KST를 UTC로 저장해 최대 9시간 늦다**(한국어판도 "방금 전"). 사용자 결정: Phase 5와 별도로 `deploy/github-pages`에서 바로 고친다(수집기 수정 + 지난 기사 보정 스크립트).
 
 ### 5-2. 페이지
 
