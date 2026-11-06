@@ -246,10 +246,7 @@ describe("SearchInput·SearchClient — en(컨텍스트)", () => {
     vi.useFakeTimers();
     render(<SearchInput />, { wrapper: en });
     const input = screen.getByRole("searchbox", { name: "Search stories" });
-    expect(input).toHaveAttribute(
-      "placeholder",
-      "Search by keyword — titles, summaries, source text, tags",
-    );
+    expect(input).toHaveAttribute("placeholder", "Search by keyword");
     fireEvent.change(input, { target: { value: "robot" } });
     act(() => vi.advanceTimersByTime(300));
     expect(push).toHaveBeenCalledWith("/en/search?q=robot");

@@ -118,6 +118,11 @@ export interface RelatedCoverage {
   source: string; // 매체 표시명
   url: string;
   title: string; // 원제
+  /**
+   * 영어판 상세만(views/data.ts `englishRelated`): 원제가 한국어라 비운 보도 — 제목 대신 "Korean-language report"와
+   * 원문 주소·언어 안내를 그린다. 저장값(related_json)·한국어판에는 없다.
+   */
+  koreanTitle?: true;
 }
 
 /**

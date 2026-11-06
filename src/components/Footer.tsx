@@ -44,6 +44,7 @@ export function Footer({ year = new Date().getFullYear() }: { year?: number }) {
           <Link href={localePath(locale, "/search")} className={footLink}>
             {common.nav.search}
           </Link>
+          {/* 언어 전환 자리(5-3): 헤더와 같은 링크(`한국어` / `EN`). */}
           {/* 운영 콘솔(/admin)은 로컬 전용 도구 — 정적 배포 산출엔 없으므로 공개 푸터에 노출하지 않는다. */}
         </nav>
       </div>

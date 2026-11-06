@@ -9,11 +9,14 @@
 import type { Metadata } from "next";
 import type { EditionInfo } from "@/lib/db";
 import type { Edition, IssueBriefLine } from "@/lib/edition";
-import { categoryLabel, formatLongDate } from "@/lib/labels";
+import { headlineOf, summaryOf } from "@/lib/articleText";
+import { categoryLabel, formatLongDate, issueNoLabel } from "@/lib/labels";
 import {
   SITE_DESCRIPTION,
+  SITE_DESCRIPTION_EN,
   SITE_NAME,
   SITE_TITLE,
+  SITE_TITLE_EN,
   SITE_URL,
   SITE_VERIFICATION,
   editionMetadata,
@@ -76,3 +79,38 @@ export function editionPageMetadata(
     ...editionMetadata(edition, ref, editionPath(ref.date), latestEditionDate, brief),
   };
 }
+
+// ─── 영어판(Phase 5-2) — 제목·설명만. 공유 메타·canonical·hreflang 은 Phase 6 ─────────────────────
+
+/**
+ * 영어판 최상위 레이아웃 metadata(`(en)/en/layout.tsx`). 영어 보관 지면(archivePage.ts)도 같은 값으로 `<head>` 를 병합한다.
+ * og·canonical 은 Phase 6 이 정한다 — 그 전에는 한국어 주소를 가리키는 공유 메타를 영어 페이지에 싣지 않는다.
+ */
+export const EN_LAYOUT_METADATA: Metadata = {
+  // og:url·og:image 상대 경로의 절대화 기준 — 영어 페이지에도 반드시 필요하다(없으면 og:image 경고·오류).
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE_EN,
+  description: SITE_DESCRIPTION_EN,
+  verification: SITE_VERIFICATION,
+};
+
+/** 영어 기사 상세(`/en/article/[id]/`) — `<title>`·description 만(영어 제목·요약). 라우트와 영어 보관 지면 공용. */
+export function englishArticlePageMetadata(article: ArticleCard): Metadata {
+  return {
+    title: `${headlineOf(article, "en")} — ${SITE_NAME}`,
+    description: summaryOf(article, "en") || undefined,
+  };
+}
+
+/** 영어 호 고정 링크(`/en/edition/[date]/`) — `<title>` 만. 영어 보관 호가 쓴다. */
+export function englishEditionPageMetadata(ref: EditionInfo & { publishedAt: string }): Metadata {
+  return {
+    title: `AI news briefing, ${formatLongDate(ref.publishedAt, "en")} · ${issueNoLabel(ref.issueNo, "en")} — ${SITE_NAME}`,
+  };
+}
+
+/** 영어 검색(`/en/search/`). */
+export const ENGLISH_SEARCH_METADATA: Metadata = {
+  title: `Search AI news — ${SITE_NAME}`,
+  description: SITE_DESCRIPTION_EN,
+};

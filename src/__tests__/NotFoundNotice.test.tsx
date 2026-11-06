@@ -30,7 +30,7 @@ describe("NotFoundNotice — 앱 전체 404 본문", () => {
     expect(screen.getByText(en.body)).toBeTruthy();
   });
 
-  it("바로 가기: 한국어는 오늘의 지면·검색, 영어는 NOT_FOUND_EN_LINK_LOCALE 판", () => {
+  it("바로 가기: 한국어는 오늘의 지면·검색, 영어는 영어판 홈·검색(Phase 5-2)", () => {
     render(<NotFoundNotice />);
     const koNav = screen.getByRole("navigation", { name: ko.linksLabel });
     const koLinks = within(koNav).getAllByRole("link");
@@ -44,9 +44,11 @@ describe("NotFoundNotice — 앱 전체 404 본문", () => {
         .getAllByRole("link")
         .map((a) => a.getAttribute("href")),
     ).toEqual([
-      localePath(NOT_FOUND_EN_LINK_LOCALE, "/"),
+      // Next Link 는 테스트 환경(trailingSlash 미적용)에서 끝 슬래시를 뗀다.
+      expect.stringMatching(/^\/en\/?$/),
       localePath(NOT_FOUND_EN_LINK_LOCALE, "/search"),
     ]);
+    expect(NOT_FOUND_EN_LINK_LOCALE).toBe("en");
   });
 });
 

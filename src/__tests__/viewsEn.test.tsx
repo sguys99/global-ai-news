@@ -50,13 +50,24 @@ vi.mock("@/lib/db", async (importOriginal) => {
   };
 });
 
+// 검색 정적 셸의 클라이언트 섬은 props(필터 칩 매체·태그)만 본다.
+const search = vi.hoisted(() => ({ props: null as null | { sources: unknown[]; tags: string[] } }));
+vi.mock("@/components/SearchClient", () => ({
+  SearchClient: (p: { sources: unknown[]; tags: string[] }) => {
+    search.props = p;
+    return null;
+  },
+}));
+
 import { ArticleView } from "@/views/ArticleView";
+import { SearchView } from "@/views/SearchView";
 import {
   activeTagsOf,
   loadArticlePage,
   loadEdition,
   loadHome,
   loadSearch,
+  localeArchivePlan,
   localeArticleIds,
   localeBrief,
   localeEditionDates,
@@ -172,6 +183,18 @@ describe("호 목록·경로 목록", () => {
     expect(localeEditionDates("ko")).toBe(db.plan.liveEditionDates);
     expect(localeEditionDates("en")).toEqual(["2026-11-04"]);
   });
+
+  it("영어 보관 계획 = 같은 계획(같은 최신 호)을 영어판 범위로 — 경로 목록과 빌드 후처리가 같은 함수", () => {
+    expect(localeArchivePlan("ko")).toBe(db.plan);
+    expect(localeArchivePlan("en")).toEqual({
+      latestEditionDate: "2026-11-04",
+      liveArticleIds: [3, 4],
+      archivedArticleIds: [1],
+      liveEditionDates: ["2026-11-04"],
+      archivedEditionDates: ["2026-11-02"],
+    });
+    expect(localeArticleIds("en")).toEqual(localeArchivePlan("en").liveArticleIds);
+  });
 });
 
 describe("홈·검색 로더 — 영어판", () => {
@@ -269,7 +292,7 @@ describe("상세 로더 — 영어판", () => {
     const page = loadArticlePage("en", 1)!;
     expect(page.thread.map((e) => e.id)).toEqual([1]);
     expect(page.article.related).toEqual([
-      { source: "Electronic Times AI", url: "https://e", title: "" },
+      { source: "Electronic Times AI", url: "https://e", title: "", koreanTitle: true },
       { source: "Reuters", url: "https://r", title: "Reuters headline" },
     ]);
     // 한국어판 상세는 묶인 보도를 그대로 둔다
@@ -322,5 +345,64 @@ describe("ArticleView — 영어 상세의 한글 새기 막기", () => {
     expect(screen.getByText("한국어 원문 발췌")).toBeInTheDocument();
     expect(screen.getByText("한글 보도 제목")).toBeInTheDocument();
     expect(screen.getByText("전자신문 AI")).toBeInTheDocument();
+  });
+
+  it("영어 상세 시안(en-article): KOREA · 분야 머리, 원제 들임 단락, 한국어 보도 안내, 원문 언어 안내, 구조화 데이터 없음", () => {
+    const { container } = render(<ArticleView locale="en" id={1} />, { wrapper: en });
+    // 머리 줄: KOREA(스크린리더 Korean outlet) + 점 + 분야 키커
+    const mark = container.querySelector(".sg-region")!;
+    expect(mark.textContent).toBe("KOREAKorean outlet");
+    expect(mark.nextElementSibling?.className).toContain("sg-dot");
+    expect(mark.parentElement!.textContent).toContain("Physical AI");
+    // 원제: 라벨 + lang=ko 원제(왼쪽 헤어라인 들임 단락)
+    const orig = container.querySelector(".ar-orig")!;
+    expect(orig.querySelector(".ar-orig-l")?.textContent).toBe("Original article in Korean");
+    expect(orig.querySelector('.ar-orig-t[lang="ko"]')?.textContent).toBe("한국어 원제");
+    // 한국어 제목만 있는 묶인 보도 → 안내 + 원문 주소·언어
+    const report = container.querySelector(".ar-cov-k")!;
+    expect(report.textContent).toBe("Korean-language reporte · in Korean");
+    // 원문 버튼 옆(데스크톱)과 모바일 바 아래 원문 언어 안내
+    const notes = container.querySelectorAll(".ar-ctan");
+    expect(notes).toHaveLength(2);
+    expect(notes[0].textContent).toBe("x · in Korean");
+    expect(container.querySelector(".ar-ctaw .ar-cta")).not.toBeNull();
+    expect(container.querySelector(".ar-barn .ar-mcta")).not.toBeNull();
+    // 구조화 데이터는 한국어 값뿐이라 영어 페이지에 싣지 않는다(Phase 6)
+    expect(container.querySelector('script[type="application/ld+json"]')).toBeNull();
+    // 한글은 lang=ko 원제 한 곳뿐
+    const ko = [...container.querySelectorAll("*")].filter(
+      (el) => el.children.length === 0 && HANGUL.test(el.textContent ?? ""),
+    );
+    expect(ko.map((el) => el.getAttribute("lang"))).toEqual(["ko"]);
+  });
+
+  it("해외 매체 영어 상세: KOREA·원문 언어 안내 없음, 원문 버튼은 예전 모양 그대로", () => {
+    const { container } = render(<ArticleView locale="en" id={3} />, { wrapper: en });
+    expect(container.querySelector(".sg-region")).toBeNull();
+    expect(container.querySelector(".ar-ctan")).toBeNull();
+    expect(container.querySelector(".ar-ctaw")).toBeNull();
+    expect(container.querySelector("a.ar-cta")).not.toBeNull();
+    expect(container.querySelector(".ar-bar")?.className).toBe("ar-bar");
+  });
+
+  it("한국어판 상세에는 영어판 요소가 없고 구조화 데이터는 그대로", () => {
+    const { container } = render(<ArticleView locale="ko" id={1} />);
+    for (const sel of [".sg-region", ".ar-orig", ".ar-cov-k", ".ar-ctan", ".ar-ctaw", ".ar-barn"])
+      expect(container.querySelector(sel)).toBeNull();
+    expect(container.querySelector('script[type="application/ld+json"]')).not.toBeNull();
+  });
+});
+
+describe("SearchView — 영어 검색 정적 셸(/en/search/)", () => {
+  it("머리가 영어이고, 클라이언트 섬에는 영어 기사로 센 매체(영문명·지역)와 라틴 태그만 넘긴다", () => {
+    const { container } = render(<SearchView locale="en" />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Find stories");
+    expect(screen.getByText("Search")).toBeInTheDocument();
+    expect(HANGUL.test(container.textContent ?? "")).toBe(false);
+    expect(search.props!.tags).toEqual(["llm", "robotics"]);
+    expect(search.props!.sources).toEqual([
+      { id: "aitimes", name: "AI타임스", nameEn: "AI Times", region: "kr", count: 2 },
+      { id: "hn", name: "Hacker News", count: 1 },
+    ]);
   });
 });
