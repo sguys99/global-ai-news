@@ -431,6 +431,36 @@ v1 화면에 대한 피드백(2026-10-04)은 네 가지로 수렴한다.
 - 헤더 워드마크: 홈에선 제호가 보이는 동안 숨기고 지나가면 페이드인(`HeaderWordmark`).
 - hover는 제목 색(코발트)만 바뀐다(`story-link` 유틸리티). `prefers-reduced-motion`에서 전부 제거.
 
+### 영어판 (`/en/`, 2026-11-06 확정 — english-version-plan Phase 5-1)
+
+시안: [en-front.html](docs/design/mockups/en-front.html)·[en-article.html](docs/design/mockups/en-article.html), 결정 기록: [5-1-mockup.md](docs/english-version/phase5/5-1-mockup.md). 토큰·서체·괘선·코발트 단일 강조는 한국어판과 같다. 영어판만의 규칙은 아래뿐이다.
+
+**신호 추가**
+
+| 신호        | 영어판 표기                                                                                                                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 한국 매체   | **`KOREA` 글자 표시** — 배지 글꼴(10.5px 700 대문자, 자간 0.09em), 테두리 없는 잉크, 바이라인 매체명 바로 앞 + 점(`KOREA · AI Times · 4 hours ago`). 상자는 형식 배지 몫, 코발트 금지. Korea Desk 안에서는 생략. 낭독 `Korean outlet` |
+| 형식 귀     | 둘째 줄은 비뉴스만 센다(`4 repos · 2 models · 3 papers`) — 첫 줄 `31 stories`와 낱말이 겹치지 않게                                                                                                                                    |
+| 발행 폴리오 | `Tuesday, November 3, 2026 · No. 140 · Published daily at 06:00 KST`                                                                                                                                                                  |
+
+**Korea Desk 밴드** — 1면(레이더 포함) 바로 아래·섹션 밴드 위(일요일은 주간 레이더 다음). 2px 잉크 괘선으로 열고 1px로 닫는 '지면 속 지면', 박스·배경 없음. lg 4:8(왼쪽 머리 칸: 코발트 라벨 `From Seoul`·세리프 제목 `Korea Desk`·dek `What Korea's tech press is reporting, summarized in English.`·`Elsewhere in this issue` 목록·안내 한 줄 / 오른쪽 2×2 기사), md 머리 한 줄 + 2×2, 모바일 목록(Elsewhere 숨김). 선정은 그 호 한국 매체 기사 중 1면 게재분을 빼고 **한국 주제(영어 본문에 Korea·Korean·Seoul·KRW·용어집 한국 기관·기업) 우선**, 남으면 편집 순 ≤ 4건. 데스크 게재분은 영어 섹션 밴드에서 빠지고 밴드 머리에 건수를 적는다(`7 stories · 2 on the front page · 2 at the Korea Desk`). 섹션 내비 `Front page` 다음, '이 호의 지면'(In this issue)에는 넣지 않는다.
+
+**언어 전환** — 대상 언어 이름을 그 언어로: 영어 페이지 `한국어`(`lang="ko"`), 한국어 페이지 `EN`. 데스크톱은 내비 뒤 헤어라인으로 나눈 흐린 글자, 모바일은 검색 아이콘 앞 글자 링크(44px). 한국어 페이지의 `Read AI Daybook in English →` 안내 줄은 헤더 바로 아래 헤어라인 한 줄(배경 없음, 화살표만 코발트, 닫기 44px, 마운트 후만).
+
+**영어 타이포그래피**
+
+- **언어 표시:** `<html lang="en">`, 영어 페이지 안의 한국어(한국 매체 원제)는 요소 단위 `lang="ko"`. 영어 페이지 한글 허용은 이 원제 줄뿐이다.
+- **줄바꿈:** 영어는 `word-break: normal; overflow-wrap: break-word`. 한국어의 `keep-all` + `anywhere`는 `[lang="ko"]`에만(`anywhere`는 좁은 영어 칸에서 단어 중간을 끊는다).
+- **하이픈:** 제목 없음. 좁은 칸 요약(레이더·섹션 항목·데스크)만 `hyphens: auto` + `hyphenate-limit-chars: 7 4 3`. 리드문·상세 요약은 없음.
+- **줄 모양:** 제목 `text-wrap: balance`, 요약·리드문 `text-wrap: pretty`.
+- **Sentence case:** 제목·밴드명·버튼 모두(`Open source & papers radar`, `Today's briefing`, `Read the original`). 분야 표시명(`Industry & Policy`)·고유명사는 그대로. 대문자는 형식 배지와 `KOREA`만 — 키커를 대문자로 바꾸지 않는다.
+- **자간(라틴 Hahmlet은 한국어 값이면 붙는다):** display-xl −0.028em, display-md·밴드 −0.03em, headline −0.018em, 세리프 16px title −0.01em, 본문 −0.003em. 제호 `AI Daybook`만 −0.045em 유지.
+- **크기:** 리드 `clamp(32px, 4.1cqi, 52px)/1.1`(영어 제목이 약 1.5배 길어 1280 3줄·360 4줄), 서브 20px/1.3, 상세 h1 최대 42px/1.14, 상세 요약 20px/1.7.
+- **읽기 폭:** 리드문 `max-width: 34em`(≈ 68자), 섹션 넓은 칸 요약 36em, 상세 본문 약 70자.
+- **말줄임 대신 줄 수:** 오늘의 브리핑 md+ 최대 2줄(키커 칸 9rem), 모바일 브리핑 메타는 항목 단위 줄바꿈, 레이더 제목 ≤ 4줄·요약 ≤ 3줄, 밴드 제목 nowrap 해제.
+- **서체:** Hahmlet·Pretendard 라틴 글리프 그대로. 15px 이하 세리프 제목은 700 이상. 메타·순위·날짜 칼럼은 `tabular-nums`.
+- **날짜·시각·수:** `Tuesday, November 3, 2026`(마스트헤드) · `Oct 30, 2026`(상세) · `Nov 3`(색인·타임라인 칼럼 3.75rem). 상대 시각 `4 hours ago`, 하루 지나면 `yesterday, 06:05 KST` — 시각이 보이면 늘 `KST`·24시간제. 건수는 영어 복수형·천 단위 쉼표(`1,262 stories to date`), 금액은 원문 단위(`$62.5M`, `KRW 1 billion`).
+
 ## 10. 구현 원칙
 
 1. 토큰은 [src/app/globals.css](src/app/globals.css)의 `:root` / `.dark` / `@theme inline`에만 정의한다. 컴포넌트에 hex 하드코딩 금지.

@@ -6,6 +6,7 @@ import { IssueBrief } from "@/components/IssueBrief";
 import { Masthead } from "@/components/Masthead";
 import { issueStats } from "@/lib/edition";
 import { packEdition, packWeekly } from "@/lib/editionPayload";
+import { applyKoreaDesk } from "@/lib/koreaDesk";
 import { getMessages, localePath, type Locale } from "@/lib/i18n";
 import { editionMessages } from "@/lib/messages/edition";
 import { loadEdition, loadWeeklyRadar } from "@/views/data";
@@ -18,10 +19,12 @@ import { loadEdition, loadWeeklyRadar } from "@/views/data";
 export function EditionView({ locale, date }: { locale: Locale; date: string }) {
   const data = loadEdition(locale, date);
   if (!data) notFound();
-  const { ref, prev, next, edition, brief } = data;
+  const { ref, prev, next, edition, brief, desk } = data;
   const t = getMessages(editionMessages, locale);
   // 주간 레이더: 일요일 호만(아니면 null) — 그날 홈과 같은 함수·같은 입력이라 같은 밴드가 실린다.
   const weekly = loadWeeklyRadar(locale, ref.date);
+  // Korea Desk(영어판): 데스크 게재분이 빠진 뒤의 밴드로 내비를 짠다(섬 EditionBody 와 같은 함수).
+  const sections = desk ? applyKoreaDesk(edition, desk).sections : edition.sections;
 
   return (
     <>
@@ -29,8 +32,9 @@ export function EditionView({ locale, date }: { locale: Locale; date: string }) 
         issueNo={ref.issueNo}
         publishedAt={ref.publishedAt}
         stats={issueStats(edition.issue)}
-        categories={edition.sections.map((s) => s.category)}
+        categories={sections.map((s) => s.category)}
         weekly={Boolean(weekly)}
+        desk={Boolean(desk)}
         indexLabel={t.index}
         locale={locale}
       />
@@ -48,7 +52,10 @@ export function EditionView({ locale, date }: { locale: Locale; date: string }) 
       )}
       <main className="mx-auto flex max-w-[1240px] flex-col gap-14 px-4 pb-16 md:gap-16 md:px-8">
         {/* 1면·주간 레이더·섹션 밴드·이 호의 기사 = 클라이언트 섬 하나(기사 한 벌의 행 페이로드 — src/lib/editionPayload.ts). */}
-        <EditionBody edition={packEdition(edition, locale)} weekly={packWeekly(weekly, locale)} />
+        <EditionBody
+          edition={packEdition(edition, locale, desk)}
+          weekly={packWeekly(weekly, locale)}
+        />
         <EditionPager prev={prev} next={next} locale={locale} />
       </main>
     </>

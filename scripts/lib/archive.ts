@@ -3,16 +3,18 @@
  *
  * 무엇을: 호 날짜가 DB 최신 호보다 90일 이상 앞인 기사·호(판정은 src/lib/archive.ts 하나 — Next 라우트의
  * generateStaticParams 도 같은 판정으로 이들을 빼고 만든다)를 같은 주소(`article/<id>/index.html`·`edition/<date>/index.html`)에
- * 가벼운 정적 HTML 로 쓴다. 렌더는 순수 함수 src/lib/archivePage.ts, 데이터는 전체 페이지와 같은 db.ts 조회(읽기 전용).
+ * 가벼운 정적 HTML 로 쓴다. 렌더는 순수 함수 src/lib/archivePage.ts, 데이터는 전체 페이지와 같은 뷰 로더·db.ts 조회(읽기 전용).
+ *
+ * 영어판(Phase 5-2): 같은 일을 `en/article/<id>/`·`en/edition/<date>/` 에도 한다. 언어판마다 계획이 따로다 —
+ * 영어판 계획은 같은 보관 계획을 영어판 범위(영어 본문이 있는 기사·그런 기사가 있는 호)로 줄인 것이고, 영어 라우트의
+ * generateStaticParams 와 이 후처리가 같은 함수(src/views/data.ts `localeArchivePlan`)를 써서 어긋날 수 없다.
+ * 확인도 두 언어를 함께 본다 — 영어판 전체 페이지 대상(영어 기사·호)에 전체 페이지가 없으면 실패한다.
  *
  * 크게 실패하는 경우(종료 코드 1 — 배포가 멈춘다):
  *  - 보관 대상에 전체 페이지가 있다(라우트와 후처리의 판정이 어긋났다 — 링크가 RSC 를 찾다 404 가 될 수 있다).
  *  - 전체 페이지 대상인데 전체 페이지가 없다, 또는 보관 지면을 쓴 뒤에도 빠진 보관 대상이 있다.
  *  - 같은 빌드의 공유 CSS·폰트·사이트 주소를 out/index.html 에서 못 읽었다(scripts/lib/archiveAssets.ts).
  * 멱등: 다시 돌리면 같은 내용을 다시 쓴다(바뀐 바이트 0). `index.txt` 는 만들지 않는다.
- *
- * 영어판(Phase 5): `ARCHIVE_LOCALES` 에 "en" 을 넣고 `ArchiveSource` 에 영어 범위(영어 본문이 있는 기사·호만)를 더한다 —
- * 렌더러는 이미 `locale` 을 받는다(경로 `en/article/<id>/`).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -26,27 +28,42 @@ import {
   type BuildAssets,
 } from "../../src/lib/archivePage";
 import {
-  getArchivePlan,
-  getArticle,
-  getEditionRefs,
+  getEnglishArticleIds,
   getIssueArticles,
   getIssueBriefs,
   getIssueDates,
+  getSourceNameEnMap,
 } from "../../src/lib/db";
 import { buildEdition, selectIssueBrief } from "../../src/lib/edition";
-import { localePath, type Locale } from "../../src/lib/i18n";
+import { DEFAULT_LOCALE, localePath, type Locale } from "../../src/lib/i18n";
 import { BASE_PATH, SITE_URL } from "../../src/lib/site";
+import {
+  englishRelated,
+  languageAlternates,
+  loadArticle,
+  localeArchivePlan,
+  localeArticles,
+  localeBrief,
+  localeEditionRefs,
+} from "../../src/views/data";
 import { readBuildAssets } from "./archiveAssets";
 
-/** 보관 지면을 쓰는 언어판 — 지금은 한국어만(영어 생성은 Phase 5). */
-export const ARCHIVE_LOCALES: readonly Locale[] = ["ko"];
+/** 보관 지면을 쓰는 언어판(이 순서로 쓰고 확인한다). */
+export const ARCHIVE_LOCALES: readonly Locale[] = ["ko", "en"];
 
-/** 보관 지면 데이터 — 기본은 db.ts(`dbArchiveSource`), 테스트는 가짜를 넘긴다. */
+/** 언어판별 보관 계획 — 없는 언어판은 쓰지도 확인하지도 않는다. */
+export type ArchivePlans = Partial<Record<Locale, ArchivePlan>>;
+
+/** 보관 지면 데이터 — 기본은 뷰 로더·db.ts(`dbArchiveSource`), 테스트는 가짜를 넘긴다. */
 export interface ArchiveSource {
-  plan: ArchivePlan;
+  plans: ArchivePlans;
   article(id: number, locale: Locale): ArchiveArticleInput | null;
   edition(date: string, locale: Locale): ArchiveEditionInput | null;
 }
+
+/** 계획이 있는 언어판(ARCHIVE_LOCALES 순서). */
+const plannedLocales = (plans: ArchivePlans) =>
+  ARCHIVE_LOCALES.filter((locale): locale is Locale => Boolean(plans[locale]));
 
 /** out/ 기준 상대 경로(`article/12/index.html`, 영어 `en/article/12/index.html`). */
 export const articlePagePath = (locale: Locale, id: number) =>
@@ -71,17 +88,16 @@ export interface ArchiveWriteResult {
 }
 
 /**
- * 보관 지면을 쓰고 계획과 산출물이 맞는지 확인한다. `assets` 를 주지 않으면 out/index.html 에서 읽고, 사이트 주소·basePath 가
- * 렌더러가 쓰는 값(site.ts — 환경변수)과 같은지 본다(다르면 CLI 가 환경변수를 채우지 않은 것 — 링크가 깨진다).
+ * 보관 지면을 쓰고 계획과 산출물이 맞는지 확인한다(계획이 있는 언어판 모두). `assets` 를 주지 않으면 out/index.html 에서
+ * 읽고, 사이트 주소·basePath 가 렌더러가 쓰는 값(site.ts — 환경변수)과 같은지 본다(다르면 CLI 가 환경변수를 채우지 않은 것 —
+ * 링크가 깨진다).
  */
 export function writeArchivePages(
   outDir: string,
   source: ArchiveSource,
   assets?: BuildAssets,
-  locales: readonly Locale[] = ARCHIVE_LOCALES,
 ): ArchiveWriteResult {
   const build = assets ?? checkedAssets(outDir);
-  const { plan } = source;
   const problems: string[] = [];
   const result: ArchiveWriteResult = { articles: 0, editions: 0, files: 0, bytes: 0, changed: 0 };
 
@@ -98,11 +114,13 @@ export function writeArchivePages(
     return true;
   };
 
-  for (const locale of locales) {
+  for (const locale of plannedLocales(source.plans)) {
+    const plan = source.plans[locale]!;
+    const tag = locale === DEFAULT_LOCALE ? "" : `${locale} `;
     for (const id of plan.archivedArticleIds) {
       const input = source.article(id, locale);
       if (!input) {
-        problems.push(`article ${id}: 보관 대상인데 기사 데이터가 없다`);
+        problems.push(`${tag}article ${id}: 보관 대상인데 기사 데이터가 없다`);
         continue;
       }
       if (write(articlePagePath(locale, id), renderArchiveArticle(input, build, locale)))
@@ -111,7 +129,7 @@ export function writeArchivePages(
     for (const date of plan.archivedEditionDates) {
       const input = source.edition(date, locale);
       if (!input) {
-        problems.push(`edition ${date}: 보관 대상인데 호 데이터가 없다`);
+        problems.push(`${tag}edition ${date}: 보관 대상인데 호 데이터가 없다`);
         continue;
       }
       if (write(editionPagePath(locale, date), renderArchiveEdition(input, build, locale)))
@@ -119,7 +137,7 @@ export function writeArchivePages(
     }
   }
 
-  problems.push(...verifyArchiveOutput(outDir, plan, locales));
+  problems.push(...verifyArchiveOutput(outDir, source.plans));
   if (problems.length > 0) {
     const shown = problems.slice(0, 20).join("\n  ");
     throw new Error(
@@ -130,14 +148,10 @@ export function writeArchivePages(
 }
 
 /**
- * 산출물이 계획과 맞는지 — 보관 대상은 모두 보관 지면, 전체 페이지 대상은 모두 전체 페이지(보관 표지 없음)이고,
- * 보관 지면 디렉터리에 RSC(`index.txt`)가 없다. 문제 목록(비면 통과).
+ * 산출물이 계획과 맞는지(계획이 있는 언어판 모두) — 보관 대상은 모두 보관 지면, 전체 페이지 대상은 모두 전체 페이지
+ * (보관 표지 없음)이고, 보관 지면 디렉터리에 RSC(`index.txt`)가 없다. 문제 목록(비면 통과).
  */
-export function verifyArchiveOutput(
-  outDir: string,
-  plan: ArchivePlan,
-  locales: readonly Locale[] = ARCHIVE_LOCALES,
-): string[] {
+export function verifyArchiveOutput(outDir: string, plans: ArchivePlans): string[] {
   const problems: string[] = [];
   const check = (rel: string, archived: boolean) => {
     const abs = path.join(outDir, rel);
@@ -154,7 +168,8 @@ export function verifyArchiveOutput(
       problems.push(`${rel}: 보관 지면 옆에 RSC(index.txt)가 남아 있다`);
     }
   };
-  for (const locale of locales) {
+  for (const locale of plannedLocales(plans)) {
+    const plan = plans[locale]!;
     for (const id of plan.archivedArticleIds) check(articlePagePath(locale, id), true);
     for (const id of plan.liveArticleIds) check(articlePagePath(locale, id), false);
     for (const date of plan.archivedEditionDates) check(editionPagePath(locale, date), true);
@@ -175,55 +190,75 @@ function checkedAssets(outDir: string): BuildAssets {
   return assets;
 }
 
-/** 기본 데이터 출처 — 전체 페이지와 같은 db.ts 조회(읽기 전용 커넥션, data/app.db). */
+/**
+ * 기본 데이터 출처 — 전체 페이지와 같은 뷰 로더(src/views/data.ts: 언어판 기사 범위·호 목록·세 줄 요약·영어 묶인 보도)와
+ * db.ts 조회(읽기 전용 커넥션, data/app.db). 한국어판 결과는 Phase 4-3 그대로다(ko 로더는 입력을 그대로 돌려준다).
+ */
 export function dbArchiveSource(): ArchiveSource {
-  const plan = getArchivePlan();
-  const refs = getEditionRefs();
-  const byDate = new Map(refs.map((r, i) => [r.date, i]));
   const issueDates = getIssueDates();
-  const issueCount = new Map<string, number>();
-  for (const d of issueDates.values()) issueCount.set(d, (issueCount.get(d) ?? 0) + 1);
+  const englishIds = new Set(getEnglishArticleIds());
+  let nameEn: Map<string, string> | null = null;
+
+  /** 언어판 호 목록·호별 기사 수(호의 "이 호의 다른 기사 N건") — 언어판마다 한 번만 만든다. */
+  const cache = new Map<
+    Locale,
+    { refs: ReturnType<typeof localeEditionRefs>; count: Map<string, number> }
+  >();
+  const issuesOf = (locale: Locale) => {
+    let hit = cache.get(locale);
+    if (!hit) {
+      const count = new Map<string, number>();
+      for (const [id, d] of issueDates)
+        if (locale === DEFAULT_LOCALE || englishIds.has(id)) count.set(d, (count.get(d) ?? 0) + 1);
+      hit = { refs: localeEditionRefs(locale), count };
+      cache.set(locale, hit);
+    }
+    return hit;
+  };
+
+  const plans: ArchivePlans = Object.fromEntries(
+    ARCHIVE_LOCALES.map((l) => [l, localeArchivePlan(l)]),
+  );
+  // 공유 썸네일 판정 기준(한국어 호 metadata) — 두 언어판 계획이 같은 DB 최신 호를 쓴다.
+  const latestEditionDate = plans[DEFAULT_LOCALE]?.latestEditionDate ?? null;
 
   return {
-    plan,
+    plans,
     article(id, locale) {
-      assertKorean(locale);
-      const article = getArticle(id);
+      const found = loadArticle(locale, id);
       const issueDate = issueDates.get(id);
-      if (!article || !issueDate) return null;
-      const i = byDate.get(issueDate);
-      const ref = i === undefined ? null : refs[i];
+      if (!found || !issueDate) return null;
+      // 영어판: 묶인 보도의 매체를 영문명으로, 한국어 제목을 표지로(전체 영어 상세와 같은 englishRelated).
+      const article =
+        locale === DEFAULT_LOCALE || !found.related?.length
+          ? found
+          : { ...found, related: englishRelated(found.related, (nameEn ??= getSourceNameEnMap())) };
+      const { refs, count } = issuesOf(locale);
+      const ref = refs.find((r) => r.date === issueDate) ?? null;
       return {
         article,
         issueDate,
-        issue: ref ? { ref, count: issueCount.get(issueDate) ?? 0 } : null,
+        issue: ref ? { ref, count: count.get(issueDate) ?? 0 } : null,
+        languages: languageAlternates({ kind: "article", id }),
       };
     },
     edition(date, locale) {
-      assertKorean(locale);
-      const i = byDate.get(date);
-      if (i === undefined) return null;
+      const { refs } = issuesOf(locale);
+      const i = refs.findIndex((r) => r.date === date);
+      if (i < 0) return null;
       const ref = refs[i];
-      const edition = buildEdition(getIssueArticles(date));
+      const edition = buildEdition(localeArticles(locale, getIssueArticles(date)));
       return {
         ref,
         edition,
-        brief: selectIssueBrief(edition, getIssueBriefs(date)),
+        brief: localeBrief(locale, selectIssueBrief(edition, getIssueBriefs(date)), edition.issue),
         prev: refs[i - 1] ?? null,
         next: refs[i + 1] ?? null,
-        latestEditionDate: plan.latestEditionDate,
+        latestEditionDate,
+        languages: languageAlternates({ kind: "edition", date }),
       };
     },
   };
-}
-
-/** 영어 보관 지면은 Phase 5 — 영어 범위(영어 본문이 있는 기사·호만, src/views/data.ts localeArticles)를 먼저 정한다. */
-function assertKorean(locale: Locale) {
-  if (locale !== "ko") {
-    throw new Error(
-      `보관 지면 언어판 데이터가 아직 없다(locale=${locale}) — 영어판은 Phase 5 에서 영어 범위를 더한다`,
-    );
-  }
 }
 
 /** 후처리 단계(POSTBUILD_STEPS) — DB 로 보관 지면을 쓰고 확인한다. 결과의 bytes 는 지운 양이 아니라 쓴 양(addedBytes). */

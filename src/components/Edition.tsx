@@ -6,6 +6,7 @@
  * - TrendingList: 화제 순위(번호 = 실제 순위). 비뉴스 행은 매체명 대신 형식 배지
  * - IssueContents: 이 호의 지면 — 분야별 건수·1면 게재 수 차례(lg 이상 사이드바)
  * - WeeklyRadarBand: 주간 레이더(일요일 특집) — 한 주 저장소·모델·논문 상위 ≤10 순위표. 1면(레이더) 아래·섹션 밴드 위
+ * - KoreaDeskBand: Korea Desk(영어판 전용) — 한국 매체 기사 ≤4건 '지면 속 지면'. 1면(·주간 레이더) 아래·섹션 밴드 위
  * - SectionBands: 카테고리별 섹션 밴드(≤4건, 칸 수에 맞춘 열 — 대표 칸은 늘 1/3)
  *
  * 내보내는 밴드는 `locale`(기본 ko)을 받아 문구(messages/frontPage)·표시명·링크를 그 언어로 그리고 안쪽 칸에 넘긴다.
@@ -19,11 +20,13 @@ import {
   StoryLead,
   StoryRadar,
   StorySecondary,
+  StoryDesk,
   StorySectionItem,
   StoryWeekly,
 } from "@/components/Story";
 import { headlineOf, sourceNameOf } from "@/lib/articleText";
 import { frontArticles, type Edition, type EditionSection } from "@/lib/edition";
+import type { KoreaDesk, KoreaDeskPlace } from "@/lib/koreaDesk";
 import { getMessages, localePath, type Locale } from "@/lib/i18n";
 import { frontPageMessages } from "@/lib/messages/frontPage";
 import { weekRangeLabel, weeklyFormatMix, type WeeklyRadar } from "@/lib/weeklyRadar";
@@ -421,12 +424,15 @@ const SECTION_CELLS: Record<number, string[]> = {
   ],
 };
 
+/** 섹션 밴드 — 영어판은 Korea Desk 게재 수(`atDesk`, src/lib/koreaDesk.ts)를 머리에 더한다. */
+type BandSection = EditionSection<StoryCard> & { atDesk?: number };
+
 function SectionBand({
   section,
   timeBase,
   locale,
 }: {
-  section: EditionSection<StoryCard>;
+  section: BandSection;
   timeBase?: string;
   locale: Locale;
 }) {
@@ -445,6 +451,7 @@ function SectionBand({
         <span className="ed-cnt">
           {t.count(section.count)}
           {section.onFront > 0 && t.onFront(section.onFront)}
+          {(section.atDesk ?? 0) > 0 && t.atDesk(section.atDesk!)}
         </span>
         <Link
           href={localePath(locale, `/?category=${encodeURIComponent(section.category)}`)}
@@ -475,7 +482,7 @@ export function SectionBands({
   timeBase,
   locale = "ko",
 }: {
-  sections: EditionSection<StoryCard>[];
+  sections: BandSection[];
   timeBase?: string;
   /** 언어판(기본 ko). */
   locale?: Locale;
@@ -486,5 +493,77 @@ export function SectionBands({
         <SectionBand key={s.category} section={s} timeBase={timeBase} locale={locale} />
       ))}
     </div>
+  );
+}
+
+/**
+ * Korea Desk(영어판 전용, DESIGN.md §9 "영어판" · 시안 docs/design/mockups/en-front.html `.desk`). 2px 잉크 괘선으로 열고
+ * 1px 잉크 괘선으로 닫는 '지면 속 지면' — 박스·배경 없음, 주간 레이더(이중 괘선)와 다른 문법.
+ * - lg: 1면과 같은 4:8 — 왼쪽 머리 칸(코발트 라벨 `From Seoul` · 세리프 제목 · dek · Elsewhere in this issue · 안내 한 줄),
+ *   오른쪽 2×2 기사(StoryDesk).
+ * - md: 머리 한 줄(라벨 위, 제목·dek 나란히) → 2×2. 모바일: 머리 → 목록(Elsewhere 숨김).
+ * 선정·밴드 보정은 src/lib/koreaDesk.ts(`selectKoreaDesk`·`applyKoreaDesk`) — 홈과 호 고정 링크가 같은 함수를 쓴다.
+ * `indexLabel` 은 1면·밴드 밖 기사가 실린 자리 이름(홈 "All stories", 호 고정 링크 "Stories in this issue").
+ */
+export function KoreaDeskBand({
+  desk,
+  timeBase,
+  indexLabel,
+  locale = "ko",
+}: {
+  desk: KoreaDesk<StoryCard>;
+  timeBase?: string;
+  indexLabel: string;
+  locale?: Locale;
+}) {
+  const t = getMessages(frontPageMessages, locale).desk;
+  const place = (p: KoreaDeskPlace) =>
+    p.kind === "front"
+      ? t.front
+      : p.kind === "section"
+        ? categoryLabel(p.category, locale)
+        : indexLabel;
+  const noteRest = desk.korean > desk.items.length ? t.noteRest : t.noteRestAll;
+  return (
+    <section id="korea-desk" aria-labelledby="korea-desk-heading" className="ed-dk">
+      <div className="ed-dk-h">
+        <span className="ed-dk-l">{t.label}</span>
+        <h2 id="korea-desk-heading" className="ed-dk-t">
+          {t.heading}
+        </h2>
+        <p className="ed-dk-d">{t.dek}</p>
+        {desk.elsewhere.length > 0 && (
+          <nav aria-labelledby="korea-desk-x" className="ed-dk-x">
+            <h3 id="korea-desk-x" className="ed-dk-xh">
+              {t.elsewhere}
+            </h3>
+            {desk.elsewhere.map(({ article, place: p }) => (
+              <ArticleLink
+                key={article.id}
+                articleId={article.id}
+                locale={locale}
+                className="story-link ed-dk-xa"
+              >
+                <span className="headline ed-dk-xt">{headlineOf(article, locale)}</span>
+                <span className="ed-dk-w">
+                  <b>{sourceNameOf(article, locale)}</b> · {place(p)}
+                </span>
+              </ArticleLink>
+            ))}
+          </nav>
+        )}
+        <p className="ed-dk-m">
+          <b>{t.noteCount(desk.korean)}</b>
+          {noteRest(desk.korean)}
+        </p>
+      </div>
+      <ul className="ed-dk-g">
+        {desk.items.map((a) => (
+          <li key={a.id} className="ed-dk-c">
+            <StoryDesk article={a} timeBase={timeBase} locale={locale} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

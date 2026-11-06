@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   CategoryKicker,
+  Dot,
   FormatBadge,
   ImportanceMeter,
   TagChips,
@@ -12,10 +13,17 @@ import { FollowUpThread } from "@/components/FollowUpThread";
 import { Icon } from "@/components/Icon";
 import { JsonLd } from "@/components/JsonLd";
 import { RelatedStories } from "@/components/RelatedStories";
-import { headlineOf, sourceNameOf, summaryOf } from "@/lib/articleText";
+import { headlineOf, isKoreanOriginal, sourceNameOf, summaryOf, urlHost } from "@/lib/articleText";
 import { toEntryCard } from "@/lib/feedIndex";
 import { getMessages, localePath, type Locale } from "@/lib/i18n";
-import { categoryLabel, formatDate, shortSourceName } from "@/lib/labels";
+import {
+  REGION_BADGES,
+  categoryLabel,
+  formatDate,
+  hasHangul,
+  regionLabel,
+  sourceDisplayName,
+} from "@/lib/labels";
 import { articleMessages } from "@/lib/messages/article";
 import { commonMessages } from "@/lib/messages/common";
 import { articleJsonLd } from "@/lib/seo";
@@ -26,6 +34,13 @@ import { loadArticlePage } from "@/views/data";
  * 라우트는 generateStaticParams·메타만 두고 `<ArticleView locale=… id=… />` 를 그린다. 실을 기사·관련 기사·타임라인은
  * 로더(src/views/data.ts `loadArticlePage`)가 정하고, 범위 밖 id 는 404.
  * 제목·요약·매체명은 articleText 헬퍼로 고른다 — ko 는 예전 식 그대로(`titleKo || titleOriginal`·`summaryKo`·축약명).
+ *
+ * 영어판(Phase 5-2, 시안 docs/design/mockups/en-article.html): 한국 매체의 한국어 원제는 h1 아래 왼쪽 2px 헤어라인으로
+ * 들인 단락에 "Original article in Korean" 라벨과 함께 `lang="ko"` 로 병기하고(영어 페이지의 한글 허용은 이 줄뿐), 한글
+ * 원문 발췌는 싣지 않으며, 묶인 보도의 한국어 제목은 "Korean-language report" + `etnews.com · in Korean` 으로 바꾼다
+ * (로더가 매체를 영문명으로 바꾼다). 머리 줄은 `KOREA · 분야`(한국 매체, DESIGN.md 영어판 B안), 원문 버튼 옆(모바일은 아래)에
+ * `aitimes.com · in Korean`. 영어 글자 크기·자간은 globals.css 끝 "영어판 기사" 블록이 `:root[lang="en"]` 으로 맞춘다.
+ * 한국어판 마크업은 바이트까지 그대로다 — 영어 전용 요소·클래스는 모두 locale 분기 안에 있다.
  */
 export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
   const data = loadArticlePage(locale, id);
@@ -41,11 +56,37 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
   // 매체 축약명(신호 패널)·원래 이름(툴팁).
   const sourceShort = sourceNameOf(article, locale);
   const sourceFull = sourceNameOf(article, locale, { full: true });
+  // 영어판에서 한글이 든 원문 텍스트(한국 매체 원제·발췌·묶인 보도 제목) 판정. 한국어판은 언제나 거짓.
+  const koreanInEnglish = (text: string) => locale === "en" && hasHangul(text);
+  const koreanOriginal = koreanInEnglish(article.titleOriginal);
+  // 한국어판은 원래 값 그대로(빈 문자열까지 — RSC 페이로드가 바뀌지 않게), 영어판은 한글 발췌만 뺀다.
+  const excerpt = koreanInEnglish(article.contentRaw ?? "") ? undefined : article.contentRaw;
+  // 영어판 한국 매체 표지(KOREA)와 원문 언어 안내(`aitimes.com · in Korean`). 한국어판은 둘 다 없다.
+  const korea = locale === "en" && article.source.region === "kr";
+  const koreanHost =
+    locale === "en" && isKoreanOriginal(article) ? urlHost(article.url) || null : null;
+  const ctaNote = koreanHost && (
+    <span className="ar-ctan">
+      <b>{koreanHost}</b> · {t.inKorean}
+    </span>
+  );
+  const cta = (
+    <a href={article.url} target="_blank" rel="noopener noreferrer" className="ar-cta">
+      {t.readOriginal}
+      <Icon name="arrowUpRight" className="size-4" />
+    </a>
+  );
+  const mobileCta = (
+    <a href={article.url} target="_blank" rel="noopener noreferrer" className="ar-mcta">
+      {t.readOriginal}
+      <Icon name="arrowUpRight" className="size-4" />
+    </a>
+  );
 
   return (
     <main className="ar-main">
-      {/* 구조화 데이터는 아직 한국어 하나 — 언어별 값은 Phase 6. */}
-      <JsonLd data={articleJsonLd(article, thumbnail)} />
+      {/* 구조화 데이터(NewsArticle) — 언어판마다 자기 제목·요약·주소·inLanguage. 영어판은 한글을 싣지 않는다(src/lib/seo.ts). */}
+      <JsonLd data={articleJsonLd(article, thumbnail, locale)} />
       <Link href={localePath(locale, "/")} className="ar-back">
         <Icon name="arrowLeft" className="size-4" />
         {common.nav.today}
@@ -54,18 +95,37 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
       <article className="flex flex-col">
         <header className="flex flex-col gap-4 pt-6 md:pt-8">
           {/* 형식 배지(비뉴스만) + 분야 키커 — 레이더 카드 머리와 같은 순서 */}
-          {(article.format !== "news" || article.category) && (
+          {(article.format !== "news" || article.category || korea) && (
             <span className="flex items-center gap-2">
               <FormatBadge format={article.format} locale={locale} />
+              {/* 영어판 한국 매체: 배지 글꼴 글자 KOREA + 점(DESIGN.md 영어판 — 상자는 형식 배지 몫). */}
+              {korea && (
+                <>
+                  <span className="sg-region">
+                    <span aria-hidden>{REGION_BADGES.kr}</span>
+                    <span className="sr-only">{regionLabel("kr", locale)}</span>
+                  </span>
+                  {article.category && <Dot />}
+                </>
+              )}
               <CategoryKicker category={article.category} locale={locale} />
             </span>
           )}
           <h1 className="ar-h1">{title}</h1>
-          {showOriginalTitle && (
-            <p lang="en" className="text-caption text-muted-foreground">
-              {article.titleOriginal}
-            </p>
-          )}
+          {showOriginalTitle &&
+            (koreanOriginal ? (
+              // 원제는 '읽으라는' 줄이 아니라 '원문이 한국어'라는 증거라 작고 흐리게(시안 주석 1).
+              <p className="ar-orig">
+                <span className="ar-orig-l">{t.originalInKorean}</span>
+                <span className="ar-orig-t" lang="ko">
+                  {article.titleOriginal}
+                </span>
+              </p>
+            ) : (
+              <p lang="en" className="text-caption text-muted-foreground">
+                {article.titleOriginal}
+              </p>
+            ))}
         </header>
 
         <dl className="ar-sigs">
@@ -126,9 +186,27 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
                     rel="noopener noreferrer"
                     className="story-link ar-cov"
                   >
-                    {/* 저장된 매체 표시명(related_json) — 영어 매체명 찾기는 Phase 5(이름 → sourceDisplayName). */}
-                    <span className="ar-cov-s">{shortSourceName(r.source)}</span>
-                    <span className="headline text-caption min-w-0 flex-1">{r.title}</span>
+                    {/* 저장된 매체 표시명(related_json) — 영어판은 로더가 영문명으로 바꿔 둔다(views/data.ts). */}
+                    <span className="ar-cov-s">
+                      {koreanInEnglish(r.source)
+                        ? ""
+                        : sourceDisplayName({ name: r.source }, locale)}
+                    </span>
+                    {r.koreanTitle ? (
+                      // 영어판: 한국어 제목만 있는 보도 — 제목 대신 안내 + 원문 주소·언어(시안 주석 3 B안).
+                      <span className="headline ar-cov-k">
+                        {t.koreanReport}
+                        {urlHost(r.url) && (
+                          <small>
+                            {urlHost(r.url)} · {t.inKorean}
+                          </small>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="headline text-caption min-w-0 flex-1">
+                        {koreanInEnglish(r.title) ? "" : r.title}
+                      </span>
+                    )}
                     <Icon
                       name="arrowUpRight"
                       className="text-muted-foreground size-3.5 shrink-0 self-center"
@@ -140,13 +218,14 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
           </section>
         )}
 
-        {article.contentRaw && (
+        {/* 영어판은 한글 발췌(한국 매체)를 싣지 않는다 — 영어 페이지다. */}
+        {excerpt && (
           <section aria-labelledby="original-heading" className="ar-sect gap-3">
             <h2 id="original-heading" className="ar-h">
               {t.excerpt}
             </h2>
             <p lang="en" className="text-body text-foreground-soft">
-              {article.contentRaw}
+              {excerpt}
             </p>
           </section>
         )}
@@ -158,11 +237,15 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
           </div>
         )}
 
-        {/* 데스크톱: 본문 흐름 끝의 인라인 CTA */}
-        <a href={article.url} target="_blank" rel="noopener noreferrer" className="ar-cta">
-          {t.readOriginal}
-          <Icon name="arrowUpRight" className="size-4" />
-        </a>
+        {/* 데스크톱: 본문 흐름 끝의 인라인 CTA. 영어판 한국어 원문은 옆에 `aitimes.com · in Korean`. */}
+        {ctaNote ? (
+          <div className="ar-ctaw">
+            {cta}
+            {ctaNote}
+          </div>
+        ) : (
+          cta
+        )}
       </article>
 
       {related.length > 0 && (
@@ -186,16 +269,14 @@ export function ArticleView({ locale, id }: { locale: Locale; id: number }) {
 
       {/* 모바일: 하단 floating CTA 바. `/article/*`에서는 하단 탭 바가 null이라 충돌 없음. */}
       <div
-        className="ar-bar"
+        className={ctaNote ? "ar-bar ar-barn" : "ar-bar"}
         style={{
           paddingTop: "0.75rem",
           paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))",
         }}
       >
-        <a href={article.url} target="_blank" rel="noopener noreferrer" className="ar-mcta">
-          {t.readOriginal}
-          <Icon name="arrowUpRight" className="size-4" />
-        </a>
+        {mobileCta}
+        {ctaNote}
       </div>
     </main>
   );

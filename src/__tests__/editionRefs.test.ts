@@ -216,5 +216,45 @@ describe("toListCards", () => {
     expect(Object.keys(card)).toEqual(Object.keys(rest));
     // 원본 카드는 건드리지 않는다
     expect(full.source.region).toBe("kr");
+    // locale 을 생략한 것과 "ko" 는 같다
+    expect(toListCards([full], "ko")).toEqual([card]);
+  });
+
+  it("en: 영어 제목·요약·매체 영문명·지역을 남기고, 한국어 가공 텍스트는 비우며 한글 원제·태그·묶인 보도 글자를 뺀다", () => {
+    article("2026-10-05 10:00:00", "2026-10-05T10:00:00Z");
+    const related = JSON.stringify([
+      { source: "전자신문", url: "https://e", title: "한글 제목" },
+      { source: "Reuters", url: "https://r", title: "R" },
+    ]);
+    db.prepare(
+      `UPDATE articles SET content_raw = '본문', title_en = 'Title', summary_en = 'Summary.',
+              title_original = '한국어 원제', related_json = ?`,
+    ).run(related);
+    db.prepare("UPDATE sources SET name = 'AI타임스', region = 'kr', name_en = 'AI Times'").run();
+    db.prepare("INSERT INTO tags (id, name) VALUES (1, 'llm'), (2, '에이전트')").run();
+    db.prepare("INSERT INTO article_tags (article_id, tag_id) VALUES (1, 1), (1, 2)").run();
+    const [full] = getArticlesUntil("2026-10-06T00:00:00.000Z", db);
+    const [card] = toListCards([full], "en");
+    expect(card).toMatchObject({
+      titleKo: "",
+      summaryKo: "",
+      titleEn: "Title",
+      summaryEn: "Summary.",
+      titleOriginal: "",
+      tags: ["llm"],
+      source: { id: "hn", name: "AI Times", region: "kr" },
+      related: [
+        { source: "", url: "https://e", title: "" },
+        { source: "Reuters", url: "https://r", title: "R" },
+      ],
+    });
+    expect("contentRaw" in card).toBe(false);
+    // 카드 어디에도 한글이 없다 — 매체 name 도 영문명이다(englishSource, english-version-plan 5-4).
+    expect(/[\uac00-\ud7af]/.test(JSON.stringify(card))).toBe(false);
+    expect(card.source).not.toHaveProperty("nameEn");
+    // 원본 카드는 건드리지 않는다
+    expect(full.source.name).toBe("AI타임스");
+    expect(full.titleKo).toBe("기사1");
+    expect(full.tags).toEqual(["llm", "에이전트"]);
   });
 });

@@ -270,7 +270,7 @@ describe("보관 기사", () => {
     expect(body).not.toContain("ar-nx");
   });
 
-  it("영어 렌더(Phase 5 준비): 문구·날짜·lang 이 영어로", () => {
+  it("영어 렌더: 문구·날짜·lang 이 영어로", () => {
     const html = renderArchiveArticle(
       {
         article: card({ titleEn: "Critical PHP flaw", summaryEn: "A flaw." }),
@@ -284,7 +284,9 @@ describe("보관 기사", () => {
     expect(html).toContain("<b>From the archive</b>");
     expect(html).toContain('href="/en/edition/2026-10-23/"');
     expect(html).toContain('<h1 class="ar-h1">Critical PHP flaw</h1>');
-    expect(html).toContain('<p class="ar-ot" lang="ko">');
+    expect(html).toContain(
+      '<p class="ar-orig"><span class="ar-orig-l">Original article in Korean</span><span class="ar-orig-t" lang="ko">',
+    );
     expect(html).not.toContain("#보안 패치"); // 한글 태그는 영어판에서 숨긴다
   });
 

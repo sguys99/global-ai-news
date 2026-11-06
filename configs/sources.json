@@ -54,7 +54,7 @@
   {
     "id": "etnews_ai",
     "name": "전자신문 AI",
-    "nameEn": "Electronic Times AI",
+    "nameEn": "ETNews",
     "region": "kr",
     "kind": "rss",
     "url": "https://rss.etnews.com/04046.xml",

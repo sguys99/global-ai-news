@@ -95,7 +95,9 @@ vi.mock("@/lib/db", () => ({
 }));
 vi.mock("@/views/EditionView", () => ({ EditionView: () => null }));
 vi.mock("@/views/ArticleView", () => ({ ArticleView: () => null }));
-vi.mock("@/views/data", () => ({
+// 경로 목록(localeArticleIds·localeEditionDates)은 실제 함수 — 가짜 getArchivePlan 을 읽는다.
+vi.mock("@/views/data", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/views/data")>()),
   loadEdition: () => null,
   loadArticle: () => null,
   articleThumbnail: () => undefined,

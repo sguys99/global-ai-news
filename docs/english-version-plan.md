@@ -71,8 +71,8 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - [x] **Phase 2** — 지난 기사 영어 백필 — 2026-11-04 완료. 영어 1,241/1,255건(98.9%), 비용 $0.733. 한국어 숫자·사실 오류 26건 수정. 백필 품질 재판단은 Phase 7
 - [x] **Phase 3** — 다국어 기반 구조(한국어 화면 무변화) — 2026-11-04 완료·배포. 한국어 대표 11페이지·sitemap·feed가 기준선과 같고, 404만 이중 언어 지면으로 새로 만들었다. 회귀 비교 도구 `npm run regress:html`은 Phase 4·7에서 다시 쓴다
 - [x] **Phase 4** — 사이트 용량 대책(1단계 경량화는 영어판 출시 전 필수, 2단계 보관 등급은 출시 후 6개월 안) — 2026-11-05 완료·배포. `out/` 155.26→57.10MB(−63%), 기사 96.6→34.6KB, 호 385→119KB, 홈 481→171KB. 보관 지면은 지금 구현해 대량 호 3개부터 적용했고 나머지는 2027-01부터 저절로 넘어간다. 2029-01 두 언어 합계 약 565MB, 1GB는 약 2031-07로 다시 추정했다. 1년 후 재추정(2027-11)은 Phase 9로 옮겼다
-- [ ] **Phase 5** — 영어판 화면(시안 → 구현)
-- [ ] **Phase 6** — 영어 SEO
+- [x] **Phase 5** — 영어판 화면(시안 → 구현) — 2026-11-06 완료(기능 브랜치 `feat/en-pages`, **Phase 7 출시 때 `deploy/github-pages`에 병합**). `/en/` 홈·호·기사·검색·보관 지면, Korea Desk(한국 주제 우선)·`KOREA` 글자 표시, 언어 전환(상대판 hreflang 앞당김), 영어 한글 배포 검사. 한국어 HTML 변화는 hreflang 2줄 + `EN` 링크 3곳뿐. 계획 밖으로 AI타임스·로봇신문 발행 시각 KST 버그를 고쳐 배포했다(`232bbfc`, 지난 206건 보정은 대기)
+- [x] **Phase 6** — 영어 SEO — 2026-11-06 완료(`feat/en-pages`, Phase 7 출시 때 병합). 영어 공유 메타·자기 canonical·hreflang ko/en/x-default, 한국어 메타는 한국어만, 사이트맵 인덱스(제출 주소 그대로)·`/en/feed.xml`·영어 JSON-LD·영어 공유 썸네일, 배포 검사 `seo:check`, IndexNow(꺼 둠). Search Console·Bing 등록과 IndexNow 켜기는 영어 페이지 공개 뒤라 Phase 7 출시로 옮겼다([안내서](english-version/phase6/6-3-search-engines.md))
 - [ ] **Phase 7** — 통합 검증·출시
 - [ ] **Phase 8** — 출시 후 관찰·확산(4주)
 - [ ] **Phase 9** — (선택) 추가 아이디어
@@ -448,22 +448,39 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ## Phase 5: 영어판 화면 (시안 → 구현)
 
+> **진행 방식(2026-11-06).** 영어 페이지는 Phase 6(hreflang·canonical·한국어 메타 정리)과 Phase 7(통합 검증) 전에 공개하면 안 되므로, Phase 5는 기능 브랜치 `feat/en-pages`에 쌓고 **Phase 7 출시 때 `deploy/github-pages`에 병합**한다. 세부 항목마다 이 문서에 기록하고 그 브랜치에 커밋·푸시한다.
+>
+> **계획 보정(2026-11-06):** ① 색인 파일은 Phase 4-2에서 `public/search-index/<언어>/`·`public/feed-index/<언어>/` 월별 조각으로 바뀌었으므로 5-2의 `*.en.json`은 `…/en/` 조각으로 읽는다. ② Phase 4-3 보관 지면(90일 지난 기사·호)의 영어판이 빠져 있었다 → 5-2에 추가. ③ Korea Desk는 홈과 호 고정 링크가 같은 함수로 같은 밴드를 그린다(주간 레이더와 같은 규칙) → `/en/edition/[date]/`에도 싣는다.
+
 ### 5-1. 시안
 
-- [ ] `docs/design/mockups/en-front.html`: 영어 마스트헤드(폴리오 `Tuesday, November 3, 2026 · No. 140 · Published daily at 06:00 KST`), 귀(`This issue 31 stories · 18 outlets`), Korea Desk 밴드, `KOREA` 표시, 언어 전환, 영어 제목 길이(한국어보다 약 1.5배 길다)가 1면·모바일에서 어떻게 줄바꿈되는지.
-- [ ] `KOREA` 표시 스타일을 정한다. 형식 배지와 같은 잉크 1px 아웃라인을 쓸지(DESIGN.md: 배지에 코발트 금지) 결정한다.
-- [ ] 사용자 확인 후 DESIGN.md에 영어 타이포그래피 절을 추가한다(sentence case, 영문 줄 길이, Hahmlet·Pretendard 라틴 글리프).
+- [x] `docs/design/mockups/en-front.html`: 영어 마스트헤드(폴리오 `Tuesday, November 3, 2026 · No. 140 · Published daily at 06:00 KST`), 귀(`This issue 31 stories · 18 outlets`), Korea Desk 밴드, `KOREA` 표시, 언어 전환, 영어 제목 길이(한국어보다 약 1.5배 길다)가 1면·모바일에서 어떻게 줄바꿈되는지.
+- [x] `KOREA` 표시 스타일을 정한다. 형식 배지와 같은 잉크 1px 아웃라인을 쓸지(DESIGN.md: 배지에 코발트 금지) 결정한다. (**2026-11-06 사용자 결정: B 글자만** — 배지 글꼴 대문자, 테두리 없는 잉크, 바이라인 매체명 앞 + 점 `KOREA · AI Times`. 상자는 형식 배지 몫으로 남긴다.)
+- [x] 사용자 확인 후 DESIGN.md에 영어 타이포그래피 절을 추가한다(sentence case, 영문 줄 길이, Hahmlet·Pretendard 라틴 글리프). (2026-11-06 DESIGN.md §9 "영어판" — 신호 추가·Korea Desk·언어 전환·영어 타이포그래피)
+- **5-1 완료 (2026-11-06).** 시안 [en-front.html](design/mockups/en-front.html)·[en-article.html](design/mockups/en-article.html)(실데이터 11-03 제140호, 1280/360·라이트/다크 확인), 결정 기록 [phase5/5-1-mockup.md](english-version/phase5/5-1-mockup.md). 사용자 결정(2026-11-06):
+  - **Korea Desk 선정 = 한국 주제 우선**(계획 보정). 그 호 한국 매체 기사 중 1면 게재분을 빼고, 영어 본문에 Korea·Korean·Seoul·KRW나 용어집의 한국 기관·기업명이 있는 기사를 먼저, 남으면 편집 순으로 ≤ 4건(코드만). 매체 기준 그대로면 제140호 데스크 4건 중 2건이 해외 기업 소식이었다.
+  - **전자신문 영문 매체명 `Electronic Times AI` → `ETNews`**(바이라인에서 360px 줄을 밀어냈다) — 5-2에서 `sources.json` `nameEn`을 바꾼다.
+  - 기본값으로 정한 것(시안 권장안): 데스크 게재분은 영어 섹션 밴드에서 빼고 밴드 머리에 건수를 적는다 · 영어 귀 둘째 줄은 비뉴스 형식만 센다 · `related_json`의 한국어 제목은 `Korean-language report` + 매체 영문명 · 전환 라벨은 영어 페이지 `한국어`, 한국어 페이지 `EN`.
+  - **(계획 밖 발견) AI타임스·로봇신문 `published_at`이 KST를 UTC로 저장해 최대 9시간 늦다**(한국어판도 "방금 전"). 사용자 결정: Phase 5와 별도로 `deploy/github-pages`에서 바로 고친다(수집기 수정 + 지난 기사 보정 스크립트).
 
 ### 5-2. 페이지
 
-- [ ] `/en/` 홈: 같은 `buildEdition`에 영어 본문이 있는 기사만 넣는다. 1면 → **Korea Desk**(그 호의 `region=kr` 기사 ≤4건, 1면 게재분 제외) → 섹션 밴드 → 색인. 주간 레이더(일요일)도 넣는다.
-- [ ] `/en/edition/[date]/`: 호 고정 링크와 지난 호 이동.
-- [ ] `/en/article/[id]/`: 영어 제목·요약·원문 링크. 한국 매체는 `Original article in Korean` 표기, 원제 병기. 관련 기사·사건 타임라인도 영어로 표시한다.
-- [ ] `/en/search/`: `public/search-index.en.json`(prebuild에서 생성)과 영어 FlexSearch 설정.
-- [ ] 홈 색인 누적분 `public/feed-index.en.json`(prebuild).
-- [ ] 세 줄 요약 띠 영어판: 같은 줄 id의 `title_en`을 쓰고, 2줄 미만이면 숨긴다(한국어판과 같은 규칙).
-- [ ] 공통 요소 영어판: 헤더·모바일 상단 바·하단 탭 바·필터 시트·푸터 태그라인·누적 방문(`1,234 visits`)·공유 버튼·발행 지연 줄·404.
-- [ ] **Phase 3에서 넘어온 데이터 틈(3-4 코드 리뷰) — 영어 페이지를 열기 전에 먼저 막는다.** 빌드는 통과하고 화면만 비거나 한국어가 새는 함정이다.
+- [x] `/en/` 홈: 같은 `buildEdition`에 영어 본문이 있는 기사만 넣는다. 1면 → **Korea Desk**(그 호의 `region=kr` 기사 ≤4건, 1면 게재분 제외) → 섹션 밴드 → 색인. 주간 레이더(일요일)도 넣는다. (2026-11-06 `6323cbc`)
+  - Korea Desk = `src/lib/koreaDesk.ts`(순수 함수): `selectKoreaDesk`가 한국 주제(Korea·Korean·Seoul·KRW + 빌드 때 `glossary.en.md`의 정부·기업·스타트업·대학·행사 절에서 뽑은 영문명) 우선 → 편집 순 ≤ 4건. 서버 로더 `localeKoreaDesk`가 고른 id만 클라이언트 섬에 넘기고(`FeedClient` `desk`·`EditionPayload.desk`, 한국어 페이지에는 키 없음), `applyKoreaDesk`가 섹션 밴드에서 빼고 다시 4건으로 채운 뒤 `· N at the Korea Desk`와 "Elsewhere in this issue"(실린 자리 표시, 최대 4)를 만든다. 실데이터 제140호 데스크: Geekble·AI 가드레일·Swing·Naver Cloud(NEURA는 1면 브리핑).
+  - `KOREA` 표시 = `ArticleMeta` 공용 `Byline`의 `RegionMark`(`sg-region`, en일 때만, 데스크 안은 `hideRegion`). 영어 타이포그래피는 `globals.css` "영어판 지면" 블록(`:root[lang="en"]` 기본층 + 덮어쓰기). 귀 둘째 줄은 비뉴스만 센다. `etnews_ai` `nameEn` → `ETNews`.
+  - 크기(Docker 빌드 `size:report`): 영어 홈 163.3KB(한국어 171.4), 영어 호 평균 119.0KB(예산 150), 한국어 호 +0.0%. **한국어 회귀 12페이지 동일.**
+  - 시안과 다른 점: 일요일 내비는 지면 순(Front page → Weekly radar → Korea Desk), 브리핑 바이라인 칸은 `fit-content(16.5rem)`(절대 시각이 매체명을 자르던 문제).
+- [x] `/en/edition/[date]/`: 호 고정 링크와 지난 호 이동. (2026-11-06 `6323cbc` — `localeEditionDates("en")`·`dynamicParams=false`, 제목 `AI News Briefing — Tuesday, November 3, 2026 (No. 140) — AI Daybook`(`editionPageMetadataEn`), Korea Desk·일요일 주간 레이더 포함. hreflang·og·JSON-LD는 Phase 6)
+- [x] `/en/article/[id]/`: 영어 제목·요약·원문 링크. 한국 매체는 `Original article in Korean` 표기, 원제 병기. 관련 기사·사건 타임라인도 영어로 표시한다. (2026-11-06 `5d0b745` — 머리 줄 `KOREA · 분야`, 원제는 h1 아래 2px 헤어라인 들임 단락(`Original article in Korean` + `lang="ko"` 원제), 한국어 원문 발췌 숨김, 원문 버튼 옆 `aitimes.com · in Korean`, Also reported by의 한국어 제목 보도는 `Korean-language report` + 매체 영문명, 후속 보도·"More in …" 영어. 한국어 JSON-LD는 영어 페이지에서 뺐다(영어 JSON-LD는 Phase 6). 한국어 상세 960건 렌더 바이트 동일)
+- [x] `/en/search/`: `public/search-index/en/` 월별 조각(prebuild에서 생성, Phase 4-2 구조)과 영어 FlexSearch 설정. (2026-11-06 — 데이터 틈 단계에서 조각·`forward`+`latin:simple`, 라우트는 `5d0b745`. 360px에서 잘리던 placeholder를 `Search by keyword`로 줄였다)
+- [x] 홈 색인 누적분 `public/feed-index/en/` 월별 조각(prebuild). (2026-11-06 `6c17366` — 영어 1,262건, 검색 조각 585.7KB·홈 조각 569.2KB)
+- [x] **(추가) 보관 지면 영어판:** 90일 지난 영어 기사·호(`/en/article/[id]/`·`/en/edition/[date]/`)도 postbuild가 같은 보관 계획으로 라이트 지면을 쓴다(`src/lib/archivePage.ts`는 이미 `locale` 인자를 받는다). 영어 라우트의 `generateStaticParams`도 보관 대상을 빼고, postbuild 확인이 두 언어를 함께 본다. (2026-11-06 `5d0b745` — `localeArchivePlan(locale)` 단일 출처를 영어 라우트 params와 postbuild가 함께 쓰고 `verifyArchiveOutput`이 두 언어를 확인한다. 영어 보관 기사 평균 4.2KB·호 49.7KB, canonical·JSON-LD 없음(Phase 6))
+- [x] 세 줄 요약 띠 영어판: 같은 줄 id의 `title_en`을 쓰고, 2줄 미만이면 숨긴다(한국어판과 같은 규칙). (2026-11-06 `localeBrief` — 띠 머리 `Three things to know`)
+- [x] 공통 요소 영어판: 헤더·모바일 상단 바·하단 탭 바·필터 시트·푸터 태그라인·누적 방문(`1,234 visits`)·공유 버튼·발행 지연 줄·404. (2026-11-06 `5d0b745` — 셸 문구는 Phase 3 사전 그대로 확인, 영어 404는 `ShellChrome` `localeFromDocument`로 `/en/` 아래에서 헤더·모바일 바·푸터·탭을 영어로 바꾸고 `NOT_FOUND_EN_LINK_LOCALE`="en". 하이드레이션 전 잠깐 한국어 셸이 보인다)
+- [x] **Phase 3에서 넘어온 데이터 틈(3-4 코드 리뷰) — 영어 페이지를 열기 전에 먼저 막는다.** 빌드는 통과하고 화면만 비거나 한국어가 새는 함정이다. (**데이터 계층 2026-11-06 완료** `6c17366` — 테스트 1,364 → 1,389건, 한국어 색인 조각 `diff -r` 바이트 동일(1,277건), 영어 조각 1,262건·행에 한글 0. 아래 404·전환 링크 두 줄은 5-2 셸 작업·5-3에서 닫는다.)
+  - 추가한 것: 영어 경로 목록 `localeArticleIds`·`localeEditionDates`(보관 계획 `getArchivePlan().live*` 기준 — 한국어 라우트도 같은 함수로 바꿔 단일 출처), 영어 최신 호 `localeLatestEditionRef`, 영어 세 줄 요약 `localeBrief`(줄 = 그 기사 `title_en`, 2줄 미만이면 숨김), 영어 매체·태그 `sourceOptionsOf`·`activeTagsOf`(영어 기사만 세고 라틴 태그만), `toListCard(article, "en")` → `ListCard`(영어 필드·`nameEn`·`region`, 한국어 가공 필드는 빈 문자열), 영어 FlexSearch(`forward` + `latin:simple` — `latin:balance`는 "agent"·"robot" 같은 짧은 질의를 놓친다).
+  - **B1·B2 병합 검증(2026-11-06, `b57dbb8` Docker 빌드):** 테스트 1,430건, **한국어 회귀 12페이지 중 같음 11 · 허용 1(404) · 차이 0**, 한국어 페이지 크기 변화는 빌드 해시뿐. 영어 기사 평균 27.8KB·호 118.5KB·홈 159.9KB(예산 안). 영어 HTML 본문(스크립트 밖) 한글 0건(허용 `lang="ko"` 원제 제외).
+  - 남은 것: 영어 페이로드의 매체 `name`(한국 매체 4곳)은 한글로 남는다 — 화면은 모두 `nameEn`을 쓰지만 5-4 한글 grep이 인라인 RSC를 보면 걸린다(허용 목록 또는 영어 페이로드에서 name = nameEn). 영어 JSON-LD는 Phase 6.
   - `src/views/data.ts` `localeArticles`의 en 예외를 `hasEnglish` 거르기로 바꾼다.
   - 목록 카드(`toListCard`, `src/lib/db.ts`)는 영어 필드를 뗀다 → 영어 1면·색인·검색이 빈 제목이 된다. `toListCard(article, locale)`로 en에서는 `titleEn`·`summaryEn`을 남기고 한국어 필드를 뗀다. `IndexCard`(`feed-index`)·`SearchIndexEntry`의 영어판도 같은 규칙으로 만든다.
   - 영어 상세에서 한국 매체의 원제(`titleOriginal`)·원문 발췌(`contentRaw`)·관련 보도 제목(`related_json`)이 한국어로 샌다(지금은 `<p lang="en">` 아래). 한글이 있으면 숨기거나 `Original article in Korean`으로 바꾸고, `lang`을 실제 언어로 맞춘다.
@@ -473,43 +490,58 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 5-3. 언어 전환
 
-- [ ] 헤더·모바일 바에 `EN` / `한국어` 전환 링크를 둔다. 같은 페이지의 다른 언어판으로 가고, 없으면 그 언어의 홈으로 간다.
-- [ ] 한국어 페이지에서 브라우저 언어가 `ko`가 아니면 상단에 `Read AI Daybook in English →` 안내 줄을 띄운다(닫기 가능, `localStorage`에 기억, 정적 HTML에는 없고 마운트 후 표시, 리다이렉트 없음).
+- [x] 헤더·모바일 바에 `EN` / `한국어` 전환 링크를 둔다. 같은 페이지의 다른 언어판으로 가고, 없으면 그 언어의 홈으로 간다. (2026-11-06 `066f5b6`)
+  - **상대판 판정 = hreflang.** 정적 HTML에서 죽은 링크가 나오지 않게, 페이지마다 상대 언어판이 있을 때만 `<link rel="alternate" hreflang="ko|en">`을 낸다(`languageAlternates(page)` 단일 자리 — 홈·검색은 늘, 호는 영어 기사가 있으면, 기사는 `hasEnglish`면, 보관 지면도 같은 주소라 포함. `localeArchivePlan("en")`과 일치를 테스트). 라우트 8개가 `withLanguageAlternates`로 메타에 합친다. **Phase 6-2의 ko/en 쌍을 앞당긴 것**이고 x-default·canonical·사이트맵 `xhtml:link`는 Phase 6에 남는다.
+  - 전환 링크(`LocaleSwitch`, ShellChrome 섬 안 — 페이지 RSC 참조 추가 없음): SSR href는 늘 상대 언어 홈, 마운트·경로 변경·클릭 때 위 alternate를 읽어 같은 페이지로 올린다(검색은 `?q` 유지). 일반 `<a>`(언어가 다르면 전체 새로 고침), `lang`·`hreflang` = 대상 언어. 데스크톱 헤더(헤어라인 뒤 흐린 글자)·모바일 상단 바(44px)·푸터 내비. 문구 사전은 **대상 언어로** 고른다(`한국어`는 ko 잎). 보관 지면도 머리 띠에 정적 전환 링크 + hreflang.
+  - **한국어 HTML 변화(Docker 회귀 `458a7ea`)**: 대표 11페이지 모두 `+5 -0` — 상대판이 있으면 hreflang 2줄 + `EN` 링크 3곳(헤더·모바일 바·푸터)뿐. 그 밖은 같다.
+- [x] 한국어 페이지에서 브라우저 언어가 `ko`가 아니면 상단에 `Read AI Daybook in English →` 안내 줄을 띄운다(닫기 가능, `localStorage`에 기억, 정적 HTML에는 없고 마운트 후 표시, 리다이렉트 없음). (2026-11-06 `066f5b6` — `EnglishNotice`, 셸이 한국어일 때만. `navigator.languages`에 `ko*`가 없으면 마운트 후 헤더 아래 헤어라인 한 줄, 화살표만 코발트, 닫기 44px·`localStorage` `en-notice-dismissed`(try/catch). 링크는 전환과 같은 규칙)
 
 ### 5-4. 확인
 
-- [ ] 컴포넌트 테스트(영어 문구·`KOREA` 표시·Korea Desk 규칙·영어 없는 기사 제외)를 추가한다.
-- [ ] 데스크톱·모바일(360px), 라이트·다크에서 영어 페이지를 육안으로 확인한다.
-- [ ] 영어 페이지에 한글이 새는지 검사한다. 정적 산출물 `/en/**`에서 한글을 grep하고, 허용 목록(원제 병기 등)만 통과시킨다.
+- [x] 컴포넌트 테스트(영어 문구·`KOREA` 표시·Korea Desk 규칙·영어 없는 기사 제외)를 추가한다. (2026-11-06 — Phase 5 전체 1,364 → **1,480건**. `koreaDesk`·`viewsEn`·`localeSwitch`·`languageAlternates`·`enHangulCheck` 테스트 파일 신설, 영어 홈·호 섬 props에 한글·영어 없는 기사 없음, 영어 feed-index 제외 규칙, `englishSource` 묶음 보존)
+- [x] 데스크톱·모바일(360px), 라이트·다크에서 영어 페이지를 육안으로 확인한다. (2026-11-06 — **Docker 정적 빌드를 basePath 아래 GitHub Pages식 404로 서빙**해 1280·360 × 라이트·다크로 홈·평일 호·일요일 호·한국/해외 매체 기사·검색·영어 보관 기사·보관 호·404를 찍고 가로 넘침·머리 잘림·화면 한글·콘솔 오류를 자동 검사했다. 링크 크롤 516개 전부 200, `/en/` 밖으로 나가는 링크는 `한국어` 전환뿐(하이드레이션 뒤 같은 페이지·`?q` 유지).
+  - 찾아 고친 것(영어 선택자만, 한국어 HTML 무변화): ① 오늘의 브리핑 md+ 바이라인 칸에서 매체명이 잘렸다(`iRobot…`·`ETNe…` — KOREA·`+N more`·지난 호 절대 날짜) → 오른쪽 정렬 두 줄(매체 / 시각·중요도), 제목 말줄임 없앰 ② 데스크 기사가 1~2건이면 격자 행이 왼쪽 칸 높이로 늘어 바이라인이 요약 아래 150~280px 떨어졌다 → `content-start` ③ 영어 보관 지면 360px 머리 링크가 6px 넘쳐 두 줄로 꺾이고 윗줄이 잘렸다 → 영어 모바일 좌우 여백만 10 → 6px(높이 44px 유지)
+  - 남긴 것: 모바일 브리핑·검색 바이라인이 끝에 `·`를 남기고 꺾이는 것(5-1에서 받아들인 동작, 한국어판도 같다).)
+- [x] 영어 페이지에 한글이 새는지 검사한다. 정적 산출물 `/en/**`에서 한글을 grep하고, 허용 목록(원제 병기 등)만 통과시킨다. (2026-11-06 — 일회성 grep 대신 **배포 검사로 만들었다**: `npm run en:hangul-check -- [out] [--ci]`(`scripts/lib/enHangulCheck.ts`)가 `out/en/**`와 `{search,feed}-index/en/**`를 본다. HTML은 태그 스택으로 가장 가까운 `lang` 조상을 따져 `lang="ko"` 요소(한국 매체 원제 줄·`한국어` 전환 링크) 안만 허용하고, RSC(`index.txt`·인라인 `__next_f`)는 Flight 행으로 읽어 `lang:"ko"` 호스트 요소 props 안만 허용한다(클라이언트 컴포넌트 props는 허용 안 함), 색인 JSON은 허용 없음. `deploy.yml`의 `size:report --ci` 다음 단계.
+  - 처음 돌린 5-3 빌드에서 968건을 잡았다: 영어 RSC·색인 목록의 한국 매체 `name`(AI타임스 등)과 영어 홈의 한국어 WebSite JSON-LD. → 영어 경로에서만 `englishSource()`로 매체 `name`을 영문명으로 바꾸고(`HuggingFace Trending Models`는 축약표로 `Hugging Face` 묶음 유지, `?source=`는 그대로 id), 영어 홈 JSON-LD를 뺐다(영어 JSON-LD는 Phase 6). **최종 빌드 `f8e6e86`: 1,364파일 위반 0건.**
+  - 같은 빌드에서 한국어 HTML·txt 1,372개가 5-3 빌드와 바이트 동일(빌드 id·해시 제외), 대표 12페이지 회귀 동일. 영어 홈 158.5KB·호 평균 119.5KB·기사 평균 28.7KB.
+  - **주의:** 이 검사는 영어 파일이 0개면 실패한다 — `feat/en-pages`에서는 맞지만, Phase 7 병합 전에 이 단계만 `deploy/github-pages`로 옮기면 안 된다.)
 
 ---
 
 ## Phase 6: 영어 SEO
 
+> **Phase 5에서 앞당긴 것(2026-11-06):** 영어 페이지 `<title>`·description(홈 0-5 문구, 호 `AI News Briefing — … (No. 140) — AI Daybook`, 기사 `{title_en} — AI Daybook`, 검색 `Search AI news — AI Daybook` — 6-1 문구와 대소문자만 다르다), 6-2의 ko/en hreflang 쌍(상대판 있을 때만, 라우트·보관 지면). 남은 것: x-default, 영어 자기 canonical(영어 페이지에는 아직 canonical이 없다), 한국어 메타 영어 병기 정리, `og:locale`·공유 메타·영어 썸네일, 사이트맵 영어 URL·`xhtml:link`·인덱스 분할, `/en/feed.xml`, 영어 JSON-LD(지금 영어 페이지에는 JSON-LD가 없다).
+
 ### 6-1. 페이지 메타
 
-- [ ] 영어 제목: 홈은 0-5에서 확정한 문구, 호는 `AI News Briefing — Tuesday, November 3, 2026 (No. 140) — AI Daybook`, 기사는 `{title_en} — AI Daybook`, 검색은 `Search AI News — AI Daybook`.
-- [ ] 영어 설명: 기사는 `summary_en`, 홈·호는 세 줄 요약 영어판이나 서브 헤드라인.
-- [ ] 한국어 메타를 한국어로만 되돌린다: `SITE_TITLE`에서 `· Daily AI News Briefing`을, `SITE_DESCRIPTION`에서 영어 문장을 빼고 영어는 영어판으로 옮긴다. 한 페이지에 한 언어를 쓴다.
-- [ ] `shareMetadata`·`editionMetadata`에 `locale`을 받게 한다. `og:locale`은 `en_US`/`ko_KR`, `og:locale:alternate`는 상대 언어.
+- [x] 영어 제목: 홈은 0-5에서 확정한 문구, 호는 `AI News Briefing — Tuesday, November 3, 2026 (No. 140) — AI Daybook`, 기사는 `{title_en} — AI Daybook`, 검색은 `Search AI News — AI Daybook`. (2026-11-06 — 검색 제목만 `News`로 고쳤다. 나머지는 5-2에서 앞당겼다)
+- [x] 영어 설명: 기사는 `summary_en`, 홈·호는 세 줄 요약 영어판이나 서브 헤드라인. (2026-11-06 — 한국어 `editionShare`와 같은 규칙: og:description은 `AI Daybook · Fri, Nov 6, 2026 · No. 143 — ` + 리드 줄을 뺀 영어 요약 줄, 없으면 서브 헤드라인. 영어 호 meta description도 같은 문장이다. 영어 홈 meta description은 한국어 홈처럼 고정 사이트 설명이다)
+- [x] 한국어 메타를 한국어로만 되돌린다: `SITE_TITLE`에서 `· Daily AI News Briefing`을, `SITE_DESCRIPTION`에서 영어 문장을 빼고 영어는 영어판으로 옮긴다. 한 페이지에 한 언어를 쓴다. (2026-11-06 — `SITE_TITLE` = `AI Daybook — 오늘의 AI 뉴스 요약`. `SITE_DESCRIPTION`을 쓰는 RSS 채널 설명·WebSite JSON-LD·공유 설명도 함께 한국어만 남는다)
+- [x] `shareMetadata`·`editionMetadata`에 `locale`을 받게 한다. `og:locale`은 `en_US`/`ko_KR`, `og:locale:alternate`는 상대 언어. (2026-11-06 — `shareMetadata({…, locale})`는 언어 접두어 없는 경로를 받아 og:url·canonical에 `localePath`를 씌우고, 언어판 기본 썸네일·RSS(`feedPath(locale)`)를 고른다. `og:locale:alternate`는 hreflang과 같은 판정이라 `withLanguageAlternates` 한 곳에서 붙인다. 영어 페이지가 처음으로 공유 메타 전체(og·article:section 영어 분야명·라틴 태그·twitter)를 갖는다)
 
 ### 6-2. 언어 연결
 
-- [ ] canonical은 각 언어판이 **자기 자신**을 가리킨다.
-- [ ] hreflang(`alternates.languages`): `ko`·`en`·`x-default`(=en). 상대 언어판이 있을 때만 넣는다. 영어 본문이 없는 기사의 한국어판에는 넣지 않는다.
-- [ ] 사이트맵: 영어 URL을 추가하고 쌍마다 `xhtml:link` 언어 대체를 넣는다(`MetadataRoute.Sitemap`의 `alternates.languages`).
+- [x] canonical은 각 언어판이 **자기 자신**을 가리킨다. (2026-11-06 — 영어 보관 지면 포함)
+- [x] hreflang(`alternates.languages`): `ko`·`en`·`x-default`(=en). 상대 언어판이 있을 때만 넣는다. 영어 본문이 없는 기사의 한국어판에는 넣지 않는다. (2026-11-06 — 짝 판정은 `languageAlternates` 그대로, x-default는 `site.ts` `hreflangLanguages` 한 곳에서 붙인다. 언어 전환 링크와 사이트맵도 이 둘을 쓴다)
+- [x] 사이트맵: 영어 URL을 추가하고 쌍마다 `xhtml:link` 언어 대체를 넣는다(`MetadataRoute.Sitemap`의 `alternates.languages`).
   - 두 언어 URL이 2년 뒤 약 46,500개로 한 파일 한도 5만 개에 가까워진다(0-4). 처음부터 사이트맵 인덱스로 나눈다(`generateSitemaps` — 언어별 또는 연도별).
-- [ ] RSS: `/en/feed.xml`(영어 제목·요약, `language en`)을 만들고, 영어 페이지 머리에 RSS 링크를 단다.
-- [ ] 구조화 데이터: 영어 페이지는 `inLanguage: "en"`, WebSite(영어 설명), NewsArticle(영어 headline·description, `isBasedOn` 원문).
-- [ ] 공유 썸네일 영어판: `/og/en/edition/[date].png`·`/og/en/article/[id].png`·`/og/en/default.png`(`src/lib/ogImage.tsx` 영어 텍스트 폭 추정 확인).
+  - (2026-11-06) Next 15의 `generateSitemaps`는 인덱스 파일을 만들지 않는다. 그래서 라우트 핸들러로 만들었다: **제출한 주소 `/sitemap.xml`을 그대로 `<sitemapindex>`로** 바꾸고(Search Console·서치어드바이저·루트 robots.txt 재제출 불필요), 조각은 `/sitemaps/pages.xml`(두 언어 홈·검색 4건 — 매일 바뀌는 lastmod를 연도 조각 밖에 둔다)·`/sitemaps/ko-<YYYY>.xml`·`/sitemaps/en-<YYYY>.xml`(호 날짜 연도, 5만 건을 넘으면 `-2` 번호). 현재 ko-2026 1,334건·en-2026 1,318건(보관 지면 포함). `xhtml:link`는 페이지 hreflang과 같은 함수(`sitemapData.test.ts`가 대조). 네이버의 사이트맵 인덱스 지원은 공식 문서로 확인하지 못했다(호스팅 가이드들은 인덱스를 그대로 제출) — 출시 때 서치어드바이저 화면에서 확인한다(6-3 안내서).
+- [x] RSS: `/en/feed.xml`(영어 제목·요약, `language en`)을 만들고, 영어 페이지 머리에 RSS 링크를 단다. (2026-11-06 — `src/app/(en)/en/feed.xml/route.ts`, 한국어와 같은 3일 창에서 영어 본문이 있는 기사 60건, 매체는 영문명, 한글 0)
+- [x] 구조화 데이터: 영어 페이지는 `inLanguage: "en"`, WebSite(영어 설명), NewsArticle(영어 headline·description, `isBasedOn` 원문). (2026-11-06 — `websiteJsonLd(locale)`·`articleJsonLd(article, image, locale)`, 영어 보관 기사도 같은 빌더. 영어 WebSite에는 한글 `alternateName`을 넣지 않는다)
+- [x] 공유 썸네일 영어판: `/og/en/edition/[date].png`·`/og/en/article/[id].png`·`/og/en/default.png`(`src/lib/ogImage.tsx` 영어 텍스트 폭 추정 확인).
   - 한국어판과 같은 창을 쓴다(Phase 4-1): 호 PNG는 `hasEditionThumbnail`(최근 30일), 기사 PNG는 `hasArticleThumbnail`(7일). 창 밖은 영어 기본 썸네일이다. `size:report`는 `og/en/…`를 영어로 센다.
+  - (2026-11-06) 한국어 썸네일과 같은 판형(제호·이중 괘선·코발트 키커·서브 3단), 영어 데이트라인 `Friday, November 6, 2026 · No. 143`, 귀는 `21 stories` + 비뉴스 형식만, `KOREA`는 테두리 없는 잉크 대문자. 헤드라인은 Hahmlet 800 라틴 실측 폭으로 말줄임 없이 들어가는 가장 큰 크기를 고른다(호 리드 64→48px, 기사 84→52px). satori가 커닝 없는 폭으로 낱말 자리를 잡아 커닝이 많은 낱말 뒤가 벌어지는 문제 때문에 영어 헤드라인은 글자 단위로 그린다. 생성은 영어판 호·기사 ∩ 한국어와 같은 창(기준 = DB 최신 호·최신 게시 시각)이라 메타가 가리키는 PNG와 같다(`ogEnThumbnails.test.ts`). 현재 호 30장·기사 151장, +9.4MB. 한국어 PNG는 바이트 동일.
+- **6-1·6-2 확인 (2026-11-06, Docker 빌드 `out-p6-a` vs `out-p6-base`).** 테스트 1,480 → 1,524건. 한국어 회귀 12페이지의 차이는 계획한 메타뿐이다(제목·설명에서 영어 문장 제거, 짝이 있으면 x-default 1줄 + `og:locale:alternate` 1줄, `sitemap.xml` → 인덱스, `feed.xml` 채널 설명). `en:hangul-check` 1,365파일 위반 0. 크기: 영어 기사 평균 28.7 → 36.4KB(한국어 36.0KB와 같은 수준 — head 메타 +2.1KB·JSON-LD +1.2KB·이 둘이 RSC 인라인에 다시 실린 +3.8KB), 한국어 기사 35.5 → 36.0KB, 호 ko 121.0·en 126.6KB(예산 150), `out/` 93.2 → 112.9MB. 보관 기사 8KB 초과가 ko 7 → 18쪽·en 2쪽(최대 8.3KB, 경고만).
 
 ### 6-3. 검색엔진 등록·확인
 
-- [ ] Search Console: 같은 속성에서 `/en/` URL 검사 → 색인 요청, 사이트맵 재제출(같은 `sitemap.xml`에 영어 URL 포함).
-- [ ] **Bing Webmaster Tools** 등록: Search Console에서 가져오기로 사이트맵을 제출한다. Bing은 영어권 검색에서 비중이 있고 DuckDuckGo·Yahoo·ChatGPT 검색 결과에도 쓰인다.
-- [ ] (선택) IndexNow: 키 파일을 두고 `deploy.yml`이 배포 후 새 URL을 Bing 등에 알리게 한다.
-- [ ] 리치 결과 테스트(NewsArticle), hreflang 상호 참조 검사(양쪽이 서로 가리키는지)를 한다.
+> **2026-11-06 사용자 결정:** 자동으로 할 수 있는 것만 지금 하고, 영어 페이지가 공개돼야 하는 등록·색인 요청은 Phase 7 출시 체크리스트로 옮긴다. 단계별 안내서: [phase6/6-3-search-engines.md](english-version/phase6/6-3-search-engines.md).
+
+- [x] Search Console: 같은 속성에서 `/en/` URL 검사 → 색인 요청, 사이트맵 재제출(같은 `sitemap.xml`에 영어 URL 포함). (→ **Phase 7 출시로 옮김**, 안내서 §1. 사이트맵 주소가 같아 재제출만 하면 된다)
+- [x] **Bing Webmaster Tools** 등록: Search Console에서 가져오기로 사이트맵을 제출한다. Bing은 영어권 검색에서 비중이 있고 DuckDuckGo·Yahoo·ChatGPT 검색 결과에도 쓰인다. (→ **Phase 7 출시로 옮김**, 안내서 §2)
+- [x] (선택) IndexNow: 키 파일을 두고 `deploy.yml`이 배포 후 새 URL을 Bing 등에 알리게 한다. (2026-11-06 — `npm run indexnow`(`scripts/lib/indexNow.ts`), 키 파일 `public/6ed9c8afd10bad2985364bb10abc22d7.txt`, `keyLocation`이 `/global-ai-news/` 아래라 제출 범위도 그 아래. 보내는 URL은 DB 최신 호의 두 언어 홈·호·기사 중 out/에 있는 것뿐이다(제143호 47개, 사이트맵·지난 호는 규약대로 빼고). build 잡이 본문을 만들고 Pages 배포 뒤 deploy 잡이 curl로 보낸다. 둘 다 `vars.INDEXNOW_ENABLED == '1'`·`continue-on-error`라 **지금은 꺼져 있다** — 켜기는 Phase 7, 안내서 §3)
+- [x] 리치 결과 테스트(NewsArticle), hreflang 상호 참조 검사(양쪽이 서로 가리키는지)를 한다. (2026-11-06 — 일회성 확인 대신 **배포 검사로 만들었다**: `npm run seo:check -- [out] [--ci]`(`scripts/lib/seoCheck.ts`, `deploy.yml`의 `en:hangul-check` 다음, 오류면 배포 실패). 모든 페이지의 자기 canonical·og:url·lang·og:locale, hreflang ko·en·x-default 상호 참조, og:image·RSS 파일 존재, NewsArticle·WebSite 필수 필드, 사이트맵 인덱스·조각(모든 페이지 포함·`xhtml:link` = 페이지 hreflang·한도), RSS를 본다. `out-p6-a` 2,656쪽 오류 0·경고 0(0.9초), Phase 6 이전 빌드는 14,485건으로 실패. 공개 주소로 하는 Google 리치 결과 테스트는 Phase 7 출시 때, 안내서 §5. 테스트 1,524 → 1,555건)
 
 ---
 
@@ -523,6 +555,7 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - [ ] 최근 2개 호 영어판을 처음부터 끝까지 읽고 어색한 문장·용어를 고친다(규칙·용어집에 반영).
 - [ ] **(2-3에서 추가, 2026-11-04 사용자 결정) 백필 영어를 다시 검토한다.** 2-3 표본 20건의 사실 오류는 2건(10%)이었고, 둘 다 참고로 넘긴 한국어 오독을 따라갔다. 2-3 표본과 겹치지 않게 50건 이상(한국 매체 절반)을 검토한다. 오류율이 수집 경로보다 확실히 높으면 `backfill-en.system.md`에서 한국어 참고 입력을 빼고 `--overwrite`로 전체를 다시 만든다(약 $0.8, 그때 상한을 사용자에게 확인).
 - [ ] 출시: `deploy/github-pages`에 병합·배포하고, Search Console·Bing 색인을 요청한다.
+  - (6-3에서 옮김, [안내서](english-version/phase6/6-3-search-engines.md)) Search Console 사이트맵 재제출·`/en/` URL 검사·색인 요청·표준 URL 확인 → Bing Webmaster(GSC에서 가져오기)·URL 제출 → 저장소 변수 `INDEXNOW_ENABLED=1`(첫 회 202 가능) → 네이버 서치어드바이저에서 사이트맵 인덱스 수집 결과 확인(실패하면 조각 제출) → 공개 주소로 리치 결과 테스트(영어·영어 보관·한국어 기사) → 공유 디버거로 영어 썸네일 확인.
 - [ ] `latest.json`에 `titleEn`·`summaryEn`을 추가하는 것을 외부 소비자에게 공지한다(`docs/notices/`, 추가 필드라 호환됨).
 - [ ] 문서를 갱신한다: CLAUDE.md(라우트 표·디렉토리·파이프라인·환경변수), README, DESIGN.md(영어 타이포그래피), 이 문서 진행 현황.
 

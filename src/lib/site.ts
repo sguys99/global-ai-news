@@ -16,15 +16,19 @@ import type { Metadata } from "next";
 import type { EditionInfo } from "@/lib/db";
 import type { Edition, IssueBriefLine } from "@/lib/edition";
 import { localePath, type Locale } from "@/lib/i18n";
-import { formatMonthDay, kstDateKey } from "@/lib/labels";
+import { headlineOf } from "@/lib/articleText";
+import { formatMonthDay, issueNoLabel, kstDateKey } from "@/lib/labels";
 
 export const SITE_NAME = "AI Daybook";
 /** 한국어 브랜드 표기 — 검색엔진 대체 이름(WebSite alternateName). */
 export const SITE_NAME_KO = "AI 데이북";
-/** 홈 <title>(검색 결과 제목): 브랜드 + 한국어·영어 검색어 — 한국·글로벌 동시 타게팅. */
-export const SITE_TITLE = `${SITE_NAME} — 오늘의 AI 뉴스 요약 · Daily AI News Briefing`;
+/**
+ * 한국어 홈 <title>(검색 결과 제목): 브랜드 + 한국어 검색어. 영어 검색어는 영어판(SITE_TITLE_EN)이 맡는다 —
+ * 한 페이지에 한 언어(english-version-plan 6-1).
+ */
+export const SITE_TITLE = `${SITE_NAME} — 오늘의 AI 뉴스 요약`;
 export const SITE_DESCRIPTION =
-  "글로벌·한국 AI 뉴스·오픈소스·모델·논문을 매일 아침 한국어로 요약하는 데일리 브리핑. Daily AI news, open source, models and papers, summarized every morning.";
+  "글로벌·한국 AI 뉴스·오픈소스·모델·논문을 매일 아침 한국어로 요약하는 데일리 브리핑.";
 /** 소개 문구 — 푸터·기본 공유 썸네일(og/default). 마스트헤드 제호 옆 자리는 이번 호 통계(귀)가 쓴다. */
 export const SITE_TAGLINE = "세계와 한국의 AI 소식을 매일 아침, 한국어로 요약해 전합니다.";
 /** 영어판 태그라인(english-version-plan 0-5 확정) — 영어 푸터·영어 기본 공유 썸네일. */
@@ -69,16 +73,18 @@ export const SITE_VERIFICATION: Metadata["verification"] = {
     : undefined,
 };
 
-/*
- * 영어판 홈 제목·설명(english-version-plan 0-5 확정, 2026-11-03). 영어 레이아웃 기본 metadata 에만 쓴다 —
- * 영어 페이지·hreflang·영어 공유 메타는 Phase 5·6 에서 붙인다.
- */
+/** 영어판 홈 제목·설명(english-version-plan 0-5 확정, 2026-11-03) — 영어 레이아웃 기본 metadata·영어 공유 메타. */
 export const SITE_TITLE_EN = `${SITE_NAME} — Daily AI News Briefing from Korea and the World`;
 export const SITE_DESCRIPTION_EN =
   "Every morning from Seoul: the day's top AI news, open-source repos, models and papers — with a Korea Desk on Korean AI you won't find elsewhere.";
 
 /** RSS 피드 경로(basePath 제외, src/app/feed.xml) — 네이버 서치어드바이저 제출·구독용. */
 export const FEED_PATH = "/feed.xml";
+/** 영어판 RSS 경로(english-version-plan 6-2 — 영어 제목·요약, `language en`). */
+export const FEED_PATH_EN = "/en/feed.xml";
+
+/** 언어판 RSS 경로(ko 는 FEED_PATH 그대로). */
+export const feedPath = (locale: Locale = "ko") => (locale === "en" ? FEED_PATH_EN : FEED_PATH);
 
 /** 2:1 — 카카오톡이 크롭 없이 쓰는 비율이자 X(트위터) large card 비율. */
 export const OG_IMAGE_SIZE = { width: 1200, height: 600 } as const;
@@ -95,8 +101,13 @@ export const editionShareUrl = (date: string, locale: Locale = "ko") =>
  * 확장자가 있어야 GitHub Pages 가 image/png 로 서빙한다(src/app/og/).
  */
 export const OG_DEFAULT_IMAGE = "/og/default.png";
-export const ogEditionImagePath = (date: string) => `/og/edition/${date}.png`;
-export const ogArticleImagePath = (id: number) => `/og/article/${id}.png`;
+/** 영어판 공유 이미지는 `/og/en/…`(english-version-plan 6-2 — size:report 가 영어로 센다). ko 는 지금 경로 그대로. */
+const ogPrefix = (locale: Locale) => (locale === "en" ? "/og/en" : "/og");
+export const ogDefaultImagePath = (locale: Locale = "ko") => `${ogPrefix(locale)}/default.png`;
+export const ogEditionImagePath = (date: string, locale: Locale = "ko") =>
+  `${ogPrefix(locale)}/edition/${date}.png`;
+export const ogArticleImagePath = (id: number, locale: Locale = "ko") =>
+  `${ogPrefix(locale)}/article/${id}.png`;
 
 /**
  * 기사 썸네일 생성 기간: 최신 게시 시각 기준 7일. 전 기사를 그리면 하루 수십 장씩 쌓여
@@ -134,13 +145,40 @@ export interface ShareImage {
   version?: string;
 }
 
-const DEFAULT_IMAGE: ShareImage = { path: OG_DEFAULT_IMAGE, alt: SITE_NAME };
+/** 언어판 기본 공유 이미지(ko `/og/default.png`, en `/og/en/default.png`). 대체 텍스트는 제호(두 언어 같은 라틴 문자). */
+const defaultImage = (locale: Locale): ShareImage => ({
+  path: ogDefaultImagePath(locale),
+  alt: SITE_NAME,
+});
+
+/** og:locale 값(english-version-plan 6-1) — 언어판마다 하나. */
+export const OG_LOCALE: Record<Locale, string> = { ko: "ko_KR", en: "en_US" };
+
+/**
+ * hreflang `x-default` 가 가리킬 언어판 — 영어(english-version-plan "기본값" 표: 한국어도 영어도 아닌 언어를 쓰는 검색자에게는
+ * 영어가 더 읽힌다).
+ */
+export const X_DEFAULT_LOCALE: Locale = "en";
+
+/**
+ * 두 언어판 짝(src/views/data.ts `languageAlternates` 결과 `{ ko, en }`) → hreflang 목록 `ko`·`en`·`x-default`(= 영어 주소).
+ * 짝이 있는 페이지에만 부른다 — 라우트 metadata(pageMetadata.ts `withLanguageAlternates`)·보관 지면이 이 한 곳을 거친다
+ * (사이트맵 `xhtml:link` 도 같은 목록을 쓰면 페이지와 어긋나지 않는다).
+ */
+export function hreflangLanguages(pair: Readonly<Record<Locale, string>>): Record<string, string> {
+  return { ko: pair.ko, en: pair.en, "x-default": pair[X_DEFAULT_LOCALE] };
+}
 
 export interface ShareOptions {
   title: string;
   description: string;
-  /** basePath 제외 페이지 경로. trailingSlash 설정과 맞춰 끝 슬래시를 붙인다(리다이렉트 방지). */
+  /**
+   * 언어 접두어·basePath 를 뺀 페이지 경로(`/article/3/`). trailingSlash 설정과 맞춰 끝 슬래시를 붙인다(리다이렉트 방지).
+   * og:url·canonical 은 `localePath(locale, path)` — 각 언어판이 자기 자신을 가리킨다(en 은 `/en/article/3/`).
+   */
   path?: string;
+  /** 언어판(기본 ko) — og:locale·기본 이미지·RSS 링크·canonical 접두어. */
+  locale?: Locale;
   image?: ShareImage;
   article?: { publishedTime: string; section?: string; tags?: string[] };
 }
@@ -150,25 +188,28 @@ type ShareMetadata = Pick<Metadata, "openGraph" | "twitter" | "alternates">;
 /**
  * 페이지별 openGraph·twitter·alternates 메타. Next 메타데이터는 최상위 키 단위로 얕게 병합되어
  * 페이지가 openGraph·alternates 를 정의하면 레이아웃 값이 통째로 대체되므로 공통 필드를 매번 채운다.
- * canonical = og:url 과 같은 경로(필터 쿼리 `?category=` 등은 정규 주소로 모인다), RSS 링크는 모든 페이지에.
+ * canonical = og:url 과 같은 경로(필터 쿼리 `?category=` 등은 정규 주소로 모인다), RSS 링크(그 언어판 피드)는 모든 페이지에.
  * 상대 URL은 레이아웃의 metadataBase(SITE_URL) 기준으로 절대화된다.
+ * og:locale:alternate·hreflang 은 상대 언어판이 있을 때만이라 여기서 넣지 않는다 — pageMetadata.ts `withLanguageAlternates`.
  */
 export function shareMetadata({
   title,
   description,
   path,
-  image = DEFAULT_IMAGE,
+  locale = "ko",
+  image = defaultImage(locale),
   article,
 }: ShareOptions): ShareMetadata {
   const imageUrl = image.version
     ? `${image.path}?v=${encodeURIComponent(image.version)}`
     : image.path;
+  const url = path === undefined ? undefined : localePath(locale, path);
   const common = {
     title,
     description,
-    url: path,
+    url,
     siteName: SITE_NAME,
-    locale: "ko_KR",
+    locale: OG_LOCALE[locale],
     images: [{ url: imageUrl, ...OG_IMAGE_SIZE, alt: image.alt, type: "image/png" }],
   };
   return {
@@ -182,38 +223,48 @@ export function shareMetadata({
     // "지정됨"으로 보고 채우지 않아 twitter:image(+ 자동 채움이면 width·height·alt·type) 줄이 빠진다(Phase 4-1, 분석 순위 6).
     twitter: { card: "summary_large_image", images: [] },
     alternates: {
-      canonical: path,
-      types: { "application/rss+xml": [{ url: FEED_PATH, title: SITE_NAME }] },
+      canonical: url,
+      types: { "application/rss+xml": [{ url: feedPath(locale), title: SITE_NAME }] },
     },
   };
 }
-
-/** 리드·서브 헤드라인 표시 제목(한국어 가공 전이면 원문). */
-const headline = (a: { titleKo: string; titleOriginal: string }) => a.titleKo || a.titleOriginal;
 
 /**
  * 홈 공유 문구·이미지 버전. 제목 = 1면 리드 헤드라인, 설명 = 발행일·호수 + 세 줄 요약(있으면) 또는 서브 헤드라인.
  * 세 줄 요약 중 리드를 요약한 줄은 뺀다 — 바로 위 제목(리드 헤드라인)과 같은 소식이 두 번 읽힌다. 빼고 남은 줄이
  * 없으면 서브 헤드라인으로 돌아간다(요약이 없는 지난 호도 같은 경로).
  * 버전은 호수·리드가 바뀔 때마다 달라져, 페이지가 다시 스크랩될 때 이전 썸네일 캐시를 피한다.
+ *
+ * en(english-version-plan 6-1): 같은 규칙에 영어 값 — 헤드라인은 `titleEn`(headlineOf), 세 줄 요약은 이미 영어 줄
+ * (views/data.ts `localeBrief`), 머리는 `AI Daybook · Tue, Nov 3, 2026 · No. 140`, 리드가 없으면 영어 사이트 설명.
  */
 export function editionShare(
   edition: Pick<Edition, "lead" | "seconds">,
   info: EditionInfo,
   brief: readonly IssueBriefLine[] = [],
+  locale: Locale = "ko",
 ): { title: string; description: string; version: string } {
   const { lead, seconds } = edition;
-  if (!lead) return { title: SITE_NAME, description: SITE_DESCRIPTION, version: "0" };
+  if (!lead) {
+    return {
+      title: SITE_NAME,
+      description: locale === "en" ? SITE_DESCRIPTION_EN : SITE_DESCRIPTION,
+      version: "0",
+    };
+  }
 
   const dateline = [
     SITE_NAME,
-    info.publishedAt ? formatMonthDay(info.publishedAt) : "",
-    info.issueNo > 0 ? `제${info.issueNo}호` : "",
+    info.publishedAt ? formatMonthDay(info.publishedAt, locale) : "",
+    info.issueNo > 0 ? issueNoLabel(info.issueNo, locale) : "",
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(locale === "en" ? " · " : " ");
+  const headline = (a: Parameters<typeof headlineOf>[0]) => headlineOf(a, locale);
   const briefMore = brief.filter((line) => line.id !== lead.id).map((line) => line.text);
-  const more = (briefMore.length > 0 ? briefMore : seconds.map(headline)).join(" · ");
+  const more = (briefMore.length > 0 ? briefMore : seconds.map(headline).filter(Boolean)).join(
+    " · ",
+  );
   return {
     title: headline(lead),
     description: more ? `${dateline} — ${more}` : dateline,
@@ -223,9 +274,10 @@ export function editionShare(
 
 /**
  * 호 공유 메타(홈·호 고정 링크 공용): 제목 = 1면 리드, 설명 = 세 줄 요약(없으면 서브), 썸네일 = 그날 1면.
- * `path` 는 og:url — 공유되는 페이지 자신의 경로(홈 "/", 호 고정 링크 "/edition/[date]/").
- * `latestEditionDate` 는 DB 최신 호 날짜(getLatestEditionRef) — 썸네일 기간(hasEditionThumbnail) 밖의
- * 호는 PNG 를 만들지 않으므로 기본 썸네일을 쓴다.
+ * `path` 는 og:url — 공유되는 페이지 자신의 경로(언어 접두어 제외: 홈 "/", 호 고정 링크 "/edition/[date]/").
+ * `latestEditionDate` 는 **DB 최신 호 날짜**(getLatestEditionRef — 영어판도 같은 기준) — 썸네일 기간(hasEditionThumbnail) 밖의
+ * 호는 PNG 를 만들지 않으므로 기본 썸네일을 쓴다. en 은 영어판 호(영어 기사가 있는 호 — views/data.ts `loadEdition("en")`·
+ * `localeLatestEditionRef("en")`)에만 부른다: 영어 호 PNG(`/og/en/edition/…`)도 그 호들 중 같은 창 안만 만든다.
  */
 export function editionMetadata(
   edition: Pick<Edition, "lead" | "seconds">,
@@ -233,20 +285,25 @@ export function editionMetadata(
   path: string,
   latestEditionDate: string | null,
   brief: readonly IssueBriefLine[] = [],
+  locale: Locale = "ko",
 ): ShareMetadata {
-  const { title, description, version } = editionShare(edition, info, brief);
-  if (!edition.lead || !info.publishedAt) return shareMetadata({ title, description, path });
+  const { title, description, version } = editionShare(edition, info, brief, locale);
+  if (!edition.lead || !info.publishedAt) {
+    return shareMetadata({ title, description, path, locale });
+  }
   const date = kstDateKey(info.publishedAt);
   if (!hasEditionThumbnail(date, latestEditionDate)) {
-    return shareMetadata({ title, description, path });
+    return shareMetadata({ title, description, path, locale });
   }
+  const day = formatMonthDay(info.publishedAt, locale);
   return shareMetadata({
     title,
     description,
     path,
+    locale,
     image: {
-      path: ogEditionImagePath(date),
-      alt: `${formatMonthDay(info.publishedAt)} 1면: ${title}`,
+      path: ogEditionImagePath(date, locale),
+      alt: locale === "en" ? `Front page, ${day}: ${title}` : `${day} 1면: ${title}`,
       version,
     },
   });

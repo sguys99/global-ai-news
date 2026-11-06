@@ -114,6 +114,25 @@ describe("행 인코딩 — 필드 축소 왕복", () => {
       source: { id: "zdnet", name: "지디넷코리아", nameEn: "ZDNet Korea" },
     });
   });
+
+  it("영어 행: 태그는 라틴 문자만, 한국어 원제는 빈 칸, 지역은 매체 표에서 되돌린다 — ko 행은 그대로", () => {
+    const c: ArticleCard = {
+      ...card(2),
+      titleOriginal: "한국어 원제",
+      tags: ["llm", "에이전트"],
+      source: { id: "zdnet", name: "지디넷코리아", nameEn: "ZDNet Korea", region: "kr" },
+    };
+    const row = encodeRow(c, "en", true);
+    expect(row[5]).toEqual(["llm"]);
+    expect(row[10]).toBe("");
+    expect(/[가-힯]/.test(JSON.stringify(row))).toBe(false);
+    const table = Object.fromEntries(sourceTableOf([c]));
+    expect(table.zdnet.region).toBe("kr");
+    expect(decodeRow(row, { locale: "en", sources: table }).source.region).toBe("kr");
+    const ko = encodeRow(c, "ko", true);
+    expect(ko[5]).toEqual(["llm", "에이전트"]);
+    expect(ko[10]).toBe("한국어 원제");
+  });
 });
 
 describe("호 월", () => {
@@ -182,7 +201,8 @@ describe("buildIndexShards — 목록·조각", () => {
     expect(Object.keys(built.manifest.sources).sort()).toEqual(["gh", "hn", "hn_front", "zdnet"]);
     expect(built.manifest.sources.zdnet).toEqual({ name: "지디넷코리아", format: "news" });
     const en = buildIndexShards({ kind: "search-index", locale: "en", cards, issueDates, sources });
-    expect(en.manifest.sources.zdnet.nameEn).toBe("ZDNet Korea");
+    // 영어 목록은 한글 매체명 대신 영문명을 name 에 싣는다(englishSource — nameEn 키 없음).
+    expect(en.manifest.sources.zdnet).toEqual({ name: "ZDNet Korea", format: "news" });
   });
 
   it("호 날짜가 없는 기사는 빌드를 멈춘다", () => {

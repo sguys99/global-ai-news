@@ -245,6 +245,8 @@ const SOURCE_SHORT_LABELS: Record<string, string> = {
   "GitHub (topic:robotics·embodied-ai)": "GitHub",
   "HuggingFace Daily Papers": "Hugging Face",
   "HuggingFace 트렌딩 모델": "Hugging Face",
+  // 영어판 페이로드는 매체 name 을 영문명으로 바꿔 싣는다(englishSource) — 같은 묶음이 되게 영문명도 둔다.
+  "HuggingFace Trending Models": "Hugging Face",
   // arXiv 카테고리 피드는 한 매체다(분야는 키커가 보여 준다). HF Papers·Takara TLDR 은 다른 매체라 따로 둔다.
   "arXiv cs.CL (NLP)": "arXiv",
   "arXiv cs.AI": "arXiv",
@@ -272,6 +274,15 @@ export function hasHangul(text: string): boolean {
 }
 
 /**
+ * 언어판에 보일 태그 — en 은 한글이 섞인 태그를 뺀다(english-version-plan 기본값: 영어판은 라틴 문자 태그만), ko 는 그대로.
+ * 화면(ArticleMeta `visibleTags`)·영어 목록 카드(db.ts `toListCard`)·영어 색인 행(indexShards `encodeRow`)·
+ * 영어 필터 칩(views/data.ts)이 같은 규칙을 쓴다.
+ */
+export function localeTags(tags: string[], locale: Locale = "ko"): string[] {
+  return locale === "en" ? tags.filter((tag) => !hasHangul(tag)) : tags;
+}
+
+/**
  * 언어별 매체 표시명. `full` 이면 원래 이름(툴팁·상세 신호 패널), 아니면 축약명(바이라인·칩).
  *  - ko: 지금 그대로 — 축약 `shortSourceName(name)`, 전체 `name`.
  *  - en: 축약명 맵에 라틴 문자 이름이 있으면 그것(예: "HuggingFace 트렌딩 모델" → "Hugging Face"),
@@ -288,6 +299,23 @@ export function sourceDisplayName(
   const short = SOURCE_SHORT_LABELS[source.name];
   if (short && !hasHangul(short)) return short;
   return source.nameEn || source.name;
+}
+
+/**
+ * 영어판 페이로드에 싣는 매체 — 한글 이름 매체(nameEn 이 있는 매체)는 `name` 을 영문명으로 바꾸고 `nameEn` 키를 뗀다
+ * (english-version-plan Phase 5-4: 영어 페이지 RSC·색인에 한글이 실리지 않게). 그 밖의 키(id·region …)는 그대로,
+ * 이미 바꾼 매체를 다시 넣어도 같다(멱등).
+ *
+ * 영어판 표시·묶음은 그대로다: `sourceDisplayName(…, "en")` 은 원래도 `SOURCE_SHORT_LABELS[name]`(라틴) → `nameEn` → `name`
+ * 순이었고, 바꾼 뒤에는 `name` 이 곧 영문명이다. 매체 칩 묶음(feedFilter `groupSources`)·귀의 "매체 N곳"(`issueStats`)은
+ * `shortSourceName(name)` 단위인데, 한국 매체 영문명은 서로 다르고 HuggingFace 두 피드는 영문명도 축약 맵에 있어
+ * (`HuggingFace Trending Models` → `Hugging Face`) 묶음이 같다. `?source=` 는 소스 id 라 바뀌지 않는다.
+ * 한국어판은 이 함수를 쓰지 않는다(한국어 페이로드 바이트 동일).
+ */
+export function englishSource<T extends { name: string; nameEn?: string }>(source: T): T {
+  if (!source.nameEn) return source;
+  const { nameEn, ...rest } = source;
+  return { ...rest, name: nameEn } as T;
 }
 
 const TZ = "Asia/Seoul";

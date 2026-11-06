@@ -8,6 +8,7 @@ import { StoryIndex } from "@/components/StoryIndex";
 import { toListCards } from "@/lib/db";
 import { buildEdition } from "@/lib/edition";
 import { packEdition, packWeekly, unpackEdition } from "@/lib/editionPayload";
+import { sourceDisplayName } from "@/lib/labels";
 import { editionMessages } from "@/lib/messages/edition";
 import type { ArticleCard } from "@/lib/types";
 import type { WeeklyRadar } from "@/lib/weeklyRadar";
@@ -181,23 +182,60 @@ describe("호 지면 섬 페이로드(packEdition·unpackEdition)", () => {
     expect(json.length).toBeLessThan(JSON.stringify(toListCards(edition.issue)).length * 0.6);
   });
 
-  it("영어판 페이로드는 영어 제목·요약·영문 매체명을 싣는다", () => {
+  it("영어판 페이로드는 영어 제목·요약을 싣고, 매체 name 은 영문명이다(nameEn 키 없음)", () => {
     const edition = buildEdition(issue());
     const back = unpackEdition(packEdition(edition, "en"), "en");
     const lead = edition.lead!;
     expect(back.lead?.titleEn).toBe(lead.titleEn);
     expect(back.lead?.summaryEn).toBe(lead.summaryEn);
-    expect(back.lead?.source.nameEn).toBe("The Decoder EN");
+    expect(back.lead?.source.name).toBe("The Decoder EN");
+    expect(back.lead?.source).not.toHaveProperty("nameEn");
   });
 
-  it("주간 레이더: 한국어판은 영어 제목·영문 매체명을 떼고, 영어판은 그대로", () => {
+  it("영어판 페이로드에는 한글 매체명이 없다 — 표시는 같은 영문명(english-version-plan 5-4)", () => {
+    const korean = (a: ArticleCard): ArticleCard => ({
+      ...a,
+      source: { ...a.source, name: "AI타임스", nameEn: "AI Times", region: "kr" },
+    });
+    const edition = buildEdition(issue().map(korean));
+    const packed = packEdition(edition, "en");
+    expect(/[\uac00-\ud7af]/.test(JSON.stringify(packed))).toBe(false);
+    const back = unpackEdition(packed, "en");
+    expect(back.issue.map((a) => sourceDisplayName(a.source, "en"))).toEqual(
+      edition.issue.map((a) => sourceDisplayName(a.source, "en")),
+    );
+    // 한국어판 페이로드는 원래 이름 그대로
+    expect(JSON.stringify(packEdition(edition, "ko"))).toContain("AI타임스");
+  });
+
+  it("지역(KOREA 표시·Korea Desk)은 영어판 페이로드에만 싣는다", () => {
+    const korean = (a: ArticleCard): ArticleCard => ({
+      ...a,
+      source: { ...a.source, region: "kr" },
+    });
+    const edition = buildEdition(issue().map(korean));
+    const back = unpackEdition(packEdition(edition, "en"), "en");
+    expect(back.issue.every((a) => a.source.region === "kr")).toBe(true);
+    expect(JSON.stringify(packEdition(edition, "ko"))).not.toContain("region");
+  });
+
+  it("주간 레이더: 한국어판은 영어 제목·영문 매체명을 떼고, 영어판은 한국어 제목만 비운다", () => {
     const ko = packWeekly(weekly, "ko")!;
     expect(ko.items.every((i) => i.titleEn === undefined && i.source.nameEn === undefined)).toBe(
       true,
     );
     expect(ko.items.map((i) => i.title)).toEqual(weekly.items.map((i) => i.title));
-    expect(packWeekly(weekly, "en")).toBe(weekly);
+    const en = packWeekly(weekly, "en")!;
+    expect(en.items.every((i) => i.title === "")).toBe(true);
+    expect(en.items.map((i) => i.titleEn)).toEqual(weekly.items.map((i) => i.titleEn));
+    // 매체는 영문명을 name 에(englishSource) — 표시명은 같다.
+    expect(en.items.map((i) => i.source)).toEqual(weekly.items.map(() => ({ name: "GitHub" })));
+    expect(en.items.map((i) => sourceDisplayName(i.source, "en"))).toEqual(
+      weekly.items.map((i) => sourceDisplayName(i.source, "en")),
+    );
+    expect({ ...en, items: [] }).toEqual({ ...weekly, items: [] });
     expect(packWeekly(null, "ko")).toBeNull();
+    expect(packWeekly(null, "en")).toBeNull();
   });
 });
 

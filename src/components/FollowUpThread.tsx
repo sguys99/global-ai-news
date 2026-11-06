@@ -43,6 +43,9 @@ export function FollowUpThread({
           ? t.heading.laterCount(later)
           : t.heading.later;
   const currentDay = kstDateKey(current.issuedAt);
+  // 영어판만 바꾸는 값(날짜 칼럼 폭·매체 진하게·라틴 제목 자간) — 한국어판 마크업은 그대로.
+  const en = locale === "en";
+  const row = en ? ROW_EN : ROW;
 
   return (
     <section aria-labelledby="thread-heading" className="ar-sect gap-1">
@@ -53,7 +56,7 @@ export function FollowUpThread({
         {entries.map((e) => (
           <li key={e.id} className="ar-li">
             {e.relation === "current" ? (
-              <div aria-current="page" className={ROW}>
+              <div aria-current="page" className={row}>
                 <IssueDate iso={e.issuedAt} locale={locale} />
                 <span className="text-label text-foreground self-center font-bold">
                   {t.current}
@@ -63,7 +66,7 @@ export function FollowUpThread({
               <ArticleLink
                 articleId={e.id}
                 locale={locale}
-                className={`story-link ${ROW} ${FOCUS}`}
+                className={`story-link ${row} ${FOCUS}`}
               >
                 <IssueDate iso={e.issuedAt} locale={locale} />
                 <span className="flex min-w-0 flex-col gap-1">
@@ -72,15 +75,19 @@ export function FollowUpThread({
                       {e.relation === "earlier" ? t.relation.earlier : t.relation.later}
                     </span>
                     <span aria-hidden>·</span>
-                    <span className="min-w-0 truncate">
-                      {sourceDisplayName({ name: e.sourceName }, locale)}
+                    <span
+                      className={en ? "text-foreground-soft min-w-0 truncate" : "min-w-0 truncate"}
+                    >
+                      {sourceDisplayName({ name: e.sourceName, nameEn: e.sourceNameEn }, locale)}
                     </span>
                     <span aria-hidden>·</span>
                     <span className="shrink-0 tabular-nums">
                       {dayGap(currentDay, e.issuedAt, locale)}
                     </span>
                   </span>
-                  <span className="headline text-title font-serif font-bold tracking-[-0.02em]">
+                  <span
+                    className={`headline text-title font-serif font-bold ${en ? "tracking-[-0.01em]" : "tracking-[-0.02em]"}`}
+                  >
                     {headlineOf(e, locale)}
                   </span>
                 </span>
@@ -93,8 +100,12 @@ export function FollowUpThread({
   );
 }
 
-/** 한 줄 = [호 날짜 칼럼 | 본문]. 색인(StoryEntry)과 같은 날짜 칼럼 폭. 터치 타깃 44px 이상. */
+/**
+ * 한 줄 = [호 날짜 칼럼 | 본문]. 색인(StoryEntry)과 같은 날짜 칼럼 폭. 터치 타깃 44px 이상.
+ * 영어판은 날짜가 `Nov 12` 처럼 길어 칼럼을 3.75rem 으로 넓힌다(DESIGN.md 영어판 — 색인·타임라인 칼럼).
+ */
 const ROW = "grid min-h-11 grid-cols-[3.25rem_minmax(0,1fr)] items-baseline gap-x-3 py-3";
+const ROW_EN = "grid min-h-11 grid-cols-[3.75rem_minmax(0,1fr)] items-baseline gap-x-3 py-3";
 const FOCUS =
   "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 

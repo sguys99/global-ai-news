@@ -12,6 +12,7 @@ import { IndexLoadStatus, StoryIndex } from "@/components/StoryIndex";
 import { FilterSheet } from "@/components/mobile/FilterSheet";
 import { buildFeedIndex } from "@/lib/feedIndex";
 import { groupSources } from "@/lib/feedFilter";
+import { englishSource } from "@/lib/labels";
 import { resetIndexCache } from "@/lib/indexShards";
 import type { ArticleCard } from "@/lib/types";
 import { indexServer } from "./helpers/indexServer";
@@ -85,6 +86,26 @@ describe("groupSources — 언어별 칩 표시명", () => {
     const enGroups = groupSources(sources, "en");
     expect(enGroups.map((g) => g.label)).toEqual(["TechCrunch", "Hugging Face", "AI Times"]);
     expect(enGroups.map((g) => g.ids)).toEqual(groupSources(sources).map((g) => g.ids));
+  });
+
+  it("영어 페이로드 매체(englishSource — name = 영문명)도 묶음·대표 id·칩 표시명이 같다", () => {
+    // 실제 설정처럼 한글 이름 매체에는 영문명이 있다(sourcesConfig 테스트가 검사).
+    const withDaily = [
+      ...sources.map((s) =>
+        s.id === "hf_models" ? { ...s, nameEn: "HuggingFace Trending Models" } : s,
+      ),
+      { id: "hf_papers", name: "HuggingFace Daily Papers", count: 9 },
+    ];
+    const english = withDaily.map((s) => englishSource(s));
+    expect(JSON.stringify(english)).not.toMatch(/[가-힯]/);
+    const before = groupSources(withDaily, "en");
+    const after = groupSources(english, "en");
+    expect(after).toEqual(before);
+    // HuggingFace 두 피드는 영문명으로도 한 칩(Hugging Face)이다.
+    expect(after.find((g) => g.label === "Hugging Face")!.ids.sort()).toEqual([
+      "hf_models",
+      "hf_papers",
+    ]);
   });
 });
 
@@ -246,19 +267,24 @@ describe("SearchInput·SearchClient — en(컨텍스트)", () => {
     vi.useFakeTimers();
     render(<SearchInput />, { wrapper: en });
     const input = screen.getByRole("searchbox", { name: "Search stories" });
-    expect(input).toHaveAttribute(
-      "placeholder",
-      "Search by keyword — titles, summaries, source text, tags",
-    );
+    expect(input).toHaveAttribute("placeholder", "Search by keyword");
     fireEvent.change(input, { target: { value: "robot" } });
     act(() => vi.advanceTimersByTime(300));
     expect(push).toHaveBeenCalledWith("/en/search?q=robot");
   });
 
   it("검색어가 없으면 추천 주제(영어 머리·/en 링크), 있으면 결과 머리·빈 결과 문구가 영어다", async () => {
-    // 영어판도 Phase 5 전까지는 한국어 색인(search-index/ko/)을 읽는다 — 한 달 조각뿐이라 범위 문구·지난 기사 버튼이 없다.
+    // 영어판은 영어 색인(search-index/en/ — Phase 5-2)을 읽는다. 한 달 조각뿐이라 범위 문구·지난 기사 버튼이 없다.
     resetIndexCache();
-    vi.stubGlobal("fetch", indexServer([card(1), card(2)], () => "2026-10-25").fetchMock);
+    const english = (id: number): ArticleCard => ({
+      ...card(id),
+      titleKo: `기사 ${id}`,
+      summaryKo: "요약",
+      titleEn: `Story ${id}`,
+      summaryEn: "Summary",
+    });
+    const server = indexServer([english(1), english(2)], () => "2026-10-25", "en");
+    vi.stubGlobal("fetch", server.fetchMock);
     const { container, unmount } = render(<SearchClient sources={sources} tags={["agents"]} />, {
       wrapper: en,
     });
@@ -284,5 +310,7 @@ describe("SearchInput·SearchClient — en(컨텍스트)", () => {
     render(<SearchClient sources={sources} tags={[]} />, { wrapper: en });
     const results = await screen.findByRole("region", { name: "Search results" });
     expect(results.querySelector("p")?.textContent).toBe("“Story” · 2 results");
+    expect(HANGUL.test(document.body.textContent ?? "")).toBe(false);
+    expect(server.requested.every((p) => p.startsWith("/search-index/en/"))).toBe(true);
   });
 });

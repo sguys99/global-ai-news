@@ -1,5 +1,6 @@
 import { HeaderNav } from "@/components/HeaderNav";
 import { HeaderWordmark } from "@/components/HeaderWordmark";
+import { LocaleSwitch } from "@/components/LocaleSwitch";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 /**
@@ -14,6 +15,8 @@ export function Header() {
         <HeaderWordmark />
         <div className="ml-auto flex items-center gap-6">
           <HeaderNav />
+          {/* 언어 전환(5-3): 내비 뒤 헤어라인으로 나눈 흐린 글자 — 영어 페이지 `한국어`(lang=ko), 한국어 페이지 `EN`. */}
+          <LocaleSwitch variant="header" />
           <ThemeToggle />
         </div>
       </div>

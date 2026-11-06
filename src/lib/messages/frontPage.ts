@@ -46,7 +46,26 @@ export const frontPageMessages = defineMessages({
       count: (n: number) => `${n}건`,
       /** 건수 뒤에 이어 붙는 1면 게재 수(앞 구분점 포함). */
       onFront: (n: number) => ` · 1면 ${n}건`,
+      /** 1면 게재 수 뒤에 이어 붙는 Korea Desk 게재 수(영어판만 쓰인다). */
+      atDesk: (n: number) => ` · 코리아 데스크 ${n}건`,
       seeAll: "이 분야 전체 기사 →",
+    },
+    /**
+     * Korea Desk 밴드(영어판 전용, Edition.tsx `KoreaDeskBand`). 한국어판에는 데스크가 없다 — ko 값은 사전 모양을 맞추는 자리다.
+     */
+    desk: {
+      label: "서울발",
+      heading: "코리아 데스크",
+      dek: "한국 기술 매체가 전하는 소식을 영어로 요약했습니다.",
+      elsewhere: "이 호의 다른 한국 매체 기사",
+      front: "1면",
+      /** 머리 칸 맨 아래 안내 — 굵은 앞 구절(이 호 한국 매체 기사 수) + 이어지는 문장. */
+      noteCount: (n: number) => `한국 매체 기사 ${n}건`,
+      /** 데스크 밖 한국 매체 기사가 있을 때(KOREA 표시 안내 포함). */
+      noteRest: (n: number) =>
+        `${n > 0 ? "이" : ""} 이 호에 실렸고, 데스크 밖 기사에는 KOREA 표시가 붙습니다. 원문은 한국어입니다.`,
+      /** 모두 데스크에 실렸을 때. */
+      noteRestAll: (n: number) => `${n > 0 ? "이" : ""} 이 호에 실렸습니다. 원문은 한국어입니다.`,
     },
   },
   en: {
@@ -78,7 +97,20 @@ export const frontPageMessages = defineMessages({
     section: {
       count: (n: number) => `${n} ${plural(n, "story", "stories")}`,
       onFront: (n: number) => ` · ${n} on the front page`,
+      atDesk: (n: number) => ` · ${n} at the Korea Desk`,
       seeAll: "All stories in this section →",
+    },
+    desk: {
+      label: "From Seoul",
+      heading: "Korea Desk",
+      dek: "What Korea’s tech press is reporting, summarized in English.",
+      elsewhere: "Elsewhere in this issue",
+      front: "Front page",
+      noteCount: (n: number) => `${n} ${plural(n, "story", "stories")}`,
+      noteRest: (n: number) =>
+        ` in this issue ${plural(n, "comes", "come")} from Korean outlets; those outside the desk carry a KOREA mark. Originals are in Korean.`,
+      noteRestAll: (n: number) =>
+        ` in this issue ${plural(n, "comes", "come")} from Korean outlets. Originals are in Korean.`,
     },
   },
 });

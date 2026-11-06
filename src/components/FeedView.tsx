@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FrontPage, SectionBands, WeeklyRadarBand } from "@/components/Edition";
+import { FrontPage, KoreaDeskBand, SectionBands, WeeklyRadarBand } from "@/components/Edition";
 import { FilterBar } from "@/components/FilterBar";
 import { IssueBrief } from "@/components/IssueBrief";
 import { Masthead } from "@/components/Masthead";
@@ -7,6 +7,7 @@ import { IndexLoadStatus, StoryIndex, type IndexLoadState } from "@/components/S
 import { FilterSheet } from "@/components/mobile/FilterSheet";
 import type { EditionInfo, FeedOptions } from "@/lib/db";
 import { buildEdition, issueStats, type IssueBriefLine } from "@/lib/edition";
+import { applyKoreaDesk } from "@/lib/koreaDesk";
 import {
   filterAndSortFeed,
   findSourceGroup,
@@ -53,6 +54,7 @@ export function FeedView({
   initialDelayGap,
   weekly,
   brief = [],
+  desk: deskIds,
   locale = "ko",
 }: {
   /** 이번 호(그날 수집분) 기사 — 1면·섹션 밴드는 이 기사로만 구성한다. */
@@ -75,6 +77,8 @@ export function FeedView({
   weekly?: WeeklyRadar | null;
   /** 이번 호 세 줄 요약(서버 page 가 selectIssueBrief 로 고른 줄). 비면 띠를 숨긴다. 필터 모드에서는 쓰지 않는다. */
   brief?: IssueBriefLine[];
+  /** Korea Desk 선정 기사 id(영어판만, src/lib/koreaDesk.ts). 없으면 데스크 밴드를 그리지 않는다. */
+  desk?: number[];
   /** 언어판(기본 ko). */
   locale?: Locale;
 }) {
@@ -140,7 +144,8 @@ export function FeedView({
     );
   }
 
-  const edition = buildEdition(issueArticles);
+  // Korea Desk(영어판): 데스크 게재분을 섹션 밴드에서 빼고 밴드를 다시 채운다 — 호 고정 링크(EditionBody)와 같은 함수.
+  const { edition, sections, desk } = applyKoreaDesk(buildEdition(issueArticles), deskIds);
   // 1면·섹션 바이라인 상대 시각의 정적 렌더 기준 = 호 발행 시각(마운트 후엔 실제 시각으로 갱신).
   const timeBase = editionInfo.publishedAt ?? undefined;
   // 발행 지연 안내: 초기값은 빌드 시점 계산(initialDelayGap), 마운트 후엔 브라우저 현재 시각으로 갱신(Masthead → IssueDelayNotice).
@@ -152,8 +157,9 @@ export function FeedView({
         issueNo={editionInfo.issueNo}
         publishedAt={editionInfo.publishedAt}
         stats={issueStats(issueArticles)}
-        categories={edition.sections.map((s) => s.category)}
+        categories={sections.map((s) => s.category)}
         weekly={Boolean(weekly)}
+        desk={Boolean(desk)}
         delayNoticeIssueDate={issueDate}
         delayNoticeInitialGap={initialDelayGap}
         locale={locale}
@@ -162,7 +168,15 @@ export function FeedView({
       <main className="mx-auto flex max-w-[1240px] flex-col gap-14 px-4 pb-16 md:gap-16 md:px-8">
         <FrontPage edition={edition} timeBase={timeBase} locale={locale} />
         {weekly && <WeeklyRadarBand weekly={weekly} locale={locale} />}
-        <SectionBands sections={edition.sections} timeBase={timeBase} locale={locale} />
+        {desk && (
+          <KoreaDeskBand
+            desk={desk}
+            timeBase={timeBase}
+            locale={locale}
+            indexLabel={t.allStories}
+          />
+        )}
+        <SectionBands sections={sections} timeBase={timeBase} locale={locale} />
         <AllStories
           visible={visible}
           sources={sources}

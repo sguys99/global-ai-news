@@ -394,6 +394,23 @@ describe("getFollowUpThread — 상세 사건 타임라인", () => {
     expect(got).toContain(chain[5]);
   });
 
+  it("영어판 필드: 영어 제목은 영어판에 실리는 기사(제목·요약 둘 다)만, 매체 영문명은 있을 때만", () => {
+    db.prepare("UPDATE sources SET name = 'AI타임스', name_en = 'AI Times' WHERE id = 'hn'").run();
+    const prev = article("2026-10-28 21:00:00");
+    const mid = article("2026-10-29 21:00:00", { followUpOf: prev });
+    const next = article("2026-10-30 21:00:00", { followUpOf: mid });
+    const setEn = db.prepare("UPDATE articles SET title_en = ?, summary_en = ? WHERE id = ?");
+    setEn.run("Earlier story", "Earlier summary.", prev);
+    setEn.run("Title only", null, next); // 요약이 없으면 영어판에 없다
+    const thread = getFollowUpThread(mid, undefined, db);
+    expect(thread.map((e) => [e.id, e.titleEn, e.sourceNameEn])).toEqual([
+      [prev, "Earlier story", "AI Times"],
+      [mid, undefined, "AI Times"],
+      [next, undefined, "AI Times"],
+    ]);
+    expect("titleEn" in thread[1]).toBe(false);
+  });
+
   it("follow_up_of 컬럼이 없는 옛 DB 에서도 깨지지 않는다(빈 배열)", () => {
     const old = new Database(":memory:");
     old.exec(`CREATE TABLE articles (id INTEGER PRIMARY KEY, summary_ko TEXT)`);

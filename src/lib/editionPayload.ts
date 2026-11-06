@@ -17,6 +17,7 @@
 import type { Edition } from "@/lib/edition";
 import type { Locale } from "@/lib/i18n";
 import { decodeRow, encodeRow, type IndexRow, type ManifestSource } from "@/lib/indexShards";
+import { englishSource } from "@/lib/labels";
 import type { ArticleCard, Engagement, StoryCard } from "@/lib/types";
 import type { WeeklyRadar } from "@/lib/weeklyRadar";
 
@@ -38,18 +39,29 @@ export interface EditionPayload {
   radar: EditionRadarSlot[];
   trending: number[];
   sections: EditionSectionSlot[];
+  /** Korea Desk 선정 기사 id(영어판만 — 섬이 src/lib/koreaDesk.ts `applyKoreaDesk` 로 밴드를 짠다). 한국어판은 키가 없다. */
+  desk?: number[];
 }
 
 const ids = (cards: readonly { id: number }[]) => cards.map((a) => a.id);
 
 /** 서버: 편집 결과 → 섬 페이로드. 행의 제목·요약은 그 언어판의 것(encodeRow — ko 는 원제 폴백 포함). */
-export function packEdition(edition: Edition<ArticleCard>, locale: Locale): EditionPayload {
+export function packEdition(
+  edition: Edition<ArticleCard>,
+  locale: Locale,
+  desk?: readonly number[],
+): EditionPayload {
   const sources: Record<string, ManifestSource> = {};
   for (const a of edition.issue) {
     if (sources[a.source.id]) continue;
     // 형식은 소스 속성(sources.format)이라 같은 매체의 기사는 형식이 같다(색인 조각 매체 표와 같은 전제).
-    const s: ManifestSource = { name: a.source.name, format: a.format };
-    if (locale === "en" && a.source.nameEn) s.nameEn = a.source.nameEn;
+    // 영어판은 한글 매체명 대신 영문명을 name 에 싣는다(englishSource — 영어 RSC 에 한글이 실리지 않게).
+    const s: ManifestSource = {
+      name: locale === "en" ? englishSource(a.source).name : a.source.name,
+      format: a.format,
+    };
+    // 지역(KOREA 표시·Korea Desk)도 영어판에만.
+    if (locale === "en" && a.source.region) s.region = a.source.region;
     sources[a.source.id] = s;
   }
   return {
@@ -65,6 +77,7 @@ export function packEdition(edition: Edition<ArticleCard>, locale: Locale): Edit
     sections: edition.sections.map(
       (s): EditionSectionSlot => [s.category, s.count, s.onFront, ids(s.items)],
     ),
+    ...(desk?.length ? { desk: [...desk] } : {}),
   };
 }
 
@@ -99,11 +112,22 @@ export function unpackEdition(payload: EditionPayload, locale: Locale): Edition<
 }
 
 /**
- * 주간 레이더를 섬 props 로 — 한국어판은 그리지 않는 영어 제목·영문 매체명을 뗀다(영어판은 그대로).
+ * 주간 레이더를 섬 props 로 — 한국어판은 그리지 않는 영어 제목·영문 매체명을 뗀다. 영어판은 거꾸로 한국어 제목
+ * (`title` — 영어판은 titleEn 만 그린다)을 비운다(영어 페이지 RSC 에 한국어가 실리지 않게).
  * 순위·식별자·수치는 그대로라 밴드 렌더는 같다.
  */
 export function packWeekly(weekly: WeeklyRadar | null, locale: Locale): WeeklyRadar | null {
-  if (!weekly || locale === "en") return weekly;
+  if (!weekly) return weekly;
+  if (locale === "en") {
+    return {
+      ...weekly,
+      items: weekly.items.map((item) => ({
+        ...item,
+        title: "",
+        source: englishSource(item.source),
+      })),
+    };
+  }
   return {
     ...weekly,
     items: weekly.items.map((item) => {

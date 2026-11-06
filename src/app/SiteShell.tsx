@@ -26,6 +26,7 @@ export const siteViewport: Viewport = {
 export function SiteShell({
   locale,
   head,
+  localeFromDocument,
   children,
 }: Readonly<{
   /**
@@ -35,6 +36,8 @@ export function SiteShell({
   locale: Locale;
   /** `<head>`에 직접 넣을 요소(global-not-found 의 언어 판정 스크립트). 없으면 `<head>`를 쓰지 않는다 — Next 가 채운다. */
   head?: ReactNode;
+  /** 404 전용 — 셸 문구 언어를 문서 lang(head 스크립트가 `/en` 아래면 en 으로 바꾼다)으로 고른다(ShellChrome). */
+  localeFromDocument?: boolean;
   children: ReactNode;
 }>) {
   return (
@@ -42,7 +45,12 @@ export function SiteShell({
       {head ? <head>{head}</head> : null}
       <body className="sh-body">
         {/* 고정 크롬은 클라이언트 섬 하나(ShellChrome) — RSC 에는 참조 한 줄과 언어·연도만 실린다(Phase 4-1). */}
-        <ShellChrome locale={locale} year={new Date().getFullYear()}>
+        <ShellChrome
+          locale={locale}
+          year={new Date().getFullYear()}
+          // 404 만 넘긴다 — 다른 페이지 RSC 에 빈 prop(`$undefined`)이 실리지 않게.
+          {...(localeFromDocument ? { localeFromDocument } : {})}
+        >
           {children}
         </ShellChrome>
       </body>
