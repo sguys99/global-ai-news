@@ -11,7 +11,7 @@
 - 영어판: [docs/english-version-plan.md](docs/english-version-plan.md) (같은 호 영어 발행 `/en/`·Korea Desk·백필·다국어 구조·용량 대책·영어 SEO 단계 계획)
 - 디자인 토큰/원칙: [DESIGN.md](DESIGN.md) (v2.1)
 
-> **현재 구현 단계:** WORK-PLAN Phase 0~6, GitHub Pages 전환(클린 컷오버), 콘텐츠·1면 개편 Phase 1~6 완료, Phase 7 통합 검증 후 2026-10-31 배포(배포 후 3일 KPI 관찰은 11-03 예약 루틴이 기록), Phase 8 추가 아이디어(세 줄 요약·후속 보도·소스 헬스·주간 레이더·같은 사건 합치기·홈 페이로드·정리) 2026-11-01 배포. 영어판([english-version-plan.md](docs/english-version-plan.md)) Phase 0 기준선·검증, Phase 1 영어 가공 데이터(수집에서 `title_en`·`summary_en` 생성·검사, 화면 노출 없음) 2026-11-04 배포(3일 관찰은 11-07 예약 루틴이 기록). Phase 2 지난 기사 영어 백필(`db:backfill-en`·`backfill-en.yml`, 1,241/1,255건, $0.733 — 한국어 숫자·사실 오류 26건 수정 포함) 2026-11-04 완료. Phase 3 다국어 기반 구조(`(ko)`·`(en)/en` 레이아웃, `src/views`, 문구 사전 `src/lib/messages`, 이중 언어 404 — 한국어 화면 무변화, 영어 페이지는 아직 없음) 2026-11-04 배포. Phase 4 사이트 용량 대책(컴포넌트 클래스·`ArticleLink`+기사 `.txt` 삭제·호/홈/셸 클라이언트 섬·색인 월별 분할·og 호 30일 창·90일 지난 기사·호 보관 지면·`size:report` 배포 검사 — `out/` 155→57MB, 한국어 화면 무변화) 2026-11-05 배포. 상세 체크리스트는 각 계획 문서가 단일 출처입니다.
+> **현재 구현 단계:** WORK-PLAN Phase 0~6, GitHub Pages 전환(클린 컷오버), 콘텐츠·1면 개편 Phase 1~6 완료, Phase 7 통합 검증 후 2026-10-31 배포(배포 후 3일 KPI 관찰은 11-03 예약 루틴이 기록), Phase 8 추가 아이디어(세 줄 요약·후속 보도·소스 헬스·주간 레이더·같은 사건 합치기·홈 페이로드·정리) 2026-11-01 배포. 영어판([english-version-plan.md](docs/english-version-plan.md)) Phase 0 기준선·검증, Phase 1 영어 가공 데이터(수집에서 `title_en`·`summary_en` 생성·검사, 화면 노출 없음) 2026-11-04 배포(3일 관찰은 11-07 예약 루틴이 기록). Phase 2 지난 기사 영어 백필(`db:backfill-en`·`backfill-en.yml`, 1,241/1,255건, $0.733 — 한국어 숫자·사실 오류 26건 수정 포함) 2026-11-04 완료. Phase 3 다국어 기반 구조(`(ko)`·`(en)/en` 레이아웃, `src/views`, 문구 사전 `src/lib/messages`, 이중 언어 404 — 한국어 화면 무변화, 영어 페이지는 아직 없음) 2026-11-04 배포. Phase 4 사이트 용량 대책(컴포넌트 클래스·`ArticleLink`+기사 `.txt` 삭제·호/홈/셸 클라이언트 섬·색인 월별 분할·og 호 30일 창·90일 지난 기사·호 보관 지면·`size:report` 배포 검사 — `out/` 155→57MB, 한국어 화면 무변화) 2026-11-05 배포. **영어판 Phase 5 영어 화면 — 기능 브랜치 `feat/en-pages`, Phase 7 출시 때 병합**(`/en/` 홈·호·기사·검색·보관 지면, Korea Desk·`KOREA` 표시, 언어 전환 + hreflang ko/en 쌍, 한글 누출 검사 `en:hangul-check` — 한국어 화면 무변화). 상세 체크리스트는 각 계획 문서가 단일 출처입니다.
 
 > **배포 구조 (`deploy/github-pages`):** Vercel/`standalone`은 폐기됐습니다. `npm run build`(= `PHASE_PRODUCTION_BUILD`)가 곧 `output:'export'` 정적 export(`out/`, `basePath:'/global-ai-news'`)이고 `deploy.yml`이 GitHub Pages로 배포합니다. admin/api/middleware는 `*.local.ts(x)` 파일로 두고 `pageExtensions` 게이팅으로 **로컬 `next dev`에서만** 라우트가 됩니다(프로덕션 빌드에서 제외). 개편 브랜치 `feat/contents-upgrade`는 `deploy/github-pages`에 병합됐고, 일일 수집 커밋(`data/app.db`)은 `deploy/github-pages`에 쌓입니다.
 
@@ -45,7 +45,13 @@
 │   │   │   ├── search/page.tsx   # 검색(/search) — 정적 셸 + SearchClient
 │   │   │   ├── edition/[date]/page.tsx # 호 고정 링크(/edition/YYYY-MM-DD) — 그날 수집분(호) 지면 SSG
 │   │   │   └── admin/            # 운영 콘솔 — 로컬 전용(page.local.tsx, login/page.local.tsx)
-│   │   ├── (en)/en/layout.tsx    # 영어 최상위 레이아웃(<html lang="en">, LocaleProvider) — 영어 페이지는 영어판 Phase 5
+│   │   ├── (en)/en/              # 영어판 라우트 그룹(`/en/` 접두어, 영어판 Phase 5 — 같은 뷰에 locale="en", 영어 본문이 있는 기사만)
+│   │   │   ├── layout.tsx        # 영어 최상위 레이아웃(<html lang="en">, LocaleProvider)
+│   │   │   ├── not-found.tsx     # null — (ko) 와 같은 이유(보이는 404 는 global-not-found 의 영어 단)
+│   │   │   ├── page.tsx          # 영어 홈(/en/) — 1면·Korea Desk·섹션 밴드·색인(feed-index/en/)
+│   │   │   ├── article/[id]/page.tsx  # 영어 상세 — 한국 매체는 `lang="ko"` 원제 병기·원문 언어 안내, 90일 지난 기사는 영어 보관 지면
+│   │   │   ├── edition/[date]/page.tsx # 영어 호 고정 링크 — 영어 기사가 있는 호만
+│   │   │   └── search/page.tsx   # 영어 검색(search-index/en/, FlexSearch forward + latin:simple)
 │   │   ├── SiteShell.tsx         # 문서 셸(html·body·globals.css + 고정 크롬 ShellChrome) + siteViewport — 두 레이아웃·404 공용
 │   │   ├── fonts.ts              # next/font 인스턴스(Pretendard·Hahmlet) — SiteShell 이 쓴다
 │   │   ├── global-not-found.tsx  # 앱 전체 404(experimental.globalNotFound, out/404.html) — 이중 언어, /en/ 아래면 lang=en
@@ -62,7 +68,7 @@
 │   │   ├── IssueDelayNotice.tsx  # 발행 지연 줄 "발행 전/발행 지연"(브라우저 KST 시각으로 판정)
 │   │   ├── IssueBrief.tsx        # 세 줄 요약 띠(마스트헤드 아래, 1면 위계 순 번호 줄 ≤3, 2줄 미만이면 숨김)
 │   │   ├── ShareButton.tsx       # 호 공유(모바일 공유 시트·데스크톱 링크 복사) — 호 고정 링크를 공유
-│   │   ├── Edition.tsx           # FrontPage(리드·서브·오늘의 브리핑)·RadarBand·TrendingList(지금 화제)·이 호의 지면·SectionBands — 카드 타입은 StoryCard(ArticleCard 전체 불필요)
+│   │   ├── Edition.tsx           # FrontPage(리드·서브·오늘의 브리핑)·RadarBand·TrendingList(지금 화제)·이 호의 지면·SectionBands·KoreaDeskBand(영어판) — 카드 타입은 StoryCard(ArticleCard 전체 불필요)
 │   │   ├── EditionBody.tsx       # 호 고정 링크 본문 클라이언트 섬: 1면·주간 레이더·섹션 밴드·이 호의 기사를 기사 한 벌의 행 페이로드(editionPayload)로 그린다
 │   │   ├── Story.tsx             # 스토리 변형 7종(Lead/Secondary/SectionItem/Brief/Radar/Weekly/Entry)
 │   │   ├── ArticleLink.tsx       # 기사 링크 = 일반 <a>(basePath·localePath, prefetch 없음 — 기사 index.txt 는 postbuild 가 지운다)
@@ -82,6 +88,8 @@
 │   │   ├── VisitorCount.tsx      # 푸터 "누적 방문 N회"(GoatCounter TOTAL.json, VISITOR_COUNT_MIN 미만이면 숨김)
 │   │   ├── JsonLd.tsx            # 구조화 데이터(JSON-LD) 스크립트 — 홈 WebSite·상세 NewsArticle
 │   │   ├── LocaleProvider.tsx    # 클라이언트 언어 컨텍스트(useLocale·useMessages, 기본 ko) — 영어 레이아웃만 감싼다
+│   │   ├── LocaleSwitch.tsx      # 언어 전환 `EN`/`한국어`(ShellChrome 안, 일반 <a>) — SSR 은 상대 언어 홈, 마운트 뒤 hreflang alternate 로 같은 페이지
+│   │   ├── EnglishNotice.tsx     # 한국어 페이지 `Read AI Daybook in English →` 안내 줄(브라우저 언어에 ko 없을 때 마운트 뒤, 닫기 기억)
 │   │   ├── Icon.tsx              # 공개 페이지 인라인 SVG 아이콘(lucide 도형 사본, 기본 속성은 globals.css `.ic`)
 │   │   ├── NotFoundNotice.tsx    # 404 본문 '독자 안내'(세리프 404·이중 괘선·한/영 두 단, lang-en 변형으로 순서·크기 교체)
 │   │   ├── mobile/               # 모바일 앱 셸(MobileTopBar·BottomTabBar·FilterSheet)
@@ -98,13 +106,15 @@
 │   │   ├── types.ts              # RawItem, ArticleCard(format 포함), SourceConfig, RunRow 등
 │   │   ├── edition.ts            # 1면 편집(buildEdition: 리드·서브·브리핑·레이더·화제·섹션) + frontArticles·issueStats
 │   │   ├── i18n.ts               # 다국어 기반: Locale·localePath(ko 는 입력 그대로, en 은 /en 접두)·splitLocalePath·defineMessages·getMessages·plural·formatNumber
-│   │   ├── messages/             # 영역별 문구 사전 `defineMessages({ ko, en })`(common·notFound·article·edition·search …, ko 가 원본 — en 모양은 타입·i18n.test 가 검사)
+│   │   ├── messages/             # 영역별 문구 사전 `defineMessages({ ko, en })`(common·notFound·article·edition·search·localeSwitch …, ko 가 원본 — en 모양은 타입·i18n.test 가 검사)
 │   │   ├── articleText.ts        # 기사 표시 헬퍼 headlineOf·summaryOf·sourceNameOf(en 은 한국어로 폴백하지 않음)·hasEnglish
 │   │   ├── labels.ts             # 분야 CATEGORIES·표시명·코드, 형식 FORMATS·배지, 소스 축약명, KST 날짜·상대 시각·발행 지연 문구 (단일 출처)
 │   │   ├── radarMeta.ts          # 레이더 카드 메타 레일(리포 ★·모델 파라미터·논문 arXiv ID 등)
 │   │   ├── englishKpi.ts         # 영어판 KPI 정의·notes 파싱(`영어 가공 N/M건`·`영어 기각`·`한국어 숫자 불일치`) — admin·kpi 공용
 │   │   ├── sourceHealth.ts       # 소스 헬스 판정(notes 소스별 결과 → 연속 실패 2회=오류·연속 0건 3회=경고) — admin·kpi·CI 공용
 │   │   ├── weeklyRadar.ts        # 주간 레이더(일요일 특집): 주 경계·같은 대상 합치기·형식 혼합·순위(buildWeeklyRadar)
+│   │   ├── koreaDesk.ts          # Korea Desk(영어판): selectKoreaDesk(한국 매체·1면 제외·한국 주제 우선 ≤4)·applyKoreaDesk(섹션 밴드에서 빼기·Elsewhere)
+│   │   ├── localeSwitch.ts       # 언어 전환 순수 규칙(상대 언어판 = 페이지 hreflang alternate, 없으면 그 언어 홈·영어 안내 줄 표시 판정)
 │   │   ├── feedFilter.ts         # 클라 필터·정렬 + URL 옵션 파싱(구 분야값 URL 호환)
 │   │   ├── editionPayload.ts     # 호 지면 섬 페이로드: packEdition(편집 → 매체 표·행·슬롯 id, 레이더만 URL·메트릭)·unpackEdition·packWeekly — 행은 색인 조각 인코딩(indexShards)
 │   │   ├── feedIndex.ts          # 홈 색인: IndexCard 변환·첫 페이지/머리/전체 합치기·FEED_HEAD_SIZE(목록에 싣는 다음 4페이지)
@@ -135,6 +145,7 @@
 │   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터, prebuild)
 │   ├── kpi.ts                    # KPI CLI (npm run kpi) + baseline 하위 명령(콘텐츠 개편 지표) + health(소스 헬스, --ci 는 collect.yml 요약)
 │   ├── postbuild.ts              # npm postbuild 훅(next build 직후): out/ 후처리 단계 목록(lib/postbuild.ts) — ① 기사 RSC index.txt 삭제 ② 보관 지면 쓰기(lib/archive.ts, 같은 빌드의 out/index.html 에서 CSS·폰트·사이트 주소를 읽는다 — lib/archiveAssets.ts), 멱등·out/ 없거나 보관 판정이 어긋나면 실패
+│   ├── en-hangul-check.ts        # 영어판 한글 누출 검사(out/en/** HTML·RSC + {search,feed}-index/en/**, 허용은 lang="ko" 요소 안뿐 — 판정 lib/enHangulCheck.ts, --ci 는 deploy.yml)
 │   ├── size-report.ts            # out/ 크기 보고(분류별·기사/호 페이지 평균·p90·무거운 쪽, 보관 지면은 HTML 머리 표지로 따로, --base 비교) — --ci 는 deploy.yml 검사(700MB 경고·950MB 실패, 기준값은 lib/sizeReport.ts)
 │   └── lib/
 │       ├── schema.ts             # 선별·가공·재보도 출력 스키마(zod/v4), CATEGORIES 재수출(정의는 src/lib/labels.ts)
@@ -182,7 +193,7 @@
 ├── .github/workflows/
 │   ├── collect.yml               # 외부 크론 dispatch + schedule 백업 → 수집 → app.db 커밋 → deploy dispatch → 소스 헬스 요약
 │   ├── backfill-en.yml           # 수동: 영어 백필 dry-run/apply(collect 와 같은 concurrency, 03:50~07:30 KST apply 거부) → app.db 커밋 → deploy dispatch
-│   └── deploy.yml                # 정적 빌드 → 산출물 크기 검사(size:report --ci) → GitHub Pages 배포
+│   └── deploy.yml                # 정적 빌드 → 산출물 크기 검사(size:report --ci) → 영어 한글 검사(en:hangul-check --ci) → GitHub Pages 배포
 ├── data/
 │   ├── app.db                    # SQLite DB (db:init/collect로 생성)
 │   └── eval/                     # collect --no-save 스냅숏 (git 제외)
@@ -220,6 +231,8 @@
 | `/article/[id]`                                                     | 상세                      | SSG(generateStaticParams) · 공개 — 90일 지난 기사는 postbuild 보관 지면 | ✅           |
 | `/search`                                                           | 검색                      | 정적 셸 + 클라이언트 검색 · 공개                                        | ✅           |
 | `/edition/[date]`                                                   | 호 고정 링크(지난 호)     | SSG(generateStaticParams) · 공개 — 90일 지난 호는 postbuild 보관 지면   | ✅           |
+| `/en/`, `/en/search`                                                | 영어 홈 / 영어 검색       | SSG + 클라 필터·검색 · 공개(영어판 Phase 5, `feat/en-pages`)            | ✅ (Phase 7) |
+| `/en/article/[id]`, `/en/edition/[date]`                            | 영어 상세 / 영어 호       | SSG — 영어 본문이 있는 기사·호만, 90일 지난 것은 영어 보관 지면         | ✅ (Phase 7) |
 | `/og/edition/[date].png`, `/og/article/[id].png`, `/og/default.png` | 공유 썸네일(og:image)     | 빌드타임 정적 PNG · 공개                                                | ✅           |
 | `/sitemap.xml`, `/feed.xml`                                         | 사이트맵 / RSS            | 빌드타임 정적 XML · 공개                                                | ✅           |
 | `/admin`                                                            | 운영 콘솔                 | 로컬 전용(`next dev`) · 인증                                            | ❌ 배포 제외 |
@@ -270,6 +283,7 @@ npm run dev       # http://localhost:3000 (export·basePath 미적용, admin/api
 ```bash
 npm run build     # prebuild(initDb --existing·검색 인덱스·latest.json) → 정적 export out/ → postbuild(기사 RSC .txt 삭제·보관 지면)
 npm run size:report -- [out] [--base <기준 out>]  # 산출물 크기 표(분류별·페이지 평균 대 예산 기사 40KB·호 150KB), --base 로 경량화 전후 비교, --json
+npm run en:hangul-check -- [out] [--ci] [--json]  # 영어 페이지·영어 색인 한글 누출 검사(허용 lang="ko" 요소, 위반이면 종료 코드 1)
 ```
 
 `output:'export'`라 `npm run start`(`next start`)는 쓰지 않는다. 산출물은 `out/`을 `/global-ai-news` 서브경로로 서빙해 확인한다([WORK-PLAN-github-pages.md](docs/WORK-PLAN-github-pages.md) "전체 검증 방법").
@@ -427,6 +441,7 @@ npx shadcn@latest add card dialog input
 - 화면 문구는 `src/lib/messages/<영역>.ts`(`defineMessages({ ko, en })`)에만 둔다 — 컴포넌트·뷰에 한글을 직접 쓰면 `noHardcodedHangul.test.ts`가 실패한다. 서버 컴포넌트는 `locale` prop, 클라이언트 컴포넌트는 `useLocale()`·`useMessages()`, 내부 링크는 `localePath(locale, …)`
 - 공개 페이지 무게(Phase 4-1): 모든 페이지에 반복되는 클라이언트 조각은 섬 하나로 묶는다(셸 = `ShellChrome`) — 클라이언트 컴포넌트마다 RSC 에 모듈 참조 행(약 270B)이 붙고, 서버 컴포넌트의 렌더 트리는 RSC 에 통째로 실린다. 반복 목록을 서버에서 그릴지 섬에 값으로 넘길지는 RSC 크기로 고른다(`RelatedStories`)
 - 기사 페이지 링크는 `ArticleLink`(일반 `<a>`, prefetch 없음 — `next/link`·`router` 로 기사에 가지 않는다) — 기사 `.txt` 는 빌드 후 지운다(`scripts/postbuild.ts`). `ArticleLink.test.tsx`가 `/article/` 내부 경로를 직접 만드는 코드를 막는다. 호 링크를 새로 그릴 때는 보관 호(`isArchivedIssueDate`)면 일반 `<a>`(`BASE_PATH` + 경로)로 — 보관 지면에는 `.txt` 가 없다
+- 영어판 페이로드(RSC·색인)에는 한글을 싣지 않는다 — 매체는 `englishSource`(labels.ts: name = 영문명, nameEn 키 없음, 칩 묶음·표시 그대로), 한국어 가공 텍스트·한글 태그·묶인 보도 한글 제목은 뗀다. 영어 페이지의 한국어는 `lang="ko"` 요소(원제 줄·`한국어` 전환 링크)뿐이고 `en:hangul-check`(deploy.yml)가 검사한다. 영어 JSON-LD 는 Phase 6 이라 영어 페이지에는 아직 없다
 - 보관 지면(`src/lib/archivePage.ts`)은 Tailwind 유틸리티를 쓰지 않고 `@layer components` 클래스만 쓴다(globals.css 끝 "보관 지면" 블록) — `archivePage.test.ts`가 검사
 - 런타임 경로 상수는 `src/lib/paths.ts`, 설정 파일은 `configs/`에서 관리
 - DB 조회는 `src/lib/db.ts`를 통해 readonly로 접근
