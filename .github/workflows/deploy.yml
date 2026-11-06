@@ -35,6 +35,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      # IndexNow 요청 본문(한 줄 JSON, 꺼져 있으면 빈 값) — deploy 잡이 배포 뒤 보낸다.
+      indexnow: ${{ steps.indexnow.outputs.payload }}
     steps:
       - uses: actions/checkout@v4
 
@@ -70,6 +73,25 @@ jobs:
       - name: Check English pages for Hangul
         run: npm run --silent en:hangul-check -- out --ci
 
+      # SEO 정합성 검사(english-version-plan Phase 6-3, scripts/seo-check.ts). out/ 의 모든 페이지(보관 지면 포함, 404 제외)의
+      #   canonical = 자기 주소 = og:url, <html lang> = 경로 언어 = og:locale, hreflang ko·en·x-default 상호 참조, og:image·RSS
+      #   파일 존재, JSON-LD(NewsArticle·WebSite 필수 필드)와 사이트맵 인덱스·조각(모든 페이지 포함·xhtml:link = 페이지
+      #   hreflang·5만 URL/50MB), RSS(language·항목 링크)를 본다. 오류가 있으면 ::error:: 와 함께 실패해 업로드 전에 멈추고,
+      #   경고는 주석·잡 요약에만 남긴다.
+      - name: Check SEO
+        run: npm run --silent seo:check -- out --ci
+
+      # IndexNow 요청 본문 준비(Phase 6-3, 기본 꺼짐 — 저장소 변수 INDEXNOW_ENABLED=1 일 때만, scripts/indexnow.ts).
+      #   최신 호의 두 언어 홈·호·기사 URL(out/ 에 있는 것만)을 본문 한 줄 JSON 으로 만들어 잡 출력으로 넘긴다.
+      #   실제 전송은 배포가 끝난 뒤 deploy 잡의 "Notify IndexNow" 가 한다. 실패해도 배포는 계속한다.
+      - name: Prepare IndexNow payload
+        id: indexnow
+        if: vars.INDEXNOW_ENABLED == '1'
+        continue-on-error: true
+        run: |
+          npm run --silent indexnow -- out --ci --emit "$RUNNER_TEMP/indexnow.json"
+          echo "payload=$(cat "$RUNNER_TEMP/indexnow.json")" >> "$GITHUB_OUTPUT"
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
@@ -86,3 +108,23 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      # IndexNow 알림(Phase 6-3, 기본 꺼짐 — vars.INDEXNOW_ENABLED == '1'). 배포가 끝나 키 파일
+      #   (/global-ai-news/<키>.txt)과 새 페이지가 열린 뒤에 build 잡이 만든 본문을 api.indexnow.org 로 보낸다.
+      #   200·202 만 성공이고, 그 밖의 응답·네트워크 실패는 ::warning:: 만 남긴다(배포 결과에 영향 없음).
+      - name: Notify IndexNow
+        if: vars.INDEXNOW_ENABLED == '1' && needs.build.outputs.indexnow != ''
+        continue-on-error: true
+        env:
+          PAYLOAD: ${{ needs.build.outputs.indexnow }}
+        run: |
+          code=$(curl -sS -o "$RUNNER_TEMP/indexnow.out" -w '%{http_code}' --max-time 30 \
+            -X POST -H 'Content-Type: application/json; charset=utf-8' \
+            --data "$PAYLOAD" https://api.indexnow.org/indexnow) || code=000
+          body=$(head -c 300 "$RUNNER_TEMP/indexnow.out" 2>/dev/null | tr '\n' ' ')
+          count=$(printf '%s' "$PAYLOAD" | grep -o '"https://' | wc -l)
+          if [ "$code" = "200" ] || [ "$code" = "202" ]; then
+            echo "IndexNow 응답 $code — URL $((count - 1))개 접수 ${body}"
+          else
+            echo "::warning title=IndexNow::응답 $code(200·202 아님) ${body}"
+          fi

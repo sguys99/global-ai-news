@@ -72,7 +72,7 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - [x] **Phase 3** — 다국어 기반 구조(한국어 화면 무변화) — 2026-11-04 완료·배포. 한국어 대표 11페이지·sitemap·feed가 기준선과 같고, 404만 이중 언어 지면으로 새로 만들었다. 회귀 비교 도구 `npm run regress:html`은 Phase 4·7에서 다시 쓴다
 - [x] **Phase 4** — 사이트 용량 대책(1단계 경량화는 영어판 출시 전 필수, 2단계 보관 등급은 출시 후 6개월 안) — 2026-11-05 완료·배포. `out/` 155.26→57.10MB(−63%), 기사 96.6→34.6KB, 호 385→119KB, 홈 481→171KB. 보관 지면은 지금 구현해 대량 호 3개부터 적용했고 나머지는 2027-01부터 저절로 넘어간다. 2029-01 두 언어 합계 약 565MB, 1GB는 약 2031-07로 다시 추정했다. 1년 후 재추정(2027-11)은 Phase 9로 옮겼다
 - [x] **Phase 5** — 영어판 화면(시안 → 구현) — 2026-11-06 완료(기능 브랜치 `feat/en-pages`, **Phase 7 출시 때 `deploy/github-pages`에 병합**). `/en/` 홈·호·기사·검색·보관 지면, Korea Desk(한국 주제 우선)·`KOREA` 글자 표시, 언어 전환(상대판 hreflang 앞당김), 영어 한글 배포 검사. 한국어 HTML 변화는 hreflang 2줄 + `EN` 링크 3곳뿐. 계획 밖으로 AI타임스·로봇신문 발행 시각 KST 버그를 고쳐 배포했다(`232bbfc`, 지난 206건 보정은 대기)
-- [ ] **Phase 6** — 영어 SEO
+- [x] **Phase 6** — 영어 SEO — 2026-11-06 완료(`feat/en-pages`, Phase 7 출시 때 병합). 영어 공유 메타·자기 canonical·hreflang ko/en/x-default, 한국어 메타는 한국어만, 사이트맵 인덱스(제출 주소 그대로)·`/en/feed.xml`·영어 JSON-LD·영어 공유 썸네일, 배포 검사 `seo:check`, IndexNow(꺼 둠). Search Console·Bing 등록과 IndexNow 켜기는 영어 페이지 공개 뒤라 Phase 7 출시로 옮겼다([안내서](english-version/phase6/6-3-search-engines.md))
 - [ ] **Phase 7** — 통합 검증·출시
 - [ ] **Phase 8** — 출시 후 관찰·확산(4주)
 - [ ] **Phase 9** — (선택) 추가 아이디어
@@ -536,10 +536,12 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 6-3. 검색엔진 등록·확인
 
-- [ ] Search Console: 같은 속성에서 `/en/` URL 검사 → 색인 요청, 사이트맵 재제출(같은 `sitemap.xml`에 영어 URL 포함).
-- [ ] **Bing Webmaster Tools** 등록: Search Console에서 가져오기로 사이트맵을 제출한다. Bing은 영어권 검색에서 비중이 있고 DuckDuckGo·Yahoo·ChatGPT 검색 결과에도 쓰인다.
-- [ ] (선택) IndexNow: 키 파일을 두고 `deploy.yml`이 배포 후 새 URL을 Bing 등에 알리게 한다.
-- [ ] 리치 결과 테스트(NewsArticle), hreflang 상호 참조 검사(양쪽이 서로 가리키는지)를 한다.
+> **2026-11-06 사용자 결정:** 자동으로 할 수 있는 것만 지금 하고, 영어 페이지가 공개돼야 하는 등록·색인 요청은 Phase 7 출시 체크리스트로 옮긴다. 단계별 안내서: [phase6/6-3-search-engines.md](english-version/phase6/6-3-search-engines.md).
+
+- [x] Search Console: 같은 속성에서 `/en/` URL 검사 → 색인 요청, 사이트맵 재제출(같은 `sitemap.xml`에 영어 URL 포함). (→ **Phase 7 출시로 옮김**, 안내서 §1. 사이트맵 주소가 같아 재제출만 하면 된다)
+- [x] **Bing Webmaster Tools** 등록: Search Console에서 가져오기로 사이트맵을 제출한다. Bing은 영어권 검색에서 비중이 있고 DuckDuckGo·Yahoo·ChatGPT 검색 결과에도 쓰인다. (→ **Phase 7 출시로 옮김**, 안내서 §2)
+- [x] (선택) IndexNow: 키 파일을 두고 `deploy.yml`이 배포 후 새 URL을 Bing 등에 알리게 한다. (2026-11-06 — `npm run indexnow`(`scripts/lib/indexNow.ts`), 키 파일 `public/6ed9c8afd10bad2985364bb10abc22d7.txt`, `keyLocation`이 `/global-ai-news/` 아래라 제출 범위도 그 아래. 보내는 URL은 DB 최신 호의 두 언어 홈·호·기사 중 out/에 있는 것뿐이다(제143호 47개, 사이트맵·지난 호는 규약대로 빼고). build 잡이 본문을 만들고 Pages 배포 뒤 deploy 잡이 curl로 보낸다. 둘 다 `vars.INDEXNOW_ENABLED == '1'`·`continue-on-error`라 **지금은 꺼져 있다** — 켜기는 Phase 7, 안내서 §3)
+- [x] 리치 결과 테스트(NewsArticle), hreflang 상호 참조 검사(양쪽이 서로 가리키는지)를 한다. (2026-11-06 — 일회성 확인 대신 **배포 검사로 만들었다**: `npm run seo:check -- [out] [--ci]`(`scripts/lib/seoCheck.ts`, `deploy.yml`의 `en:hangul-check` 다음, 오류면 배포 실패). 모든 페이지의 자기 canonical·og:url·lang·og:locale, hreflang ko·en·x-default 상호 참조, og:image·RSS 파일 존재, NewsArticle·WebSite 필수 필드, 사이트맵 인덱스·조각(모든 페이지 포함·`xhtml:link` = 페이지 hreflang·한도), RSS를 본다. `out-p6-a` 2,656쪽 오류 0·경고 0(0.9초), Phase 6 이전 빌드는 14,485건으로 실패. 공개 주소로 하는 Google 리치 결과 테스트는 Phase 7 출시 때, 안내서 §5. 테스트 1,524 → 1,555건)
 
 ---
 
@@ -553,6 +555,7 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 - [ ] 최근 2개 호 영어판을 처음부터 끝까지 읽고 어색한 문장·용어를 고친다(규칙·용어집에 반영).
 - [ ] **(2-3에서 추가, 2026-11-04 사용자 결정) 백필 영어를 다시 검토한다.** 2-3 표본 20건의 사실 오류는 2건(10%)이었고, 둘 다 참고로 넘긴 한국어 오독을 따라갔다. 2-3 표본과 겹치지 않게 50건 이상(한국 매체 절반)을 검토한다. 오류율이 수집 경로보다 확실히 높으면 `backfill-en.system.md`에서 한국어 참고 입력을 빼고 `--overwrite`로 전체를 다시 만든다(약 $0.8, 그때 상한을 사용자에게 확인).
 - [ ] 출시: `deploy/github-pages`에 병합·배포하고, Search Console·Bing 색인을 요청한다.
+  - (6-3에서 옮김, [안내서](english-version/phase6/6-3-search-engines.md)) Search Console 사이트맵 재제출·`/en/` URL 검사·색인 요청·표준 URL 확인 → Bing Webmaster(GSC에서 가져오기)·URL 제출 → 저장소 변수 `INDEXNOW_ENABLED=1`(첫 회 202 가능) → 네이버 서치어드바이저에서 사이트맵 인덱스 수집 결과 확인(실패하면 조각 제출) → 공개 주소로 리치 결과 테스트(영어·영어 보관·한국어 기사) → 공유 디버거로 영어 썸네일 확인.
 - [ ] `latest.json`에 `titleEn`·`summaryEn`을 추가하는 것을 외부 소비자에게 공지한다(`docs/notices/`, 추가 필드라 호환됨).
 - [ ] 문서를 갱신한다: CLAUDE.md(라우트 표·디렉토리·파이프라인·환경변수), README, DESIGN.md(영어 타이포그래피), 이 문서 진행 현황.
 

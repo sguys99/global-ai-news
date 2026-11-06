@@ -27,7 +27,9 @@
     "kpi": "tsx --env-file-if-exists=.env.local scripts/kpi.ts",
     "regress:html": "tsx scripts/html-regress.ts",
     "size:report": "tsx scripts/size-report.ts",
-    "en:hangul-check": "tsx scripts/en-hangul-check.ts"
+    "en:hangul-check": "tsx scripts/en-hangul-check.ts",
+    "seo:check": "tsx scripts/seo-check.ts",
+    "indexnow": "tsx scripts/indexnow.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
