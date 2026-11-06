@@ -618,6 +618,36 @@
   .sh-tb-off {
     @apply text-muted-foreground font-normal before:bg-transparent;
   }
+  /* 언어 전환(english-version-plan 5-3, DESIGN.md §9) — 데스크톱: 내비 뒤 헤어라인으로 나눈 흐린 글자(코발트 없음, 내비와 같은 hover) */
+  .sh-lsw {
+    @apply border-border text-meta text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex h-7 items-center border-l pl-[18px] font-semibold whitespace-nowrap outline-none focus-visible:ring-2;
+  }
+  /* 모바일 상단 바: 검색 아이콘 앞 글자 링크, 터치 타깃 44px */
+  .sh-mlsw {
+    @apply text-meta text-foreground-soft focus-visible:ring-ring inline-flex min-h-11 items-center px-2.5 font-semibold whitespace-nowrap outline-none focus-visible:ring-2;
+  }
+  /* 한국어 페이지 영어 안내 줄 — 헤더 바로 아래 헤어라인 한 줄(배경 없음), 화살표만 코발트, 닫기 44px */
+  .sh-rie {
+    @apply border-border border-b;
+  }
+  .sh-rie-in {
+    @apply mx-auto flex min-h-11 max-w-[1240px] items-center gap-2.5 px-4 md:px-8;
+  }
+  .sh-rie-a {
+    @apply text-caption text-foreground focus-visible:ring-ring inline-flex min-h-11 items-center gap-2 leading-[1.4] font-semibold outline-none focus-visible:ring-2;
+  }
+  .sh-rie-t {
+    @apply decoration-brand decoration-2 underline-offset-[5px];
+  }
+  .sh-rie-a:hover .sh-rie-t {
+    @apply underline;
+  }
+  .sh-rie-x {
+    @apply text-muted-foreground hover:text-foreground focus-visible:ring-ring -mr-3 ml-auto inline-grid size-11 place-items-center outline-none focus-visible:ring-2;
+  }
+  .sh-rie-x > .ic {
+    @apply size-4;
+  }
 
   /* ── ui- shadcn Button 기본 묶음(변형·크기는 cva 유틸리티 그대로) ───────────── */
   .ui-btn {

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { getIssueArticles, getIssueBriefs, getLatestEditionRef } from "@/lib/db";
 import { buildEdition, selectIssueBrief } from "@/lib/edition";
+import { withLanguageAlternates } from "@/lib/pageMetadata";
 import { editionMetadata } from "@/lib/site";
 import { HomeView } from "@/views/HomeView";
+import { languageAlternates } from "@/views/data";
 
 /** 홈 공유 미리보기 = 이번 호 1면(리드 헤드라인 제목·썸네일, 설명 = 세 줄 요약). */
 export function generateMetadata(): Metadata {
@@ -11,12 +13,15 @@ export function generateMetadata(): Metadata {
   if (!ref) return {};
   const edition = buildEdition(getIssueArticles(ref.date));
   // 홈은 최신 호 자신이라 썸네일 기간의 기준 날짜도 ref.date.
-  return editionMetadata(
-    edition,
-    ref,
-    "/",
-    ref.date,
-    selectIssueBrief(edition, getIssueBriefs(ref.date)),
+  return withLanguageAlternates(
+    editionMetadata(
+      edition,
+      ref,
+      "/",
+      ref.date,
+      selectIssueBrief(edition, getIssueBriefs(ref.date)),
+    ),
+    languageAlternates({ kind: "home" }),
   );
 }
 

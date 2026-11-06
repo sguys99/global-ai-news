@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore, type ReactNode } from "react";
 import { Analytics } from "@/components/Analytics";
+import { EnglishNotice } from "@/components/EnglishNotice";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { LocaleProvider } from "@/components/LocaleProvider";
@@ -22,8 +23,10 @@ import { DEFAULT_LOCALE, HTML_LANG, type Locale } from "@/lib/i18n";
  * 앱 전체 404(global-not-found — 정적 호스팅이 모든 언어 경로에 쓰는 한 장)는 `localeFromDocument` 로 그린다: 서버 HTML 은
  * 한국어 셸이고, `<head>` 스크립트가 `/en` 아래에서 `<html lang="en">` 으로 바꿔 두면 하이드레이션 직후 셸 문구·링크가 영어로
  * 바뀐다(useSyncExternalStore — 하이드레이션은 서버 값 ko 로 맞추고 곧바로 문서 값으로 다시 그린다, 불일치 오류 없음).
- * 언어 전환 링크(english-version-plan 5-3)는 셸 컴포넌트(Header·MobileTopBar·Footer)의 자리 주석에 들어간다 —
- * 지금 언어는 useLocale(), 같은 페이지의 다른 언어판은 i18n `switchLocalePath(usePathname(), target)`.
+ * 언어 전환 링크(english-version-plan 5-3, LocaleSwitch)는 Header·MobileTopBar·Footer 안에, 한국어 페이지의 영어 안내 줄
+ * (EnglishNotice)은 헤더 바로 아래 둔다. 둘 다 이 섬 안이라 페이지마다 값을 받지 않는다 — 같은 페이지의 다른 언어판은
+ * 페이지 `<head>` 의 `<link rel="alternate" hreflang>`(라우트 metadata, 다른 언어판이 있을 때만)를 마운트 뒤 읽는다
+ * (src/lib/localeSwitch.ts). 정적 HTML 의 전환 링크는 늘 상대 언어 홈이다.
  */
 export function ShellChrome({
   locale,
@@ -44,6 +47,8 @@ export function ShellChrome({
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
       <Header />
       <MobileTopBar />
+      {/* 영어 안내 줄(5-3) — 한국어 셸에서만, 마운트 뒤 브라우저 언어에 ko 가 없을 때. 정적 HTML 에는 없다(null). */}
+      {shellLocale === DEFAULT_LOCALE ? <EnglishNotice /> : null}
       <div className="flex-1">{children}</div>
       <Footer year={year} />
       <BottomTabBar />

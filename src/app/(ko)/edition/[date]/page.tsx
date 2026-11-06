@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { getLatestEditionRef } from "@/lib/db";
-import { editionPageMetadata } from "@/lib/pageMetadata";
+import { editionPageMetadata, withLanguageAlternates } from "@/lib/pageMetadata";
 import { EditionView } from "@/views/EditionView";
-import { loadEdition, localeEditionDates } from "@/views/data";
+import { languageAlternates, loadEdition, localeEditionDates } from "@/views/data";
 
 /**
  * 호 고정 링크(`/edition/YYYY-MM-DD/`). 홈은 매일 새 호로 바뀌므로, 공유한 날의 지면을
@@ -24,7 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = loadEdition("ko", (await params).date);
   if (!data) return {};
   const { ref, edition, brief } = data;
-  return editionPageMetadata(ref, edition, getLatestEditionRef()?.date ?? null, brief);
+  return withLanguageAlternates(
+    editionPageMetadata(ref, edition, getLatestEditionRef()?.date ?? null, brief),
+    languageAlternates({ kind: "edition", date: ref.date }),
+  );
 }
 
 export default async function EditionPage({ params }: Props) {

@@ -30,7 +30,7 @@ import {
 } from "@/lib/edition";
 import type { SourceOption } from "@/lib/feedFilter";
 import { INDEX_PAGE_SIZE, buildFeedIndex } from "@/lib/feedIndex";
-import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
+import { DEFAULT_LOCALE, localePath, type Locale } from "@/lib/i18n";
 import { indexBuildVersion } from "@/lib/indexShards";
 import { hasHangul, issueDelayDays, localeTags } from "@/lib/labels";
 import {
@@ -40,7 +40,8 @@ import {
   selectKoreaDesk,
 } from "@/lib/koreaDesk";
 import { PROMPTS_DIR } from "@/lib/paths";
-import { hasArticleThumbnail, ogArticleImagePath } from "@/lib/site";
+import { articlePath } from "@/lib/seo";
+import { editionPath, hasArticleThumbnail, ogArticleImagePath } from "@/lib/site";
 import type { ArticleCard, FollowUpEntry, RelatedCoverage } from "@/lib/types";
 import { buildWeeklyRadar } from "@/lib/weeklyRadar";
 
@@ -136,6 +137,61 @@ export function localeArticleIds(locale: Locale): number[] {
  */
 export function localeEditionDates(locale: Locale): string[] {
   return localeArchivePlan(locale).liveEditionDates;
+}
+
+// ─── 언어판 짝(hreflang·언어 전환) ───────────────────────────────────────────
+
+/** 두 언어판에 같은 주소가 있을 수 있는 페이지. */
+export type AlternatePage =
+  | { kind: "home" }
+  | { kind: "search" }
+  | { kind: "edition"; date: string }
+  | { kind: "article"; id: number };
+
+/** 페이지의 언어 접두어 없는 경로(basePath 제외, 끝 슬래시 — canonical·og:url 과 같은 모양). */
+function alternatePagePath(page: AlternatePage): string {
+  switch (page.kind) {
+    case "home":
+      return "/";
+    case "search":
+      return "/search/";
+    case "edition":
+      return editionPath(page.date);
+    case "article":
+      return articlePath(page.id);
+  }
+}
+
+/**
+ * 영어판에 이 페이지가 있는지 — 보관 지면 포함(보관 대상도 같은 주소에 가벼운 지면이 있다). `localeArchivePlan("en")`
+ * (live + archived)과 같은 기준이되 페이지 하나만 조회한다: 홈·검색은 늘, 기사는 영어 본문이 있으면(`hasEnglish`),
+ * 호는 영어 기사가 1건 이상이면. 한국어판은 영어판을 늘 포함한다(영어 기사·호 ⊂ 한국어 기사·호).
+ */
+function hasEnglishPage(page: AlternatePage): boolean {
+  switch (page.kind) {
+    case "home":
+    case "search":
+      return true;
+    case "edition":
+      return getIssueArticles(page.date).some(hasEnglish);
+    case "article": {
+      const article = getArticle(page.id);
+      return article !== null && hasEnglish(article);
+    }
+  }
+}
+
+/**
+ * 같은 페이지의 두 언어판 주소 `{ ko, en }`(basePath 제외 — metadataBase 가 절대 URL 로 만든다) — **둘 다 있을 때만**,
+ * 없으면 null(그 페이지에는 hreflang 을 싣지 않는다 — 영어 본문이 없는 기사의 한국어판, 영어 기사가 없는 호).
+ * 라우트 metadata(`withLanguageAlternates`, src/lib/pageMetadata.ts)와 보관 지면(scripts/lib/archive.ts)이 같은 이 함수를 쓴다.
+ * 셸의 언어 전환 링크(src/lib/localeSwitch.ts)는 그 결과인 `<link rel="alternate" hreflang>` 를 읽는다 — 없으면 상대 언어 홈.
+ * 한국어판은 영어판의 상위 집합이라 언어 인자가 없다(영어 페이지라면 한국어 짝은 늘 있다).
+ */
+export function languageAlternates(page: AlternatePage): Record<Locale, string> | null {
+  if (!hasEnglishPage(page)) return null;
+  const path = alternatePagePath(page);
+  return { ko: localePath("ko", path), en: localePath("en", path) };
 }
 
 // ─── 필터 칩(매체·태그) ───────────────────────────────────────────────────────
