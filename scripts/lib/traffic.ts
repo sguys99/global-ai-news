@@ -387,7 +387,9 @@ export function createApiClient(opts: ApiOptions) {
           ? " — 토큰이 없거나 틀림"
           : res.status === 403
             ? ' — 토큰에 "Read statistics" 권한 없음'
-            : "";
+            : res.status === 404
+              ? " — 계정 이메일 인증 전이면 API 가 404 를 준다(GoatCounter → API 탭 Resend email)"
+              : "";
       throw new Error(`GoatCounter API ${path} ${res.status}${hint}: ${excerpt(body)}`);
     }
     return JSON.parse(body) as T;
