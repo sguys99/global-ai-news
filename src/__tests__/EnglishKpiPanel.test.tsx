@@ -2,7 +2,12 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { EnglishKpiPanel } from "@/components/admin/EnglishKpiPanel";
 import { KpiPanel } from "@/components/admin/KpiPanel";
-import { parseEnglishNotes, sumEnglishNotes, type EnglishKpi } from "@/lib/englishKpi";
+import {
+  parseEnglishNotes,
+  sumEnglishNotes,
+  sumEnglishRunCost,
+  type EnglishKpi,
+} from "@/lib/englishKpi";
 
 afterEach(cleanup);
 
@@ -15,6 +20,7 @@ const empty: EnglishKpi = {
   overseas: { published: 0, english: 0 },
   checks: sumEnglishNotes([]),
   runs: [],
+  cost: sumEnglishRunCost([]),
 };
 
 const n1 = parseEnglishNotes(
@@ -36,6 +42,8 @@ const filled: EnglishKpi = {
       status: "success",
       notes: null,
       coverage: { published: 0, english: 0 },
+      costUsd: 0.05,
+      llmCalls: 5,
     },
     {
       id: 142,
@@ -43,8 +51,11 @@ const filled: EnglishKpi = {
       status: "partial",
       notes: n1,
       coverage: { published: 35, english: 33 },
+      costUsd: 0.06,
+      llmCalls: 6,
     },
   ],
+  cost: { runs: 1, total: 0.06, max: 0.06 },
 };
 
 describe("EnglishKpiPanel", () => {

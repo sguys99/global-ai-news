@@ -47,10 +47,13 @@ function seedRun(
   startedAt: string,
   notes: string,
   status = "success",
+  cost = 0,
+  calls = 0,
 ) {
   db.prepare(
-    `INSERT INTO collection_runs (id, started_at, finished_at, status, notes) VALUES (?, ?, ?, ?, ?)`,
-  ).run(id, startedAt, startedAt, status, notes);
+    `INSERT INTO collection_runs (id, started_at, finished_at, status, notes, est_cost_usd, llm_calls)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, startedAt, startedAt, status, notes, cost, calls);
 }
 
 describe("getEnglishKpi", () => {
@@ -70,6 +73,7 @@ describe("getEnglishKpi", () => {
     expect(k.overall).toEqual({ published: 0, english: 0 });
     expect(k.runs).toEqual([]);
     expect(k.checks.runs).toBe(0);
+    expect(k.cost).toEqual({ runs: 0, total: 0, max: 0 });
   });
 
   it("영어 컬럼이 없는 옛 DB 는 hasColumns=false·영어판 이전", () => {
@@ -89,7 +93,7 @@ describe("getEnglishKpi", () => {
 
   it("첫 영어 회차부터 누적: 이전 게재는 분모에서 빼고, 한국 매체·해외를 나눈다", () => {
     // 영어판 이전 회차
-    seedRun(db, 1, "2026-11-03T21:00:00.000Z", "선정 2건");
+    seedRun(db, 1, "2026-11-03T21:00:00.000Z", "선정 2건", "success", 0.04, 4);
     seedArticle(db, { source: "aitimes", createdAt: "2026-11-03 21:07:00", en: false });
     seedArticle(db, { source: "techcrunch_ai", createdAt: "2026-11-03 21:07:00", en: false });
     // 영어 회차 2회
@@ -98,6 +102,9 @@ describe("getEnglishKpi", () => {
       2,
       "2026-11-04T21:00:00.000Z",
       "선정 3건; 영어 가공 2/3건; 영어 기각 1건(한글 0·숫자 1·길이 0); 한국어 숫자 불일치 1건(900억 달러)",
+      "success",
+      0.056,
+      5,
     );
     seedArticle(db, { source: "aitimes", createdAt: "2026-11-04 21:07:00", en: false });
     seedArticle(db, { source: "techcrunch_ai", createdAt: "2026-11-04 21:07:00", en: true });
@@ -108,7 +115,7 @@ describe("getEnglishKpi", () => {
       en: false,
       published: false,
     });
-    seedRun(db, 3, "2026-11-05T21:00:00.000Z", "선정 2건; 영어 가공 2/2건", "partial");
+    seedRun(db, 3, "2026-11-05T21:00:00.000Z", "선정 2건; 영어 가공 2/2건", "partial", 0.05, 5);
     seedArticle(db, { source: "aitimes", createdAt: "2026-11-05 21:07:00", en: true });
     seedArticle(db, { source: "techcrunch_ai", createdAt: "2026-11-05 21:07:00", en: true });
 
@@ -134,6 +141,11 @@ describe("getEnglishKpi", () => {
       coverage: { published: 2, english: 2 },
     });
     expect(k.runs[1].coverage).toEqual({ published: 3, english: 2 });
+    expect(k.runs[0]).toMatchObject({ costUsd: 0.05, llmCalls: 5 });
+    // 회차 비용은 영어 회차(2·3)만 — 영어판 이전 1번 회차의 $0.04 는 넣지 않는다
+    expect(k.cost.runs).toBe(2);
+    expect(k.cost.total).toBeCloseTo(0.106, 6);
+    expect(k.cost.max).toBe(0.056);
     expect(getEnglishKpi(1, db).runs.map((r) => r.id)).toEqual([3]);
     expect(getEnglishKpi(0, db).runs).toEqual([]);
   });

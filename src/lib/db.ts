@@ -15,6 +15,7 @@ import {
 import {
   parseEnglishNotes,
   sumEnglishNotes,
+  sumEnglishRunCost,
   type EnglishCoverage,
   type EnglishKpi,
 } from "@/lib/englishKpi";
@@ -513,7 +514,8 @@ export function getEnglishKpi(
   const runs = (
     conn
       .prepare(
-        `SELECT id, started_at AS startedAt, datetime(started_at) AS startedKey, status, notes
+        `SELECT id, started_at AS startedAt, datetime(started_at) AS startedKey, status, notes,
+                est_cost_usd AS costUsd, llm_calls AS llmCalls
            FROM collection_runs ORDER BY datetime(started_at) ASC, id ASC`,
       )
       .all() as {
@@ -522,6 +524,8 @@ export function getEnglishKpi(
       startedKey: string | null;
       status: string;
       notes: string | null;
+      costUsd: number;
+      llmCalls: number;
     }[]
   ).map((r) => ({ ...r, english: parseEnglishNotes(r.notes) }));
 
@@ -549,6 +553,7 @@ export function getEnglishKpi(
       overseas: empty(),
       checks: sumEnglishNotes([]),
       runs: [],
+      cost: sumEnglishRunCost([]),
     };
   }
 
@@ -585,6 +590,7 @@ export function getEnglishKpi(
     korea,
     overseas,
     checks: sumEnglishNotes(eraRuns.map((r) => r.english)),
+    cost: sumEnglishRunCost(eraRuns.map((r) => ({ notes: r.english, costUsd: r.costUsd }))),
     runs: recent.map((r) => {
       const coverage = empty();
       for (const a of articles) {
@@ -592,7 +598,15 @@ export function getEnglishKpi(
         coverage.published += 1;
         coverage.english += a.en;
       }
-      return { id: r.id, startedAt: r.startedAt, status: r.status, notes: r.english, coverage };
+      return {
+        id: r.id,
+        startedAt: r.startedAt,
+        status: r.status,
+        notes: r.english,
+        coverage,
+        costUsd: r.costUsd,
+        llmCalls: r.llmCalls,
+      };
     }),
   };
 }

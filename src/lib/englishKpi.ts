@@ -13,6 +13,12 @@
  * "영어판 이전" 처리: 영어 가공 회차(notes 에 `영어 가공`)도 영어가 있는 게재 기사도 없으면 커버리지를 0%로 보이지 않고
  * "아직 없음"으로 둔다. 영어판 시작 시각 = 첫 영어 회차 시작과 영어가 있는 가장 이른 게재 기사 중 이른 쪽 — Phase 2
  * 백필이 지난 기사에 영어를 채우면 시작이 앞당겨져 커버리지가 전체 게재 기준이 된다(2-3 "100%에서 기각 건수를 뺀 값").
+ *
+ * Phase 8-1 지표 정의(docs/english-version/phase8/8-1-english-kpi.md):
+ *  - 수집 경로 커버리지 = notes `영어 가공 N/M` 의 ΣN/ΣM — 회차 당시 검사 결과(백필·이후 수정과 무관).
+ *  - DB 보유율 = 지금 게재 기사 중 영어 보유(`overall`) — 백필 포함. 1 − 기각률과 같지 않다(`englishGap`).
+ *  - 기각률 = notes 기각 합 / ΣM, 사유별(한글·숫자·길이). 백필 기각은 notes 에 없어 여기 들지 않는다.
+ *  - 회차 비용 = 영어 회차의 `est_cost_usd` 평균·최대. 목표치는 `ENGLISH_TARGETS`.
  */
 
 /** 기각 사유 키 — scripts/lib/englishCheck.ts `ENGLISH_REJECT_REASONS`와 같은 집합(테스트가 확인). 표시 순서 = notes 순서. */
@@ -102,6 +108,16 @@ export interface EnglishRunKpi {
   notes: EnglishRunNotes | null;
   /** 이 회차가 게재한 기사(created_at 이 이 회차 시작 ~ 다음 회차 시작) — 지금 DB 기준(백필 반영). */
   coverage: EnglishCoverage;
+  /** 회차 LLM 비용(`collection_runs.est_cost_usd`)·호출 수. */
+  costUsd: number;
+  llmCalls: number;
+}
+
+/** 영어 회차(notes 에 `영어 가공`)의 회차 비용 — 평균은 total/runs. */
+export interface EnglishRunCost {
+  runs: number;
+  total: number;
+  max: number;
 }
 
 export interface EnglishKpi {
@@ -128,6 +144,8 @@ export interface EnglishKpi {
   };
   /** 시작 이후 최근 회차(최신 순). */
   runs: EnglishRunKpi[];
+  /** 영어 회차 전체(최근 창이 아니라 누적)의 회차 비용. */
+  cost: EnglishRunCost;
 }
 
 /** notes 줄들의 합계. */
@@ -170,4 +188,94 @@ export function percentText(numer: number, denom: number): string {
 /** "한글 0 · 숫자 1 · 길이 1". */
 export function rejectBreakdownText(r: EnglishRejectCounts, sep = " · "): string {
   return ENGLISH_REJECT_KEYS.map((k) => `${ENGLISH_REJECT_LABELS[k]} ${r[k]}`).join(sep);
+}
+
+/** 영어 회차 비용 합계 — `영어 가공` 줄이 있는 회차만(영어판 이전 회차·백필 비용은 넣지 않는다). */
+export function sumEnglishRunCost(
+  list: readonly { notes: EnglishRunNotes | null; costUsd: number }[],
+): EnglishRunCost {
+  const out: EnglishRunCost = { runs: 0, total: 0, max: 0 };
+  for (const r of list) {
+    if (!r.notes) continue;
+    out.runs += 1;
+    out.total += r.costUsd;
+    out.max = Math.max(out.max, r.costUsd);
+  }
+  return out;
+}
+
+/**
+ * 영어 없는 게재 기사의 내역(docs/english-version/phase8/8-1-english-kpi.md "두 숫자가 다른 이유").
+ * DB 보유율의 빈자리 = 회차 notes 의 기각(수집 경로) + notes 밖(백필 기각·본문 없는 기사 — 백필은 notes 를 쓰지 않고
+ * 보고서 아티팩트·2-3 문서에만 남는다). notes 밖이 음수면(기각 뒤 `--ids` 재시도로 영어가 생긴 경우) 0으로 둔다.
+ */
+export function englishGap(k: EnglishKpi): {
+  missing: number;
+  collectRejected: number;
+  outsideNotes: number;
+} {
+  const missing = k.overall.published - k.overall.english;
+  const collectRejected = rejectTotal(k.checks.rejected);
+  return { missing, collectRejected, outsideNotes: Math.max(0, missing - collectRejected) };
+}
+
+/**
+ * Phase 8-1 목표치(근거: docs/english-version/phase8/8-1-english-kpi.md "목표치").
+ *  - 수집 경로 커버리지 ≥ 95%: 1-4 실측 24/24, 출시 첫 3회 62/64(96.9%). 회차 22건에 기각 1건이면 95.5%다.
+ *  - DB 보유율 ≥ 97.5%: 백필분 98.9%(본문 없음 8·재기각 6 = 14건은 한국어 전용)에 수집 경로 하한 95%를 4주(약 +600건)
+ *    섞은 값(약 97.6%). 그 아래면 수집 경로가 하한을 밑돌았거나 영어가 지워졌다는 뜻이다.
+ *  - 회차 비용 평균 ≤ $0.08: 영어 전 $0.053(0-1), 35건 환산 $0.072(1-4), Phase 7 규칙 +300토큰 여유.
+ *  - 회차 비용 최대 ≤ $0.10: `MAX_COST_USD_PER_RUN` 기본값과 같은 상한.
+ */
+export const ENGLISH_TARGETS = {
+  collectCoverage: 0.95,
+  dbCoverage: 0.975,
+  avgRunCostUsd: 0.08,
+  maxRunCostUsd: 0.1,
+} as const;
+
+/** 목표 대비 한 줄. pass null = 판정할 데이터 없음(영어 회차 0회 등). */
+export interface EnglishTargetRow {
+  label: string;
+  value: string;
+  target: string;
+  pass: boolean | null;
+}
+
+const usd = (v: number) => `$${v.toFixed(4)}`;
+
+/** 목표 대비 판정 — `npm run kpi` 영어판 절의 PASS/FAIL 표. */
+export function englishTargetRows(k: EnglishKpi): EnglishTargetRow[] {
+  const t = ENGLISH_TARGETS;
+  const c = k.checks;
+  const cost = k.cost;
+  const avg = cost.runs > 0 ? cost.total / cost.runs : null;
+  const dbRate = coverageRate(k.overall);
+  const pct = (v: number) => `${Number((v * 100).toFixed(1))}%`;
+  return [
+    {
+      label: "수집 경로 커버리지",
+      value: percentText(c.passed, c.checked),
+      target: `≥ ${pct(t.collectCoverage)}`,
+      pass: c.checked > 0 ? c.passed / c.checked >= t.collectCoverage : null,
+    },
+    {
+      label: "DB 보유율",
+      value: percentText(k.overall.english, k.overall.published),
+      target: `≥ ${pct(t.dbCoverage)}`,
+      pass: dbRate === null ? null : dbRate >= t.dbCoverage,
+    },
+    {
+      label: "회차 비용 평균",
+      value: avg === null ? "—" : usd(avg),
+      target: `≤ $${t.avgRunCostUsd.toFixed(2)}`,
+      pass: avg === null ? null : avg <= t.avgRunCostUsd,
+    },
+    {
+      label: "회차 비용 최대",
+      value: cost.runs > 0 ? usd(cost.max) : "—",
+      target: `≤ $${t.maxRunCostUsd.toFixed(2)} (상한)`,
+      pass: cost.runs > 0 ? cost.max <= t.maxRunCostUsd : null,
+    },
+  ];
 }
