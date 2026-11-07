@@ -8,6 +8,8 @@ name: traffic
 # 없거나 API 가 실패하면 공개 카운터(사이트맵 주소마다 — 약 2,700건·2분, 국가·유입 경로 없음)로 읽는다.
 # 읽기만 한다 — 커밋·배포 없음. data/app.db 는 보관 지면 구분에만 읽는다.
 # 부가 정보라 잡을 실패시키지 않는다(스크립트도 실패 시 ::warning:: 만 내고 exit 0).
+# 이어서 같은 요약에 영어판 KPI(`npm run kpi -- <days>` — 영어 커버리지·DB 보유율·기각·회차 비용 목표 PASS/FAIL)를
+# 붙인다. Phase 8 2주차·4주차 리뷰는 이 요약을 보고 세션에서 쓴다(유료 클라우드 루틴은 쓰지 않는다 — 2026-11-07 결정).
 
 on:
   schedule:
@@ -59,3 +61,16 @@ jobs:
           else
             npm run --silent kpi -- traffic "${DAYS}" --ci
           fi
+
+      - name: English KPI summary
+        continue-on-error: true
+        env:
+          DAYS: ${{ inputs.days || '7' }}
+        run: |
+          {
+            echo "## 영어판 KPI (최근 ${DAYS}일)"
+            echo
+            echo '```'
+            npm run --silent kpi -- "${DAYS}" | sed -n '/^영어판/,/^## /p' | sed '$d'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
