@@ -1,0 +1,5 @@
+{
+  "//": "npm run social:weekly 전용(tsx --tsconfig). 저장소 tsconfig 는 Next 용 jsx: preserve 라 tsx 가 고전 JSX 변환(React 전역 필요)을 쓴다 — 카드 렌더(cards.tsx·src/lib/ogImage.tsx)는 자동 런타임으로 돌린다. 타입 검사는 루트 tsconfig 그대로.",
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": { "jsx": "react-jsx" }
+}

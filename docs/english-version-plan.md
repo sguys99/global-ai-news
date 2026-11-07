@@ -590,8 +590,8 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 
 ### 8-2. 확산 (검색만으로는 초기 유입이 느리다)
 
-- [ ] 영어 커뮤니티 공유 계획을 세운다: Hacker News(Show HN), Reddit(r/artificial 등 규칙 확인), LinkedIn, X. "한국 AI 소식을 영어로 매일"이라는 차별점을 앞세운다.
-- [ ] 주 1회 Korea Desk 하이라이트를 SNS용으로 정리한다(일요일 주간 레이더와 함께).
+- [x] 영어 커뮤니티 공유 계획을 세운다: Hacker News(Show HN), Reddit(r/artificial 등 규칙 확인), LinkedIn, X. "한국 AI 소식을 영어로 매일"이라는 차별점을 앞세운다. (2026-11-07 — [확산 계획](english-version/phase8/8-2-distribution-plan.md): 포지셔닝 "What Korea's tech press reports about AI, summarized in English every morning", 채널 규칙 확인, 게시 시각(미국·유럽 기준 KST), 11-08~12-06 4주 일정표, `utm_source` 측정, 위험(자기 홍보 차단·요약 오류·저작권 — 요약과 원문 링크만). **HN은 공식 규칙상 읽을거리·뉴스레터가 Show HN 대상이 아니라서 기본은 일반 제출**이다("AI Daybook: Korea's AI news, summarized in English every morning"). Show HN은 공개 저장소를 앞세우는 안으로 남기되 영어 README가 생긴 뒤에 쓴다. Reddit은 r/MachineLearning 정기 자기 홍보 스레드만 되고, r/LocalLLaMA·r/singularity·r/ArtificialInteligence는 자기 홍보 금지, r/korea·r/artificial은 사이드바를 확인한 뒤 올린다(reddit.com 403으로 직접 확인 못 함). 서브레딧당 4주 1회 이하, 관계는 밝힌다. **게시는 사용자가 한다.**)
+- [x] 주 1회 Korea Desk 하이라이트를 SNS용으로 정리한다(일요일 주간 레이더와 함께). (2026-11-07 — **`npm run social:weekly -- [--week 일요일] [--partial] [--show-hn]`**(`scripts/social-weekly.ts`·`scripts/lib/social/`, LLM 없음·DB 읽기 전용) → `data/social/<일요일>/`(git 제외)에 `posts.md`(X 스레드·LinkedIn·Reddit·HN 초안, X 가중 글자 수·LinkedIn ≤ 250낱말 검사, 링크마다 `?utm_source=`, 한글 섞이면 실패)와 카드 PNG — Korea Desk 가로 1200×675·세로 1080×1350, 주간 레이더 1200×675, 기사 카드 `story-N`. 카드는 공유 썸네일 조판(`src/lib/ogImage.tsx` 내보내기만, 썸네일 출력 같음)으로 사이트 1면 문법을 따른다: 제호·이중 잉크 괘선·Hahmlet 순위(1~3위 코발트)·코발트 분야 키커·작은 대문자 매체명·잉크 아웃라인 형식 배지, 박스·그림자 없음, `KOREA`는 잉크(DESIGN.md §9). 하이라이트는 한국 주제 판정 → 중요도 → 화제 → 최신, 한 사건 한 번. 첫 키트: 10-26~11-01 주(제132~138호, Naver–Brookfield $9B 등 5건)와 11-02~11-07 부분 주. 매주 일요일 호(06:00) 뒤 키트 → 검토 → 게시. 남은 아쉬움: 균형 줄바꿈이 숫자와 단위 사이("KRW 147.7 / billion")에서 끊길 때가 있다.)
 
 ---
 

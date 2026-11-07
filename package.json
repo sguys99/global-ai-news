@@ -29,7 +29,8 @@
     "size:report": "tsx scripts/size-report.ts",
     "en:hangul-check": "tsx scripts/en-hangul-check.ts",
     "seo:check": "tsx scripts/seo-check.ts",
-    "indexnow": "tsx scripts/indexnow.ts"
+    "indexnow": "tsx scripts/indexnow.ts",
+    "social:weekly": "tsx --tsconfig scripts/lib/social/tsconfig.json scripts/social-weekly.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

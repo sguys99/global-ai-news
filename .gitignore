@@ -71,6 +71,9 @@ Thumbs.db
 # 수집 평가 실행(collect --no-save) 스냅숏과 선별 비교 결과(로컬 전용).
 /data/eval/
 
+# 주간 SNS 키트(scripts/social-weekly.ts — posts.md·카드 PNG, 사람이 검토해 손으로 올린다, 로컬 전용).
+/data/social/
+
 # HTML 회귀 비교(scripts/html-regress.ts) 정적 export 산출물·기준선 스냅숏(로컬 전용, 수백 MB).
 /data/regress/
 

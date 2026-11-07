@@ -143,7 +143,8 @@
 │   ├── export-search-index.ts    # public/search-index/<언어>/ — 검색 색인 호 월별 조각 + manifest.json (prebuild)
 │   ├── export-feed-index.ts      # public/feed-index/<언어>/ — 홈 전체 기사 색인 월별 조각 + manifest.json(색인 머리 포함, prebuild)
 │   ├── export-latest.ts          # 최근 3일 수집분 public/latest.json — 외부 소비용(자랑터 큐레이터, prebuild, 영어가 있는 항목만 titleEn·summaryEn — docs/notices/)
-│   ├── kpi.ts                    # KPI CLI (npm run kpi) + baseline 하위 명령(콘텐츠 개편 지표) + health(소스 헬스, --ci 는 collect.yml 요약)
+│   ├── kpi.ts                    # KPI CLI (npm run kpi — 영어판 지표 목표 PASS/FAIL 포함) + baseline 하위 명령(콘텐츠 개편 지표) + health(소스 헬스, --ci 는 collect.yml 요약) + traffic(GoatCounter 방문 — 언어판 비율·국가·유입, lib/traffic.ts)
+│   ├── social-weekly.ts          # 주간 SNS 키트(npm run social:weekly — Korea Desk·주간 레이더 영어 초안 posts.md + 카드 PNG, data/social/ git 제외, LLM 없음 — lib/social/)
 │   ├── postbuild.ts              # npm postbuild 훅(next build 직후): out/ 후처리 단계 목록(lib/postbuild.ts) — ① 기사 RSC index.txt 삭제 ② 보관 지면 쓰기(lib/archive.ts, 같은 빌드의 out/index.html 에서 CSS·폰트·사이트 주소를 읽는다 — lib/archiveAssets.ts), 멱등·out/ 없거나 보관 판정이 어긋나면 실패
 │   ├── en-hangul-check.ts        # 영어판 한글 누출 검사(out/en/** HTML·RSC + {search,feed}-index/en/**, 허용은 lang="ko" 요소 안뿐 — 판정 lib/enHangulCheck.ts, --ci 는 deploy.yml)
 │   ├── seo-check.ts              # SEO 정합성 검사(모든 페이지 자기 canonical·og:url·lang·og:locale, hreflang ko·en·x-default 상호 참조, og:image·RSS 파일, JSON-LD 필수 필드, 사이트맵 인덱스·조각·xhtml:link, RSS — 판정 lib/seoCheck.ts, --ci 는 deploy.yml)
@@ -184,7 +185,7 @@
 │   ├── sources.json              # 소스 정의 — format·topic·keywordFilter·maxItems (Admin이 GitHub API로 커밋)
 │   ├── keyword-filters.json      # 키워드 사전 필터 목록(예: github_trending 의 "ai")
 │   ├── paper-filter.json         # arXiv 인용·기관 게이트, HF Papers upvote 임계값
-│   ├── backfill/                 # 검토된 텍스트 수정 목록 `{id, field, from, to}`(db:backfill-en --fixes): ko-number-fixes(Phase 2 한국어 숫자)·en-fixes-p7-editions·en-fixes-backfill·ko-fixes-p7(Phase 7 검토)
+│   ├── backfill/                 # 검토된 텍스트 수정 목록 `{id, field, from, to}`(db:backfill-en --fixes): ko-number-fixes(Phase 2 한국어 숫자)·en-fixes-p7-editions·en-fixes-backfill·ko-fixes-p7(Phase 7 검토)·fixes-p8(Phase 8-1)
 │   └── prompts/
 │       ├── triage.system.md      # 선별 시스템 프롬프트 (형식별 선정 기준·묶기·중요도·할당·이미 보도함)
 │       ├── enrich.system.md      # 가공 시스템 프롬프트 ({{CATEGORIES}} 자리에 categories.md, {{ENGLISH}} 자리에 english.md 삽입)
@@ -197,6 +198,7 @@
 ├── .github/workflows/
 │   ├── collect.yml               # 외부 크론 dispatch + schedule 백업 → 수집 → app.db 커밋 → deploy dispatch → 소스 헬스 요약
 │   ├── backfill-en.yml           # 수동: 영어 백필 dry-run/apply(collect 와 같은 concurrency, 03:50~07:30 KST apply 거부, 입력 fixes·fixes_only 로 수정 목록만 적용) → app.db 커밋 → deploy dispatch
+│   ├── traffic.yml               # 매주 월 09:13 KST: 방문 요약(kpi traffic, 시크릿 GOATCOUNTER_API_TOKEN 없으면 공개 카운터) + 영어판 KPI 를 Job Summary 로(커밋 없음)
 │   └── deploy.yml                # 정적 빌드 → 산출물 크기 검사(size:report --ci) → 영어 한글 검사(en:hangul-check --ci) → SEO 검사(seo:check --ci) → GitHub Pages 배포 → IndexNow 알림(저장소 변수 INDEXNOW_ENABLED=1 일 때만 — 2026-11-06 켬)
 ├── data/
 │   ├── app.db                    # SQLite DB (db:init/collect로 생성)
@@ -271,7 +273,8 @@ npm run db:backfill-en              # 지난 기사 영어 백필(기본 dry-run
 npm run db:backfill-en -- --fixes-only --fixes configs/backfill/<목록>.json  # 텍스트 수정 목록만 미리보기(LLM 없음, --apply 로 백업 후 적용 — 영어 수정은 이 경로만, Actions 는 backfill-en.yml 입력 fixes·fixes_only)
 npm run db:fix-published-at         # 한국 매체 published_at +9h 오차 보정(기본 dry-run — 기사 페이지 표본 확인, --apply 로 백업 후 적용, 멱등)
 npm run db:reindex                  # FTS5 재색인
-npm run kpi                         # 최근 N일 KPI (기본 30) / npm run kpi -- baseline: 콘텐츠 개편 지표 / -- health: 소스 헬스
+npm run kpi                         # 최근 N일 KPI (기본 30) / npm run kpi -- baseline: 콘텐츠 개편 지표 / -- health: 소스 헬스 / -- traffic [days] [--since 날짜]: 방문
+npm run social:weekly -- --week <일요일>  # 주간 SNS 키트(data/social/<일요일>/ — 초안·카드, 게시는 사람이)
 npm run regress:html -- build <ref|WORKTREE> <dest>  # 같은 app.db 로 Docker 정적 빌드 → out/ 추출 (회귀 비교용)
 npm run regress:html -- compare data/regress/baseline <dest> --allow 404.html  # 한국어 대표 12페이지 정규화 비교(--text: 클래스 제외)
 ```
@@ -337,6 +340,7 @@ docker compose up --build   # http://localhost:8080/global-ai-news/ (/ 는 여�
 | `ADMIN_PASSWORD`                               | 운영자 인증 — **로컬 admin 전용**                                                                                                                 | 필수 (로컬 Admin 사용) |
 | `RECLASSIFY_MAX_COST_USD`                      | `db:reclassify` 예상 비용 상한 (기본 0.5)                                                                                                         | 선택                   |
 | `BACKFILL_MAX_COST_USD`                        | `db:backfill-en` 예상 비용 상한 (기본 1). Actions `backfill-en.yml` 은 같은 이름 `vars`, 배치 대기는 `vars.BACKFILL_BATCH_TIMEOUT_MIN`(기본 60분) | 선택                   |
+| `GOATCOUNTER_API_TOKEN`                        | GoatCounter 읽기 전용 API 토큰(`npm run kpi -- traffic` 국가·유입 경로, Actions `traffic.yml` 은 같은 이름 시크릿). 비우면 공개 카운터 모드       | 선택                   |
 | `INDEXNOW_ENABLED`                             | Actions 저장소 변수(`vars`) 전용 — `1` 이면 `deploy.yml` 이 배포 뒤 IndexNow 알림(2026-11-06부터 `1`, 비우면 건너뜀). `.env` 에는 두지 않는다     | 선택                   |
 
 ## 데이터 모델

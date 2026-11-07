@@ -9,6 +9,8 @@
  *   싣고, 한국 매체 기사에는 `KOREA` 글자 표시(DESIGN.md §9 영어판 — 테두리 없는 잉크 대문자)를 단다. 영어 헤드라인은
  *   한국어보다 글자 수가 약 1.5배라 글자 수 구간 대신 **실측 폭 표(Hahmlet 800 라틴 advance)로 줄 수를 맞춰 크기를 고른다**.
  *   한국어 썸네일은 기존 추정·크기 구간 그대로다(바이트 동일).
+ * - 팔레트·폰트 로더·조판 조각(Nameplate·LineHeadline·Glyphs·DoubleRule·FormatBadge·KoreaMark)은 주간 SNS 카드
+ *   (scripts/lib/social/cards.tsx, english-version-plan 8-2)도 같은 것을 쓴다 — 내보내기만 했고 썸네일 출력은 같다.
  */
 import { ImageResponse } from "next/og";
 import { headlineOf, sourceNameOf } from "@/lib/articleText";
@@ -35,16 +37,16 @@ import { ogMessages } from "@/lib/messages/og";
 import { OG_IMAGE_SIZE, siteTagline } from "@/lib/site";
 import type { ArticleCard } from "@/lib/types";
 
-const PAPER = "#f4f4f1";
-const INK = "#141519";
-const INK_SOFT = "#3a3c43";
-const MUTED = "#66686f";
-const BRAND = "#2140e8";
+export const PAPER = "#f4f4f1";
+export const INK = "#141519";
+export const INK_SOFT = "#3a3c43";
+export const MUTED = "#66686f";
+export const BRAND = "#2140e8";
 /** 헤어라인(`border` 토큰) — 칼럼 세로선. */
-const HAIRLINE = "#d8d8d2";
+export const HAIRLINE = "#d8d8d2";
 
-const SERIF = "Hahmlet";
-const SANS = "Noto Sans KR";
+export const SERIF = "Hahmlet";
+export const SANS = "Noto Sans KR";
 
 const PAD_X = 64;
 const CONTENT_WIDTH = OG_IMAGE_SIZE.width - PAD_X * 2;
@@ -70,7 +72,7 @@ type OgFonts = NonNullable<ConstructorParameters<typeof ImageResponse>[1]>["font
  */
 let fonts: Promise<OgFonts> | null = null;
 
-function loadFonts(): Promise<OgFonts> {
+export function loadFonts(): Promise<OgFonts> {
   fonts ??= Promise.all([loadFont(SERIF, 800), loadFont(SANS, 500), loadFont(SANS, 700)])
     .then(
       ([serif, sans, sansBold]): OgFonts => [
@@ -103,7 +105,7 @@ const headline = (a: ArticleCard, locale: Locale = "ko") =>
   locale === "en" ? typographicApostrophes(headlineOf(a, "en")) : a.titleKo || a.titleOriginal;
 
 /** 제호 "AI Daybook" — AI 만 코발트(Masthead 와 동일). */
-function Nameplate({ size }: { size: number }) {
+export function Nameplate({ size }: { size: number }) {
   return (
     <div
       style={{
@@ -381,7 +383,7 @@ function Headline({
  * 줄 나누기는 실측 폭 표(latinCharEm) 추정으로 미리 하고, 넘치면 마지막 줄을 "…" 로 맺는다(fitWords). 줄 수를 직접 정하므로
  * maxHeight 로 자르지 않는다 — 1.1 대 행간에서 마지막 줄 g·y 아래끝이 잘리지 않게.
  */
-function LineHeadline({
+export function LineHeadline({
   text,
   width,
   size,
@@ -433,7 +435,7 @@ function LineHeadline({
  */
 const SANS_SPACE_EM = 0.225;
 
-function Glyphs({ text, size }: { text: string; size: number }) {
+export function Glyphs({ text, size }: { text: string; size: number }) {
   return (
     <div style={{ display: "flex", columnGap: size * SANS_SPACE_EM, fontSize: size }}>
       {/* 빈 낱말(연속 공백 — 데이트라인 "  ·  ")은 빈 칸으로 남겨 간격을 넓힌다. */}
@@ -455,7 +457,7 @@ function Glyphs({ text, size }: { text: string; size: number }) {
 const flexIf = (on: boolean): { display?: "flex" } => (on ? { display: "flex" } : {});
 
 /** 마스트헤드 이중 잉크 괘선(굵은 선 + 가는 선). */
-function DoubleRule({ marginTop }: { marginTop: number }) {
+export function DoubleRule({ marginTop }: { marginTop: number }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", marginTop }}>
       <div style={{ height: 6, background: INK }} />
@@ -506,8 +508,8 @@ function articleHeadline(title: string): { size: number; maxLines: number } {
  * 크기는 fitHeadline 이 후보 중 말줄임 없이 들어가는 가장 큰 것을 고른다. 높이 예산은 한국어 판형과 같다:
  * 호 리드는 서브 3단 위 약 230px(3줄 × 60px × 1.12 ≈ 202), 기사는 괘선~바이라인 사이 키커 아래 약 300px.
  */
-const EN_DISPLAY_TRACKING = -0.028;
-const EN_TITLE_TRACKING = -0.012;
+export const EN_DISPLAY_TRACKING = -0.028;
+export const EN_TITLE_TRACKING = -0.012;
 const EN_HEADLINE_LINE_HEIGHT = 1.12;
 const EN_LEAD_FITS: readonly HeadlineFit[] = [
   { size: 64, maxLines: 2 },
@@ -542,7 +544,7 @@ export function enArticleFit(title: string): HeadlineFit {
  * 형식 배지(REPO·MODEL·PAPER) — 사이트 FormatBadge 와 같은 잉크 아웃라인, 코발트 없음(강조색은
  * 하나). 썸네일은 작게 축소돼 보이므로 선은 2px. 뉴스는 배지가 없어 null.
  */
-function FormatBadge({ format, size }: { format: string; size: number }) {
+export function FormatBadge({ format, size }: { format: string; size: number }) {
   const badge = FORMAT_BADGES[toFormat(format)];
   if (!badge) return null;
   return (
@@ -567,7 +569,7 @@ function FormatBadge({ format, size }: { format: string; size: number }) {
  * 영어판 한국 매체 표시 `KOREA` — DESIGN.md §9: 배지 글꼴(700 대문자, 자간 0.09em)의 테두리 없는 잉크 글자.
  * 상자는 형식 배지 몫이고 코발트는 키커 몫이라 쓰지 않는다.
  */
-function KoreaMark({ size }: { size: number }) {
+export function KoreaMark({ size }: { size: number }) {
   return (
     <span style={{ color: INK, fontSize: size, fontWeight: 700, letterSpacing: size * 0.09 }}>
       {REGION_BADGES.kr}
