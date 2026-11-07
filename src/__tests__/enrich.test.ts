@@ -165,7 +165,7 @@ describe("영어 규칙·용어집", () => {
     expect(block).toContain("- 앤트로픽 → Anthropic");
     expect(block).toContain("- 클로드 → Claude");
     expect(block).toContain(
-      "- 과학기술정보통신부 · 과기정통부 → Ministry of Science and ICT (MSIT)",
+      "- 과학기술정보통신부 · 과기정통부 · 과기부 → Ministry of Science and ICT (MSIT)",
     );
     expect(block).not.toContain("오픈AI");
     expect(chunk.glossaryEntries).toBe(block.split("\n- ").length - 1);
@@ -243,6 +243,20 @@ describe("resolveEnglish — 영어 품질 검사(Phase 1-3) 연결", () => {
       rejected: { hangul: 1, number: 1, length: 2 },
     });
     expect(out.notes).toEqual(["영어 가공 1/5건", "영어 기각 4건(한글 1·숫자 1·길이 2)"]);
+    // 기각 상세(Phase 8-1 후속): 입력 순서대로, 기각돼 저장하지 않는 원출력과 함께.
+    expect(out.rejected.map((r) => [r.id, r.reason])).toEqual([
+      [2, "hangul"],
+      [3, "number"],
+      [4, "length"],
+      [5, "length"],
+    ]);
+    expect(out.rejected[1]).toEqual({
+      id: 3,
+      reason: "number",
+      detail: ["11 million"],
+      titleEn: "OpenAI raises $11 million of its $30 billion target",
+      summaryEn: OK_SUMMARY,
+    });
   });
 
   it("한국어 숫자 불일치는 경고만 — 한국어·영어 저장값은 그대로이고 notes 에 센다", () => {
@@ -313,6 +327,7 @@ describe("resolveEnglish — 영어 품질 검사(Phase 1-3) 연결", () => {
     expect(out.fields.get(2)).toEqual({ titleEn: null, summaryEn: null });
     expect(out.tally).toBeNull();
     expect(out.checks.size).toBe(0);
+    expect(out.rejected).toEqual([]);
     expect(out.notes).toHaveLength(1);
     expect(out.notes[0]).toMatch(/^영어 검사 실패\(영어 비움\): \S/);
     expect(out.notes[0]).not.toContain(";");

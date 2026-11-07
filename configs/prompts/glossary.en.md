@@ -5,7 +5,7 @@ A bullet that starts with an English label and a colon (Military ranks, Family n
 
 ### Government, public bodies and law
 
-- 과학기술정보통신부 · 과기정통부 → Ministry of Science and ICT (MSIT)
+- 과학기술정보통신부 · 과기정통부 · 과기부 → Ministry of Science and ICT (MSIT)
 - 방송통신위원회 · 방통위 → Korea Communications Commission (KCC)
 - 중소벤처기업부 · 중기부 → Ministry of SMEs and Startups
 - 산업통상부 · 산업통상자원부 · 산업부 → Ministry of Trade, Industry and Resources (MOTIR)
@@ -80,8 +80,8 @@ A bullet that starts with an English label and a colon (Military ranks, Family n
 Write the original spelling. Watch the pairs that look alike.
 
 - 그록 → Grok (xAI/SpaceX chatbot) · 그로크 → Groq (AI chip company)
-- 앤트로픽 → Anthropic · 클로드 → Claude · 클로드 코드 → Claude Code · 오퍼스 → Opus · 페이블 → Fable · 미소스 → Mythos
-- 오픈AI → OpenAI · 챗GPT → ChatGPT · 코덱스 → Codex · 아스트라 → Astra · 솔 → Sol (GPT model)
+- 앤트로픽 → Anthropic · 클로드 → Claude · 클로드 코드 → Claude Code · 오퍼스 · 오푸스 → Opus · 페이블 → Fable · 미소스 · 미토스 → Mythos
+- 오픈AI → OpenAI · 챗GPT · 챗지피티 → ChatGPT · 코덱스 → Codex · 아스트라 → Astra · 솔 → Sol (GPT model)
 - 구글 → Google · 구글 딥마인드 → Google DeepMind · 딥마인드 → DeepMind · 제미나이 → Gemini · 아르곤 → Argon · 카본 → Carbon
 - 메타 → Meta · 뮤즈 → Muse · 마이크로소프트 · MS → Microsoft
 - 엔비디아 → Nvidia · 네모트론 → Nemotron · 허깅 페이스 → Hugging Face

@@ -572,3 +572,82 @@ export function englishCheckNotes(t: EnglishCheckTally): string[] {
   }
   return notes;
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// 기각 상세(Phase 8-1 후속) — 일일 수집은 기각된 영어를 저장하지 않으므로, 숫자 기각의 오탐 여부를 나중에 판정할 재료를
+// notes 한 줄(기사 id·사유·근거에 없는 숫자)과 로그 줄(기각된 영어 원출력)로 남긴다. 판정 로직(checkEnglish)과 무관하다.
+
+/** 기각된 영어 1건. id 는 풀 번호(Pick.index) — 표시 id(`#articles.id`·`풀 N`)는 호출자가 ref 로 정한다. */
+export interface EnglishRejection {
+  id: number;
+  reason: EnglishRejectReason;
+  detail: string[];
+  /** 기각돼 저장하지 않는 모델 원출력(빈 값이면 빈 문자열). */
+  titleEn: string;
+  summaryEn: string;
+}
+
+const REASON_LABELS: Record<EnglishRejectReason, string> = {
+  hangul: "한글",
+  length: "길이",
+  number: "숫자",
+};
+
+/** notes 상세 줄에 싣는 기사 수·기사당 근거 수·근거 1개 글자 수 상한 — notes 를 짧게 둔다. */
+export const REJECT_NOTE_ARTICLES = 5;
+export const REJECT_NOTE_DETAILS = 3;
+const REJECT_NOTE_DETAIL_CHARS = 40;
+
+/** notes 구분자 `;`·대괄호·줄바꿈을 지운 한 조각. */
+const noteSafe = (s: string, max: number) => {
+  const flat = s.replace(/[;[\]\s]+/g, " ").trim();
+  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+};
+
+/** 기사 1건의 `#1368 숫자[278 trillion, $21]` 조각. */
+function rejectionFragment(r: EnglishRejection, ref: (id: number) => string): string {
+  const shown = r.detail
+    .slice(0, REJECT_NOTE_DETAILS)
+    .map((d) => noteSafe(d, REJECT_NOTE_DETAIL_CHARS));
+  const more =
+    r.detail.length > REJECT_NOTE_DETAILS ? ` 외 ${r.detail.length - REJECT_NOTE_DETAILS}` : "";
+  return `${ref(r.id)} ${REASON_LABELS[r.reason]}[${shown.join(", ")}${more}]`;
+}
+
+/**
+ * notes 상세 줄. 예: `영어 기각 상세 #1368 숫자[278 trillion] · #1396 숫자[USD(통화)]`. 기각이 없으면 null.
+ * `영어 기각 K건(…)` 집계 줄 뒤에 따로 둔다 — kpi(parseEnglishNotes)의 `^영어 기각 (\d+)건` 은 이 줄에 걸리지 않는다.
+ * 앞 REJECT_NOTE_ARTICLES 건만 싣고 나머지는 `외 N건`. `;`는 들지 않는다.
+ */
+export function englishRejectNote(
+  rejected: readonly EnglishRejection[],
+  ref: (id: number) => string,
+): string | null {
+  if (rejected.length === 0) return null;
+  const shown = rejected.slice(0, REJECT_NOTE_ARTICLES).map((r) => rejectionFragment(r, ref));
+  const more =
+    rejected.length > REJECT_NOTE_ARTICLES ? ` 외 ${rejected.length - REJECT_NOTE_ARTICLES}건` : "";
+  return `영어 기각 상세 ${shown.join(" · ")}${more}`;
+}
+
+/** GitHub Actions 워크플로 명령의 메시지 이스케이프(`%`·CR·LF). */
+const escapeCommandData = (s: string) =>
+  s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+
+/**
+ * 기각 1건의 로그 줄 — 사유·근거와 함께 기각된 영어 원출력(제목·요약)을 남긴다(오탐 판정은 요약 속 숫자까지 봐야 한다).
+ * `ci` 면 Actions 주석 `::notice title=영어 기각::…`(실행 요약에 보인다), 아니면 `[collect] 영어 기각 …`.
+ */
+export function englishRejectLogLine(
+  r: EnglishRejection,
+  ref: (id: number) => string,
+  ci = false,
+): string {
+  const flat = (s: string) => s.replace(/\s+/g, " ").trim();
+  const message =
+    `${ref(r.id)} ${REASON_LABELS[r.reason]}[${r.detail.map(flat).join(", ")}]` +
+    ` | title_en: ${flat(r.titleEn) || "(빈 제목)"} | summary_en: ${flat(r.summaryEn) || "(빈 요약)"}`;
+  return ci
+    ? `::notice title=영어 기각::${escapeCommandData(message)}`
+    : `[collect] 영어 기각 ${message}`;
+}

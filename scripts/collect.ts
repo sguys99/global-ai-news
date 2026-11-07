@@ -21,7 +21,8 @@
  *    (lib/brief.ts — 합쳐진 선정을 가리키는 줄은 대표로 옮긴다. 남은 줄이 모자라거나 무엇이 잘못돼도 요약 없이 발행한다)
  * ④-5 영어 필드 확정(lib/enrich.ts resolveEnglish): 게재분의 title_en·summary_en 을 영어 품질 검사(lib/englishCheck.ts —
  *    한글·길이·원문에 없는 숫자)로 거른다. 기각되면 그 기사의 영어만 비고(fail-closed) 한국어 게재는 그대로다. 같은 근거로
- *    한국어 제목·요약의 숫자도 대조해 notes 에 경고만 남긴다. 검사가 예외를 내도 영어만 비우고 회차는 계속한다
+ *    한국어 제목·요약의 숫자도 대조해 notes 에 경고만 남긴다. 검사가 예외를 내도 영어만 비우고 회차는 계속한다.
+ *    기각 건은 저장 뒤 notes `영어 기각 상세 #id 숫자[…]` 와 로그 줄(기각된 영어 원출력)로 남긴다(오탐 판정 재료)
  * ⑤ SQLite 저장: 선정 → articles, 미선정 → seen_items(키만) + collection_runs 기록
  *
  * LLM 호출은 기본적으로 Message Batches API(50% 할인)로 보낸다(lib/llm.ts).
@@ -40,6 +41,7 @@ import { fetchRss, type SourceConfig } from "./lib/collect/rss";
 import { briefNote, resolveBrief, serializeBrief, type BriefResolution } from "./lib/brief";
 import { estimateCost } from "./lib/cost";
 import { dedupKey } from "./lib/dedup";
+import { englishRejectLogLine, englishRejectNote } from "./lib/englishCheck";
 import {
   buildEnrichRequests,
   emptyEnrichGuardTally,
@@ -865,6 +867,8 @@ async function main(): Promise<void> {
       mergedInto,
     );
     let linked = followUpOf.size;
+    // 풀 번호 → articles.id(저장한 게재분). no-save 는 비어 있어 기각 상세가 `풀 N` 으로 가리킨다.
+    const articleIdOf = new Map<number, number>();
     if (NO_SAVE) {
       printNoSaveResult(
         pool,
@@ -878,7 +882,6 @@ async function main(): Promise<void> {
       );
       printBrief(triage.brief, brief, published.enriched);
     } else {
-      const articleIdOf = new Map<number, number>();
       linked = persist(
         db,
         pool,
@@ -898,6 +901,18 @@ async function main(): Promise<void> {
     }
     const linkNote = followUpNote(linked);
     if (linkNote) stats.notes.push(linkNote);
+    // 영어 기각 상세(Phase 8-1 후속): 기각된 영어는 저장하지 않으므로 숫자 기각의 오탐 판정 재료를 notes(id·사유·근거)와
+    // 로그(기각된 영어 원출력 — Actions 에서는 ::notice:: 주석)에 남긴다. no-save 는 게재 목록의 `EN ✗` 줄이 같은 내용이다.
+    const rejectRef = (i: number) => {
+      const id = articleIdOf.get(i);
+      return id === undefined ? `풀 ${i}` : `#${id}`;
+    };
+    const rejectNote = englishRejectNote(englishCheck.rejected, rejectRef);
+    if (rejectNote) stats.notes.push(rejectNote);
+    if (!NO_SAVE) {
+      const ci = process.env.GITHUB_ACTIONS === "true";
+      for (const r of englishCheck.rejected) console.log(englishRejectLogLine(r, rejectRef, ci));
+    }
     // 게재 = 이번 회차에 가공까지 마치고 재보도가 아니며 다른 기사에 합쳐지지 않은 선정 기사(재심사 행 포함).
     mix = [candidates, pool, [...published.enriched.keys()].map((i) => pool[i])];
 

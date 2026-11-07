@@ -159,4 +159,14 @@ describe("configs/prompts/glossary.en.md", () => {
     );
     expect(picked).not.toContain("Grok (xAI/SpaceX chatbot)");
   });
+
+  it("매체마다 다른 음차 변형도 같은 항목을 고른다(Phase 8-1 — #1412 '클로드 미토스' → Mitos 오기)", () => {
+    const pick = (text: string) => selectGlossary(g, text).map((e) => e.english);
+    expect(pick("앤트로픽이 ‘클로드 미토스 프리뷰’를 공개했을 때")).toContain("Mythos");
+    expect(pick("클로드 오푸스 5.5 등의 경쟁 모델")).toContain("Opus");
+    expect(pick("과기부, 피지컬 AI 핵심 기술 국산화")).toContain(
+      "Ministry of Science and ICT (MSIT)",
+    );
+    expect(pick("챗지피티 등 범용 대형언어모델")).toContain("ChatGPT");
+  });
 });

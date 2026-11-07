@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "fixes": [
+    {
+      "id": 1412,
+      "field": "summary_en",
+      "from": "Anthropic's Claude Mitos preview",
+      "to": "Anthropic's Claude Mythos Preview",
+      "reason": "원문 '클로드 미토스 프리뷰' = Claude Mythos Preview — 용어집 변형(미토스) 누락으로 Mitos 오기(8-1)"
+    },
+    {
+      "id": 1400,
+      "field": "summary_ko",
+      "from": "594억 파라미터",
+      "to": "5,940억 파라미터",
+      "reason": "원문 594 billion parameters → 5,940억(10배 오류, 8-1)"
+    }
+  ]
+}

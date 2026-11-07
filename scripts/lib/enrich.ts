@@ -21,6 +21,7 @@ import {
   tallyEnglishChecks,
   type EnglishCheckResult,
   type EnglishCheckTally,
+  type EnglishRejection,
 } from "./englishCheck";
 import { glossaryBlock, glossaryTables, readGlossary, selectGlossary } from "./glossary";
 import type { LlmRequest } from "./llm";
@@ -379,6 +380,11 @@ export interface EnglishResolution {
   checks: Map<number, EnglishArticleCheck>;
   /** 회차 집계(notes 재료). 검사가 실패한 회차면 null. */
   tally: EnglishCheckTally | null;
+  /**
+   * 기각된 기사(입력 순서) — 사유·근거와 기각돼 저장하지 않는 영어 원출력. collect.ts 가 저장 뒤 articles.id 로
+   * 기각 상세 notes 줄·로그 줄을 만든다(englishRejectNote·englishRejectLogLine). 검사가 실패한 회차면 비어 있다.
+   */
+  rejected: EnglishRejection[];
   /** status ok 면 영어 검사가 끝난 것, failed 면 예외로 전부 영어 없이 저장한다(한국어 게재는 그대로). */
   status: "ok" | "failed";
   /**
@@ -417,6 +423,7 @@ export function resolveEnglish(candidates: Iterable<EnglishCandidate>): EnglishR
   const checks = new Map<number, EnglishArticleCheck>();
   try {
     const english = new Map<number, EnglishCheckResult>();
+    const rejected: EnglishRejection[] = [];
     for (const { id, enrichment, evidence } of list) {
       const output = { titleEn: enrichment.title_en, summaryEn: enrichment.summary_en };
       const result = checkEnglish(output, evidence);
@@ -425,6 +432,14 @@ export function resolveEnglish(candidates: Iterable<EnglishCandidate>): EnglishR
         fields.set(id, {
           titleEn: enrichment.title_en.trim(),
           summaryEn: enrichment.summary_en.trim(),
+        });
+      } else {
+        rejected.push({
+          id,
+          reason: result.reason,
+          detail: result.detail,
+          titleEn: enrichment.title_en ?? "",
+          summaryEn: enrichment.summary_en ?? "",
         });
       }
     }
@@ -445,13 +460,21 @@ export function resolveEnglish(candidates: Iterable<EnglishCandidate>): EnglishR
       checks.set(id, { english: result, koreanNumbers: korean.get(id) ?? [] });
     }
     const tally = tallyEnglishChecks([...english.values()], [...korean.values()]);
-    return { fields, checks, tally, status: "ok", notes: [...englishCheckNotes(tally), ...notes] };
+    return {
+      fields,
+      checks,
+      tally,
+      rejected,
+      status: "ok",
+      notes: [...englishCheckNotes(tally), ...notes],
+    };
   } catch (err) {
     for (const c of list) fields.set(c.id, empty());
     return {
       fields,
       checks: new Map(),
       tally: null,
+      rejected: [],
       status: "failed",
       notes: [`영어 검사 실패(영어 비움): ${noteMessage(err)}`],
     };

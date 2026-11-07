@@ -7,11 +7,16 @@ import {
   TITLE_EN_MIN_CHARS,
   checkEnglish,
   checkKoreanNumbers,
+  REJECT_NOTE_ARTICLES,
   englishCheckNotes,
+  englishRejectLogLine,
+  englishRejectNote,
   findUnsupportedNumbers,
   tallyEnglishChecks,
   type EnglishCheckResult,
+  type EnglishRejection,
 } from "../../scripts/lib/englishCheck";
+import { parseEnglishNotes } from "@/lib/englishKpi";
 
 const ev = (title: string, content = "") => ({ title, content });
 const passes = (out: string, src: string) => findUnsupportedNumbers(out, ev(src)).length === 0;
@@ -450,5 +455,80 @@ describe("tallyEnglishChecks · englishCheckNotes", () => {
     const [, korean] = englishCheckNotes(t);
     expect(korean).toBe("한국어 숫자 불일치 4건(1억·2억·3 억)");
     expect(korean).not.toContain(";");
+  });
+});
+
+describe("englishRejectNote · englishRejectLogLine — 기각 상세(Phase 8-1 후속)", () => {
+  const ref = (i: number) => `#${1300 + i}`;
+  const rejection = (over: Partial<EnglishRejection> = {}): EnglishRejection => ({
+    id: 68,
+    reason: "number",
+    detail: ["278 trillion"],
+    titleEn: "Kimi K3 runs a 278-trillion-parameter model in 8.24 GB of RAM",
+    summaryEn: "A C99 engine runs the 278 trillion parameter Kimi K3\non a laptop.",
+    ...over,
+  });
+
+  it("notes 상세 줄: `#id 사유[근거]`를 ` · `로 잇고, 기각이 없으면 null", () => {
+    expect(englishRejectNote([], ref)).toBeNull();
+    expect(
+      englishRejectNote(
+        [
+          rejection(),
+          rejection({ id: 96, detail: ["USD(통화)", "21"] }),
+          rejection({ id: 2, reason: "length", detail: ["title 15자"] }),
+        ],
+        ref,
+      ),
+    ).toBe(
+      "영어 기각 상세 #1368 숫자[278 trillion] · #1396 숫자[USD(통화), 21] · #1302 길이[title 15자]",
+    );
+  });
+
+  it("notes 를 짧게 — 기사·근거 수와 근거 길이를 묶고, `;`·대괄호·줄바꿈을 지운다", () => {
+    const many = Array.from({ length: REJECT_NOTE_ARTICLES + 2 }, (_, i) => rejection({ id: i }));
+    expect(englishRejectNote(many, ref)).toMatch(/ 외 2건$/);
+    const note = englishRejectNote(
+      [rejection({ detail: ["1;2", "[3]\n4", "x".repeat(60), "5", "6"] })],
+      ref,
+    )!;
+    expect(note).not.toMatch(/;|\n/);
+    expect(note).toBe(`영어 기각 상세 #1368 숫자[1 2, 3 4, ${"x".repeat(39)}… 외 2]`);
+  });
+
+  it("KPI 파서는 상세 줄을 집계 줄로 읽지 않는다(`^영어 기각 (\\d+)건`)", () => {
+    const notes = [
+      "영어 가공 21/22건",
+      "영어 기각 1건(한글 0·숫자 1·길이 0)",
+      englishRejectNote([rejection()], ref)!,
+    ].join("; ");
+    expect(parseEnglishNotes(notes)).toEqual({
+      checked: 22,
+      passed: 21,
+      rejected: { hangul: 0, number: 1, length: 0 },
+      koreanMismatch: 0,
+    });
+  });
+
+  it("로그 줄: 기각된 영어 원출력을 한 줄로, Actions 면 ::notice 주석(메시지 이스케이프)", () => {
+    expect(englishRejectLogLine(rejection(), ref)).toBe(
+      "[collect] 영어 기각 #1368 숫자[278 trillion]" +
+        " | title_en: Kimi K3 runs a 278-trillion-parameter model in 8.24 GB of RAM" +
+        " | summary_en: A C99 engine runs the 278 trillion parameter Kimi K3 on a laptop.",
+    );
+    const ci = englishRejectLogLine(
+      rejection({
+        reason: "length",
+        detail: ["summary 5단어"],
+        titleEn: "",
+        summaryEn: "Up 50% today",
+      }),
+      ref,
+      true,
+    );
+    expect(ci).toBe(
+      "::notice title=영어 기각::#1368 길이[summary 5단어] | title_en: (빈 제목) | summary_en: Up 50%25 today",
+    );
+    expect(ci).not.toContain("\n");
   });
 });
