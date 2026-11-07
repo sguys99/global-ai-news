@@ -574,7 +574,7 @@ AI Daybook은 한국어 지면만 낸다. 해외 독자를 받으려면 영어�
 ### 8-1. 지표 (목표치는 0-1 기준선을 보고 정한다)
 
 - [ ] **(Phase 7에서 옮김, 사용자 작업 — 계정 로그인 필요)** 검색엔진 등록·확인. [6-3 안내서](english-version/phase6/6-3-search-engines.md) 순서대로: ① Search Console `sitemap.xml` 재제출(하위 사이트맵 3개 확인)·`/en/`·최신 영어 호·영어 기사 2~3건 색인 요청·표준 URL이 `/en/…`인지 확인 ② Bing Webmaster "Import from Google Search Console"·`/en/` URL 제출(IndexNow는 2026-11-06 켰다 — 며칠 뒤 `IndexNow` 메뉴의 받은 URL 수 확인) ③ 네이버 서치어드바이저 사이트맵 인덱스 수집 결과(오류면 `sitemaps/ko-2026.xml`·`pages.xml` 따로 제출) ④ 리치 결과 테스트(영어 기사·영어 보관 기사·한국어 기사) ⑤ (선택) 공유 미리보기에서 영어 썸네일.
-- [ ] (Phase 7-1에서 옮김) 11-07 일일 배포의 `actions/deploy-pages` 시간이 10초대로 돌아오는지 본다(출시 배포는 새 파일 동기화로 135초). 2분대로 남으면 deploy 잡 `timeout-minutes`와 `deploy-pages` `timeout`을 함께 늘린다.
+- [x] (Phase 7-1에서 옮김) 11-07 일일 배포의 `actions/deploy-pages` 시간이 10초대로 돌아오는지 본다(출시 배포는 새 파일 동기화로 135초). 2분대로 남으면 deploy 잡 `timeout-minutes`와 `deploy-pages` `timeout`을 함께 늘린다. (2026-11-07 — 11-07 06:08 KST 일일 배포 [run 42294207226](https://github.com/sguys99/global-ai-news/actions/runs/42294207226): `deploy-pages` **12초**(출시 135초), build 잡 99초·deploy 잡 16초. 135초는 출시 때 새 파일 약 1,565개를 한 번 동기화한 비용이었다 → 타임아웃은 그대로 둔다. 같은 배포의 IndexNow는 **응답 200, URL 44개 접수**(두 언어 홈·제144호·기사 21건씩))
 - [ ] GoatCounter: `/en/` 경로 방문 비율, 국가 분포.
 - [ ] Search Console: 영어 검색어 노출·클릭, 국가별 노출, `/en/` 색인 페이지 수.
 - [ ] Bing Webmaster: 색인·노출.
