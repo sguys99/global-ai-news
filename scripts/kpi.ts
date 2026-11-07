@@ -21,6 +21,14 @@
  *   기본 `npm run kpi` 끝에도 같은 표가 붙는다.
  *   --ci  collect.yml 용: $GITHUB_STEP_SUMMARY 에 붙이고 오류·경고 소스마다 `::warning::` 을 낸다.
  *         DB 가 없거나 읽기에 실패해도 경고 한 줄만 내고 exit 0 — 수집 잡을 실패시키지 않는다.
+ *
+ * 하위 명령: npm run kpi -- traffic [days=14] [--since YYYY-MM-DD] [--ci] [--json] [--public]
+ *   GoatCounter 방문(english-version-plan Phase 8-1): 언어판 비율(/en/ 대 나머지)·페이지 종류별·국가·유입 경로·상위 페이지.
+ *   읽기·합산은 scripts/lib/traffic.ts, 출력은 scripts/lib/trafficReport.ts. 기간은 어제까지 꽉 찬 KST N일,
+ *   --since 는 그 날부터 지금까지. GOATCOUNTER_API_TOKEN(읽기 전용)이 있으면 API, 없거나 API 가 실패하면
+ *   공개 카운터(사이트맵 주소마다 — 국가·유입 경로 없음)로 읽는다. --public 은 토큰이 있어도 공개 카운터.
+ *   DB 는 보관 지면 구분에만 쓴다(없으면 기사 보관 구분 생략). 예: npm run kpi -- traffic --since 2026-11-06
+ *   --ci  traffic.yml 용: $GITHUB_STEP_SUMMARY 에 붙인다. 실패해도 `::warning::` 한 줄만 내고 exit 0.
  */
 import { appendFileSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -42,6 +50,7 @@ import { healthAnnotations, healthMarkdown } from "./lib/healthReport";
 const [, , first, ...rest] = process.argv;
 const isBaseline = first === "baseline";
 const isHealth = first === "health";
+const isTraffic = first === "traffic";
 const days = Number(first ?? 30);
 
 function row(label: string, value: string, target: string, pass: boolean | null): string {
@@ -399,6 +408,73 @@ function baseline(): void {
   console.log("");
 }
 
+// ── traffic ──────────────────────────────────────────────────────────────
+
+async function traffic(): Promise<void> {
+  // 방문 집계 모듈(네트워크)은 이 하위 명령에서만 불러온다 — 다른 하위 명령의 시작에 얹지 않는다.
+  const t = await import("./lib/traffic");
+  const r = await import("./lib/trafficReport");
+  const ci = rest.includes("--ci");
+  const warn = (msg: string) =>
+    console.log(`::warning title=방문 집계::${msg.replace(/\n/g, " ")}`);
+  try {
+    const args = t.parseTrafficArgs(rest);
+    const window = t.trafficWindow({ days: args.days, since: args.since });
+
+    // 보관 지면 구분(DB 보관 계획). DB 가 없으면 호만 날짜로 가른다(기준 = 기간 마지막 날).
+    let archive: import("./lib/traffic").ArchiveInfo;
+    const notes: string[] = [];
+    try {
+      const plan = (await import("../src/lib/db")).getArchivePlan();
+      archive = {
+        latestEditionDate: plan.latestEditionDate,
+        archivedArticleIds: new Set(plan.archivedArticleIds),
+      };
+    } catch (err) {
+      archive = { latestEditionDate: window.endDate, archivedArticleIds: null };
+      notes.push(
+        `DB 를 못 읽어 기사 보관 구분을 생략했다(${(err as Error).message.split("\n")[0]}).`,
+      );
+    }
+
+    const token = process.env.GOATCOUNTER_API_TOKEN?.trim();
+    let data: import("./lib/traffic").TrafficData | null = null;
+    if (token && !args.forcePublic) {
+      try {
+        data = await t.fetchApiTraffic(window, { token });
+      } catch (err) {
+        const msg = `API 실패 — 공개 카운터로 대체: ${(err as Error).message}`;
+        if (ci) warn(msg);
+        notes.push(msg);
+      }
+    }
+    if (!data) {
+      if (!args.json) console.error("공개 카운터로 사이트맵 주소를 하나씩 읽는다(약 2분)…");
+      data = await t.fetchPublicTraffic(window);
+    }
+    data.notes.push(...notes);
+    const summary = t.summarizeTraffic(data.paths, data.total, archive);
+
+    if (args.json && !ci) {
+      console.log(JSON.stringify(r.trafficJson(data, summary), null, 2));
+      return;
+    }
+    const markdown = r.trafficMarkdown(data, summary);
+    console.log(markdown);
+    const stepSummary = process.env.GITHUB_STEP_SUMMARY;
+    if (ci && stepSummary) appendFileSync(stepSummary, `${markdown}\n`);
+  } catch (err) {
+    if (!ci) throw err;
+    // 방문 요약은 부가 정보다 — 읽기에 실패해도 잡을 실패시키지 않는다.
+    warn(`집계 실패 — ${(err as Error).message}`);
+  }
+}
+
 if (isBaseline) baseline();
 else if (isHealth) health();
+else if (isTraffic)
+  traffic().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
 else main();

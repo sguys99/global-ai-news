@@ -1,0 +1,61 @@
+name: traffic
+
+# 주간 방문 요약(GoatCounter, english-version-plan Phase 8-1) — 언어판 비율(/en/ 대 나머지)·페이지 종류별·
+# 국가 분포(전체·영어판)·유입 경로·상위 페이지를 잡 요약($GITHUB_STEP_SUMMARY)에 남긴다.
+# `npm run kpi -- traffic 7 --ci` 가 지난 KST 월~일(어제까지 꽉 찬 7일)을 집계한다(scripts/lib/traffic.ts).
+#
+# 저장소 시크릿 GOATCOUNTER_API_TOKEN(GoatCounter 읽기 전용 API 토큰, 권한 "Read statistics")이 있으면 API 로,
+# 없거나 API 가 실패하면 공개 카운터(사이트맵 주소마다 — 약 2,700건·2분, 국가·유입 경로 없음)로 읽는다.
+# 읽기만 한다 — 커밋·배포 없음. data/app.db 는 보관 지면 구분에만 읽는다.
+# 부가 정보라 잡을 실패시키지 않는다(스크립트도 실패 시 ::warning:: 만 내고 exit 0).
+
+on:
+  schedule:
+    # 월요일 아침. schedule 은 수 시간 늦을 수 있으나 기간이 KST 날짜로 끊겨(어제까지) 같은 날이면 결과가 같다.
+    - cron: "13 0 * * 1" # 00:13 UTC 월 = 09:13 KST 월 — 정시(:00) 혼잡을 피한다
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "집계 기간(일) — 어제까지 꽉 찬 KST N일"
+        required: false
+        default: "7"
+      since:
+        description: "이 날짜(YYYY-MM-DD, KST)부터 지금까지 — 비우면 days 를 쓴다"
+        required: false
+        default: ""
+
+concurrency:
+  group: traffic
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  traffic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: deploy/github-pages
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Traffic summary
+        env:
+          GOATCOUNTER_API_TOKEN: ${{ secrets.GOATCOUNTER_API_TOKEN }}
+          DAYS: ${{ inputs.days || '7' }}
+          SINCE: ${{ inputs.since }}
+        run: |
+          if [ -n "${SINCE}" ]; then
+            npm run --silent kpi -- traffic --since "${SINCE}" --ci
+          else
+            npm run --silent kpi -- traffic "${DAYS}" --ci
+          fi
