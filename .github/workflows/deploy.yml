@@ -39,9 +39,9 @@ jobs:
       # IndexNow 요청 본문(한 줄 JSON, 꺼져 있으면 빈 값) — deploy 잡이 배포 뒤 보낸다.
       indexnow: ${{ steps.indexnow.outputs.payload }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -92,9 +92,11 @@ jobs:
           npm run --silent indexnow -- out --ci --emit "$RUNNER_TEMP/indexnow.json"
           echo "payload=$(cat "$RUNNER_TEMP/indexnow.json")" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
-      - uses: actions/upload-pages-artifact@v3
+      # v4 부터 점(.)으로 시작하는 파일·폴더는 기본으로 빠진다(include-hidden-files: false). out/ 에는 점 파일이 없다
+      #   — public/ 에 .well-known 같은 점 파일을 추가하면 include-hidden-files: true 를 켠다.
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: out
 
@@ -107,7 +109,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
       # IndexNow 알림(Phase 6-3, 기본 꺼짐 — vars.INDEXNOW_ENABLED == '1'). 배포가 끝나 키 파일
       #   (/global-ai-news/<키>.txt)과 새 페이지가 열린 뒤에 build 잡이 만든 본문을 api.indexnow.org 로 보낸다.

@@ -44,7 +44,7 @@ jobs:
     outputs:
       skip: ${{ steps.check.outputs.skip }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: github.event_name == 'schedule'
         with:
           ref: deploy/github-pages
@@ -106,11 +106,11 @@ jobs:
     steps:
       # 배포 트리거 브랜치로 고정 정렬. schedule 실행은 기본 브랜치 컨텍스트로 돌므로
       # deploy/github-pages 를 명시 checkout 해 동일 브랜치에 커밋·push 한다.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: deploy/github-pages
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm

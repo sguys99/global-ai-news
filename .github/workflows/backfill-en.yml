@@ -117,11 +117,11 @@ jobs:
           echo "apply 허용 — 잡이 최대 ${JOB_MAX_MIN}분 돌아도 ${QUIET_START}~${QUIET_END} KST 와 겹치지 않음"
 
       # collect.yml 과 같은 브랜치에 커밋·push 한다. concurrency 대기 뒤에 checkout 하므로 앞선 수집 커밋을 포함한다.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: deploy/github-pages
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -191,7 +191,7 @@ jobs:
       - name: Upload report
         # 보고서 JSON 은 기사별 결과(기각 사유·누락 id·한국어 수정 전후)의 유일한 기록이다(collection_runs.notes 없음).
         if: ${{ always() && steps.backfill.conclusion != 'skipped' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backfill-en-${{ inputs.mode }}-${{ github.run_id }}
           path: |
@@ -243,7 +243,7 @@ jobs:
       - name: Upload DB on push failure
         # 이어 받기가 없어 DB 를 잃으면 백필 비용을 다시 내야 한다 — 푸시가 실패했을 때만 결과 DB 를 남긴다.
         if: ${{ failure() && steps.commit.outcome == 'failure' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backfill-en-db-${{ github.run_id }}
           path: data/app.db
