@@ -103,7 +103,8 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Pages 동기화(syncing_files)가 느린 날이 있다 — 2026-11-10 10분 상한에 걸려 취소(평소 12초~5분).
+    timeout-minutes: 25
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

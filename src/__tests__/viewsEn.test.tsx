@@ -17,6 +17,7 @@ const db = vi.hoisted(() => ({
   articles: [] as ArticleCard[],
   issueDates: new Map<number, string>(),
   briefs: [] as { id: number; text: string }[][],
+  weekly: null as null | import("@/lib/weeklyRadar").WeeklyRadar,
   thread: [] as FollowUpEntry[],
   nameEn: new Map<string, string>(),
   plan: {
@@ -57,6 +58,12 @@ vi.mock("@/components/SearchClient", () => ({
     search.props = p;
     return null;
   },
+}));
+
+// 주간 레이더 집계 규칙은 weeklyRadar.test 가 본다 — 여기서는 집계 결과가 섬 props 로 갈 때 언어별로 걸러지는지만.
+vi.mock("@/lib/weeklyRadar", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/weeklyRadar")>()),
+  buildWeeklyRadar: () => db.weekly,
 }));
 
 // 홈·호 지면의 클라이언트 섬도 props(= 영어 페이지 RSC 에 실리는 값)만 본다(english-version-plan 5-4).
@@ -454,6 +461,37 @@ describe("HomeView·EditionView — 영어 섬 props(= 영어 RSC)에 한글·�
     const ld = container.querySelector('script[type="application/ld+json"]');
     expect(JSON.parse(ld!.innerHTML)).toMatchObject({ "@type": "WebSite", inLanguage: "en" });
     expect(ld!.innerHTML).not.toMatch(HANGUL);
+  });
+
+  it("일요일 영어 홈: 주간 레이더 props 에 한국어 제목·매체명이 없다(한국어 홈은 영어 제목을 뗀다)", () => {
+    db.weekly = {
+      start: "2026-11-02",
+      end: "2026-11-08",
+      candidates: 4,
+      formats: [{ format: "oss", count: 1 }],
+      items: [
+        {
+          id: 3,
+          title: "에이전트용 브라우저 자동화 CLI",
+          titleEn: "Browser automation CLI for agents",
+          format: "oss",
+          category: "agent",
+          source: { name: "HuggingFace 트렌딩 모델", nameEn: "HuggingFace Trending Models" },
+          url: "https://example.com/3",
+          issueDate: "2026-11-08",
+        },
+      ],
+    };
+    try {
+      const en = loadHome("en").feed.weekly!;
+      expect(en.items[0].titleEn).toBe("Browser automation CLI for agents");
+      expect(HANGUL.test(JSON.stringify(en))).toBe(false);
+      const ko = loadHome("ko").feed.weekly!;
+      expect(ko.items[0].title).toBe("에이전트용 브라우저 자동화 CLI");
+      expect(ko.items[0]).not.toHaveProperty("titleEn");
+    } finally {
+      db.weekly = null;
+    }
   });
 
   it("한국어 홈은 그대로 — 영어 없는 기사도 싣고 WebSite 구조화 데이터가 있다", () => {

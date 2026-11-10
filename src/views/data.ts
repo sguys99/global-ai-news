@@ -31,6 +31,7 @@ import {
   selectIssueBrief,
   type IssueBriefLine,
 } from "@/lib/edition";
+import { packWeekly } from "@/lib/editionPayload";
 import type { SourceOption } from "@/lib/feedFilter";
 import { INDEX_PAGE_SIZE, buildFeedIndex } from "@/lib/feedIndex";
 import { DEFAULT_LOCALE, localePath, type Locale } from "@/lib/i18n";
@@ -302,7 +303,8 @@ export function loadHome(locale: Locale) {
   // 발행 지연 안내의 초기 상태 = 빌드 시점 판단. 빌드 자체가 낡았으면 정적 HTML 에 안내가 이미 들어간다.
   const initialDelayGap = ref ? issueDelayDays(ref.date, Date.now()) : 0;
   // 주간 레이더: 최신 호가 일요일일 때만(아니면 null). 호 고정 링크 지면과 같은 함수 — 그날 홈과 /edition/<일요일> 이 같다.
-  const weekly = ref ? loadWeeklyRadar(locale, ref.date) : null;
+  // 섬 props 로 실리므로 호 고정 링크와 같이 packWeekly — 영어 홈 RSC 에 한국어 제목이 실리면 일요일 배포가 en:hangul-check 에 막힌다.
+  const weekly = ref ? packWeekly(loadWeeklyRadar(locale, ref.date), locale) : null;
   return {
     /** FeedView(서버 fallback)·FeedClient 공용 props. */
     feed: {
